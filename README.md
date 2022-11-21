@@ -32,4 +32,4 @@ Right now i am also working on
 
 You can now use arduino pins in your hal file. 
 Pin Names are named arduino.[Pin Type]-[Pin Number]. Example:
-arduino.digital-in-32
+arduino.digital-in-32 for Pin 32 on an Arduino Mega2560
