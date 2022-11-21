@@ -1,6 +1,21 @@
 #!/usr/bin/python3.9
-#    HAL userspace component to interface with Arduino board
-#    Copyright (C) 2007 Jeff Epler <jepler@unpythonic.net>
+import serial, time, hal
+
+#    LinuxCNC_ArduinoConnector
+#    This Software is used to use an Arduino as IO Expansion. 
+#	 Note, these IO's are not run in the servo-thread. Therefor the IO's shouldn't be used for timing critical applications.
+# 	 Currently the Software provides: 
+#
+#		- analog Inputs
+#		- latching Potentiometers
+#		- 1 absolute encoder input
+#		- digital Inputs
+#		- digital Outputs
+#		Right now i am also working on
+#		- virtual Pins (multiplexed LED's or WS2812)
+#
+#	 By Alexander Richter, info@theartoftinkering.com
+#    inspired by Jeff Epler, jepler@unpythonic.net
 #
 #    This program is free software; you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -16,33 +31,73 @@
 #    along with this program; if not, write to the Free Software
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+c = hal.component("arduino") #name that we will cal pins from in hal
 
-
-import serial, time, hal
+# Set how many Inputs you have programmed in Arduino and which pins are Inputs
 Inputs = 17
 InPinmap = [32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48]
 
+# Set how many Outputs you have programmed in Arduino and which pins are Outputs
+Outputs = 9
+OutPinmap = [10,9,8,7,6,5,4,3,2]
 
-# Name, positions
-AnalogKnob = [""]
-OutPinmap = [32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48]
+# Set how many PWM Outputs you have programmed in Arduino and which pins are PWM Outputs
+PwmOutputs = 2
+PwmOutPinmap = [12,11]
+
+# Set how many Analog Inputs you have programmed in Arduino and which pins are Analog Inputs
+AInputs = 1
+AInPinmap = [79]
 
 
-c = hal.component("arduino")
+# Set how many Latching Analog Inputs you have programmed in Arduino and how many latches there are
+LPotiKnobs = 2
+LPotiKnobLatches = [8,4]
 
-c.newpin("SpOd", hal.HAL_FLOAT, hal.HAL_IN) #8 Pos latching poti
-c.newpin("FdRes", hal.HAL_FLOAT, hal.HAL_IN) #4 pos latching poti
-c.newpin("AK", hal.HAL_FLOAT, hal.HAL_IN) #absolute Encoder Knob
-c.newpin("SpSp", hal.HAL_FLOAT, hal.HAL_IN) #potentiometer
+# Set if you have an Absolute Encoder Knob and how many positions it has (only one supported, as i don't think they are very common and propably nobody uses these anyway)
+AbsKnob = 1
+AbsKnobPos = 30
+
+
+########  End of Config!  ########
+######## SetUp of HalPins ########
+
+# setup Input halpins
+for port in range(Inputs):
+    c.newpin("dIn-%02d" % InPinmap[port], hal.HAL_BIT, hal.HAL_IN)
+    c.newparam("dIn-%02d-invert" % InPinmap[port], hal.HAL_BIT, hal.HAL_RW)
+
+# setup Output halpins
+for port in range(Outputs):
+    c.newpin("dOut-%02d" % OutPinmap[port], hal.HAL_BIT, hal.HAL_IN)
+
+# setup Pwm Output halpins
+for port in range(PwmOutputs):
+    c.newpin("PwmOut-%02d" % PwmOutPinmap[port], hal.HAL_FLOAT, hal.HAL_IN)
+
+# setup Analog Input halpins
+for port in range(AInputs):
+    c.newpin("aIn-%02d" % AInPinmap[port], hal.HAL_FLOAT, hal.HAL_IN)
+
+# setup Latching Poti halpins
+for latches in range(LPotiKnobs):
+	for port in range(LPotiKnobLatches[latches]):
+		c.newpin("LPotiKnob-%02d" % [port], hal.HAL_BIT, hal.HAL_IN)
+
+# setup Absolute Encoder Knob halpins
+if AbsKnob:
+	for port in range(AbsKnobPos):
+		c.newpin("LPotiKnob-%02d" % [port], hal.HAL_BIT, hal.HAL_IN)
+
+
+
 
 
 #c.newpin("analog-in-%02d" % port, hal.HAL_FLOAT, hal.HAL_OUT)
 #c.newparam("analog-in-%02d-offset" % port, hal.HAL_FLOAT, hal.HAL_RW)
 #c.newparam("analog-in-%02d-gain" % port, hal.HAL_FLOAT, hal.HAL_RW)
 
-for port in range(Inputs):
-    c.newpin("digital-in-%02d" % InPinmap[port], hal.HAL_BIT, hal.HAL_IN)
-    c.newparam("digital-in-%02d-invert" % InPinmap[port], hal.HAL_BIT, hal.HAL_RW)
+
 
 
 c.ready()
