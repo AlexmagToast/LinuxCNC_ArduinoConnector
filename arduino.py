@@ -51,8 +51,8 @@ AInPinmap = [79]
 
 
 # Set how many Latching Analog Inputs you have programmed in Arduino and how many latches there are
-LPotiKnobs = 2
-LPotiKnobLatches = [8,4]
+LPoti = 2
+LPotiLatches = [9,4]
 
 # Set if you have an Absolute Encoder Knob and how many positions it has (only one supported, as i don't think they are very common and propably nobody uses these anyway)
 AbsKnob = 1
@@ -69,40 +69,29 @@ for port in range(Inputs):
 
 # setup Output halpins
 for port in range(Outputs):
-    c.newpin("dOut-%02d" % OutPinmap[port], hal.HAL_BIT, hal.HAL_IN)
+    c.newpin("dOut-%02d" % OutPinmap[port], hal.HAL_BIT, hal.HAL_OUT)
 
 # setup Pwm Output halpins
 for port in range(PwmOutputs):
-    c.newpin("PwmOut-%02d" % PwmOutPinmap[port], hal.HAL_FLOAT, hal.HAL_IN)
+    c.newpin("PwmOut-%02d" % PwmOutPinmap[port], hal.HAL_FLOAT, hal.HAL_OUT)
 
 # setup Analog Input halpins
 for port in range(AInputs):
     c.newpin("aIn-%02d" % AInPinmap[port], hal.HAL_FLOAT, hal.HAL_IN)
 
 # setup Latching Poti halpins
-for latches in range(LPotiKnobs):
-	for port in range(LPotiKnobLatches[latches]):
-		c.newpin("LPotiKnob-%02d" % [port], hal.HAL_BIT, hal.HAL_IN)
+for latches in range(LPoti):
+	for port in range(LPotiLatches[latches]):
+		c.newpin("LPoti-%02d" % [port], hal.HAL_BIT, hal.HAL_IN)
 
 # setup Absolute Encoder Knob halpins
 if AbsKnob:
 	for port in range(AbsKnobPos):
-		c.newpin("LPotiKnob-%02d" % [port], hal.HAL_BIT, hal.HAL_IN)
-
-
-
-
-
-#c.newpin("analog-in-%02d" % port, hal.HAL_FLOAT, hal.HAL_OUT)
-#c.newparam("analog-in-%02d-offset" % port, hal.HAL_FLOAT, hal.HAL_RW)
-#c.newparam("analog-in-%02d-gain" % port, hal.HAL_FLOAT, hal.HAL_RW)
-
-
-
+		c.newpin("AbsKnobPos-%02d" % [port], hal.HAL_BIT, hal.HAL_IN)
 
 c.ready()
 
-
+######## Functions ########
 
 def readinput(input_str):
 	for i in range(50):
@@ -126,7 +115,7 @@ def extract_nbr(input_str):
 
 
 
-
+######## Detect Serial connection and blink Status LED if connection lost -todo ########
 #try:
 
 arduino = serial.Serial('/dev/ttyACM0', 9600, timeout=1, xonxoff=False, rtscts=False, dsrdtr=True)
@@ -135,32 +124,36 @@ arduino = serial.Serial('/dev/ttyACM0', 9600, timeout=1, xonxoff=False, rtscts=F
 while True:
 	try:	
 		data = arduino.readline().decode('utf-8')
+		# I127:1
+
 		data = data.split(":",1)
+		#[I127]["1"]
 		
 		
 		if len(data) == 2:
+			cmd = data[0][0]
+			io = extract_nbr(data[0])
+			value = extract_nbr(data[1])
 			data[1] = extract_nbr(data[1])
 			if data[1]<0: data[1] = 0
 
-			if data[0] == "Pt57":
-				c.SpSp = data[1]
-			elif data[0] == "LP55":	
-				c.SpOd = data[1]
-			elif data[0] == "LP56":
-				c.FdRes = data[1]
+			if data[0] == "I":
+				c.dIn = data[1]
+			elif data[0] == "aI":	
+				c.aIn = data[1]
+			elif data[0] == "lP":
+				for port in range(LPotiLatches[latches]):
+					if ("LPoti-%02d %" [port]) == data[1]:
+						#s
+					else:
+						c.("LPoti-%02d %" [port]) = 0
+					
+					
+					c.LPotiKnob = data[1]
 			elif data[0] == "AK":
-				c.AK = data[1]
+				c.AbsKnob = data[1]
 			else: pass
-
-
 
 	finally:
 		pass
 		
-"""except :
-	print("Lost Connection")
-finally :
-#	serial.close	
-	print("Program closed")
-
-"""
