@@ -1,37 +1,53 @@
 #!/usr/bin/python3.9
 import serial, time, hal
 
-#    LinuxCNC_ArduinoConnector
-#    This Software is used to use an Arduino as IO Expansion. 
-#	 Note, these IO's are not run in the servo-thread. Therefor the IO's shouldn't be used for timing critical applications.
-# 	 Currently the Software provides: 
-#
-#		- analog Inputs
-#		- latching Potentiometers
-#		- 1 absolute encoder input
-#		- digital Inputs
-#		- digital Outputs
-#		Right now i am also working on
-#		- virtual Pins (multiplexed LED's or WS2812)
-#
-#	 By Alexander Richter, info@theartoftinkering.com
-#    inspired by Jeff Epler, jepler@unpythonic.net
-#
-#    This program is free software; you can redistribute it and/or modify
-#    it under the terms of the GNU General Public License as published by
-#    the Free Software Foundation; either version 2 of the License, or
-#    (at your option) any later version.
-#
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU General Public License for more details.
-#
-#    You should have received a copy of the GNU General Public License
-#    along with this program; if not, write to the Free Software
-#    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#	LinuxCNC_ArduinoConnector
+#	By Alexander Richter, info@theartoftinkering.com 2022
+
+#	This Software is used as IO Expansion for LinuxCNC. Here i am using a Mega 2560.
+
+#	It is NOT intended for timing and security relevant IO's. Don't use it for Emergency Stops or Endstop switches!
+
+#	You can create as many digital & analog Inputs, Outputs and PWM Outputs as your Arduino can handle.
+#	You can also generate "virtual Pins" by using latching Potentiometers, which are connected to one analog Pin, but are read in Hal as individual Pins.
+
+#	Currently the Software provides: 
+#	- analog Inputs
+#	- latching Potentiometers
+#	- 1 absolute encoder input
+#	- digital Inputs
+#	- digital Outputs
+
+#	The Send and receive Protocol is <Signal><PinNumber>:<Pin State>
+#	To begin Transmitting Ready is send out and expects to receive E: to establish connection. Afterwards Data is exchanged.
+#	Data is only send everythime it changes once.
+
+#	Inputs                  = 'I' -write only  -Pin State: 0,1
+#	Outputs                 = 'O' -read only   -Pin State: 0,1
+#	PWM Outputs             = 'P' -read only   -Pin State: 0-255
+#	Analog Inputs           = 'A' -write only  -Pin State: 0-1024
+#	Latching Potentiometers = 'L' -write only  -Pin State: 0-max Position
+#	Absolute Encoder input  = 'K' -write only  -Pin State: 0-32
+
+
+#	Command 'E0:0' is used for connectivity checks and is send every 5 seconds as keep alive signal
+
+#	This program is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; either version 2 of the License, or
+#	(at your option) any later version.
+#	This program is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+#	See the GNU General Public License for more details.
+#	You should have received a copy of the GNU General Public License
+#	along with this program; if not, write to the Free Software
+#	Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
 
 c = hal.component("arduino") #name that we will cal pins from in hal
+connection = '/dev/ttyACM0'
+
 
 # Set how many Inputs you have programmed in Arduino and which pins are Inputs
 Inputs = 17
@@ -60,6 +76,7 @@ AbsKnobPos = 30
 
 
 ########  End of Config!  ########
+
 ######## SetUp of HalPins ########
 
 # setup Input halpins
@@ -118,7 +135,7 @@ def extract_nbr(input_str):
 ######## Detect Serial connection and blink Status LED if connection lost -todo ########
 #try:
 
-arduino = serial.Serial('/dev/ttyACM0', 9600, timeout=1, xonxoff=False, rtscts=False, dsrdtr=True)
+arduino = serial.Serial(connection, 9600, timeout=1, xonxoff=False, rtscts=False, dsrdtr=True)
 
 
 while True:
@@ -139,18 +156,14 @@ while True:
 
 			if data[0] == "I":
 				c.dIn = data[1]
-			elif data[0] == "aI":	
+			elif data[0] == "A":
 				c.aIn = data[1]
-			elif data[0] == "lP":
+			elif data[0] == "L":
 				for port in range(LPotiLatches[latches]):
 					if ("LPoti-%02d %" [port]) == data[1]:
-						#s
-					else:
-						c.("LPoti-%02d %" [port]) = 0
-					
-					
 					c.LPotiKnob = data[1]
-			elif data[0] == "AK":
+
+			elif data[0] == "K":
 				c.AbsKnob = data[1]
 			else: pass
 

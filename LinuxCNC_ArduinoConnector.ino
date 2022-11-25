@@ -1,24 +1,53 @@
 /*
-This Software is used as IO Expansion for LinuxCNC. Here i am using an Mega 2560.
-It can use as many digital & analog Inputs, Outputs and PWM Outputs as your Arduino can handle.
-I also generate "virtual Pins" by using latching Potentiometers, which are connected to one analog Pin, but are read in Hal as individual Pins.
+  LinuxCNC_ArduinoConnector
+  By Alexander Richter, info@theartoftinkering.com 2022
 
+  This Software is used as IO Expansion for LinuxCNC. Here i am using a Mega 2560.
 
-The Send Protocol is <Signal><Pin Number>:<Pin State>
+  It is NOT intended for timing and security relevant IO's. Don't use it for Emergency Stops or Endstop switches!
 
-Inputs are encoded with Letter 'I'
-Keep alive Signal is send with Letter 'E'
-Outputs are encoded with Letter 'O'
-PWM Outputs are encoded with Letter 'P'
-Analog Inputs are encoded with Letter 'A'
-Latching Potentiometers are encoded with Letter 'L'
-Absolute Encoder input is encoded with Letter 'K'
+  You can create as many digital & analog Inputs, Outputs and PWM Outputs as your Arduino can handle.
+  You can also generate "virtual Pins" by using latching Potentiometers, which are connected to one analog Pin, but are read in Hal as individual Pins.
+
+  Currently the Software provides: 
+  - analog Inputs
+  - latching Potentiometers
+  - 1 absolute encoder input
+  - digital Inputs
+  - digital Outputs
+
+  The Send and receive Protocol is <Signal><PinNumber>:<Pin State>
+  To begin Transmitting Ready is send out and expects to receive E: to establish connection. Afterwards Data is exchanged.
+  Data is only send everythime it changes once.
+
+  Inputs                  = 'I' -write only  -Pin State: 0,1
+  Outputs                 = 'O' -read only   -Pin State: 0,1
+  PWM Outputs             = 'P' -read only   -Pin State: 0-255
+  Analog Inputs           = 'A' -write only  -Pin State: 0-1024
+  Latching Potentiometers = 'L' -write only  -Pin State: 0-max Position
+  Absolute Encoder input  = 'K' -write only  -Pin State: 0-32
+
+  Command 'E0:0' is used for connectivity checks and is send every 5 seconds as keep alive signal
+
+  This program is free software; you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation; either version 2 of the License, or
+  (at your option) any later version.
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the GNU General Public License for more details.
+  You should have received a copy of the GNU General Public License
+  along with this program; if not, write to the Free Software
+  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
 
+
+
 //###IO's###
-#define INPUTS                        
-#ifdef INPUTS
+#define DINPUTS                        
+#ifdef DINPUTS
   const int Inputs = 16;               //number of inputs using internal Pullup resistor. (short to ground to trigger)
   int InPinmap[] = {32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48};
 #endif
@@ -32,23 +61,25 @@ Absolute Encoder input is encoded with Letter 'K'
 
 #define PWMOUTPUTS                      
 #ifdef PWMOUTPUTS
-  const int PwmOutput = 2;              //number of outputs
-  int PwmOutPinmap[] = {12,11};
+  const int PwmOutputs = 2;              //number of outputs
+  int PwmOutPinmap[] = {13,11};
 #endif
 
 #define AINPUTS                         
 #ifdef AINPUTS
   const int AInputs = 1; 
   int AInPinmap[] = {A3};                //Potentiometer for SpindleSpeed override
+  int smooth = 200;                      //number of samples to denoise ADC, try lower numbers on your setup
 #endif
 
 #define LPOTIS                          
 #ifdef LPOTIS
   const int LPotis = 2; 
   int LPotiPins[LPotis][2] = {
-                    {A1,8},             //Latching Knob Spindle Overdrive on A1, has 9 Positions
-                    {A2,3}              //Latching Knob Feed Resolution on A2, has 4 Positions
+                    {96,8},             //Latching Knob Spindle Overdrive on A1, has 9 Positions
+                    {95,3}              //Latching Knob Feed Resolution on A2, has 4 Positions
                     };
+  int margin = 20;                      //giving it some margin so Numbers dont jitter, make this number smaller if your knob has more than 50 Positions
 #endif
 
 #define ABSENCODER                      
@@ -70,7 +101,7 @@ const int timeout = 10000;   // timeout after 10 sec not receiving Stuff
 #define DEBUG
 
 //Variables for Saving States
-#ifdef INPUTS
+#ifdef DINPUTS
   int InState[Inputs];
   int oldInState[Inputs];
 #endif
@@ -78,10 +109,15 @@ const int timeout = 10000;   // timeout after 10 sec not receiving Stuff
   int OutState[Outputs];
   int oldOutState[Outputs];
 #endif
+#ifdef PWMOUTPUTS
+  int OutPWMState[PwmOutputs];
+  int oldOutPWMState[PwmOutputs];
+#endif
 #ifdef AINPUTS
   int oldAinput[AInputs];
 #endif
 #ifdef LPOTIS
+  int Lpoti[LPotis];
   int oldLpoti[LPotis];
 #endif
 #ifdef ABSENCODER
@@ -91,7 +127,7 @@ const int timeout = 10000;   // timeout after 10 sec not receiving Stuff
 
 
 //### global Variables setup###
-//Diese variablen nicht von außen anfassen
+//Please don't touch them
 unsigned long oldmillis = 0;
 unsigned long newcom = 0;
 unsigned long lastcom = 0;
@@ -109,8 +145,39 @@ uint16_t io = 0;
 uint16_t value = 0;
 
 
+
 void setup() {
 
+#ifdef DINPUTS
+//setting Inputs with internal Pullup Resistors
+  for(int i= 0; i<Inputs;i++){
+    pinMode(InPinmap[i], INPUT_PULLUP);
+    oldInState[i] = -1;
+    }
+#endif
+#ifdef AINPUTS
+
+  for(int i= 0; i<AInputs;i++){
+    pinMode(AInPinmap[i], INPUT);
+    oldAinput[i] = -1;
+    }
+#endif
+#ifdef OUTPUTS
+  for(int o= 0; o<Outputs;o++){
+    pinMode(OutPinmap[o], OUTPUT);
+    oldOutState[o] = 0;
+    }
+#endif
+
+#ifdef PWMOUTPUTS
+  for(int o= 0; o<PwmOutputs;o++){
+    pinMode(PwmOutPinmap[o], OUTPUT);
+    oldOutPWMState[o] = 0;
+    }
+#endif
+#ifdef STATUSLED
+  pinMode(StatLedPin, OUTPUT);
+#endif
 
 #ifdef ABSENCODER
   pinMode(AbsEncPins[0], INPUT_PULLUP);
@@ -120,74 +187,60 @@ void setup() {
   pinMode(AbsEncPins[4], INPUT_PULLUP);
 #endif
 
-#ifdef INPUTS
-//setting Inputs with internal Pullup Resistors
-  for(int i= 0; i<Inputs;i++){
-    pinMode(InPinmap[i], INPUT_PULLUP);
-    oldInState[i] = -1;
-    }
-#endif
-
-#ifdef OUTPUTS
-  for(int o= 0; o<Outputs;o++){
-    pinMode(OutPinmap[o], OUTPUT);
-    oldOutState[o] = 0;
-    }
-#endif
-
-
-#ifdef STATUSLED
-  pinMode(StatLedPin, OUTPUT);
-#endif
-
 
 //Setup Serial
   Serial.begin(115200);
-  while (!Serial){
-    #ifdef STATUSLED
-      StatLedErr();
-    #endif
-  }
-  if (Serial){
-    delay(1000);
+  while (!Serial){}
+  while (lastcom == 0){
+    readCommands();
     flushSerial();
-    Serial.println("Ready");
+    Serial.println("R:");
+    #ifdef STATUSLED
+      StatLedErr(1000,1000);
+    #endif
     }
 
 }
 
 
 void loop() {
-  while (!Serial){
-    #ifdef STATUSLED
-      StatLedErr();
-    #endif
-  }
 
-readCommands();
-#ifdef INPUTS
-//  readInputs();
+  readCommands(); //receive and execute Commands 
+  comalive(); //if nothing is received for 10 sec. blink warning LED 
+
+
+#ifdef DINPUTS
+  readInputs(); //read Inputs & send
+#endif
+#ifdef AINPUTS
+readAInputs();
+#endif
+#ifdef LPOTIS
+ // readLPoti(); //read LPotis & send
+#endif
+#ifdef ABSENCODER
+  readAbsKnob(); //read ABS Encoder & send
 #endif
 
-
-
 }
-
 
 void comalive(){
   if(millis() - lastcom > timeout){
-    StatLedErr();
+    StatLedErr(1000,10);
+  }
+  else{
+    digitalWrite(StatLedPin, HIGH);
   }
 }
 
-void StatLedErr(){
+void StatLedErr(int offtime, int ontime){
   unsigned long newMillis = millis();
 
-  if (newMillis - oldmillis >= StatLedErrDel[0]){
+  if (newMillis - oldmillis >= offtime){
 
       digitalWrite(StatLedPin, HIGH);
     } 
-  if (newMillis - oldmillis >= StatLedErrDel[0]+StatLedErrDel[1]){{
+  if (newMillis - oldmillis >= offtime+ontime){{
       digitalWrite(StatLedPin, LOW);
       oldmillis = newMillis;
     }
@@ -207,57 +260,55 @@ void flushSerial(){
   Serial.read();
   }
 }
-/*
-void readData(){
-  int pin = 0;
-  int state = 0;
-  byte terminated = false;
 
-  if (Serial.available() > 0) {
-    
-    char inChar = Serial.read();
-    Serial.println(inChar);
-    if (inChar == 'o'){
-      Serial.println("O erkannt");
-      while (!terminated && comalive()){
-        
-        inChar = Serial.read();
-        if (inChar == ':'){
+void writeOutputs(int Pin, int Stat){
+    for(int x = 0; x<Outputs;x++){
+      if(OutPinmap[x]==Pin){
+        digitalWrite(OutPinmap[x], Stat);
       }
-      
     }
-
-    if (inChar == 'p'){
-      Serial.println("p erkannt");
-      sig = 'p';
+}
+void writePwmOutputs(int Pin, int Stat){
+  for(int x = 0; x<PwmOutputs;x++){
+    if(PwmOutPinmap[x]==Pin){
+      analogWrite(PwmOutPinmap[x], Stat);
     }
-
   }
 }
-}
 
-*/
-void writeOutputs(){
-    for(int x = 0; x<Outputs;x++){
-    digitalWrite(OutPinmap[x], OutState[x]);
+
+
+int readLPoti(){
+    for(int i= 0;i<LPotis; i++){
+      int State = analogRead(LPotiPins[i][0])+margin;
+      Lpoti[i] = 1024/LPotiPins[i][1];
+      State = State/LPotiPins[i][1];
+      if(oldLpoti[i]!= State){
+        oldLpoti[i] = State;
+        sendData('L', LPotiPins[i][0],oldLpoti[i]);
+      }
     }
 }
 
 
-int readLPoti(int Pin,int Pos, int Stat){
-  int var = analogRead(Pin)+20; //giving it some margin so Numbers dont jitter
-  Pos = 1024/Pos;
-  var = var/Pos;
-   return (Stat);
-}
 
-int readAIn(int Pin){
+
+int readAInputs(){
    unsigned long var = 0;
-   for(int i= 0;i<500; i++){
-      var = var+ analogRead(Pin);
-   }
-   var = var / 500;
-   return (var);
+   for(int i= 0;i<AInputs; i++){
+      int State = analogRead(AInPinmap[i]);
+      for(int i= 0;i<smooth; i++){// take couple samples to denoise signal
+        var = var+ analogRead(AInPinmap[i]);
+      }
+
+      var = var / smooth;
+      
+      if(oldAinput[i]!= var){
+        oldAinput[i] = var;
+        sendData('A',AInPinmap[i],oldAinput[i]);
+      }
+    }   
+
 }
 
 void readInputs(){
@@ -267,45 +318,54 @@ void readInputs(){
         InState[i] = State;
         sendData('I',InPinmap[i],InState[i]);
       }
-  }
+    }
 }
 
 
-/*
 int readAbsKnob(){
   int var = 0;
-  if(digitalRead(DI0)==1){
+  if(digitalRead(AbsEncPins[0])==1){
     var += 1;
   }
-  if(digitalRead(DI1)==1){
+  if(digitalRead(AbsEncPins[1])==1){
     var += 2;
   }
-  if(digitalRead(DI2)==1){
+  if(digitalRead(AbsEncPins[2])==1){
     var += 4;
   }  
-  if(digitalRead(DI3)==1){
+  if(digitalRead(AbsEncPins[3])==1){
     var += 8;
   }  
-  if(digitalRead(DI4)==1){
+  if(digitalRead(AbsEncPins[4])==1){
     var += 16;
   }
-  if(var != oldvar){
-    Serial.print("AK:");
+  if(var != oldAbsEncState){
+    Serial.print("K:");
     Serial.println(var);
     }
-  oldvar = var;
+  oldAbsEncState = var;
   return (var);
 }
-*/
+
 
 void commandReceived(char cmd, uint16_t io, uint16_t value){
-  switch(state){
-    case
-  }      Serial.print(cmd);
-        Serial.print(io);
-        Serial.print(":");
-        Serial.println(value);
+  if(cmd == 'O'){
+    writeOutputs(io,value);
+  }
+  if(cmd == 'P'){
+    writePwmOutputs(io,value);
+  }
+  if(cmd == 'E'){
+    lastcom=millis();
+  }
 
+#ifdef DEBUG
+  Serial.print("I Received= ");
+  Serial.print(cmd);
+  Serial.print(io);
+  Serial.print(":");
+  Serial.println(value);
+#endif
 }
 
 int isCmdChar(char cmd){
@@ -334,22 +394,30 @@ void readCommands(){
                     state = STATE_VALUE;
                     bufferIndex = 0;
 
-                }else{
+                }
+                else{
+                    #ifdef DEBUG
                     Serial.print("Ungültiges zeichen: ");
                     Serial.println(current);
+                    #endif
                 }
                 break;
             case STATE_VALUE:
                 if(isDigit(current)){
                     inputbuffer[bufferIndex++] = current;
-                }else if(current == '\n'){
+                }
+                else if(current == '\n'){
                     inputbuffer[bufferIndex] = 0;
                     value = atoi(inputbuffer);
                     commandReceived(cmd, io, value);
                     state = STATE_CMD;
-                }else{
-                    Serial.print("Ungültiges zeichen: ");
-                    Serial.println(current);
+                }
+                else{
+                  #ifdef DEBUG
+                  Serial.print("Ungültiges zeichen: ");
+                  Serial.println(current);
+                  #endif
+                
                 }
                 break;
         }

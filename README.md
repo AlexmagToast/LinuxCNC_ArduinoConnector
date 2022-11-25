@@ -15,8 +15,7 @@ This protocol is slow compared to other solutions, but easily adaptable and expa
 - 1 absolute encoder input
 - digital Inputs
 - digital Outputs
-Right now i am also working on
-- virtual Pins (multiplexed LED's or WS2812)
+
 
 
 # Installation
