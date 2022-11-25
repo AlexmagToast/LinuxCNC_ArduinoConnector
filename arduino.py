@@ -50,20 +50,20 @@ connection = '/dev/ttyACM0'
 
 
 # Set how many Inputs you have programmed in Arduino and which pins are Inputs
-Inputs = 17
+Inputs = 16
 InPinmap = [32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48]
 
 # Set how many Outputs you have programmed in Arduino and which pins are Outputs
 Outputs = 9
-OutPinmap = [10,9,8,7,6,5,4,3,2]
+OutPinmap = [10,9,8,7,6,5,4,3,2,21]
 
 # Set how many PWM Outputs you have programmed in Arduino and which pins are PWM Outputs
 PwmOutputs = 2
-PwmOutPinmap = [12,11]
+PwmOutPinmap = [13,11]
 
 # Set how many Analog Inputs you have programmed in Arduino and which pins are Analog Inputs
 AInputs = 1
-AInPinmap = [79]
+AInPinmap = [94]
 
 
 # Set how many Latching Analog Inputs you have programmed in Arduino and how many latches there are
@@ -72,7 +72,7 @@ LPotiLatches = [9,4]
 
 # Set if you have an Absolute Encoder Knob and how many positions it has (only one supported, as i don't think they are very common and propably nobody uses these anyway)
 AbsKnob = 1
-AbsKnobPos = 30
+AbsKnobPos = 31
 
 
 ########  End of Config!  ########
@@ -159,12 +159,11 @@ while True:
 			elif data[0] == "A":
 				c.aIn = data[1]
 			elif data[0] == "L":
-				for port in range(LPotiLatches[latches]):
-					if ("LPoti-%02d %" [port]) == data[1]:
-					c.LPotiKnob = data[1]
-
+				pass
 			elif data[0] == "K":
 				c.AbsKnob = data[1]
+			elif data[0] == "E":
+				arduino.printline("E:")
 			else: pass
 
 	finally:

@@ -46,8 +46,8 @@
 
 
 //###IO's###
-#define DINPUTS                        
-#ifdef DINPUTS
+#define INPUTS                        
+#ifdef INPUTS
   const int Inputs = 16;               //number of inputs using internal Pullup resistor. (short to ground to trigger)
   int InPinmap[] = {32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48};
 #endif
@@ -68,7 +68,7 @@
 #define AINPUTS                         
 #ifdef AINPUTS
   const int AInputs = 1; 
-  int AInPinmap[] = {A3};                //Potentiometer for SpindleSpeed override
+  int AInPinmap[] = {94};                //Potentiometer for SpindleSpeed override
   int smooth = 200;                      //number of samples to denoise ADC, try lower numbers on your setup
 #endif
 
@@ -76,8 +76,8 @@
 #ifdef LPOTIS
   const int LPotis = 2; 
   int LPotiPins[LPotis][2] = {
-                    {96,8},             //Latching Knob Spindle Overdrive on A1, has 9 Positions
-                    {95,3}              //Latching Knob Feed Resolution on A2, has 4 Positions
+                    {96,9},             //Latching Knob Spindle Overdrive on A1, has 9 Positions
+                    {95,4}              //Latching Knob Feed Resolution on A2, has 4 Positions
                     };
   int margin = 20;                      //giving it some margin so Numbers dont jitter, make this number smaller if your knob has more than 50 Positions
 #endif
@@ -98,10 +98,10 @@
 //###Misc Settings###
 const int timeout = 10000;   // timeout after 10 sec not receiving Stuff
 
-#define DEBUG
+//#define DEBUG
 
 //Variables for Saving States
-#ifdef DINPUTS
+#ifdef INPUTS
   int InState[Inputs];
   int oldInState[Inputs];
 #endif
@@ -148,7 +148,7 @@ uint16_t value = 0;
 
 void setup() {
 
-#ifdef DINPUTS
+#ifdef INPUTS
 //setting Inputs with internal Pullup Resistors
   for(int i= 0; i<Inputs;i++){
     pinMode(InPinmap[i], INPUT_PULLUP);
@@ -209,17 +209,17 @@ void loop() {
   comalive(); //if nothing is received for 10 sec. blink warning LED 
 
 
-#ifdef DINPUTS
-  readInputs(); //read Inputs & send
+#ifdef INPUTS
+  readInputs(); //read Inputs & send data
 #endif
 #ifdef AINPUTS
-readAInputs();
+  readAInputs();  //read Analog Inputs & send data
 #endif
 #ifdef LPOTIS
- // readLPoti(); //read LPotis & send
+  readLPoti(); //read LPotis & send data
 #endif
 #ifdef ABSENCODER
-  readAbsKnob(); //read ABS Encoder & send
+  readAbsKnob(); //read ABS Encoder & send data
 #endif
 
 }
@@ -268,6 +268,7 @@ void writeOutputs(int Pin, int Stat){
       }
     }
 }
+
 void writePwmOutputs(int Pin, int Stat){
   for(int x = 0; x<PwmOutputs;x++){
     if(PwmOutPinmap[x]==Pin){
@@ -281,8 +282,8 @@ void writePwmOutputs(int Pin, int Stat){
 int readLPoti(){
     for(int i= 0;i<LPotis; i++){
       int State = analogRead(LPotiPins[i][0])+margin;
-      Lpoti[i] = 1024/LPotiPins[i][1];
-      State = State/LPotiPins[i][1];
+      Lpoti[i] = 1024/(LPotiPins[i][1]-1);
+      State = State/(LPotiPins[i][1]-1);
       if(oldLpoti[i]!= State){
         oldLpoti[i] = State;
         sendData('L', LPotiPins[i][0],oldLpoti[i]);
