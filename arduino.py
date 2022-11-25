@@ -1,6 +1,5 @@
 #!/usr/bin/python3.9
-import serial, time, hal
-
+import serial, time, hal, asyncio
 #	LinuxCNC_ArduinoConnector
 #	By Alexander Richter, info@theartoftinkering.com 2022
 
@@ -63,52 +62,62 @@ PwmOutPinmap = [13,11]
 
 # Set how many Analog Inputs you have programmed in Arduino and which pins are Analog Inputs
 AInputs = 1
-AInPinmap = [94]
+AInPinmap = [1]
 
 
 # Set how many Latching Analog Inputs you have programmed in Arduino and how many latches there are
 LPoti = 2
-LPotiLatches = [9,4]
+LPotiLatches = [[2,9],
+				[3,4]]
 
 # Set if you have an Absolute Encoder Knob and how many positions it has (only one supported, as i don't think they are very common and propably nobody uses these anyway)
 AbsKnob = 1
-AbsKnobPos = 31
+AbsKnobPos = 32
 
-
+Debug = 0
 ########  End of Config!  ########
 
 ######## SetUp of HalPins ########
 
 # setup Input halpins
 for port in range(Inputs):
-    c.newpin("dIn-%02d" % InPinmap[port], hal.HAL_BIT, hal.HAL_IN)
-    c.newparam("dIn-%02d-invert" % InPinmap[port], hal.HAL_BIT, hal.HAL_RW)
+    c.newpin("dIn.{}".format(InPinmap[port]), hal.HAL_BIT, hal.HAL_OUT)
+    c.newparam("dIn.{}-invert".format(InPinmap[port]), hal.HAL_BIT, hal.HAL_RW)
 
 # setup Output halpins
 for port in range(Outputs):
-    c.newpin("dOut-%02d" % OutPinmap[port], hal.HAL_BIT, hal.HAL_OUT)
+    c.newpin("dOut.{}".format(OutPinmap[port]), hal.HAL_BIT, hal.HAL_IN)
 
 # setup Pwm Output halpins
 for port in range(PwmOutputs):
-    c.newpin("PwmOut-%02d" % PwmOutPinmap[port], hal.HAL_FLOAT, hal.HAL_OUT)
+    c.newpin("PwmOut.{}".format(PwmOutPinmap[port]), hal.HAL_FLOAT, hal.HAL_IN)
 
 # setup Analog Input halpins
 for port in range(AInputs):
-    c.newpin("aIn-%02d" % AInPinmap[port], hal.HAL_FLOAT, hal.HAL_IN)
+    c.newpin("aIn.{}".format(AInPinmap[port]), hal.HAL_FLOAT, hal.HAL_OUT)
 
 # setup Latching Poti halpins
-for latches in range(LPoti):
-	for port in range(LPotiLatches[latches]):
-		c.newpin("LPoti-%02d" % [port], hal.HAL_BIT, hal.HAL_IN)
+for Poti in range(LPoti):
+	for Pin in range(LPotiLatches[Poti][1]):
+		c.newpin("LPoti.{}.{}" .format(LPotiLatches[Poti][0],Pin), hal.HAL_BIT, hal.HAL_OUT)
 
 # setup Absolute Encoder Knob halpins
 if AbsKnob:
 	for port in range(AbsKnobPos):
-		c.newpin("AbsKnobPos-%02d" % [port], hal.HAL_BIT, hal.HAL_IN)
+		c.newpin("AbsKnob.{}".format(port), hal.HAL_BIT, hal.HAL_OUT)
 
 c.ready()
 
+#setup Serial connection
+arduino = serial.Serial(connection, 115200, timeout=1, xonxoff=False, rtscts=False, dsrdtr=True)
+######## GlobalVariables ########
+firstcom = 0
+event = time.time()
+timeout = 9 #send something after max 9 seconds
 ######## Functions ########
+
+def keepAlive(event):
+    return event + timeout < time.time()
 
 def readinput(input_str):
 	for i in range(50):
@@ -130,42 +139,95 @@ def extract_nbr(input_str):
             out_number += ele
     return int(out_number) 
 
-
-
-######## Detect Serial connection and blink Status LED if connection lost -todo ########
-#try:
-
-arduino = serial.Serial(connection, 9600, timeout=1, xonxoff=False, rtscts=False, dsrdtr=True)
+def sendData():
+	for port in range(PwmOutputs):
+		#Outcommand = b"P{}:{}\n".format(PwmOutPinmap[port],c["PwmOut.{}".format(PwmOutPinmap[port])])
+		#arduino.write(Outcommand)
+		Sig = 'O'
+		Pin = PwmOutPinmap[port]
+		#State = int(c["PwmOut.{}".format(PwmOutPinmap[port])])
+		State = 1
+		arduino.write(b'O')
+		arduino.write(Pin)
+		arduino.write(b":")
+		arduino.write(State)
+		arduino.write(b"\n")
+		event = time.time() #reset timeout timer
+		if (Debug):print ("Sending:{}{}:{}".format(Sig,Pin,State))
+		
 
 
 while True:
-	try:	
+	
+	try:
 		data = arduino.readline().decode('utf-8')
-		# I127:1
-
+		if (Debug):print ("I received:{}".format(data))
 		data = data.split(":",1)
-		#[I127]["1"]
-		
-		
-		if len(data) == 2:
+
+		try:
 			cmd = data[0][0]
-			io = extract_nbr(data[0])
-			value = extract_nbr(data[1])
-			data[1] = extract_nbr(data[1])
-			if data[1]<0: data[1] = 0
+			if cmd == "":
+				if (Debug):print ("No Command!:{}.".format(cmd))
+			
+			else:
+				if not data[0][1]:
+					io = 0
+				else:
+					io = extract_nbr(data[0])
+				value = extract_nbr(data[1])
+				if value<0: value = 0
+				
 
-			if data[0] == "I":
-				c.dIn = data[1]
-			elif data[0] == "A":
-				c.aIn = data[1]
-			elif data[0] == "L":
-				pass
-			elif data[0] == "K":
-				c.AbsKnob = data[1]
-			elif data[0] == "E":
-				arduino.printline("E:")
-			else: pass
+				if cmd == "I":
+					if value == 1:
+						c["dIn.{}".format(io)] = 1
+						c["dIn.{}-invert".format(io)] = 0
+						if(Debug):print("dIn{}:{}".format(io,1))
+					if value == 0:
+						c["dIn.{}".format(io)] = 0
+						c["dIn.{}-invert".format(io)] = 1
+						if(Debug):print("dIn{}:{}".format(io,0))
+					else:pass
 
-	finally:
-		pass
-		
+				elif cmd == "A":
+					c["aIn.{}".format(io)] = value
+					if (Debug):print("aIn.{}:{}".format(io,value))
+				elif cmd == "L":
+						if port == value:
+							c["AbsKnob.{}".format(port)] = 1
+							if(Debug):print("AbsKnob.{}:{}".format(port,1))
+						else:
+							c["AbsKnob.{}".format(port)] = 0
+							if(Debug):print("AbsKnob.{}:{}".format(port,0))
+					
+				elif cmd == "K":
+					for port in range(AbsKnobPos):
+						if port == value:
+							c["AbsKnob.{}".format(port)] = 1
+							if(Debug):print("AbsKnob.{}:{}".format(port,1))
+						else:
+							c["AbsKnob.{}".format(port)] = 0
+							if(Debug):print("AbsKnob.{}:{}".format(port,0))
+					
+				elif cmd == 'E':
+					arduino.write(b"E:\n")
+					firstcom = 1
+					if (Debug):print("Sending E:")
+				else: pass
+	
+
+		except: pass
+	
+
+	except KeyboardInterrupt:
+		if (Debug):print ("Keyboard Interrupted.. BYE")
+		exit()
+	except: 
+		if (Debug):print ("I received garbage")
+		arduino.flush()
+	#sendData()
+	if keepAlive(event):
+		arduino.write(b"E:\n")
+		if (Debug):print("keepAlive")
+		event = time.time()
+	
