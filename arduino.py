@@ -1,5 +1,5 @@
 #!/usr/bin/python3.9
-import serial, time, hal, asyncio
+import serial, time, hal
 #	LinuxCNC_ArduinoConnector
 #	By Alexander Richter, info@theartoftinkering.com 2022
 
@@ -58,7 +58,7 @@ OutPinmap = [10,9,8,7,6,5,4,3,2,21]
 
 # Set how many PWM Outputs you have programmed in Arduino and which pins are PWM Outputs
 PwmOutputs = 2
-PwmOutPinmap = [13,11]
+PwmOutPinmap = [11,12]
 
 # Set how many Analog Inputs you have programmed in Arduino and which pins are Analog Inputs
 AInputs = 1
@@ -74,8 +74,12 @@ LPotiLatches = [[2,9],
 AbsKnob = 1
 AbsKnobPos = 32
 
-Debug = 0
+
+
+Debug = 1
 ########  End of Config!  ########
+olddOutStates= [0]*Outputs
+oldPwmOutStates=[0]*PwmOutputs
 
 ######## SetUp of HalPins ########
 
@@ -87,11 +91,12 @@ for port in range(Inputs):
 # setup Output halpins
 for port in range(Outputs):
     c.newpin("dOut.{}".format(OutPinmap[port]), hal.HAL_BIT, hal.HAL_IN)
+    olddOutStates[port] = 0
 
 # setup Pwm Output halpins
 for port in range(PwmOutputs):
     c.newpin("PwmOut.{}".format(PwmOutPinmap[port]), hal.HAL_FLOAT, hal.HAL_IN)
-
+    oldPwmOutStates[port] = 255
 # setup Analog Input halpins
 for port in range(AInputs):
     c.newpin("aIn.{}".format(AInPinmap[port]), hal.HAL_FLOAT, hal.HAL_OUT)
@@ -139,21 +144,26 @@ def extract_nbr(input_str):
             out_number += ele
     return int(out_number) 
 
-def sendData():
+def managageOutputs():
 	for port in range(PwmOutputs):
-		#Outcommand = b"P{}:{}\n".format(PwmOutPinmap[port],c["PwmOut.{}".format(PwmOutPinmap[port])])
-		#arduino.write(Outcommand)
-		Sig = 'O'
-		Pin = PwmOutPinmap[port]
-		#State = int(c["PwmOut.{}".format(PwmOutPinmap[port])])
-		State = 1
-		arduino.write(b'O')
-		arduino.write(Pin)
-		arduino.write(b":")
-		arduino.write(State)
-		arduino.write(b"\n")
-		event = time.time() #reset timeout timer
-		if (Debug):print ("Sending:{}{}:{}".format(Sig,Pin,State))
+		State = int(c["PwmOut.{}".format(PwmOutPinmap[port])])
+		if oldPwmOutStates[port] != State: 	#check if states have changed
+			Sig = 'P'
+			Pin = int(PwmOutPinmap[port])
+			command = "{}{}:{}\n".format(Sig,Pin,State)
+			arduino.write(command.encode())
+			if (Debug):print ("Sending:{}".format(command.encode()))
+			oldPwmOutStates[port]= State
+
+	for port in range(Outputs):
+		State = int(c["dOut.{}".format(OutPinmap[port])])
+		if olddOutStates[port] != State:	#check if states have changed
+			Sig = 'O'
+			Pin = int(OutPinmap[port])
+			command = "{}{}:{}\n".format(Sig,Pin,State)
+			arduino.write(command.encode())
+			if (Debug):print ("Sending:{}".format(command.encode()))
+			olddOutStates[port]= State
 		
 
 
@@ -179,10 +189,12 @@ while True:
 				
 
 				if cmd == "I":
+					firstcom = 1
 					if value == 1:
 						c["dIn.{}".format(io)] = 1
 						c["dIn.{}-invert".format(io)] = 0
 						if(Debug):print("dIn{}:{}".format(io,1))
+						
 					if value == 0:
 						c["dIn.{}".format(io)] = 0
 						c["dIn.{}-invert".format(io)] = 1
@@ -190,17 +202,20 @@ while True:
 					else:pass
 
 				elif cmd == "A":
+					firstcom = 1
 					c["aIn.{}".format(io)] = value
 					if (Debug):print("aIn.{}:{}".format(io,value))
 				elif cmd == "L":
-						if port == value:
-							c["AbsKnob.{}".format(port)] = 1
-							if(Debug):print("AbsKnob.{}:{}".format(port,1))
-						else:
-							c["AbsKnob.{}".format(port)] = 0
-							if(Debug):print("AbsKnob.{}:{}".format(port,0))
-					
+					firstcom = 1
+					if port == value:
+						c["AbsKnob.{}".format(port)] = 1
+						if(Debug):print("AbsKnob.{}:{}".format(port,1))
+					else:
+						c["AbsKnob.{}".format(port)] = 0
+						if(Debug):print("AbsKnob.{}:{}".format(port,0))
+				
 				elif cmd == "K":
+					firstcom = 1
 					for port in range(AbsKnobPos):
 						if port == value:
 							c["AbsKnob.{}".format(port)] = 1
@@ -210,9 +225,8 @@ while True:
 							if(Debug):print("AbsKnob.{}:{}".format(port,0))
 					
 				elif cmd == 'E':
-					arduino.write(b"E:\n")
-					firstcom = 1
-					if (Debug):print("Sending E:")
+					arduino.write(b"E0:0\n")
+					if (Debug):print("Sending E0:0 to establish contact")
 				else: pass
 	
 
@@ -225,7 +239,9 @@ while True:
 	except: 
 		if (Debug):print ("I received garbage")
 		arduino.flush()
-	#sendData()
+	
+	if firstcom == 1: managageOutputs()
+
 	if keepAlive(event):
 		arduino.write(b"E:\n")
 		if (Debug):print("keepAlive")
