@@ -68,7 +68,7 @@
 #define AINPUTS                         
 #ifdef AINPUTS
   const int AInputs = 1; 
-  int AInPinmap[] = {94};                //Potentiometer for SpindleSpeed override
+  int AInPinmap[] = {1};                //Potentiometer for SpindleSpeed override
   int smooth = 200;                      //number of samples to denoise ADC, try lower numbers on your setup
 #endif
 
@@ -76,8 +76,8 @@
 #ifdef LPOTIS
   const int LPotis = 2; 
   int LPotiPins[LPotis][2] = {
-                    {96,9},             //Latching Knob Spindle Overdrive on A1, has 9 Positions
-                    {95,4}              //Latching Knob Feed Resolution on A2, has 4 Positions
+                    {2,9},             //Latching Knob Spindle Overdrive on A1, has 9 Positions
+                    {3,4}              //Latching Knob Feed Resolution on A2, has 4 Positions
                     };
   int margin = 20;                      //giving it some margin so Numbers dont jitter, make this number smaller if your knob has more than 50 Positions
 #endif
@@ -194,7 +194,7 @@ void setup() {
   while (lastcom == 0){
     readCommands();
     flushSerial();
-    Serial.println("R:");
+    Serial.println("E0:0");
     #ifdef STATUSLED
       StatLedErr(1000,1000);
     #endif
@@ -301,15 +301,12 @@ int readAInputs(){
       for(int i= 0;i<smooth; i++){// take couple samples to denoise signal
         var = var+ analogRead(AInPinmap[i]);
       }
-
       var = var / smooth;
-      
       if(oldAinput[i]!= var){
         oldAinput[i] = var;
         sendData('A',AInPinmap[i],oldAinput[i]);
       }
-    }   
-
+    }
 }
 
 void readInputs(){
@@ -341,7 +338,7 @@ int readAbsKnob(){
     var += 16;
   }
   if(var != oldAbsEncState){
-    Serial.print("K:");
+    Serial.print("K0:");
     Serial.println(var);
     }
   oldAbsEncState = var;
