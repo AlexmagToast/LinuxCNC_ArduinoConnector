@@ -205,15 +205,20 @@ while True:
 					firstcom = 1
 					c["aIn.{}".format(io)] = value
 					if (Debug):print("aIn.{}:{}".format(io,value))
+
 				elif cmd == "L":
 					firstcom = 1
-					if port == value:
-						c["AbsKnob.{}".format(port)] = 1
-						if(Debug):print("AbsKnob.{}:{}".format(port,1))
-					else:
-						c["AbsKnob.{}".format(port)] = 0
-						if(Debug):print("AbsKnob.{}:{}".format(port,0))
-				
+
+					for Poti in range(LPoti):
+						if LPotiLatches[Poti][0] == io:
+							for Pin in range(LPotiLatches[Poti][1]):
+								if Pin == value:
+									c["LPoti.{}.{}" .format(io,Pin)] = 1
+									if(Debug):print("LPoti.{}.{} =1".format(io,Pin))
+								else:
+									c["LPoti.{}.{}" .format(io,Pin)] = 0
+									if(Debug):print("LPoti.{}.{} =0".format(io,Pin))	
+
 				elif cmd == "K":
 					firstcom = 1
 					for port in range(AbsKnobPos):
