@@ -62,7 +62,7 @@
 #define PWMOUTPUTS                      
 #ifdef PWMOUTPUTS
   const int PwmOutputs = 2;              //number of outputs
-  int PwmOutPinmap[] = {13,11};
+  int PwmOutPinmap[] = {12,11};
 #endif
 
 #define AINPUTS                         
@@ -262,30 +262,22 @@ void flushSerial(){
 }
 
 void writeOutputs(int Pin, int Stat){
-    for(int x = 0; x<Outputs;x++){
-      if(OutPinmap[x]==Pin){
-        digitalWrite(OutPinmap[x], Stat);
-      }
-    }
+  digitalWrite(Pin, Stat);
 }
 
 void writePwmOutputs(int Pin, int Stat){
-  for(int x = 0; x<PwmOutputs;x++){
-    if(PwmOutPinmap[x]==Pin){
-      analogWrite(PwmOutPinmap[x], Stat);
-    }
-  }
+  analogWrite(Pin, Stat);
 }
 
 
 
 int readLPoti(){
     for(int i= 0;i<LPotis; i++){
-      int State = analogRead(LPotiPins[i][0])+margin;
-      Lpoti[i] = 1024/(LPotiPins[i][1]-1);
-      State = State/(LPotiPins[i][1]-1);
-      if(oldLpoti[i]!= State){
-        oldLpoti[i] = State;
+      int var = analogRead(LPotiPins[i][0])+margin;
+      int pos = 1024/(LPotiPins[i][1]-1);
+      var = var/pos;
+      if(oldLpoti[i]!= var){
+        oldLpoti[i] = var;
         sendData('L', LPotiPins[i][0],oldLpoti[i]);
       }
     }
