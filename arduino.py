@@ -24,6 +24,7 @@ import serial, time, hal
 #	Inputs                  = 'I' -write only  -Pin State: 0,1
 #	Outputs                 = 'O' -read only   -Pin State: 0,1
 #	PWM Outputs             = 'P' -read only   -Pin State: 0-255
+#   Digital LED Outputs     = 'D' -read only   -Pin State: 0,1
 #	Analog Inputs           = 'A' -write only  -Pin State: 0-1024
 #	Latching Potentiometers = 'L' -write only  -Pin State: 0-max Position
 #	Absolute Encoder input  = 'K' -write only  -Pin State: 0-32
@@ -74,6 +75,8 @@ LPotiLatches = [[2,9],
 AbsKnob = 1
 AbsKnobPos = 32
 
+# Set how many Digital LED's you have connected. 
+DLEDcount = 8
 
 
 Debug = 1
@@ -86,7 +89,7 @@ oldPwmOutStates=[0]*PwmOutputs
 # setup Input halpins
 for port in range(Inputs):
     c.newpin("dIn.{}".format(InPinmap[port]), hal.HAL_BIT, hal.HAL_OUT)
-    c.newparam("dIn.{}-invert".format(InPinmap[port]), hal.HAL_BIT, hal.HAL_RW)
+    c.newparam("dIn.{}-invert".format(InPinmap[port]), hal.HAL_BIT, hal.HAL_OUT)
 
 # setup Output halpins
 for port in range(Outputs):
@@ -110,6 +113,11 @@ for Poti in range(LPoti):
 if AbsKnob:
 	for port in range(AbsKnobPos):
 		c.newpin("AbsKnob.{}".format(port), hal.HAL_BIT, hal.HAL_OUT)
+
+# setup Digital LED halpins
+if DLEDcount > 0:
+	for port in range(DLEDcount):
+		c.newpin("DLED.{}".format(port), hal.HAL_BIT, hal.HAL_IN)
 
 c.ready()
 
@@ -165,6 +173,13 @@ def managageOutputs():
 			if (Debug):print ("Sending:{}".format(command.encode()))
 			olddOutStates[port]= State
 		
+	for port in range(DLEDcount):
+		State = int(c["DLED.{}".format(port)])
+		Sig = 'D'
+		Pin = int(port)
+		command = "{}{}:{}\n".format(Sig,Pin,State)
+		arduino.write(command.encode())
+		if (Debug):print ("Sending:{}".format(command.encode()))
 
 
 while True:

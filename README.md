@@ -1,7 +1,7 @@
 
 # LinuxCNC_ArduinoConnector
 By Alexander Richter, info@theartoftinkering.com 2022
-
+please consider supporting me on Patreon: https://www.patreon.com/theartoftinkering
 
 For my CNC Machine i wanted to include more IO's than my Mesa card was offering. This Projekt enables to connect Arduino to LinuxCNC to include as many IO's as you wish.
 

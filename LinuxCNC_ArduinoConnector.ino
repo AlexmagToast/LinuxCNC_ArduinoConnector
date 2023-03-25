@@ -23,9 +23,12 @@
   Inputs                  = 'I' -write only  -Pin State: 0,1
   Outputs                 = 'O' -read only   -Pin State: 0,1
   PWM Outputs             = 'P' -read only   -Pin State: 0-255
+  Digital LED Outputs     = 'D' -read only   -Pin State: 0,1
   Analog Inputs           = 'A' -write only  -Pin State: 0-1024
   Latching Potentiometers = 'L' -write only  -Pin State: 0-max Position
   Absolute Encoder input  = 'K' -write only  -Pin State: 0-32
+
+
 
   Command 'E0:0' is used for connectivity checks and is send every 5 seconds as keep alive signal
 
@@ -46,33 +49,33 @@
 
 
 //###IO's###
-#define INPUTS                        
+//#define INPUTS                        
 #ifdef INPUTS
   const int Inputs = 16;               //number of inputs using internal Pullup resistor. (short to ground to trigger)
   int InPinmap[] = {32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48};
 #endif
 
 
-#define OUTPUTS                       
+//#define OUTPUTS                       
 #ifdef OUTPUTS
   const int Outputs = 9;              //number of outputs
   int OutPinmap[] = {10,9,8,7,6,5,4,3,2,21};
 #endif
 
-#define PWMOUTPUTS                      
+//#define PWMOUTPUTS                      
 #ifdef PWMOUTPUTS
   const int PwmOutputs = 2;              //number of outputs
   int PwmOutPinmap[] = {12,11};
 #endif
 
-#define AINPUTS                         
+//#define AINPUTS                         
 #ifdef AINPUTS
   const int AInputs = 1; 
   int AInPinmap[] = {1};                //Potentiometer for SpindleSpeed override
   int smooth = 200;                      //number of samples to denoise ADC, try lower numbers on your setup
 #endif
 
-#define LPOTIS                          
+//#define LPOTIS                          
 #ifdef LPOTIS
   const int LPotis = 2; 
   int LPotiPins[LPotis][2] = {
@@ -82,7 +85,7 @@
   int margin = 20;                      //giving it some margin so Numbers dont jitter, make this number smaller if your knob has more than 50 Positions
 #endif
 
-#define ABSENCODER                      
+//#define ABSENCODER                      
 #ifdef ABSENCODER
   const int AbsEncPins[] = {27,28,31,29,30};  //1,2,4,8,16
 #endif
@@ -90,10 +93,55 @@
 
 #define STATUSLED                       
 #ifdef STATUSLED
-  const int StatLedPin = 13;                //Pin for Status LED
+  const int StatLedPin = 0;                //Pin for Status LED
   const int StatLedErrDel[] = {1000,10};   //Blink Timing for Status LED Error (no connection)
+  const int DLEDSTATUSLED = 1;              //set to 1 to use Digital LED instead. set StatLedPin to the according LED number in the chain.
+#endif
+
+/* Instead of connecting LED's to Output pins, you can also connect digital LED's such as DLED or PL9823. 
+DLEDcount defines, how many Digital LED's you want to control. For Each a output Pin will be generated in LinuxCNC hal. There are two modes supported.
+You set the color here. Set the Parameter as {Greeb,Red,Blue}. When LinuxCNC sends the state = 1, the LED will be set to the specified color. State = 0 will shut the LED to the specified off color. 
+This allows you to either turn the LED On at any specified color or to flip color to show Status change. (Red and Green for example)
+ 
+*/
+#define DLED                       
+#ifdef DLED
+  #include <Adafruit_NeoPixel.h>
+
+  const int DLEDcount = 8;              //How Many DLED LED's are you going to connect?
+  const int DLEDPin = 4;
+
+ 
+  int DledOnColors[DLEDcount][3] = {
+                  {255,0,0},
+                  {0,0,255},
+                  {0,255,0},
+                  {0,255,0},
+                  {0,255,0},
+                  {0,255,0},
+                  {0,255,0},
+                  {0,255,0}
+                  };
+
+  int DledOffColors[DLEDcount][3] = {
+                  {0,0,0},
+                  {0,255,0},
+                  {255,0,0},
+                  {255,0,0},
+                  {255,0,0},
+                  {0,0,255},
+                  {0,0,255},
+                  {0,0,255}
+                };
+
+
+Adafruit_NeoPixel strip(DLEDcount, DLEDPin, NEO_GRB + NEO_KHZ800);//Color sequence is different for LED Chipsets. Use RGB for WS2812  or GRB for PL9823.
+
 
 #endif
+
+
+
 
 //###Misc Settings###
 const int timeout = 10000;   // timeout after 10 sec not receiving Stuff
@@ -187,6 +235,9 @@ void setup() {
   pinMode(AbsEncPins[4], INPUT_PULLUP);
 #endif
 
+#ifdef DLED
+  initDLED();
+#endif
 
 //Setup Serial
   Serial.begin(115200);
@@ -222,31 +273,23 @@ void loop() {
   readAbsKnob(); //read ABS Encoder & send data
 #endif
 
+
 }
+
 
 void comalive(){
-  if(millis() - lastcom > timeout){
-    StatLedErr(1000,10);
-  }
-  else{
-    digitalWrite(StatLedPin, HIGH);
-  }
-}
-
-void StatLedErr(int offtime, int ontime){
-  unsigned long newMillis = millis();
-
-  if (newMillis - oldmillis >= offtime){
-
-      digitalWrite(StatLedPin, HIGH);
-    } 
-  if (newMillis - oldmillis >= offtime+ontime){{
-      digitalWrite(StatLedPin, LOW);
-      oldmillis = newMillis;
+  #ifdef STATUSLED
+    if(millis() - lastcom > timeout){
+      StatLedErr(1000,10);
     }
-  }
-
+    else{
+      if(DLEDSTATUSLED){controlDLED(StatLedPin, 1);}
+      else{digitalWrite(StatLedPin, HIGH);}
+    }
+  #endif
 }
+
+
 
 void sendData(char sig, int pin, int state){
         Serial.print(sig);
@@ -261,16 +304,78 @@ void flushSerial(){
   }
 }
 
+#ifdef STATUSLED
+void StatLedErr(int offtime, int ontime){
+  unsigned long newMillis = millis();
+  
+  if (newMillis - oldmillis >= offtime){
+      
+      if(DLEDSTATUSLED){controlDLED(StatLedPin, 1);}
+      else{digitalWrite(StatLedPin, HIGH);}
+    } 
+  if (newMillis - oldmillis >= offtime+ontime){{
+      if(DLEDSTATUSLED){controlDLED(StatLedPin, 0);}
+      else{digitalWrite(StatLedPin, LOW);}
+      oldmillis = newMillis;
+    }
+  }
+
+}
+#endif
+
+#ifdef OUTPUTS
 void writeOutputs(int Pin, int Stat){
   digitalWrite(Pin, Stat);
 }
+#endif
 
+#ifdef PWMOUTPUTS
 void writePwmOutputs(int Pin, int Stat){
   analogWrite(Pin, Stat);
 }
 
+#endif
 
+#ifdef DLED
+void initDLED(){
+  strip.begin();
+  strip.setBrightness(50);
+  
+    for (int i = 0; i < DLEDcount; i++) {
+    strip.setPixelColor(i, strip.Color(DledOffColors[i][0],DledOffColors[i][1],DledOffColors[i][2]));
+  }
+  strip.show();
+  #ifdef DEBUG
+    Serial.print("DLED initialised");
+  #endif
+}
 
+void controlDLED(int Pin, int Stat){
+  if(Stat == 1){
+    strip.setPixelColor(Pin, strip.Color(DledOnColors[Pin][0],DledOnColors[Pin][1],DledOnColors[Pin][2]));
+    #ifdef DEBUG
+      Serial.print("DLED No.");
+      Serial.print(Pin);
+      Serial.print(" set to:");
+      Serial.println(Stat);
+    #endif
+  }
+  else{strip.setPixelColor(Pin, strip.Color(DledOffColors[Pin][0],DledOffColors[Pin][1],DledOffColors[Pin][2]));
+    #ifdef DEBUG
+      Serial.print("DLED No.");
+      Serial.print(Pin);
+      Serial.print(" set to:");
+      Serial.println(Stat);
+    #endif
+  }
+  
+  strip.show();
+  
+
+}
+#endif
+
+#ifdef LPOTI
 int readLPoti(){
     for(int i= 0;i<LPotis; i++){
       int var = analogRead(LPotiPins[i][0])+margin;
@@ -284,8 +389,10 @@ int readLPoti(){
 }
 
 
+#endif
 
 
+#ifdef AINPUTS
 int readAInputs(){
    unsigned long var = 0;
    for(int i= 0;i<AInputs; i++){
@@ -300,7 +407,8 @@ int readAInputs(){
       }
     }
 }
-
+#endif
+#ifdef INPUTS
 void readInputs(){
     for(int i= 0;i<Inputs; i++){
       int State = digitalRead(InPinmap[i]);
@@ -310,8 +418,9 @@ void readInputs(){
       }
     }
 }
+#endif
 
-
+#ifdef ABSENCODER
 int readAbsKnob(){
   int var = 0;
   if(digitalRead(AbsEncPins[0])==1){
@@ -336,30 +445,39 @@ int readAbsKnob(){
   oldAbsEncState = var;
   return (var);
 }
-
+#endif
 
 void commandReceived(char cmd, uint16_t io, uint16_t value){
+  #ifdef OUTPUTS
   if(cmd == 'O'){
     writeOutputs(io,value);
   }
+  #endif
+  #ifdef PWMOUTPUTS
   if(cmd == 'P'){
     writePwmOutputs(io,value);
   }
+  #endif
   if(cmd == 'E'){
     lastcom=millis();
   }
+  #ifdef DLED
+  if(cmd == 'D'){
+    controlDLED(io,value);
+  }
+  #endif
 
-#ifdef DEBUG
-  Serial.print("I Received= ");
-  Serial.print(cmd);
-  Serial.print(io);
-  Serial.print(":");
-  Serial.println(value);
-#endif
+  #ifdef DEBUG
+    Serial.print("I Received= ");
+    Serial.print(cmd);
+    Serial.print(io);
+    Serial.print(":");
+    Serial.println(value);
+  #endif
 }
 
 int isCmdChar(char cmd){
-  if(cmd == 'O'||cmd == 'P'||cmd == 'E') {return true;}
+  if(cmd == 'O'||cmd == 'P'||cmd == 'E'||cmd == 'L') {return true;}
   else{return false;}
 }
 
