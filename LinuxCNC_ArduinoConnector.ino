@@ -48,34 +48,52 @@
 
 
 
-//###IO's###
-//#define INPUTS                        
+//###################################################IO's###################################################
+
+
+//#define INPUTS                       //Use Arduino IO's as Inputs. Define how many Inputs you want in total and then which Pins you want to be Inputs.
 #ifdef INPUTS
   const int Inputs = 16;               //number of inputs using internal Pullup resistor. (short to ground to trigger)
-  int InPinmap[] = {32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48};
+  int InPinmap[] = {32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47};
 #endif
 
 
-//#define OUTPUTS                       
+//#define OUTPUTS                     //Use Arduino IO's as Outputs. Define how many Outputs you want in total and then which Pins you want to be Outputs.
 #ifdef OUTPUTS
   const int Outputs = 9;              //number of outputs
   int OutPinmap[] = {10,9,8,7,6,5,4,3,2,21};
 #endif
 
-//#define PWMOUTPUTS                      
+//#define PWMOUTPUTS                     //Use Arduino PWM Capable IO's as PWM Outputs. Define how many  PWM Outputs you want in total and then which Pins you want to be  PWM Outputs.
 #ifdef PWMOUTPUTS
   const int PwmOutputs = 2;              //number of outputs
   int PwmOutPinmap[] = {12,11};
 #endif
 
-//#define AINPUTS                         
+//#define AINPUTS                       //Use Arduino ADC's as Analog Inputs. Define how many Analog Inputs you want in total and then which Pins you want to be Analog Inputs.
+                                        //Note that Analog Pin numbering is different to the Print on the PCB.
 #ifdef AINPUTS
   const int AInputs = 1; 
   int AInPinmap[] = {1};                //Potentiometer for SpindleSpeed override
-  int smooth = 200;                      //number of samples to denoise ADC, try lower numbers on your setup
+  int smooth = 200;                     //number of samples to denoise ADC, try lower numbers on your setup 200 worked good for me.
 #endif
 
-//#define LPOTIS                          
+
+//#define LPOTIS                       
+                                        /*This is a special mode of AInputs. My machine had originally Selector Knobs with many Pins on the backside to select different Speed Settings.
+                                        I turned them into a "Potentiometer" by connecting all Pins with 10K Resistors in series. Then i applied GND to the first and 5V to the last Pin.
+                                        Now the Selector is part of an Voltage Divider and outputs different Voltage for each Position. This function generates Pins for each Position in Linuxcnc Hal.
+
+                                        It can happen, that when you switch position, that the selector is floating for a brief second. This might be detected as Position 0. 
+                                        This shouldn't be an issue in most usecases, but think about that in your application.
+                                        
+
+
+                                        Connect it to an Analog In Pin of your Arduino and define how many of these you want. 
+                                        Then in the Array, {which Pin, How many Positions}
+                                        Note that Analog Pin numbering is different to the Print on the PCB.                                        
+                                        
+                                        */
 #ifdef LPOTIS
   const int LPotis = 2; 
   int LPotiPins[LPotis][2] = {
@@ -85,36 +103,57 @@
   int margin = 20;                      //giving it some margin so Numbers dont jitter, make this number smaller if your knob has more than 50 Positions
 #endif
 
-//#define ABSENCODER                      
+//#define ABSENCODER                   //Support of an Rotating Knob that was build in my Machine. It encodes 32 Positions with 5 Pins in Binary. This will generate 32 Pins in LinuxCNC Hal.
 #ifdef ABSENCODER
   const int AbsEncPins[] = {27,28,31,29,30};  //1,2,4,8,16
 #endif
 
 
-#define STATUSLED                       
+//#define STATUSLED                   //The Software will detect if there is an communication issue. When you power on your machine, the Buttons etc won't work, till LinuxCNC is running. THe StatusLED will inform you about the State of Communication.
+                                      // Slow Flash = Not Connected
+                                      // Steady on = connected
+                                      // short Flash = connection lost. 
+
+                                      // if connection is lost, something happened. (Linuxcnc was closed for example or USB Connection failed.) It will recover when Linuxcnc is restartet. (you could also run "unloadusr arduino", "loadusr arduino" in Hal)
+                                      // Define an Pin you want to connect the LED to. it will be set as Output indipendand of the OUTPUTS function, so don't use Pins twice.
+                                      // If you use Digital LED's such as WS2812 or PL9823 (only works if you set up the DLED settings below) you can also define a position of the LED. In this case StatLedPin will set the number of the Digital LED Chain. 
 #ifdef STATUSLED
-  const int StatLedPin = 0;                //Pin for Status LED
+  const int StatLedPin = 5;                //Pin for Status LED
   const int StatLedErrDel[] = {1000,10};   //Blink Timing for Status LED Error (no connection)
   const int DLEDSTATUSLED = 1;              //set to 1 to use Digital LED instead. set StatLedPin to the according LED number in the chain.
 #endif
 
-/* Instead of connecting LED's to Output pins, you can also connect digital LED's such as DLED or PL9823. 
-DLEDcount defines, how many Digital LED's you want to control. For Each a output Pin will be generated in LinuxCNC hal. There are two modes supported.
-You set the color here. Set the Parameter as {Greeb,Red,Blue}. When LinuxCNC sends the state = 1, the LED will be set to the specified color. State = 0 will shut the LED to the specified off color. 
-This allows you to either turn the LED On at any specified color or to flip color to show Status change. (Red and Green for example)
- 
-*/
-#define DLED                       
+
+                                        
+//#define DLED                       
+                                      /* Instead of connecting LED's to Output pins, you can also connect digital LED's such as WS2812 or PL9823. 
+                                      This way you can have how many LED's you want and also define it's color with just one Pin.
+                                      
+                                      DLEDcount defines, how many Digital LED's you want to control. Count from 0. For Each LED an output Pin will be generated in LinuxCNC hal.
+                                      To use this funcion you need to have the Adafruit_NeoPixel.h Library installed in your Arduino IDE.
+                                      
+                                      In LinuxCNC you can set the Pin to HIGH and LOW, for both States you can define an color per LED. 
+                                      This way, you can make them glow or shut of, or have them Change color, from Green to Red for example. 
+
+                                      DledOnColors defines the color of each LED when turned "on". For each LED set {Red,Green,Blue} with Numbers from 0-255. 
+                                      depending on the Chipset of your LED's Colors might be in a different order. You can try it out by setting {255,0,0} for example. 
+                                      
+                                      You need to define a color to DledOffColors too. Like the Name suggests it defines the color of each LED when turned "off".
+                                      If you want the LED to be off just define {0,0,0}, .
+
+
+                                      If you use STATUSLED, it will also take the colors of your definition here.
+                                      */
 #ifdef DLED
   #include <Adafruit_NeoPixel.h>
 
   const int DLEDcount = 8;              //How Many DLED LED's are you going to connect?
-  const int DLEDPin = 4;
-
+  const int DLEDPin = 4;                  //Where is DI connected to?
+  const int DLEDBrightness = 70;         //Brightness of the LED's 0-100%
  
   int DledOnColors[DLEDcount][3] = {
                   {255,0,0},
-                  {0,0,255},
+                  {0,255,255},
                   {0,255,0},
                   {0,255,0},
                   {0,255,0},
@@ -339,11 +378,11 @@ void writePwmOutputs(int Pin, int Stat){
 #ifdef DLED
 void initDLED(){
   strip.begin();
-  strip.setBrightness(50);
+  strip.setBrightness(DLEDBrightness);
   
     for (int i = 0; i < DLEDcount; i++) {
     strip.setPixelColor(i, strip.Color(DledOffColors[i][0],DledOffColors[i][1],DledOffColors[i][2]));
-  }
+    }
   strip.show();
   #ifdef DEBUG
     Serial.print("DLED initialised");
@@ -458,14 +497,15 @@ void commandReceived(char cmd, uint16_t io, uint16_t value){
     writePwmOutputs(io,value);
   }
   #endif
-  if(cmd == 'E'){
-    lastcom=millis();
-  }
-  #ifdef DLED
+  //#ifdef DLED
   if(cmd == 'D'){
     controlDLED(io,value);
   }
-  #endif
+  //#endif
+  if(cmd == 'E'){
+    lastcom=millis();
+  }
+
 
   #ifdef DEBUG
     Serial.print("I Received= ");
@@ -477,7 +517,7 @@ void commandReceived(char cmd, uint16_t io, uint16_t value){
 }
 
 int isCmdChar(char cmd){
-  if(cmd == 'O'||cmd == 'P'||cmd == 'E'||cmd == 'L') {return true;}
+  if(cmd == 'O'||cmd == 'P'||cmd == 'E'||cmd == 'D') {return true;}
   else{return false;}
 }
 
