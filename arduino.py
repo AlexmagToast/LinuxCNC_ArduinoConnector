@@ -50,8 +50,13 @@ connection = '/dev/ttyACM0'
 
 
 # Set how many Inputs you have programmed in Arduino and which pins are Inputs
-Inputs = 16
-InPinmap = [32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48]
+Inputs = 5
+InPinmap = [37,38,39,40,41]
+
+# Set how many Toggled Inputs you have programmed in Arduino and which pins are Toggled Inputs
+SInputs = 5
+sInPinmap = [32,33,34,35,36]
+
 
 # Set how many Outputs you have programmed in Arduino and which pins are Outputs
 Outputs = 9
@@ -84,6 +89,12 @@ Debug = 1
 olddOutStates= [0]*Outputs
 oldPwmOutStates=[0]*PwmOutputs
 
+# Inputs and Toggled Inputs are handled the same. 
+# For DAU compatiblity we set them up seperately. 
+# Here we merge the arrays.
+
+Inputs = Inputs+ SInputs
+InPinmap += sInPinmap
 ######## SetUp of HalPins ########
 
 # setup Input halpins
@@ -127,6 +138,8 @@ arduino = serial.Serial(connection, 115200, timeout=1, xonxoff=False, rtscts=Fal
 firstcom = 0
 event = time.time()
 timeout = 9 #send something after max 9 seconds
+
+
 ######## Functions ########
 
 def keepAlive(event):
