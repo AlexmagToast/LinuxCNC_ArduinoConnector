@@ -78,11 +78,37 @@ AbsKnobPos = 32
 # Set how many Digital LED's you have connected. 
 DLEDcount = 8
 
+# Support For Matrix Keypads. Install Keyboard Lib by entering "sudo pip3 install keyboard" on your system.
+# The Key press is received as M Number of Key:HIGH/LOW. M2:1 would represent Key 2 beeing Pressed. M2:0 represents letting go of the key.
+# Key Numbering is calculated in the Matrix. for a 4x4 Keypad the numbering of the Keys will be like this:
+#	1,	2,	3,	4
+#	5,	6,	7,	8
+#	9,	10,	11,	12
+#	13,	14,	15,	16
+#
+# Assign Values to each Key in the following Settings.
+# These Inputs are handled differently from everything else, because thy are send to the Host instead and emulate actual Keyboard input.
+# You can specify special Charakters however, which will be handled as Inputs in LinuxCNC. Define those in the LCNC Array below.
 
-Debug = 1
+UseMatrix = 1
+Columns = 4
+Rows = 4
+LCNC =[4,8,12,16]  #These are special Keys, which will be used as Input in LinuxCNC. in this Example Letters A, B, C & D are send to hal in LinuxCNC as Inputs.
+Chars = [			#here you must define as many characters as your Keypad has keys. calculate columns * rows . for example 4 *4 = 16. You can write it down like in the example for ease of readability.
+	1,	2,	3,	"A",
+	4,	5,	6,	"B",
+	7,	8,	9,	"C",
+	"#",0,	"*","D"
+]
+
+Debug = 0
 ########  End of Config!  ########
 olddOutStates= [0]*Outputs
 oldPwmOutStates=[0]*PwmOutputs
+
+
+if UseMatrix:
+	import keyboard
 
 ######## SetUp of HalPins ########
 
@@ -243,7 +269,17 @@ while True:
 						else:
 							c["AbsKnob.{}".format(port)] = 0
 							if(Debug):print("AbsKnob.{}:{}".format(port,0))
-					
+				
+				elif cmd == "M":
+					firstcom = 1
+					for port in range(AbsKnobPos):
+						if port == value:
+							c["AbsKnob.{}".format(port)] = 1
+							if(Debug):print("AbsKnob.{}:{}".format(port,1))
+						else:
+							c["AbsKnob.{}".format(port)] = 0
+							if(Debug):print("AbsKnob.{}:{}".format(port,0))
+						
 				elif cmd == 'E':
 					arduino.write(b"E0:0\n")
 					if (Debug):print("Sending E0:0 to establish contact")
