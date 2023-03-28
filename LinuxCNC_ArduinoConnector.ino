@@ -64,19 +64,19 @@
   int sInPinmap[] = {32,33,34,35,36};
 #endif
 
-//#define OUTPUTS                     //Use Arduino IO's as Outputs. Define how many Outputs you want in total and then which Pins you want to be Outputs.
+#define OUTPUTS                     //Use Arduino IO's as Outputs. Define how many Outputs you want in total and then which Pins you want to be Outputs.
 #ifdef OUTPUTS
   const int Outputs = 9;              //number of outputs
   int OutPinmap[] = {10,9,8,7,6,5,4,3,2,21};
 #endif
 
-//#define PWMOUTPUTS                     //Use Arduino PWM Capable IO's as PWM Outputs. Define how many  PWM Outputs you want in total and then which Pins you want to be  PWM Outputs.
+#define PWMOUTPUTS                     //Use Arduino PWM Capable IO's as PWM Outputs. Define how many  PWM Outputs you want in total and then which Pins you want to be  PWM Outputs.
 #ifdef PWMOUTPUTS
   const int PwmOutputs = 2;              //number of outputs
   int PwmOutPinmap[] = {12,11};
 #endif
 
-//#define AINPUTS                       //Use Arduino ADC's as Analog Inputs. Define how many Analog Inputs you want in total and then which Pins you want to be Analog Inputs.
+#define AINPUTS                       //Use Arduino ADC's as Analog Inputs. Define how many Analog Inputs you want in total and then which Pins you want to be Analog Inputs.
                                         //Note that Analog Pin numbering is different to the Print on the PCB.
 #ifdef AINPUTS
   const int AInputs = 1; 
@@ -109,7 +109,7 @@
   int margin = 20;                      //giving it some margin so Numbers dont jitter, make this number smaller if your knob has more than 50 Positions
 #endif
 
-//#define ABSENCODER                   //Support of an Rotating Knob that was build in my Machine. It encodes 32 Positions with 5 Pins in Binary. This will generate 32 Pins in LinuxCNC Hal.
+#define ABSENCODER                   //Support of an Rotating Knob that was build in my Machine. It encodes 32 Positions with 5 Pins in Binary. This will generate 32 Pins in LinuxCNC Hal.
 #ifdef ABSENCODER
   const int AbsEncPins[] = {27,28,31,29,30};  //1,2,4,8,16
 #endif
@@ -492,8 +492,8 @@ void readsInputs(){
     sInState[i] = digitalRead(sInPinmap[i]);
     if (sInState[i] != soldInState[i] && millis()- lastsInputDebounce[i] > debounceDelay){
       // Button state has changed and debounce delay has passed
-      soldInState[i] = sInState[i];
-      if (sInState[i] == LOW) {
+      
+      if (sInState[i] == LOW || soldInState[i]== -1) { // Stuff after || is only there to send States at Startup
         // Button has been pressed
         togglesinputs[i] = !togglesinputs[i];  // Toggle the LED state
       
@@ -504,6 +504,7 @@ void readsInputs(){
           sendData('I',sInPinmap[i],togglesinputs[i]);   // Turn the LED off
         }
       }
+      soldInState[i] = sInState[i];
       lastsInputDebounce[i] = millis();
     }
   }

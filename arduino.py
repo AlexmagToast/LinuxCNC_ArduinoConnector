@@ -84,7 +84,7 @@ AbsKnobPos = 32
 DLEDcount = 8
 
 
-Debug = 1
+Debug = 0
 ########  End of Config!  ########
 olddOutStates= [0]*Outputs
 oldPwmOutStates=[0]*PwmOutputs
@@ -100,7 +100,7 @@ InPinmap += sInPinmap
 # setup Input halpins
 for port in range(Inputs):
     c.newpin("dIn.{}".format(InPinmap[port]), hal.HAL_BIT, hal.HAL_OUT)
-    c.newparam("dIn.{}-invert".format(InPinmap[port]), hal.HAL_BIT, hal.HAL_OUT)
+    c.newparam("dIn.{}-invert".format(InPinmap[port]), hal.HAL_BIT, hal.HAL_RW)
 
 # setup Output halpins
 for port in range(Outputs):
