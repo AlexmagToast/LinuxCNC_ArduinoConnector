@@ -20,6 +20,8 @@
   To begin Transmitting Ready is send out and expects to receive E: to establish connection. Afterwards Data is exchanged.
   Data is only send everythime it changes once.
 
+LinuxCNC HAL Pins:
+
   Inputs                  = 'I' -write only  -Pin State: 0,1
   Outputs                 = 'O' -read only   -Pin State: 0,1
   PWM Outputs             = 'P' -read only   -Pin State: 0-255
@@ -28,9 +30,17 @@
   Latching Potentiometers = 'L' -write only  -Pin State: 0-max Position
   Absolute Encoder input  = 'K' -write only  -Pin State: 0-32
 
+Keyboard Input:
+  Matrix Keypad           = 'M' -write only  -Pin State: Number of Matrix Key. 
 
+Communication Status      = 'E' -read/Write  -Pin State: 0:0
 
-  Command 'E0:0' is used for connectivity checks and is send every 5 seconds as keep alive signal
+  The Keyboard is encoded in the Number of the Key in the Matrix. The according Letter is defined in the receiving end in the Python Skript.
+  Here you only define the Size of the Matrix.
+
+  Command 'E0:0' is used for connectivity checks and is send every 5 seconds as keep alive signal. If the Signal is not received again, the Status LED will Flash.
+  The Board will still work as usual and try to send it's data, so this feature is only to inform the User.
+
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -79,21 +89,22 @@
 #endif
 
 
-//#define LPOTIS                       
-                                        /*This is a special mode of AInputs. My machine had originally Selector Knobs with many Pins on the backside to select different Speed Settings.
-                                        I turned them into a "Potentiometer" by connecting all Pins with 10K Resistors in series. Then i applied GND to the first and 5V to the last Pin.
-                                        Now the Selector is part of an Voltage Divider and outputs different Voltage for each Position. This function generates Pins for each Position in Linuxcnc Hal.
+                       
+/*This is a special mode of AInputs. My machine had originally Selector Knobs with many Pins on the backside to select different Speed Settings.
+I turned them into a "Potentiometer" by connecting all Pins with 10K Resistors in series. Then i applied GND to the first and 5V to the last Pin.
+Now the Selector is part of an Voltage Divider and outputs different Voltage for each Position. This function generates Pins for each Position in Linuxcnc Hal.
 
-                                        It can happen, that when you switch position, that the selector is floating for a brief second. This might be detected as Position 0. 
-                                        This shouldn't be an issue in most usecases, but think about that in your application.
-                                        
+It can happen, that when you switch position, that the selector is floating for a brief second. This might be detected as Position 0. 
+This shouldn't be an issue in most usecases, but think about that in your application.
 
 
-                                        Connect it to an Analog In Pin of your Arduino and define how many of these you want. 
-                                        Then in the Array, {which Pin, How many Positions}
-                                        Note that Analog Pin numbering is different to the Print on the PCB.                                        
-                                        
-                                        */
+
+Connect it to an Analog In Pin of your Arduino and define how many of these you want. 
+Then in the Array, {which Pin, How many Positions}
+Note that Analog Pin numbering is different to the Print on the PCB.                                        
+
+*/
+//#define LPOTIS
 #ifdef LPOTIS
   const int LPotis = 2; 
   int LPotiPins[LPotis][2] = {
@@ -109,14 +120,15 @@
 #endif
 
 
-//#define STATUSLED                   //The Software will detect if there is an communication issue. When you power on your machine, the Buttons etc won't work, till LinuxCNC is running. THe StatusLED will inform you about the State of Communication.
-                                      // Slow Flash = Not Connected
-                                      // Steady on = connected
-                                      // short Flash = connection lost. 
+//The Software will detect if there is an communication issue. When you power on your machine, the Buttons etc won't work, till LinuxCNC is running. THe StatusLED will inform you about the State of Communication.
+// Slow Flash = Not Connected
+// Steady on = connected
+// short Flash = connection lost. 
 
-                                      // if connection is lost, something happened. (Linuxcnc was closed for example or USB Connection failed.) It will recover when Linuxcnc is restartet. (you could also run "unloadusr arduino", "loadusr arduino" in Hal)
-                                      // Define an Pin you want to connect the LED to. it will be set as Output indipendand of the OUTPUTS function, so don't use Pins twice.
-                                      // If you use Digital LED's such as WS2812 or PL9823 (only works if you set up the DLED settings below) you can also define a position of the LED. In this case StatLedPin will set the number of the Digital LED Chain. 
+// if connection is lost, something happened. (Linuxcnc was closed for example or USB Connection failed.) It will recover when Linuxcnc is restartet. (you could also run "unloadusr arduino", "loadusr arduino" in Hal)
+// Define an Pin you want to connect the LED to. it will be set as Output indipendand of the OUTPUTS function, so don't use Pins twice.
+// If you use Digital LED's such as WS2812 or PL9823 (only works if you set up the DLED settings below) you can also define a position of the LED. In this case StatLedPin will set the number of the Digital LED Chain. 
+//#define STATUSLED
 #ifdef STATUSLED
   const int StatLedPin = 5;                //Pin for Status LED
   const int StatLedErrDel[] = {1000,10};   //Blink Timing for Status LED Error (no connection)
@@ -125,25 +137,27 @@
 
 
                                         
-//#define DLED                       
-                                      /* Instead of connecting LED's to Output pins, you can also connect digital LED's such as WS2812 or PL9823. 
-                                      This way you can have how many LED's you want and also define it's color with just one Pin.
-                                      
-                                      DLEDcount defines, how many Digital LED's you want to control. Count from 0. For Each LED an output Pin will be generated in LinuxCNC hal.
-                                      To use this funcion you need to have the Adafruit_NeoPixel.h Library installed in your Arduino IDE.
-                                      
-                                      In LinuxCNC you can set the Pin to HIGH and LOW, for both States you can define an color per LED. 
-                                      This way, you can make them glow or shut of, or have them Change color, from Green to Red for example. 
+                       
+/* Instead of connecting LED's to Output pins, you can also connect digital LED's such as WS2812 or PL9823. 
+This way you can have how many LED's you want and also define it's color with just one Pin.
 
-                                      DledOnColors defines the color of each LED when turned "on". For each LED set {Red,Green,Blue} with Numbers from 0-255. 
-                                      depending on the Chipset of your LED's Colors might be in a different order. You can try it out by setting {255,0,0} for example. 
-                                      
-                                      You need to define a color to DledOffColors too. Like the Name suggests it defines the color of each LED when turned "off".
-                                      If you want the LED to be off just define {0,0,0}, .
+DLEDcount defines, how many Digital LED's you want to control. Count from 0. For Each LED an output Pin will be generated in LinuxCNC hal.
+To use this funcion you need to have the Adafruit_NeoPixel.h Library installed in your Arduino IDE.
+
+In LinuxCNC you can set the Pin to HIGH and LOW, for both States you can define an color per LED. 
+This way, you can make them glow or shut of, or have them Change color, from Green to Red for example. 
+
+DledOnColors defines the color of each LED when turned "on". For each LED set {Red,Green,Blue} with Numbers from 0-255. 
+depending on the Chipset of your LED's Colors might be in a different order. You can try it out by setting {255,0,0} for example. 
+
+You need to define a color to DledOffColors too. Like the Name suggests it defines the color of each LED when turned "off".
+If you want the LED to be off just define {0,0,0}, .
 
 
-                                      If you use STATUSLED, it will also take the colors of your definition here.
-                                      */
+If you use STATUSLED, it will also take the colors of your definition here.
+*/
+
+//#define DLED
 #ifdef DLED
   #include <Adafruit_NeoPixel.h>
 
@@ -178,8 +192,29 @@ Adafruit_NeoPixel strip(DLEDcount, DLEDPin, NEO_GRB + NEO_KHZ800);//Color sequen
 
 
 #endif
+/*
+Matrix Keypads are supported. The input is NOT added as HAL Pin to LinuxCNC. Instead it is inserted to Linux as Keyboard direktly. 
+So you could attach a QWERT* Keyboard to the arduino and you will be able to write in Linux with it (only while LinuxCNC is running!)
+*/
+#define KEYPAD
+#ifdef KEYPAD
+const int numRows = 4;  // Define the number of rows in the matrix
+const int numCols = 4;  // Define the number of columns in the matrix
+
+// Define the pins connected to the rows and columns of the matrix
+const int rowPins[numRows] = {2, 3, 4, 5};
+const int colPins[numCols] = {6, 7, 8, 9};
 
 
+int keys[numRows][numCols] = {
+  {1,2,3,4},
+  {5,6,7,8},
+  {9,10,11,12},
+  {13,14,15,16}
+};
+
+int lastKey= 0;
+#endif
 
 
 //###Misc Settings###
@@ -210,7 +245,9 @@ const int timeout = 10000;   // timeout after 10 sec not receiving Stuff
 #ifdef ABSENCODER
   int oldAbsEncState;
 #endif
-
+#ifdef KEYPAD
+  byte KeyState = 0;
+#endif
 
 
 //### global Variables setup###
@@ -278,6 +315,14 @@ void setup() {
   initDLED();
 #endif
 
+#ifdef KEYPAD
+for(int col = 0; col < numCols; col++) {
+  for (int row = 0; row < numRows; row++) {
+    keys[row][col] = row * numRows + col+1;
+  }
+}
+#endif
+
 //Setup Serial
   Serial.begin(115200);
   while (!Serial){}
@@ -289,7 +334,6 @@ void setup() {
       StatLedErr(1000,1000);
     #endif
     }
-
 }
 
 
@@ -310,6 +354,10 @@ void loop() {
 #endif
 #ifdef ABSENCODER
   readAbsKnob(); //read ABS Encoder & send data
+#endif
+
+#ifdef KEYPAD
+  readKeypad(); //read Keyboard & send data
 #endif
 
 
@@ -486,6 +534,40 @@ int readAbsKnob(){
 }
 #endif
 
+void readKeypad(){
+  //detect if Button is Pressed
+   for (int col = 0; col < numCols; col++) {
+    pinMode(colPins[col], OUTPUT);
+    digitalWrite(colPins[col], LOW);
+    // Read the state of the row pins
+    for (int row = 0; row < numRows; row++) {
+      pinMode(rowPins[row], INPUT_PULLUP);
+      if (digitalRead(rowPins[row]) == LOW && lastKey != keys[row][col]) {
+        // A button has been pressed
+        
+        Serial.print("M");
+        Serial.print(keys[row][col]);
+        Serial.print(":");
+        Serial.println(1);
+        lastKey = keys[row][col];
+        row = numRows;
+      }
+      if (digitalRead(rowPins[row]) == HIGH && lastKey == keys[row][col]) {
+        // The Last Button has been unpressed
+        Serial.print("M");
+        Serial.print(keys[row][col]);
+        Serial.print(":");
+        Serial.println(0);
+        lastKey = 0;
+        row = numRows;
+      }
+    }
+    
+    // Set the column pin back to input mode
+    pinMode(colPins[col], INPUT);
+  }
+}
+
 void commandReceived(char cmd, uint16_t io, uint16_t value){
   #ifdef OUTPUTS
   if(cmd == 'O'){
@@ -497,11 +579,12 @@ void commandReceived(char cmd, uint16_t io, uint16_t value){
     writePwmOutputs(io,value);
   }
   #endif
-  //#ifdef DLED
+  #ifdef DLED
   if(cmd == 'D'){
     controlDLED(io,value);
   }
-  //#endif
+  #endif
+  
   if(cmd == 'E'){
     lastcom=millis();
   }
@@ -516,6 +599,7 @@ void commandReceived(char cmd, uint16_t io, uint16_t value){
   #endif
 }
 
+//This Funktion checks if Received Command is valid. Insert your custom Letter here by inserting another "||cmd == 'X'" 
 int isCmdChar(char cmd){
   if(cmd == 'O'||cmd == 'P'||cmd == 'E'||cmd == 'D') {return true;}
   else{return false;}
