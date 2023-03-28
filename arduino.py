@@ -21,7 +21,7 @@ import serial, time, hal
 #	To begin Transmitting Ready is send out and expects to receive E: to establish connection. Afterwards Data is exchanged.
 #	Data is only send everythime it changes once.
 
-#	Inputs                  = 'I' -write only  -Pin State: 0,1
+#	Inputs & Toggle Inputs  = 'I' -write only  -Pin State: 0,1
 #	Outputs                 = 'O' -read only   -Pin State: 0,1
 #	PWM Outputs             = 'P' -read only   -Pin State: 0-255
 #   Digital LED Outputs     = 'D' -read only   -Pin State: 0,1

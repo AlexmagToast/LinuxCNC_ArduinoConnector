@@ -58,7 +58,7 @@
 #endif
 
                                        //Use Arduino IO's as Toggle Inputs, which means Inputs (Buttons for example) keep HIGH State after Release and Send LOW only after beeing Pressed again. 
-#define SINPUTS                        //Define how many Sticky Inputs you want in total and then which Pins you want to be Sticky Inputs.
+#define SINPUTS                        //Define how many Toggle Inputs you want in total and then which Pins you want to be Toggle Inputs.
 #ifdef SINPUTS
   const int sInputs = 5;              //number of inputs using internal Pullup resistor. (short to ground to trigger)
   int sInPinmap[] = {32,33,34,35,36};
