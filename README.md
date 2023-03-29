@@ -1,7 +1,7 @@
 
 # LinuxCNC_ArduinoConnector
 
-<img src="/ArduinoChip.svg" width="200">
+<img src="/ArduinoChip.svg" width="300" align="left">
 
 By Alexander Richter, info@theartoftinkering.com 2022  
 please consider supporting me on Patreon: https://www.patreon.com/theartoftinkering
@@ -117,22 +117,22 @@ For each Bit one Pin is needed. So for all 32 Positions 5 Pins are needed = 1,2,
 The Arduino only works, if LinuxCNC is running and an USB Connection is established. 
 To give optical Feedback of the State of the connection a Status LED setting is provided. 
 This can be either an LED connected to an Output Pin or you can select one LED in your Digital LED Chain.
-It will flash slowly after startup, when it waits for communication setup by LinuxCNC.
-It will glow constantly when everything works.
-it Will flash short when Connection was lost.
+- It will flash slowly after startup, when it waits for communication setup by LinuxCNC.
+- It will glow constantly when everything works.
+- it Will flash short when Connection was lost.
 
 # Serial communication over USB
 The Send and receive Protocol is <Signal><PinNumber>:<Pin State>
 To begin Transmitting Ready is send out and expects to receive E: to establish connection. Afterwards Data is exchanged.
 Data is only send everythime it changes once.
 
-  Inputs & Toggle Inputs  = 'I' -write only  -Pin State: 0,1
-  Outputs                 = 'O' -read only   -Pin State: 0,1
-  PWM Outputs             = 'P' -read only   -Pin State: 0-255
-  Digital LED Outputs     = 'D' -read only   -Pin State: 0,1
-  Analog Inputs           = 'A' -write only  -Pin State: 0-1024
-  Latching Potentiometers = 'L' -write only  -Pin State: 0-max Position
-  Absolute Encoder input  = 'K' -write only  -Pin State: 0-32
+  Inputs & Toggle Inputs  = 'I' -write only  -Pin State: 0,1  
+  Outputs                 = 'O' -read only   -Pin State: 0,1  
+  PWM Outputs             = 'P' -read only   -Pin State: 0-255  
+  Digital LED Outputs     = 'D' -read only   -Pin State: 0,1  
+  Analog Inputs           = 'A' -write only  -Pin State: 0-1024  
+  Latching Potentiometers = 'L' -write only  -Pin State: 0-max Position  
+  Absolute Encoder input  = 'K' -write only  -Pin State: 0-32  
 
 Command 'E0:0' is used for connectivity checks and is send every 5 seconds as keep alive signal. If connection is lost the arduino begins flashing an LED to alarm the User. 
 
