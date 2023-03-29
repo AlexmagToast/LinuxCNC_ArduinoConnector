@@ -1,7 +1,7 @@
 
 # LinuxCNC_ArduinoConnector
 
-<img src="/ArduinoChip.svg" width="300" align="left">
+<img src="/ArduinoChip.svg" width="250" align="right">
 
 By Alexander Richter, info@theartoftinkering.com 2022  
 please consider supporting me on Patreon: https://www.patreon.com/theartoftinkering
@@ -86,24 +86,16 @@ LED colors are set with values 0-255 for Red, Green and Blue. 0 beeing off and 2
 Here are two examples:
 
 1. This LED should be glowing Red when "on" and just turn off when "off". 
-The Setting in ARduino is: 
-  int DledOnColors[DLEDcount][3] = {
-                  {255,0,0}
-                  };
+The Setting in Arduino is: 
+  ```int DledOnColors[DLEDcount][3] = {{255,0,0}};```
 
-  int DledOffColors[DLEDcount][3] = {
-                  {0,0,0}
-                  };
+  ```int DledOffColors[DLEDcount][3] = {{0,0,0}};```
 
 
 2. This LED should glow Green when "on" and Red when "off". 
-  int DledOnColors[DLEDcount][3] = {
-                  {0,255,0}
-                  };
+  ```int DledOnColors[DLEDcount][3] = {{0,255,0}};```  
 
-  int DledOffColors[DLEDcount][3] = {
-                  {255,0,0}
-                  };
+  ```int DledOffColors[DLEDcount][3] = {{255,0,0}};```  
 Easy right?                 
 # latching Potentiometers
 This is a special Feature for rotary Selector Switches. Instead of loosing one Pin per Selection you can turn your Switch in a Potentiometer by soldering 10K resistors between the Pins and connecting the Selector Pin to an Analog Input. 
@@ -125,16 +117,20 @@ This can be either an LED connected to an Output Pin or you can select one LED i
 The Send and receive Protocol is <Signal><PinNumber>:<Pin State>
 To begin Transmitting Ready is send out and expects to receive E: to establish connection. Afterwards Data is exchanged.
 Data is only send everythime it changes once.
+| Signal                  | Header        |direction     |Values        |
+| -------------           | ------------- |------------- |------------- |
+| Inputs & Toggle Inputs  | I             | write only   |0,1           |
+| Outputs                 | O             | read only    |0,1           |
+| PWM Outputs             | P             | read only    |0-255         |
+| Digital LED Outputs     | D             | read only    |0,1           |
+| Analog Inputs           | A             | write only   |0-1024        |
+| Latching Potentiometers | L             | write only   |0-max Position|
+| Absolute Encoder input  | K             | write only   |0-32          |
+| -------------           | ------------- |------------- |------------- |
+| Connection established  | E             | read/ write  |0:0           |
 
-  Inputs & Toggle Inputs  = 'I' -write only  -Pin State: 0,1  
-  Outputs                 = 'O' -read only   -Pin State: 0,1  
-  PWM Outputs             = 'P' -read only   -Pin State: 0-255  
-  Digital LED Outputs     = 'D' -read only   -Pin State: 0,1  
-  Analog Inputs           = 'A' -write only  -Pin State: 0-1024  
-  Latching Potentiometers = 'L' -write only  -Pin State: 0-max Position  
-  Absolute Encoder input  = 'K' -write only  -Pin State: 0-32  
 
-Command 'E0:0' is used for connectivity checks and is send every 5 seconds as keep alive signal. If connection is lost the arduino begins flashing an LED to alarm the User. 
+Command 'E0:0' is used for connectivity checks and is send every 5 seconds as keep alive signal. If it is not received in Time, the connection is lost and the arduino begins flashing an LED to alarm the User. It will however work the same and try to send it's Data to the Host.
 
 # License
 This program is free software; you can redistribute it and/or modify
