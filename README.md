@@ -1,19 +1,19 @@
 
 # LinuxCNC_ArduinoConnector
 
-![Chip loves Arduino.](/ArduinoChip.svg)
+![LinuxCNC Arduino Connector.](/ArduinoChip.svg | width=200)
+
+
 By Alexander Richter, info@theartoftinkering.com 2022  
 please consider supporting me on Patreon: https://www.patreon.com/theartoftinkering
 
 This Projekt enables you to connect an Arduino to LinuxCNC and provides as many IO's as you could ever wish for.
-
-This Software is used as IO Expansion for LinuxCNC. I am using a Mega 2560.
+This Software is used as IO Expansion for LinuxCNC.
 
 ## It is NOT intended for timing and security relevant IO's. Don't use it for Emergency Stops or Endstop switches! ##
 
 
 You can create as many digital & analog Inputs, Outputs and PWM Outputs as your Arduino can handle.
-You can also generate "virtual Pins" by using latching Potentiometers, which are connected to one analog Pin, but are read in Hal as individual Pins.
 It also supports Digital LEDs such as WS2812 or PL9823. This way you can have as many LEDs as you want and you can also define the color of them with just one Pin.
 In LinuxCNC each LED is listed as one Output that can be set to HIGH and LOW. For both States you can define a color per LED. 
 This way, you can make them turn on or shut off or have them Change color, from Green to Red for example. 
@@ -27,6 +27,11 @@ Currently the Software Supports:
 - latching Potentiometers
 - 1 absolute encoder input
 
+TODO
+-[ ] Matrix Keyboard Support
+
+Should i add this?
+-[ ] RC Servo  Support
 
 # compatiblity
 This software works with LinuxCNC 2.8, 2.9 and 2.10. 
