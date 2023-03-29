@@ -1,7 +1,7 @@
 
 # LinuxCNC_ArduinoConnector
 
-![Chip loves Arduino.](ArduinoChip.png)
+![Chip loves Arduino.](/ArduinoChip.png)
 By Alexander Richter, info@theartoftinkering.com 2022  
 please consider supporting me on Patreon: https://www.patreon.com/theartoftinkering
 
@@ -36,21 +36,20 @@ For 2.8 however you have to change #!/usr/bin/python3.9 in the first line of ard
 1. configure the Firmware file to your demands and flash it to your arduino
 2. connect the arduino to your LinuxCNC Computer via USB
 3. install python-serial  
-    '''sudo apt-get install python-serial'''  
+    ```sudo apt-get install python-serial```  
 4. edit arduino.py to match your arduino settings.
-5. also check if the Serial adress is correct for your Arduino. I found it easyest to run '''sudo dmesg | grep tty''' in Terminal. 
+5. also check if the Serial adress is correct for your Arduino. I found it easyest to run ```sudo dmesg | grep tty``` in Terminal. 
 6. move arduino.py to  /usr/bin and make it executable with chmod +x  
-    '''
-    - sudo chmod +x arduino.py  
-    - sudo cp arduino.py /usr/bin/arduino  
-    '''
-7. add to your hal file: loadusr arduino
+    ```sudo chmod +x arduino.py  ```
+    ```sudo cp arduino.py /usr/bin/arduino  ```
+
+7. add to your hal file: ```loadusr arduino```
 
 # Testing
-To test your Setup, you can run '''halrun''' in Terminal.
+To test your Setup, you can run ```halrun``` in Terminal.
 Then you will see halcmd:
 
-Enter '''loadusr arduino''' and then '''show pin'''
+Enter ```loadusr arduino``` and then ```show pin```
 
 All the Arduino generated Pins should now be listed and the State they are in. 
 You can click buttons now and if you run show pin again the state should've changed. 
