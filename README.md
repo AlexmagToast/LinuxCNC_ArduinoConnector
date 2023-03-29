@@ -26,16 +26,23 @@ Currently the Software Supports:
 - latching Potentiometers
 - 1 absolute encoder input
 
-TODO
+TODO  
 -[ ] Matrix Keyboard Support
 
-Should i add this?
+Should i add this?  
 -[ ] RC Servo  Support
 
-# compatiblity
+# Compatiblity
 This software works with LinuxCNC 2.8, 2.9 and 2.10. 
 For 2.8 however you have to change #!/usr/bin/python3.9 in the first line of arduino.py to #!/usr/bin/python2.7. 
 
+# Configuration
+To Install LinuxCNC_ArduinoConnector.ino on your Arduino first work through the settings in the beginning of the file.
+The Settings are commented in the file.
+
+To test you Arduino you can connect to it after flashing with the Arduino IDE. Set your Baudrate to 115200. 
+In the Beginning the ARduino will Spam ```E0:0``` to the console. This is used to establish connection. 
+Just return ```E0:0``` to it. You can now communicate with the Arduino. Further info is in the Chapter [Serial Communication](#serial-communication-over-usb)
 
 # Installation
 1. configure the Firmware file to your demands and flash it to your arduino
@@ -67,16 +74,16 @@ You can now use arduino pins in your hal file.
 Pin Names are named arduino.[Pin Type]-[Pin Number]. Example:
 arduino.digital-in-32 for Pin 32 on an Arduino Mega2560
 
-# analog Inputs
+# Analog Inputs
 These are used for example to connect Potentiometers. You can add as many as your Arduino has Analog Pins.
 The Software has a smoothing parameter, which will remove jitter.
 
-# digital Inputs
+# Digital Inputs
 Digital Inputs use internal Pullup Resistors. So to trigger them you just short the Pin to Ground. There are two Digital Input Types implemented.
 Don't use them for Timing or Safety relevant Stuff like Endstops or Emergency Switches.
 1. INPUTS uses the spezified Pins as Inputs. The Value is parsed to LinuxCNC dirketly. There is also a inverted Parameter per Pin.
 2. Trigger INPUTS (SINPUTS) are handled like INPUTS, but simulate Latching Buttons. So when you press once, the Pin goes HIGH and stays HIGH, until you press the Button again. 
-# digital Outputs
+# Digital Outputs
 Digital Outputs drive the spezified Arduinos IO's as Output Pins. You can use it however you want, but don't use it for Timing or Safety relevant Stuff like Stepper Motors.
 # support of Digital RGB LEDs like WS2812 or PL9823
 Digital LED's do skale very easily, you only need one Pin to drive an infinite amount of them.
@@ -97,7 +104,7 @@ The Setting in Arduino is:
 
   ```int DledOffColors[DLEDcount][3] = {{255,0,0}};```  
 Easy right?                 
-# latching Potentiometers
+# Latching Potentiometers / Selector Switches
 This is a special Feature for rotary Selector Switches. Instead of loosing one Pin per Selection you can turn your Switch in a Potentiometer by soldering 10K resistors between the Pins and connecting the Selector Pin to an Analog Input. 
 The Software will divide the Measured Value and create Hal Pins from it. This way you can have Selector Switches with many positions while only needing one Pin for it.
 
@@ -115,8 +122,12 @@ This can be either an LED connected to an Output Pin or you can select one LED i
 
 # Serial communication over USB
 The Send and receive Protocol is <Signal><PinNumber>:<Pin State>
-To begin Transmitting Ready is send out and expects to receive E: to establish connection. Afterwards Data is exchanged.
-Data is only send everythime it changes once.
+After Bootup the Arduino will continuously print E0:0 to Serial. Once the Host Python skript runs and connects, it will answer and hence the Arduino knows, the connection is established. 
+
+For testing you can still connect to it with your Serial terminal. Send ```E0:0```, afterwards it will listen to your commands and post Input Changes.
+
+Data is always only send once, everytime it changes.
+
 | Signal                  | Header        |direction     |Values        |
 | -------------           | ------------- |------------- |------------- |
 | Inputs & Toggle Inputs  | I             | write only   |0,1           |
@@ -126,7 +137,6 @@ Data is only send everythime it changes once.
 | Analog Inputs           | A             | write only   |0-1024        |
 | Latching Potentiometers | L             | write only   |0-max Position|
 | Absolute Encoder input  | K             | write only   |0-32          |
-| -------------           | ------------- |------------- |------------- |
 | Connection established  | E             | read/ write  |0:0           |
 
 
