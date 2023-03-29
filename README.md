@@ -1,8 +1,7 @@
 
 # LinuxCNC_ArduinoConnector
 
-![LinuxCNC Arduino Connector.](/ArduinoChip.svg | width = "200")
-
+<img src="/ArduinoChip.svg" width="200">
 
 By Alexander Richter, info@theartoftinkering.com 2022  
 please consider supporting me on Patreon: https://www.patreon.com/theartoftinkering
