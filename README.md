@@ -1,7 +1,7 @@
 
 # LinuxCNC_ArduinoConnector
 
-![Chip loves Arduino.](/ArduinoChip.png)
+![Chip loves Arduino.](/ArduinoChip.svg)
 By Alexander Richter, info@theartoftinkering.com 2022  
 please consider supporting me on Patreon: https://www.patreon.com/theartoftinkering
 
@@ -9,7 +9,8 @@ This Projekt enables you to connect an Arduino to LinuxCNC and provides as many 
 
 This Software is used as IO Expansion for LinuxCNC. I am using a Mega 2560.
 
-**It is NOT intended for timing and security relevant IO's. Don't use it for Emergency Stops or Endstop switches!**
+## It is NOT intended for timing and security relevant IO's. Don't use it for Emergency Stops or Endstop switches! ##
+
 
 You can create as many digital & analog Inputs, Outputs and PWM Outputs as your Arduino can handle.
 You can also generate "virtual Pins" by using latching Potentiometers, which are connected to one analog Pin, but are read in Hal as individual Pins.
