@@ -70,13 +70,13 @@
   int OutPinmap[] = {10,9,8,7,6,5,4,3,2,21};
 #endif
 
-#define PWMOUTPUTS                     //Use Arduino PWM Capable IO's as PWM Outputs. Define how many  PWM Outputs you want in total and then which Pins you want to be  PWM Outputs.
+//#define PWMOUTPUTS                     //Use Arduino PWM Capable IO's as PWM Outputs. Define how many  PWM Outputs you want in total and then which Pins you want to be  PWM Outputs.
 #ifdef PWMOUTPUTS
   const int PwmOutputs = 2;              //number of outputs
   int PwmOutPinmap[] = {12,11};
 #endif
 
-#define AINPUTS                       //Use Arduino ADC's as Analog Inputs. Define how many Analog Inputs you want in total and then which Pins you want to be Analog Inputs.
+//#define AINPUTS                       //Use Arduino ADC's as Analog Inputs. Define how many Analog Inputs you want in total and then which Pins you want to be Analog Inputs.
                                         //Note that Analog Pin numbering is different to the Print on the PCB.
 #ifdef AINPUTS
   const int AInputs = 1; 
@@ -109,7 +109,7 @@
   int margin = 20;                      //giving it some margin so Numbers dont jitter, make this number smaller if your knob has more than 50 Positions
 #endif
 
-#define ABSENCODER                   //Support of an Rotating Knob that was build in my Machine. It encodes 32 Positions with 5 Pins in Binary. This will generate 32 Pins in LinuxCNC Hal.
+//#define ABSENCODER                   //Support of an Rotating Knob that was build in my Machine. It encodes 32 Positions with 5 Pins in Binary. This will generate 32 Pins in LinuxCNC Hal.
 #ifdef ABSENCODER
   const int AbsEncPins[] = {27,28,31,29,30};  //1,2,4,8,16
 #endif
@@ -158,8 +158,8 @@
   const int DLEDBrightness = 70;         //Brightness of the LED's 0-100%
  
   int DledOnColors[DLEDcount][3] = {
+                  {0,0,255},
                   {255,0,0},
-                  {0,255,255},
                   {0,255,0},
                   {0,255,0},
                   {0,255,0},
@@ -170,7 +170,7 @@
 
   int DledOffColors[DLEDcount][3] = {
                   {0,0,0},
-                  {0,255,0},
+                  {0,0,0},
                   {255,0,0},
                   {255,0,0},
                   {255,0,0},
@@ -184,6 +184,9 @@ Adafruit_NeoPixel strip(DLEDcount, DLEDPin, NEO_GRB + NEO_KHZ800);//Color sequen
 
 
 #endif
+
+//#######################################   END OF CONFIG     ###########################
+
 
 
 //#define DEBUG

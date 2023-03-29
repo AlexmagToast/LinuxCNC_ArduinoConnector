@@ -19,18 +19,19 @@ This way, you can make them turn on or shut off or have them Change color, from 
 
 
 Currently the Software Supports: 
-- analog Inputs
-- digital Inputs
-- digital Outputs
-- support of Digital RGB LEDs like WS2812 or PL9823
-- latching Potentiometers
-- 1 absolute encoder input
+- Analog Inputs
+- Digital Inputs
+- Digital Outputs
+- PWM Outputs
+- Digital RGB LEDs like WS2812 or PL9823
+- latching Potentiometers / Selector Switches 
+- 1 absolute encoder Selector Switch
 
 TODO  
--[ ] Matrix Keyboard Support
+- Matrix Keyboard Support
 
-Should i add this?  
--[ ] RC Servo  Support
+Should this be supported?  
+- RC Servo  Support
 
 # Compatiblity
 This software works with LinuxCNC 2.8, 2.9 and 2.10. 
