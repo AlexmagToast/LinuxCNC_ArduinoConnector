@@ -4,7 +4,12 @@
 <img src="/ArduinoChip.svg" width="250" align="right">
 
 By Alexander Richter, info@theartoftinkering.com 2022  
-please consider supporting me on Patreon: https://www.patreon.com/theartoftinkering
+please consider supporting me on Patreon:  
+https://www.patreon.com/theartoftinkering  
+
+Website: https://theartoftinkering.com
+Youtube: https://youtube.com/@theartoftinkering
+
 
 This Projekt enables you to connect an Arduino to LinuxCNC and provides as many IO's as you could ever wish for.
 This Software is used as IO Expansion for LinuxCNC.
@@ -29,6 +34,8 @@ Currently the Software Supports:
 
 TODO  
 - Matrix Keyboard Support
+- Rotary Encoder Input
+
 
 Should this be supported?  
 - RC Servo  Support
@@ -53,16 +60,16 @@ Just return ```E0:0``` to it. You can now communicate with the Arduino. Further 
 4. edit arduino.py to match your arduino settings.
 5. also check if the Serial adress is correct for your Arduino. I found it easyest to run ```sudo dmesg | grep tty``` in Terminal. 
 6. move arduino.py to  /usr/bin and make it executable with chmod +x  
-    ```sudo chmod +x arduino.py  ```
-    ```sudo cp arduino.py /usr/bin/arduino  ```
+    ```sudo chmod +x arduino.py  ```  
+    ```sudo cp arduino.py /usr/bin/arduino  ```  
 
-7. add to your hal file: ```loadusr arduino```
+7. add to your hal file: ```loadusr arduino```  
 
 # Testing
 To test your Setup, you can run ```halrun``` in Terminal.
 Then you will see halcmd:
 
-Enter ```loadusr arduino``` and then ```show pin```
+Enter ```loadusr arduino``` and then ```show pin```  
 
 All the Arduino generated Pins should now be listed and the State they are in. 
 You can click buttons now and if you run show pin again the state should've changed. 
@@ -94,17 +101,19 @@ LED colors are set with values 0-255 for Red, Green and Blue. 0 beeing off and 2
 Here are two examples:
 
 1. This LED should be glowing Red when "on" and just turn off when "off". 
-The Setting in Arduino is: 
-  ```int DledOnColors[DLEDcount][3] = {{255,0,0}};```
+   The Setting in Arduino is:  
+   ```int DledOnColors[DLEDcount][3] = {{255,0,0}};```  
 
-  ```int DledOffColors[DLEDcount][3] = {{0,0,0}};```
+   ```int DledOffColors[DLEDcount][3] = {{0,0,0}};```  
 
 
 2. This LED should glow Green when "on" and Red when "off". 
-  ```int DledOnColors[DLEDcount][3] = {{0,255,0}};```  
+   ```int DledOnColors[DLEDcount][3] = {{0,255,0}};```  
 
-  ```int DledOffColors[DLEDcount][3] = {{255,0,0}};```  
-Easy right?                 
+   ```int DledOffColors[DLEDcount][3] = {{255,0,0}};```  
+
+
+
 # Latching Potentiometers / Selector Switches
 This is a special Feature for rotary Selector Switches. Instead of loosing one Pin per Selection you can turn your Switch in a Potentiometer by soldering 10K resistors between the Pins and connecting the Selector Pin to an Analog Input. 
 The Software will divide the Measured Value and create Hal Pins from it. This way you can have Selector Switches with many positions while only needing one Pin for it.
