@@ -7,7 +7,7 @@ By Alexander Richter, info@theartoftinkering.com 2022
 please consider supporting me on Patreon:  
 https://www.patreon.com/theartoftinkering  
 
-Website: https://theartoftinkering.com
+Website: https://theartoftinkering.com  
 Youtube: https://youtube.com/@theartoftinkering
 
 
@@ -57,13 +57,17 @@ Just return ```E0:0``` to it. You can now communicate with the Arduino. Further 
 2. connect the arduino to your LinuxCNC Computer via USB
 3. install python-serial  
     ```sudo apt-get install python-serial```  
-4. edit arduino.py to match your arduino settings.
-5. also check if the Serial adress is correct for your Arduino. I found it easyest to run ```sudo dmesg | grep tty``` in Terminal. 
-6. move arduino.py to  /usr/bin and make it executable with chmod +x  
+4. edit arduino.py to match your arduino settings. If you're running 2.8 change  
+  #!/usr/bin/python3.9 in the first line of arduino.py to #!/usr/bin/python2.7.
+5. also check if the Serial adress is correct for your Arduino. I found it easyest to run  
+  ```sudo   dmesg | grep tty``` in Terminal while plugging and unplugging the arduino a couple of times and whatch which entry is changing. 
+6. make arduino.py executable with chmod +x, delete the suffix .py and copy
+it to /usr/bin  
     ```sudo chmod +x arduino.py  ```  
     ```sudo cp arduino.py /usr/bin/arduino  ```  
 
-7. add to your hal file: ```loadusr arduino```  
+7. add this entry to the end of your hal file: ```loadusr arduino```  
+
 
 # Testing
 To test your Setup, you can run ```halrun``` in Terminal.
@@ -112,15 +116,18 @@ Here are two examples:
 
    ```int DledOffColors[DLEDcount][3] = {{255,0,0}};```  
 
-
+Depending on the used LED Chipset, Color sequence can vary. Please try, which value correspons to which color with your LED's.
+Typically it should be R G B for WS2812 and G R B for PL9823.
+You can mix both in one chain, just modify the color values accordingly.
 
 # Latching Potentiometers / Selector Switches
 This is a special Feature for rotary Selector Switches. Instead of loosing one Pin per Selection you can turn your Switch in a Potentiometer by soldering 10K resistors between the Pins and connecting the Selector Pin to an Analog Input. 
 The Software will divide the Measured Value and create Hal Pins from it. This way you can have Selector Switches with many positions while only needing one Pin for it.
 
-# 1 absolute encoder input
+# 1  binary encoded Selector Switch input / absolute encoder
 Some rotary Selector Switches work with Binary Encoded Positions. The Software Supports Encoders with 32 Positions. (this could be more if requested)
 For each Bit one Pin is needed. So for all 32 Positions 5 Pins are needed = 1,2,4,8,16 
+If this feature is enabled, 32 Hal Pins will be created in LinuxCNC.
 
 # Status LED
 The Arduino only works, if LinuxCNC is running and an USB Connection is established. 
