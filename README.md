@@ -19,19 +19,18 @@ This Software is used as IO Expansion for LinuxCNC.
 
 You can create as many digital & analog Inputs, Outputs and PWM Outputs as your Arduino can handle.
 It also supports Digital LEDs such as WS2812 or PL9823. This way you can have as many LEDs as you want and you can also define the color of them with just one Pin.
-In LinuxCNC each LED is listed as one Output that can be set to HIGH and LOW. For both States you can define a color per LED. 
-This way, you can make them turn on or shut off or have them Change color, from Green to Red for example. 
 
 
-Currently the Software Supports: 
-- Analog Inputs 
-- Digital Inputs
-- Digital Outputs
-- PWM Outputs
-- Digital RGB LEDs like WS2812 or PL9823
-- latching Potentiometers / Selector Switches 
-- 1 binary encoded Selector Switch
-- Matrix Keyboard Support
+| Currently the Software Supports:              | Arduino Mega | Ardunio Micro  | Ardunio Uno |
+| --------------------------------------------- | ------------ | -------------  | ----------- |
+| Analog Inputs                                 | Up to 16     | Up to 12       | Up to 6     |
+| Digital Inputs                                | Up to 54     | Up to 20       | Up to 14    |
+| Digital Outputs                               | Up to 54     | Up to 20       | Up to 14    |
+| PWM Outputs                                   | Up to 15     | Up to 7        | Up to 6     |
+| Digital RGB LEDs like WS2812 or PL9823        | ~ 1000       | ~ 1000         | ~ 1000      |
+| latching Potentiometers / Selector Switches   | Up to 16     | Up to 12       | Up to 6     |
+| binary encoded Selector Switch                | 1            | 1              | 1           |
+| Matrix Keyboard Support                       | 1            | 1              | 1           |
 
 
 TODO  
