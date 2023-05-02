@@ -652,7 +652,7 @@ void commandReceived(char cmd, uint16_t io, uint16_t value){
   #endif
 }
 
-//This Funktion checks if Received Command is valid. Insert your custom Letter here by inserting another "||cmd == 'X'" 
+//This Funktion checks if Received Command is valid. Insert your custom Letter here by inserting another , for example: "||cmd == 'X'" 
 int isCmdChar(char cmd){
   if(cmd == 'O'||cmd == 'P'||cmd == 'E'||cmd == 'D') {return true;}
   else{return false;}

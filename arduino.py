@@ -98,7 +98,7 @@ DLEDcount = 8
 # You can specify special Charakters however, which will be handled as Inputs in LinuxCNC. Define those in the LCNC Array below.
 
 
-UseMatrix = 1
+Keypad = 1
 LinuxKeyboardInput = 1	#Activate direct Keyboard integration to Linux. This requires you to install and test "xdotool". 
 						#You can install it by typing "sudo apt install xdotool" in your console. After installing "xdotool type "Hello World" should return Hello World in the Terminal. 
 						# If it doesn't, something is not working and this program will not work either. Please get xdotool working first. 
@@ -177,12 +177,12 @@ if DLEDcount > 0:
 		c.newpin("DLED.{}".format(port), hal.HAL_BIT, hal.HAL_IN)
 
 # setup MatrixKeyboard halpins
-if UseMatrix > 0:
+if Keypad > 0:
 	for port in range(Columns*Rows):
 		if Destination[port] == 0 & LinuxKeyboardInput:
 			pass #if destination is set to Linux, don't register a Hal Pin for this key.
 		else:
-			c.newpin("MKey.{}".format(Chars[port]), hal.HAL_BIT, hal.HAL_IN)
+			c.newpin("Keypad.{}".format(Chars[port]), hal.HAL_BIT, hal.HAL_IN)
 c.ready()
 
 #setup Serial connection
@@ -317,12 +317,12 @@ while True:
 							subprocess.call(["xdotool", "key", Chars[io]])
 							if(Debug):print("Emulating Keypress{}".format(Chars[io]))
 						else:
-							c["MKey.{}".format(Chars[io])] = 1
-							if(Debug):print("MKey{}:{}".format(Chars[io],1))
+							c["Keypad.{}".format(Chars[io])] = 1
+							if(Debug):print("Keypad{}:{}".format(Chars[io],1))
 
 					if value == 0 & Destination[io] == 0:
-						c["MKey.{}".format(Chars[io])] = 0
-						if(Debug):print("MKey{}:{}".format(Chars[io],0))
+						c["Keypad.{}".format(Chars[io])] = 0
+						if(Debug):print("Keypad{}:{}".format(Chars[io],0))
 
 
 
