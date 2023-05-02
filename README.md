@@ -137,6 +137,18 @@ This can be either an LED connected to an Output Pin or you can select one LED i
 - It will glow constantly when everything works.
 - it Will flash short when Connection was lost.
 
+# Matrix Keyboard
+Connecting Matrix Keyboards is supported.
+You can adapt the Settings to fit all kinds of Matrix Keyboards. The Software can emulate an Keyboard in Linux. This is useful, because for some Keys you may want to enter Letters or Numbers, for others you may want to set functions in LinuxCNC. To input Text it is neccessary to emulate Keypresses. 
+In the Config file you can define, which Key should be connected to LinuxCNC as Inputpins and which should be handled like a Keyboard in Linux.
+
+To run Matrix Keyboards requires you to install and test "xdotool". 
+You can install it by typing "sudo apt install xdotool" in your console. After installing "xdotool type "Hello World" should return "Hello World" in the Terminal. 
+If it doesn't, something is not working and this program will not work either. Please get xdotool working first.
+
+In the Settings a cheap 4x4 Keyboard is used such as https://theartoftinkering.com/recommends/matrix-keyboard/ (referral link)
+
+
 # Serial communication over USB
 The Send and receive Protocol is <Signal><PinNumber>:<Pin State>
 After Bootup the Arduino will continuously print E0:0 to Serial. Once the Host Python skript runs and connects, it will answer and hence the Arduino knows, the connection is established. 

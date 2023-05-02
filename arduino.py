@@ -64,16 +64,16 @@ Outputs = 9				#9 Outputs, Set Outputs = 0 to disable
 OutPinmap = [10,9,8,7,6,5,4,3,2,21]	
 
 # Set how many PWM Outputs you have programmed in Arduino and which pins are PWM Outputs, you can set as many as your Arduino has PWM pins. List the connected pins below.
-PwmOutputs = 2			#number of PwmOutputs, Set PwmOutputs = 0 to disable 
+PwmOutputs = 0			#number of PwmOutputs, Set PwmOutputs = 0 to disable 
 PwmOutPinmap = [11,12]	#PwmPutput connected to Pin 11 & 12
 
 # Set how many Analog Inputs you have programmed in Arduino and which pins are Analog Inputs, you can set as many as your Arduino has Analog pins. List the connected pins below.
-AInputs = 1				#number of AInputs, Set AInputs = 0 to disable 
+AInputs = 0				#number of AInputs, Set AInputs = 0 to disable 
 AInPinmap = [1]			#Potentiometer connected to Pin 1 (A0)
 
 
 # Set how many Latching Analog Inputs you have programmed in Arduino and how many latches there are, you can set as many as your Arduino has Analog pins. List the connected pins below.
-LPoti = 2				#number of LPotis, Set LPoti = 0 to disable 
+LPoti = 0				#number of LPotis, Set LPoti = 0 to disable 
 LPotiLatches = [[2,9],	#Poti is connected to Pin 2 (A1) and has 9 positions
 				[3,4]]	#Poti is connected to Pin 3 (A2) and has 4 positions
 
@@ -83,9 +83,13 @@ AbsKnob = 0 	#1 enable
 AbsKnobPos = 32
 
 # Set how many Digital LED's you have connected. 
-DLEDcount = 8
+DLEDcount = 0 
 
-# Support For Matrix Keypads. Install Keyboard Lib by entering "sudo pip3 install keyboard" on your system.
+
+
+# Support For Matrix Keypads. This requires you to install and test "xdotool". 
+#You can install it by typing "sudo apt install xdotool" in your console. After installing "xdotool type "Hello World" should return Hello World in the Terminal. 
+# If it doesn't, something is not working and this program will not work either. Please get xdotool working first. 
 # The Key press is received as M Number of Key:HIGH/LOW. M2:1 would represent Key 2 beeing Pressed. M2:0 represents letting go of the key.
 # Key Numbering is calculated in the Matrix. for a 4x4 Keypad the numbering of the Keys will be like this:
 #	1,	2,	3,	4
@@ -98,10 +102,8 @@ DLEDcount = 8
 # You can specify special Charakters however, which will be handled as Inputs in LinuxCNC. Define those in the LCNC Array below.
 
 
-Keypad = 1
-LinuxKeyboardInput = 1	#Activate direct Keyboard integration to Linux. This requires you to install and test "xdotool". 
-						#You can install it by typing "sudo apt install xdotool" in your console. After installing "xdotool type "Hello World" should return Hello World in the Terminal. 
-						# If it doesn't, something is not working and this program will not work either. Please get xdotool working first. 
+Keypad = 0	# Set to 1 to Activate
+LinuxKeyboardInput = 1	#Activate direct Keyboard integration to Linux.
 Columns = 4
 Rows = 4
 Chars = [			#here you must define as many characters as your Keypad has keys. calculate columns * rows . for example 4 *4 = 16. You can write it down like in the example for ease of readability.
