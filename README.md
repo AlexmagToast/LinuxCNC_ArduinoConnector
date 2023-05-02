@@ -41,7 +41,7 @@ Should this be supported?
 - RC Servo  Support
 
 # Compatiblity
-This software works with LinuxCNC 2.8, 2.9 and 2.10. 
+This software works with LinuxCNC 2.8, 2.9 and 2.10. For 2.8 however you have to change #!/usr/bin/python3.9 in the first line of arduino.py to #!/usr/bin/python2.7.
 
 You should be able to use any Arduino, currently Tested are:
 Arduino Mega 2560
@@ -62,14 +62,16 @@ Just return ```E0:0``` to it. You can now communicate with the Arduino. Further 
 2. connect the arduino to your LinuxCNC Computer via USB
 3. install python-serial  
     ```sudo apt-get install python-serial```  
-4. also check if the Serial adress is correct for your Arduino. I found it easyest to run  
+4. edit arduino.py to match your arduino settings. If you're running 2.8 change  
+  #!/usr/bin/python3.9 in the first line of arduino.py to #!/usr/bin/python2.7.
+5. also check if the Serial adress is correct for your Arduino. I found it easyest to run  
   ```sudo   dmesg | grep tty``` in Terminal while plugging and unplugging the arduino a couple of times and whatch which entry is changing. 
-5. make arduino.py executable with chmod +x, delete the suffix .py and copy
+6. make arduino.py executable with chmod +x, delete the suffix .py and copy
 it to /usr/bin  
     ```sudo chmod +x arduino.py  ```  
     ```sudo cp arduino.py /usr/bin/arduino  ```  
 
-6. add this entry to the end of your hal file: ```loadusr arduino```  
+7. add this entry to the end of your hal file: ```loadusr arduino```  
 
 
 # Testing
