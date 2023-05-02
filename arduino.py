@@ -13,7 +13,7 @@ import serial, time, hal
 #	Currently the Software provides: 
 #	- analog Inputs
 #	- latching Potentiometers
-#	- 1 absolute encoder input
+#	- 1 binary encoded Selector Switch
 #	- digital Inputs
 #	- digital Outputs
 
@@ -27,7 +27,7 @@ import serial, time, hal
 #   Digital LED Outputs     = 'D' -read only   -Pin State: 0,1
 #	Analog Inputs           = 'A' -write only  -Pin State: 0-1024
 #	Latching Potentiometers = 'L' -write only  -Pin State: 0-max Position
-#	Absolute Encoder input  = 'K' -write only  -Pin State: 0-32
+#	binary encoded Selector = 'K' -write only  -Pin State: 0-32
 #	Matrix Keypad			= 'M' -write only  -Pin State: 0,1
 
 
@@ -77,10 +77,10 @@ LPoti = 0				#number of LPotis, Set LPoti = 0 to disable
 LPotiLatches = [[2,9],	#Poti is connected to Pin 2 (A1) and has 9 positions
 				[3,4]]	#Poti is connected to Pin 3 (A2) and has 4 positions
 
-# Set if you have an Absolute Encoder Knob and how many positions it has (only one supported, as i don't think they are very common and propably nobody uses these anyway)
-# Set AbsKnob = 0 to disable
-AbsKnob = 0 	#1 enable
-AbsKnobPos = 32
+# Set if you have an binary encoded Selector Switch and how many positions it has (only one supported, as i don't think they are very common and propably nobody uses these anyway)
+# Set BinSelKnob = 0 to disable
+BinSelKnob = 0 	#1 enable
+BinSelKnobPos = 32
 
 # Set how many Digital LED's you have connected. 
 DLEDcount = 0 
@@ -169,9 +169,9 @@ for Poti in range(LPoti):
 		c.newpin("LPoti.{}.{}" .format(LPotiLatches[Poti][0],Pin), hal.HAL_BIT, hal.HAL_OUT)
 
 # setup Absolute Encoder Knob halpins
-if AbsKnob:
-	for port in range(AbsKnobPos):
-		c.newpin("AbsKnob.{}".format(port), hal.HAL_BIT, hal.HAL_OUT)
+if BinSelKnob:
+	for port in range(BinSelKnobPos):
+		c.newpin("BinSelKnob.{}".format(port), hal.HAL_BIT, hal.HAL_OUT)
 
 # setup Digital LED halpins
 if DLEDcount > 0:
@@ -304,13 +304,13 @@ while True:
 
 				elif cmd == "K":
 					firstcom = 1
-					for port in range(AbsKnobPos):
+					for port in range(BinSelKnobPos):
 						if port == value:
-							c["AbsKnob.{}".format(port)] = 1
-							if(Debug):print("AbsKnob.{}:{}".format(port,1))
+							c["BinSelKnob.{}".format(port)] = 1
+							if(Debug):print("BinSelKnob.{}:{}".format(port,1))
 						else:
-							c["AbsKnob.{}".format(port)] = 0
-							if(Debug):print("AbsKnob.{}:{}".format(port,0))
+							c["BinSelKnob.{}".format(port)] = 0
+							if(Debug):print("BinSelKnob.{}:{}".format(port,0))
 				
 				elif cmd == "M":
 					firstcom = 1

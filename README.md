@@ -24,18 +24,18 @@ This way, you can make them turn on or shut off or have them Change color, from 
 
 
 Currently the Software Supports: 
-- Analog Inputs
+- Analog Inputs 
 - Digital Inputs
 - Digital Outputs
 - PWM Outputs
 - Digital RGB LEDs like WS2812 or PL9823
 - latching Potentiometers / Selector Switches 
-- 1 absolute encoder Selector Switch
+- 1 binary encoded Selector Switch
+- Matrix Keyboard Support
+
 
 TODO  
-- Matrix Keyboard Support
 - Rotary Encoder Input
-
 
 Should this be supported?  
 - RC Servo  Support
@@ -124,7 +124,7 @@ You can mix both in one chain, just modify the color values accordingly.
 This is a special Feature for rotary Selector Switches. Instead of loosing one Pin per Selection you can turn your Switch in a Potentiometer by soldering 10K resistors between the Pins and connecting the Selector Pin to an Analog Input. 
 The Software will divide the Measured Value and create Hal Pins from it. This way you can have Selector Switches with many positions while only needing one Pin for it.
 
-# 1  binary encoded Selector Switch input / absolute encoder
+# 1  binary encoded Selector Switch input
 Some rotary Selector Switches work with Binary Encoded Positions. The Software Supports Encoders with 32 Positions. (this could be more if requested)
 For each Bit one Pin is needed. So for all 32 Positions 5 Pins are needed = 1,2,4,8,16 
 If this feature is enabled, 32 Hal Pins will be created in LinuxCNC.

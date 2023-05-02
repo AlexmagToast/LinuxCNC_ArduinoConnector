@@ -12,10 +12,12 @@
   Currently the Software provides: 
   - analog Inputs
   - latching Potentiometers
-  - 1 absolute encoder input
+  - 1 binary encoded selector Switch
   - digital Inputs
   - digital Outputs
+  - Matrix Keypad
 
+  
   The Send and receive Protocol is <Signal><PinNumber>:<Pin State>
   To begin Transmitting Ready is send out and expects to receive E: to establish connection. Afterwards Data is exchanged.
   Data is only send everythime it changes once.
@@ -26,7 +28,7 @@
   Digital LED Outputs     = 'D' -read only   -Pin State: 0,1
   Analog Inputs           = 'A' -write only  -Pin State: 0-1024
   Latching Potentiometers = 'L' -write only  -Pin State: 0-max Position
-  Absolute Encoder input  = 'K' -write only  -Pin State: 0-32
+  binary encoded Selector = 'K' -write only  -Pin State: 0-32
 
 Keyboard Input:
   Matrix Keypad           = 'M' -write only  -Pin State: Number of Matrix Key. 
@@ -118,9 +120,9 @@ Note that Analog Pin numbering is different to the Print on the PCB.
   int margin = 20;                      //giving it some margin so Numbers dont jitter, make this number smaller if your knob has more than 50 Positions
 #endif
 
-//#define ABSENCODER                   //Support of an Rotating Knob that was build in my Machine. It encodes 32 Positions with 5 Pins in Binary. This will generate 32 Pins in LinuxCNC Hal.
-#ifdef ABSENCODER
-  const int AbsEncPins[] = {27,28,31,29,30};  //1,2,4,8,16
+//#define BINSEL                   //Support of an Rotating Knob that was build in my Machine. It encodes 32 Positions with 5 Pins in Binary. This will generate 32 Pins in LinuxCNC Hal.
+#ifdef BINSEL
+  const int BinSelKnobPins[] = {27,28,31,29,30};  //1,2,4,8,16
 #endif
 
 
@@ -257,7 +259,7 @@ const int debounceDelay = 50;
   int Lpoti[LPotis];
   int oldLpoti[LPotis];
 #endif
-#ifdef ABSENCODER
+#ifdef BINSEL
   int oldAbsEncState;
 #endif
 #ifdef KEYPAD
@@ -328,12 +330,12 @@ void setup() {
   pinMode(StatLedPin, OUTPUT);
 #endif
 
-#ifdef ABSENCODER
-  pinMode(AbsEncPins[0], INPUT_PULLUP);
-  pinMode(AbsEncPins[1], INPUT_PULLUP);
-  pinMode(AbsEncPins[2], INPUT_PULLUP);
-  pinMode(AbsEncPins[3], INPUT_PULLUP);
-  pinMode(AbsEncPins[4], INPUT_PULLUP);
+#ifdef BINSEL
+  pinMode(BinSelKnobPins[0], INPUT_PULLUP);
+  pinMode(BinSelKnobPins[1], INPUT_PULLUP);
+  pinMode(BinSelKnobPins[2], INPUT_PULLUP);
+  pinMode(BinSelKnobPins[3], INPUT_PULLUP);
+  pinMode(BinSelKnobPins[4], INPUT_PULLUP);
 #endif
 
 #ifdef DLED
@@ -380,7 +382,7 @@ void loop() {
 #ifdef LPOTIS
   readLPoti(); //read LPotis & send data
 #endif
-#ifdef ABSENCODER
+#ifdef BINSEL
   readAbsKnob(); //read ABS Encoder & send data
 #endif
 
@@ -561,22 +563,22 @@ void readsInputs(){
 }
 #endif
 
-#ifdef ABSENCODER
+#ifdef BINSEL
 int readAbsKnob(){
   int var = 0;
-  if(digitalRead(AbsEncPins[0])==1){
+  if(digitalRead(BinSelKnobPins[0])==1){
     var += 1;
   }
-  if(digitalRead(AbsEncPins[1])==1){
+  if(digitalRead(BinSelKnobPins[1])==1){
     var += 2;
   }
-  if(digitalRead(AbsEncPins[2])==1){
+  if(digitalRead(BinSelKnobPins[2])==1){
     var += 4;
   }  
-  if(digitalRead(AbsEncPins[3])==1){
+  if(digitalRead(BinSelKnobPins[3])==1){
     var += 8;
   }  
-  if(digitalRead(AbsEncPins[4])==1){
+  if(digitalRead(BinSelKnobPins[4])==1){
     var += 16;
   }
   if(var != oldAbsEncState){
