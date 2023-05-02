@@ -28,6 +28,7 @@ import serial, time, hal
 #	Analog Inputs           = 'A' -write only  -Pin State: 0-1024
 #	Latching Potentiometers = 'L' -write only  -Pin State: 0-max Position
 #	Absolute Encoder input  = 'K' -write only  -Pin State: 0-32
+#	Matrix Keypad			= 'M' -write only  -Pin State: 0,1
 
 
 #	Command 'E0:0' is used for connectivity checks and is send every 5 seconds as keep alive signal
@@ -90,16 +91,33 @@ DLEDcount = 8
 # These Inputs are handled differently from everything else, because thy are send to the Host instead and emulate actual Keyboard input.
 # You can specify special Charakters however, which will be handled as Inputs in LinuxCNC. Define those in the LCNC Array below.
 
+
 UseMatrix = 1
+LinuxKeyboardInput = 1	#Activate direct Keyboard integration to Linux. This requires you to install and test "xdotool". 
+						#You can install it by typing "sudo apt install xdotool" in your console. After installing "xdotool type "Hello World" should return Hello World in the Terminal. 
+						# If it doesn't, something is not working and this program will not work either. Please get xdotool working first. 
 Columns = 4
 Rows = 4
-LCNC =[4,8,12,16]  #These are special Keys, which will be used as Input in LinuxCNC. in this Example Letters A, B, C & D are send to hal in LinuxCNC as Inputs.
 Chars = [			#here you must define as many characters as your Keypad has keys. calculate columns * rows . for example 4 *4 = 16. You can write it down like in the example for ease of readability.
-	1,	2,	3,	"A",
-	4,	5,	6,	"B",
-	7,	8,	9,	"C",
-	"#",0,	"*","D"
+ "1", "2", "3", "A",
+ "4", "5", "6", "B",
+ "7", "8", "9", "C",
+ "#", "0", "*", "D"
+] 
+
+# These are Settings to connect Keystrokes to Linux, you can ignore them if you only use them as LinuxCNC Inputs.
+
+Destination = [		#define, which Key should be inserted in LinuxCNC as Input or as Keystroke in Linux. 
+					#you can ignore it if you want to use all Keys as LinuxCNC Inputs.
+					# 0 = LinuxCNC 
+					# 1 = Linux
+	0, 0, 0, 1,
+	0, 0, 0, 1,
+	0, 0, 0, 1, 
+	1, 0, 1, 1
 ]
+
+
 
 Debug = 0
 ########  End of Config!  ########
@@ -107,8 +125,8 @@ olddOutStates= [0]*Outputs
 oldPwmOutStates=[0]*PwmOutputs
 
 
-if UseMatrix:
-	import keyboard
+if LinuxKeyboardInput:
+	import subprocess
 
 ######## SetUp of HalPins ########
 
@@ -145,6 +163,13 @@ if DLEDcount > 0:
 	for port in range(DLEDcount):
 		c.newpin("DLED.{}".format(port), hal.HAL_BIT, hal.HAL_IN)
 
+# setup MatrixKeyboard halpins
+if UseMatrix > 0:
+	for port in range(Columns*Rows):
+		if Destination[port] == 0 & LinuxKeyboardInput:
+			pass #if destination is set to Linux, don't register a Hal Pin for this key.
+		else:
+			c.newpin("MKey.{}".format(Chars[port]), hal.HAL_BIT, hal.HAL_IN)
 c.ready()
 
 #setup Serial connection
@@ -272,14 +297,18 @@ while True:
 				
 				elif cmd == "M":
 					firstcom = 1
-					for port in range(AbsKnobPos):
-						if port == value:
-							c["AbsKnob.{}".format(port)] = 1
-							if(Debug):print("AbsKnob.{}:{}".format(port,1))
-						else:
-							c["AbsKnob.{}".format(port)] = 0
-							if(Debug):print("AbsKnob.{}:{}".format(port,0))
-						
+					if value == 1 & LinuxKeyboardInput & Destination[io]:
+						subprocess.call(["xdotool", "key", Chars[io]])
+					else:
+						c["MKey.{}".format(Chars[io])] = 1
+						if(Debug):print("MKey{}:{}".format(Chars[io],1))
+
+					if value == 0 & Destination[io] == 0:
+						c["MKey.{}".format(Chars[io])] = 0
+						if(Debug):print("MKey{}:{}".format(Chars[io],0))
+
+
+
 				elif cmd == 'E':
 					arduino.write(b"E0:0\n")
 					if (Debug):print("Sending E0:0 to establish contact")
