@@ -21,7 +21,7 @@ import serial, time, hal
 #	To begin Transmitting Ready is send out and expects to receive E: to establish connection. Afterwards Data is exchanged.
 #	Data is only send everythime it changes once.
 
-#	Inputs                  = 'I' -write only  -Pin State: 0,1
+#	Inputs & Toggle Inputs  = 'I' -write only  -Pin State: 0,1
 #	Outputs                 = 'O' -read only   -Pin State: 0,1
 #	PWM Outputs             = 'P' -read only   -Pin State: 0-255
 #   Digital LED Outputs     = 'D' -read only   -Pin State: 0,1
@@ -46,34 +46,40 @@ import serial, time, hal
 #	Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-c = hal.component("arduino") #name that we will cal pins from in hal
-connection = '/dev/ttyACM0'
+c = hal.component("arduino") 	#name that we will cal pins from in hal
+connection = '/dev/ttyACM0' 	#this is the port your Arduino is connected to. You can check with ""sudo dmesg | grep tty"" in Terminal
 
 
-# Set how many Inputs you have programmed in Arduino and which pins are Inputs
-Inputs = 16
-InPinmap = [32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48]
+# Set how many Inputs you have programmed in Arduino and which pins are Inputs, Set Inputs = 0 to disable
+Inputs = 5
+InPinmap = [37,38,39,40,41]
 
-# Set how many Outputs you have programmed in Arduino and which pins are Outputs
-Outputs = 9
-OutPinmap = [10,9,8,7,6,5,4,3,2,21]
-
-# Set how many PWM Outputs you have programmed in Arduino and which pins are PWM Outputs
-PwmOutputs = 2
-PwmOutPinmap = [11,12]
-
-# Set how many Analog Inputs you have programmed in Arduino and which pins are Analog Inputs
-AInputs = 1
-AInPinmap = [1]
+# Set how many Toggled ("sticky") Inputs you have programmed in Arduino and which pins are Toggled Inputs , Set SInputs = 0 to disable
+SInputs = 5
+sInPinmap = [32,33,34,35,36]
 
 
-# Set how many Latching Analog Inputs you have programmed in Arduino and how many latches there are
-LPoti = 2
-LPotiLatches = [[2,9],
-				[3,4]]
+# Set how many Outputs you have programmed in Arduino and which pins are Outputs, Set Outputs = 0 to disable
+Outputs = 9				#9 Outputs, Set Outputs = 0 to disable
+OutPinmap = [10,9,8,7,6,5,4,3,2,21]	
+
+# Set how many PWM Outputs you have programmed in Arduino and which pins are PWM Outputs, you can set as many as your Arduino has PWM pins. List the connected pins below.
+PwmOutputs = 2			#number of PwmOutputs, Set PwmOutputs = 0 to disable 
+PwmOutPinmap = [11,12]	#PwmPutput connected to Pin 11 & 12
+
+# Set how many Analog Inputs you have programmed in Arduino and which pins are Analog Inputs, you can set as many as your Arduino has Analog pins. List the connected pins below.
+AInputs = 1				#number of AInputs, Set AInputs = 0 to disable 
+AInPinmap = [1]			#Potentiometer connected to Pin 1 (A0)
+
+
+# Set how many Latching Analog Inputs you have programmed in Arduino and how many latches there are, you can set as many as your Arduino has Analog pins. List the connected pins below.
+LPoti = 2				#number of LPotis, Set LPoti = 0 to disable 
+LPotiLatches = [[2,9],	#Poti is connected to Pin 2 (A1) and has 9 positions
+				[3,4]]	#Poti is connected to Pin 3 (A2) and has 4 positions
 
 # Set if you have an Absolute Encoder Knob and how many positions it has (only one supported, as i don't think they are very common and propably nobody uses these anyway)
-AbsKnob = 1
+# Set AbsKnob = 0 to disable
+AbsKnob = 0 	#1 enable
 AbsKnobPos = 32
 
 # Set how many Digital LED's you have connected. 
@@ -120,6 +126,7 @@ Destination = [		#define, which Key should be inserted in LinuxCNC as Input or a
 
 
 Debug = 0
+Debug = 0		#only works when this script is run from halrun in Terminal. "halrun","loadusr arduino" now Debug info will be displayed.
 ########  End of Config!  ########
 olddOutStates= [0]*Outputs
 oldPwmOutStates=[0]*PwmOutputs
@@ -128,12 +135,18 @@ oldPwmOutStates=[0]*PwmOutputs
 if LinuxKeyboardInput:
 	import subprocess
 
+# Inputs and Toggled Inputs are handled the same. 
+# For DAU compatiblity we set them up seperately. 
+# Here we merge the arrays.
+
+Inputs = Inputs+ SInputs
+InPinmap += sInPinmap
 ######## SetUp of HalPins ########
 
 # setup Input halpins
 for port in range(Inputs):
     c.newpin("dIn.{}".format(InPinmap[port]), hal.HAL_BIT, hal.HAL_OUT)
-    c.newparam("dIn.{}-invert".format(InPinmap[port]), hal.HAL_BIT, hal.HAL_OUT)
+    c.newparam("dIn.{}-invert".format(InPinmap[port]), hal.HAL_BIT, hal.HAL_RW)
 
 # setup Output halpins
 for port in range(Outputs):
@@ -178,6 +191,8 @@ arduino = serial.Serial(connection, 115200, timeout=1, xonxoff=False, rtscts=Fal
 firstcom = 0
 event = time.time()
 timeout = 9 #send something after max 9 seconds
+
+
 ######## Functions ########
 
 def keepAlive(event):
@@ -236,7 +251,7 @@ def managageOutputs():
 while True:
 	
 	try:
-		data = arduino.readline().decode('utf-8')
+		data = arduino.readline().decode('utf-8')					#read Data received from Arduino and decode it
 		if (Debug):print ("I received:{}".format(data))
 		data = data.split(":",1)
 
@@ -325,9 +340,9 @@ while True:
 		if (Debug):print ("I received garbage")
 		arduino.flush()
 	
-	if firstcom == 1: managageOutputs()
+	if firstcom == 1: managageOutputs()		#if ==1: E0:0 has been exchanged, which means Arduino knows that LinuxCNC is running and starts sending and receiving Data
 
-	if keepAlive(event):
+	if keepAlive(event):	#keep com alive. This is send to help Arduino detect connection loss.
 		arduino.write(b"E:\n")
 		if (Debug):print("keepAlive")
 		event = time.time()

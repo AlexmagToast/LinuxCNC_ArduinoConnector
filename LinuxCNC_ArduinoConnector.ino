@@ -20,9 +20,7 @@
   To begin Transmitting Ready is send out and expects to receive E: to establish connection. Afterwards Data is exchanged.
   Data is only send everythime it changes once.
 
-LinuxCNC HAL Pins:
-
-  Inputs                  = 'I' -write only  -Pin State: 0,1
+  Inputs & Toggle Inputs  = 'I' -write only  -Pin State: 0,1
   Outputs                 = 'O' -read only   -Pin State: 0,1
   PWM Outputs             = 'P' -read only   -Pin State: 0-255
   Digital LED Outputs     = 'D' -read only   -Pin State: 0,1
@@ -61,14 +59,20 @@ Communication Status      = 'E' -read/Write  -Pin State: 0:0
 //###################################################IO's###################################################
 
 
-//#define INPUTS                       //Use Arduino IO's as Inputs. Define how many Inputs you want in total and then which Pins you want to be Inputs.
+#define INPUTS                       //Use Arduino IO's as Inputs. Define how many Inputs you want in total and then which Pins you want to be Inputs.
 #ifdef INPUTS
-  const int Inputs = 16;               //number of inputs using internal Pullup resistor. (short to ground to trigger)
-  int InPinmap[] = {32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47};
+  const int Inputs = 5;               //number of inputs using internal Pullup resistor. (short to ground to trigger)
+  int InPinmap[] = {37,38,39,40,41};
 #endif
 
+                                       //Use Arduino IO's as Toggle Inputs, which means Inputs (Buttons for example) keep HIGH State after Release and Send LOW only after beeing Pressed again. 
+#define SINPUTS                        //Define how many Toggle Inputs you want in total and then which Pins you want to be Toggle Inputs.
+#ifdef SINPUTS
+  const int sInputs = 5;              //number of inputs using internal Pullup resistor. (short to ground to trigger)
+  int sInPinmap[] = {32,33,34,35,36};
+#endif
 
-//#define OUTPUTS                     //Use Arduino IO's as Outputs. Define how many Outputs you want in total and then which Pins you want to be Outputs.
+#define OUTPUTS                     //Use Arduino IO's as Outputs. Define how many Outputs you want in total and then which Pins you want to be Outputs.
 #ifdef OUTPUTS
   const int Outputs = 9;              //number of outputs
   int OutPinmap[] = {10,9,8,7,6,5,4,3,2,21};
@@ -166,8 +170,8 @@ If you use STATUSLED, it will also take the colors of your definition here.
   const int DLEDBrightness = 70;         //Brightness of the LED's 0-100%
  
   int DledOnColors[DLEDcount][3] = {
+                  {0,0,255},
                   {255,0,0},
-                  {0,255,255},
                   {0,255,0},
                   {0,255,0},
                   {0,255,0},
@@ -178,7 +182,7 @@ If you use STATUSLED, it will also take the colors of your definition here.
 
   int DledOffColors[DLEDcount][3] = {
                   {0,0,0},
-                  {0,255,0},
+                  {0,0,0},
                   {255,0,0},
                   {255,0,0},
                   {255,0,0},
@@ -205,6 +209,7 @@ const int numCols = 4;  // Define the number of columns in the matrix
 const int rowPins[numRows] = {2, 3, 4, 5};
 const int colPins[numCols] = {6, 7, 8, 9};
 
+//#######################################   END OF CONFIG     ###########################
 
 int keys[numRows][numCols] = {
   {1,2,3,4},
@@ -217,15 +222,24 @@ int lastKey= 0;
 #endif
 
 
+//#define DEBUG
+
 //###Misc Settings###
 const int timeout = 10000;   // timeout after 10 sec not receiving Stuff
+const int debounceDelay = 50;
 
-//#define DEBUG
 
 //Variables for Saving States
 #ifdef INPUTS
   int InState[Inputs];
   int oldInState[Inputs];
+  unsigned long lastInputDebounce[Inputs];
+#endif
+#ifdef SINPUTS
+  int sInState[sInputs];
+  int soldInState[sInputs];
+  int togglesinputs[sInputs];
+  unsigned long lastsInputDebounce[sInputs];
 #endif
 #ifdef OUTPUTS
   int OutState[Outputs];
@@ -278,6 +292,16 @@ void setup() {
     pinMode(InPinmap[i], INPUT_PULLUP);
     oldInState[i] = -1;
     }
+#endif
+
+#ifdef SINPUTS
+//setting Inputs with internal Pullup Resistors
+  for(int i= 0; i<sInputs;i++){
+    pinMode(sInPinmap[i], INPUT_PULLUP);
+    soldInState[i] = -1;
+    togglesinputs[i] = 0;
+  }
+    
 #endif
 #ifdef AINPUTS
 
@@ -345,6 +369,9 @@ void loop() {
 
 #ifdef INPUTS
   readInputs(); //read Inputs & send data
+#endif
+#ifdef SINPUTS
+  readsInputs(); //read Inputs & send data
 #endif
 #ifdef AINPUTS
   readAInputs();  //read Analog Inputs & send data
@@ -499,11 +526,37 @@ int readAInputs(){
 void readInputs(){
     for(int i= 0;i<Inputs; i++){
       int State = digitalRead(InPinmap[i]);
-      if(InState[i]!= State){
+      if(InState[i]!= State && millis()- lastInputDebounce[i] > debounceDelay){
         InState[i] = State;
         sendData('I',InPinmap[i],InState[i]);
+      
+      lastInputDebounce[i] = millis();
       }
     }
+}
+#endif
+#ifdef SINPUTS
+void readsInputs(){
+  for(int i= 0;i<sInputs; i++){
+    sInState[i] = digitalRead(sInPinmap[i]);
+    if (sInState[i] != soldInState[i] && millis()- lastsInputDebounce[i] > debounceDelay){
+      // Button state has changed and debounce delay has passed
+      
+      if (sInState[i] == LOW || soldInState[i]== -1) { // Stuff after || is only there to send States at Startup
+        // Button has been pressed
+        togglesinputs[i] = !togglesinputs[i];  // Toggle the LED state
+      
+        if (togglesinputs[i]) {
+          sendData('I',sInPinmap[i],togglesinputs[i]);  // Turn the LED on
+        } 
+        else {
+          sendData('I',sInPinmap[i],togglesinputs[i]);   // Turn the LED off
+        }
+      }
+      soldInState[i] = sInState[i];
+      lastsInputDebounce[i] = millis();
+    }
+  }
 }
 #endif
 
@@ -584,7 +637,6 @@ void commandReceived(char cmd, uint16_t io, uint16_t value){
     controlDLED(io,value);
   }
   #endif
-  
   if(cmd == 'E'){
     lastcom=millis();
   }
