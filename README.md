@@ -42,7 +42,12 @@ Should this be supported?
 
 # Compatiblity
 This software works with LinuxCNC 2.8, 2.9 and 2.10. 
-For 2.8 however you have to change #!/usr/bin/python3.9 in the first line of arduino.py to #!/usr/bin/python2.7. 
+
+You should be able to use any Arduino, currently Tested are:
+Arduino Mega 2560
+Arduino Nano
+Arduino Duemilanove
+
 
 # Configuration
 To Install LinuxCNC_ArduinoConnector.ino on your Arduino first work through the settings in the beginning of the file.
@@ -53,20 +58,18 @@ In the Beginning the ARduino will Spam ```E0:0``` to the console. This is used t
 Just return ```E0:0``` to it. You can now communicate with the Arduino. Further info is in the Chapter [Serial Communication](#serial-communication-over-usb)
 
 # Installation
-1. configure the Firmware file to your demands and flash it to your arduino
+1. configure the .ino file to your demands and flash it to your arduino
 2. connect the arduino to your LinuxCNC Computer via USB
 3. install python-serial  
     ```sudo apt-get install python-serial```  
-4. edit arduino.py to match your arduino settings. If you're running 2.8 change  
-  #!/usr/bin/python3.9 in the first line of arduino.py to #!/usr/bin/python2.7.
-5. also check if the Serial adress is correct for your Arduino. I found it easyest to run  
+4. also check if the Serial adress is correct for your Arduino. I found it easyest to run  
   ```sudo   dmesg | grep tty``` in Terminal while plugging and unplugging the arduino a couple of times and whatch which entry is changing. 
-6. make arduino.py executable with chmod +x, delete the suffix .py and copy
+5. make arduino.py executable with chmod +x, delete the suffix .py and copy
 it to /usr/bin  
     ```sudo chmod +x arduino.py  ```  
     ```sudo cp arduino.py /usr/bin/arduino  ```  
 
-7. add this entry to the end of your hal file: ```loadusr arduino```  
+6. add this entry to the end of your hal file: ```loadusr arduino```  
 
 
 # Testing
@@ -165,9 +168,14 @@ Data is always only send once, everytime it changes.
 | Digital LED Outputs     | D             | read only    |0,1           |
 | Analog Inputs           | A             | write only   |0-1024        |
 | Latching Potentiometers | L             | write only   |0-max Position|
-| Absolute Encoder input  | K             | write only   |0-32          |
+| binary encoded Selector | K             | write only   |0-32          |
+| Matrix Keyboard         | M             | write only   |0,1           |
 | Connection established  | E             | read/ write  |0:0           |
 
+
+Example: 
+You want to Tell LinuxCNC you pressed Input on GPIO Pin 2, The command would be : "I2:1".
+If LinuxCNC sends the Arduino to Set GPIO Pin 3 HIGH, the command would be: "O3:1" and "O3:0" to set it LOW.
 
 Command 'E0:0' is used for connectivity checks and is send every 5 seconds as keep alive signal. If it is not received in Time, the connection is lost and the arduino begins flashing an LED to alarm the User. It will however work the same and try to send it's Data to the Host.
 
