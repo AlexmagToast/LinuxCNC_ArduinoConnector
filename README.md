@@ -90,6 +90,26 @@ You can now use arduino pins in your hal file.
 Pin Names are named arduino.[Pin Type]-[Pin Number]. Example:
 arduino.digital-in-32 for Pin 32 on an Arduino Mega2560
 
+# Configuration - HowTo
+In the Arduino .ino File you will see the configuration Parameters for each kind of Signal. 
+For example we will take a look at the First setting:
+
+> #define INPUTS                       //Use Arduino IO's as Inputs. Define how many Inputs you want in total and then which Pins you want to be Inputs.
+> #ifdef INPUTS
+>   const int Inputs = 5;               //number of inputs using internal Pullup resistor. (short to ground to trigger)
+>   int InPinmap[] = {37,38,39,40,41};
+> #endif
+
+You can easily modify it to fit your needs. Set Inputs to how many Pins you want to use as Inputs and edit the Array InPinmap by setting the Pin Number that should be set as Input. You can add as many as you want until your Arduino runs out of available Pins. 
+
+After you've set your Pin definitions, copy your settings over to the arduino.py file. 
+The .ino is written in C while the other one is written in Python, hence the Syntax is a little different.
+You only need to worry that the contents of the variables match. 
+
+> Inputs = 5
+> InPinmap = [37,38,39,40,41]
+
+
 # Analog Inputs
 These are used for example to connect Potentiometers. You can add as many as your Arduino has Analog Pins.
 The Software has a smoothing parameter, which will remove jitter.
