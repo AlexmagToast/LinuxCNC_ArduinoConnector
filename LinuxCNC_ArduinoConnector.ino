@@ -209,7 +209,7 @@ const int numCols = 4;  // Define the number of columns in the matrix
 const int rowPins[numRows] = {2, 3, 4, 5};
 const int colPins[numCols] = {6, 7, 8, 9};
 
-//#######################################   END OF CONFIG     ###########################
+
 
 int keys[numRows][numCols] = {
   {1,2,3,4},
@@ -223,6 +223,7 @@ int lastKey= 0;
 
 
 //#define DEBUG
+//#######################################   END OF CONFIG     ###########################
 
 //###Misc Settings###
 const int timeout = 10000;   // timeout after 10 sec not receiving Stuff

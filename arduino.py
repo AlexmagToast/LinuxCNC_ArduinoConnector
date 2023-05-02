@@ -312,11 +312,13 @@ while True:
 				
 				elif cmd == "M":
 					firstcom = 1
-					if value == 1 & LinuxKeyboardInput & Destination[io]:
-						subprocess.call(["xdotool", "key", Chars[io]])
-					else:
-						c["MKey.{}".format(Chars[io])] = 1
-						if(Debug):print("MKey{}:{}".format(Chars[io],1))
+					if value == 1:
+						if Destination[io] == 0 and LinuxKeyboardInput == 1:
+							subprocess.call(["xdotool", "key", Chars[io]])
+							if(Debug):print("Emulating Keypress{}".format(Chars[io]))
+						else:
+							c["MKey.{}".format(Chars[io])] = 1
+							if(Debug):print("MKey{}:{}".format(Chars[io],1))
 
 					if value == 0 & Destination[io] == 0:
 						c["MKey.{}".format(Chars[io])] = 0
