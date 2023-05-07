@@ -132,6 +132,7 @@ Debug = 0		#only works when this script is run from halrun in Terminal. "halrun"
 ########  End of Config!  ########
 olddOutStates= [0]*Outputs
 oldPwmOutStates=[0]*PwmOutputs
+oldDLEDStates=[0]*DLEDcount
 
 
 if LinuxKeyboardInput:
@@ -177,7 +178,7 @@ if BinSelKnob:
 if DLEDcount > 0:
 	for port in range(DLEDcount):
 		c.newpin("DLED.{}".format(port), hal.HAL_BIT, hal.HAL_IN)
-
+		oldDLEDStates[port] = 0
 # setup MatrixKeyboard halpins
 if Keypad > 0:
 	for port in range(Columns*Rows):
@@ -243,11 +244,13 @@ def managageOutputs():
 		
 	for port in range(DLEDcount):
 		State = int(c["DLED.{}".format(port)])
-		Sig = 'D'
-		Pin = int(port)
-		command = "{}{}:{}\n".format(Sig,Pin,State)
-		arduino.write(command.encode())
-		if (Debug):print ("Sending:{}".format(command.encode()))
+		if oldDLEDStates[port] != State: #check if states have changed
+			Sig = 'D'
+			Pin = int(port)
+			command = "{}{}:{}\n".format(Sig,Pin,State)
+			arduino.write(command.encode())
+			oldDLEDStates[port] = State
+			if (Debug):print ("Sending:{}".format(command.encode()))
 
 
 while True:

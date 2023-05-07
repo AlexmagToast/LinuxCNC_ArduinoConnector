@@ -134,6 +134,7 @@ Note that Analog Pin numbering is different to the Print on the PCB.
 // if connection is lost, something happened. (Linuxcnc was closed for example or USB Connection failed.) It will recover when Linuxcnc is restartet. (you could also run "unloadusr arduino", "loadusr arduino" in Hal)
 // Define an Pin you want to connect the LED to. it will be set as Output indipendand of the OUTPUTS function, so don't use Pins twice.
 // If you use Digital LED's such as WS2812 or PL9823 (only works if you set up the DLED settings below) you can also define a position of the LED. In this case StatLedPin will set the number of the Digital LED Chain. 
+
 //#define STATUSLED
 #ifdef STATUSLED
   const int StatLedPin = 5;                //Pin for Status LED
@@ -202,7 +203,7 @@ Adafruit_NeoPixel strip(DLEDcount, DLEDPin, NEO_GRB + NEO_KHZ800);//Color sequen
 Matrix Keypads are supported. The input is NOT added as HAL Pin to LinuxCNC. Instead it is inserted to Linux as Keyboard direktly. 
 So you could attach a QWERT* Keyboard to the arduino and you will be able to write in Linux with it (only while LinuxCNC is running!)
 */
-#define KEYPAD
+//#define KEYPAD
 #ifdef KEYPAD
 const int numRows = 4;  // Define the number of rows in the matrix
 const int numCols = 4;  // Define the number of columns in the matrix
@@ -225,6 +226,12 @@ int lastKey= 0;
 
 
 //#define DEBUG
+
+
+//###Misc Settings###
+const int timeout = 10000;   // timeout after 10 sec not receiving Stuff
+const int debounceDelay = 50;
+
 //#######################################   END OF CONFIG     ###########################
 
 //###Misc Settings###
@@ -397,7 +404,7 @@ void loop() {
 void comalive(){
   #ifdef STATUSLED
     if(millis() - lastcom > timeout){
-      StatLedErr(1000,10);
+      StatLedErr(500,200);
     }
     else{
       if(DLEDSTATUSLED){controlDLED(StatLedPin, 1);}
@@ -475,24 +482,24 @@ void controlDLED(int Pin, int Stat){
       Serial.print(Pin);
       Serial.print(" set to:");
       Serial.println(Stat);
-    #endif
-  }
-  else{strip.setPixelColor(Pin, strip.Color(DledOffColors[Pin][0],DledOffColors[Pin][1],DledOffColors[Pin][2]));
-    #ifdef DEBUG
-      Serial.print("DLED No.");
-      Serial.print(Pin);
-      Serial.print(" set to:");
-      Serial.println(Stat);
-    #endif
-  }
-  
-  strip.show();
-  
 
-}
+    #endif
+    } 
+    else{
+      strip.setPixelColor(Pin, strip.Color(DledOffColors[Pin][0],DledOffColors[Pin][1],DledOffColors[Pin][2]));
+      #ifdef DEBUG
+        Serial.print("DLED No.");
+        Serial.print(Pin);
+        Serial.print(" set to:");
+        Serial.println(Stat);
+
+      #endif   
+    }
+  strip.show();
+  }
 #endif
 
-#ifdef LPOTI
+#ifdef LPOTIS
 int readLPoti(){
     for(int i= 0;i<LPotis; i++){
       int var = analogRead(LPotiPins[i][0])+margin;
@@ -504,8 +511,6 @@ int readLPoti(){
       }
     }
 }
-
-
 #endif
 
 
@@ -590,6 +595,7 @@ int readAbsKnob(){
 }
 #endif
 
+#ifdef KEYPAD
 void readKeypad(){
   //detect if Button is Pressed
    for (int col = 0; col < numCols; col++) {
@@ -623,21 +629,28 @@ void readKeypad(){
     pinMode(colPins[col], INPUT);
   }
 }
+#endif
 
 void commandReceived(char cmd, uint16_t io, uint16_t value){
   #ifdef OUTPUTS
   if(cmd == 'O'){
     writeOutputs(io,value);
+    lastcom=millis();
+
   }
   #endif
   #ifdef PWMOUTPUTS
   if(cmd == 'P'){
     writePwmOutputs(io,value);
+    lastcom=millis();
+
   }
   #endif
   #ifdef DLED
   if(cmd == 'D'){
     controlDLED(io,value);
+    lastcom=millis();
+
   }
   #endif
   if(cmd == 'E'){
