@@ -89,6 +89,10 @@ LPotiValues = [[40, 50,60,70,80,90,100,110,120],
 BinSelKnob = 0 	#1 enable
 BinSelKnobPos = 32
 
+#Do you want the Binary Encoded Selector Switches to control override Settings in LinuxCNC? This function lets you define values for each Position. 
+SetBinSelKnobValue = [1]
+BinSelKnobvalues = [[180,190,200,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,40,50,60,70,80,90,100,110,120,130,140,150,160,170],
+			   [0.001,0.01,0.1,1]]
 # Set how many Digital LED's you have connected. 
 DLEDcount = 0 
 
@@ -134,7 +138,7 @@ Destination = [		#define, which Key should be inserted in LinuxCNC as Input or a
 
 
 
-Debug = 0
+
 Debug = 0		#only works when this script is run from halrun in Terminal. "halrun","loadusr arduino" now Debug info will be displayed.
 ########  End of Config!  ########
 olddOutStates= [0]*Outputs
@@ -177,12 +181,16 @@ for Poti in range(LPoti):
 		for Pin in range(LPotiLatches[Poti][1]):
 			c.newpin("LPoti.{}.{}" .format(LPotiLatches[Poti][0],Pin), hal.HAL_BIT, hal.HAL_OUT)
 	else:
-		c.newpin("LPoti.{}.{}" .format(LPotiLatches[Poti][0],"out"), hal.HAL_FLOAT, hal.HAL_OUT)
+		c.newpin("LPoti.{}.{}" .format(LPotiLatches[Poti][0],"out"), hal.HAL_S32, hal.HAL_OUT)
 
 # setup Absolute Encoder Knob halpins
 if BinSelKnob:
-	for port in range(BinSelKnobPos):
-		c.newpin("BinSelKnob.{}".format(port), hal.HAL_BIT, hal.HAL_OUT)
+	if SetBinSelKnobValue == 0:
+		for port in range(BinSelKnobPos):
+			c.newpin("BinSelKnob.0.{}".format(port), hal.HAL_BIT, hal.HAL_OUT)
+	else :
+		c.newpin("BinSelKnob.{}.{}" .format("0","out"), hal.HAL_S32, hal.HAL_OUT)
+
 
 # setup Digital LED halpins
 if DLEDcount > 0:
@@ -320,14 +328,18 @@ while True:
 
 				elif cmd == "K":
 					firstcom = 1
-					for port in range(BinSelKnobPos):
-						if port == value:
-							c["BinSelKnob.{}".format(port)] = 1
-							if(Debug):print("BinSelKnob.{}:{}".format(port,1))
-						else:
-							c["BinSelKnob.{}".format(port)] = 0
-							if(Debug):print("BinSelKnob.{}:{}".format(port,0))
-				
+					if SetBinSelKnobValue == 0:
+						for port in range(BinSelKnobPos):
+							if port == value:
+								c["BinSelKnob.{}".format(port)] = 1
+								if(Debug):print("BinSelKnob.{}:{}".format(port,1))
+							else:
+								c["BinSelKnob.{}".format(port)] = 0
+								if(Debug):print("BinSelKnob.{}:{}".format(port,0))
+					else: 
+						#BinSelKnobvalues
+						c["BinSelKnob.{}.{}" .format(0,"out")] = BinSelKnobvalues[value]
+						
 				elif cmd == "M":
 					firstcom = 1
 					if value == 1:
