@@ -226,12 +226,6 @@ int lastKey= 0;
 
 
 //#define DEBUG
-
-
-//###Misc Settings###
-const int timeout = 10000;   // timeout after 10 sec not receiving Stuff
-const int debounceDelay = 50;
-
 //#######################################   END OF CONFIG     ###########################
 
 //###Misc Settings###
