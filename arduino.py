@@ -77,6 +77,13 @@ LPoti = 0				#number of LPotis, Set LPoti = 0 to disable
 LPotiLatches = [[2,9],	#Poti is connected to Pin 2 (A1) and has 9 positions
 				[3,4]]	#Poti is connected to Pin 3 (A2) and has 4 positions
 
+#Do you want the Latching Potis to control override Settings in LinuxCNC? This function lets you define values for each Position. 
+SetLPotiValue = [1,1]
+LPotiValues = [[40, 50,60,70,80,90,100,110,120],
+			   [0.001,0.01,0.1,1]]
+
+
+
 # Set if you have an binary encoded Selector Switch and how many positions it has (only one supported, as i don't think they are very common and propably nobody uses these anyway)
 # Set BinSelKnob = 0 to disable
 BinSelKnob = 0 	#1 enable
@@ -166,8 +173,11 @@ for port in range(AInputs):
 
 # setup Latching Poti halpins
 for Poti in range(LPoti):
-	for Pin in range(LPotiLatches[Poti][1]):
-		c.newpin("LPoti.{}.{}" .format(LPotiLatches[Poti][0],Pin), hal.HAL_BIT, hal.HAL_OUT)
+	if SetLPotiValue[port]== 0:
+		for Pin in range(LPotiLatches[Poti][1]):
+			c.newpin("LPoti.{}.{}" .format(LPotiLatches[Poti][0],Pin), hal.HAL_BIT, hal.HAL_OUT)
+	else:
+		c.newpin("LPoti.{}.{}" .format(LPotiLatches[Poti][0],"out"), hal.HAL_FLOAT, hal.HAL_OUT)
 
 # setup Absolute Encoder Knob halpins
 if BinSelKnob:
@@ -294,16 +304,19 @@ while True:
 
 				elif cmd == "L":
 					firstcom = 1
-
 					for Poti in range(LPoti):
-						if LPotiLatches[Poti][0] == io:
+						if LPotiLatches[Poti][0] == io and SetLPotiValue[Poti] == 0:
 							for Pin in range(LPotiLatches[Poti][1]):
 								if Pin == value:
 									c["LPoti.{}.{}" .format(io,Pin)] = 1
 									if(Debug):print("LPoti.{}.{} =1".format(io,Pin))
 								else:
 									c["LPoti.{}.{}" .format(io,Pin)] = 0
-									if(Debug):print("LPoti.{}.{} =0".format(io,Pin))	
+									if(Debug):print("LPoti.{}.{} =0".format(io,Pin))
+						
+						if LPotiLatches[Poti][0] == io and SetLPotiValue[Poti] == 1:
+							c["LPoti.{}.{}" .format(io,"out")] = LPotiValues[Poti][io]
+
 
 				elif cmd == "K":
 					firstcom = 1
