@@ -315,8 +315,8 @@ while True:
 									if(Debug):print("LPoti.{}.{} =0".format(io,Pin))
 						
 						if LPotiLatches[Poti][0] == io and SetLPotiValue[Poti] == 1:
-							c["LPoti.{}.{}" .format(io,"out")] = LPotiValues[Poti][io]
-
+							c["LPoti.{}.{}" .format(io,"out")] = LPotiValues[Poti][value]
+							if(Debug):print("LPoti.{}.{} = 0".format("out",LPotiValues[Poti][value]))
 
 				elif cmd == "K":
 					firstcom = 1
