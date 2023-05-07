@@ -91,7 +91,7 @@ BinSelKnobPos = 32
 
 #Do you want the Binary Encoded Selector Switches to control override Settings in LinuxCNC? This function lets you define values for each Position. 
 SetBinSelKnobValue = [1]
-BinSelKnobvalues = [[180,190,200,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,40,50,60,70,80,90,100,110,120,130,140,150,160,170],
+BinSelKnobvalues = [[180,190,200,0,0,0,0,0,0,0,0,0,0,0,0,10,20,30,40,50,60,70,80,90,100,110,120,130,140,150,160,170],
 			   [0.001,0.01,0.1,1]]
 # Set how many Digital LED's you have connected. 
 DLEDcount = 0 
@@ -337,9 +337,9 @@ while True:
 								c["BinSelKnob.{}".format(port)] = 0
 								if(Debug):print("BinSelKnob.{}:{}".format(port,0))
 					else: 
-						#BinSelKnobvalues
 						c["BinSelKnob.{}.{}" .format(0,"out")] = BinSelKnobvalues[value]
-						
+
+
 				elif cmd == "M":
 					firstcom = 1
 					if value == 1:
