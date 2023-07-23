@@ -22,13 +22,16 @@ import serial, time, hal
 #	Data is only send everythime it changes once.
 
 #	Inputs & Toggle Inputs  = 'I' -write only  -Pin State: 0,1
-#	Outputs				 = 'O' -read only   -Pin State: 0,1
-#	PWM Outputs			 = 'P' -read only   -Pin State: 0-255
-#   Digital LED Outputs	 = 'D' -read only   -Pin State: 0,1
-#	Analog Inputs		   = 'A' -write only  -Pin State: 0-1024
+#	Outputs				 	= 'O' -read only   -Pin State: 0,1
+#	PWM Outputs			 	= 'P' -read only   -Pin State: 0-255
+#   Digital LED Outputs	 	= 'D' -read only   -Pin State: 0,1
+#	Analog Inputs		   	= 'A' -write only  -Pin State: 0-1024
 #	Latching Potentiometers = 'L' -write only  -Pin State: 0-max Position
 #	binary encoded Selector = 'K' -write only  -Pin State: 0-32
 #	Matrix Keypad			= 'M' -write only  -Pin State: 0,1
+#	Quadrature Encoders 	= 'R' -write only  -Pin State: 0(down),1(up),-2147483648 to 2147483647(counter)
+#	Joystick Input		 	= 'R' -write only  -Pin State: -2147483648 to 2147483647(counter)
+
 
 
 #	Command 'E0:0' is used for connectivity checks and is send every 5 seconds as keep alive signal
@@ -231,16 +234,16 @@ if Keypad > 0:
 #setup JoyStick Pins
 if JoySticks > 0:
 	for port in range(JoySticks*2):
-		c.newpin("Counter.{}".format(JoyStickPins[port]), hal.HAL_S32, hal.HAL_OUT)
+		c.newpin("counter.{}".format(JoyStickPins[port]), hal.HAL_S32, hal.HAL_OUT)
 
 
 if QuadEncs > 0:
 	for port in range(QuadEncs):
 		if QuadEncSig[port] == 1:
-			c.newpin("CounterUp.{}".format(port), hal.HAL_BIT, hal.HAL_OUT)
-			c.newpin("CounterDown.{}".format(port), hal.HAL_BIT, hal.HAL_OUT)
+			c.newpin("counterup.{}".format(port), hal.HAL_BIT, hal.HAL_OUT)
+			c.newpin("counterdown.{}".format(port), hal.HAL_BIT, hal.HAL_OUT)
 		if QuadEncSig[port] == 2:
-			c.newpin("Counter.{}".format(port), hal.HAL_S32, hal.HAL_OUT)
+			c.newpin("counter.{}".format(port), hal.HAL_S32, hal.HAL_OUT)
 		
 
 
@@ -398,22 +401,22 @@ while True:
 					if JoySticks > 0:
 						for pins in range(JoySticks*2):
 							if (io == JoyStickPins[pins]):
-								c["Counter.{}".format(io)] = value
-						if (Debug):print("Counter.{}:{}".format(io,value))
+								c["counter.{}".format(io)] = value
+						if (Debug):print("counter.{}:{}".format(io,value))
 					if QuadEncs > 0:
 						if QuadEncSig[io]== 1:
 							if value == 0:
-								c["CounterDown.{}".format(io)] = 1
+								c["counterdown.{}".format(io)] = 1
 								time.sleep(0.05)
-								c["CounterDown.{}".format(io)] = 0
+								c["counterdown.{}".format(io)] = 0
 								time.sleep(0.05)
 							if value == 1:
-								c["CounterUp.{}".format(io)] = 1
+								c["counterup.{}".format(io)] = 1
 								time.sleep(0.05)
-								c["CounterUp.{}".format(io)] = 0
+								c["counterup.{}".format(io)] = 0
 								time.sleep(0.05)
 						if QuadEncSig[io]== 2:
-									c["Counter.{}".format(io)] = value
+									c["counter.{}".format(io)] = value
 
 				elif cmd == 'E':
 					arduino.write(b"E0:0\n")
