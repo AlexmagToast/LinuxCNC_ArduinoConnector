@@ -22,13 +22,16 @@ import serial, time, hal
 #	Data is only send everythime it changes once.
 
 #	Inputs & Toggle Inputs  = 'I' -write only  -Pin State: 0,1
-#	Outputs				 = 'O' -read only   -Pin State: 0,1
-#	PWM Outputs			 = 'P' -read only   -Pin State: 0-255
-#   Digital LED Outputs	 = 'D' -read only   -Pin State: 0,1
-#	Analog Inputs		   = 'A' -write only  -Pin State: 0-1024
+#	Outputs				 	= 'O' -read only   -Pin State: 0,1
+#	PWM Outputs			 	= 'P' -read only   -Pin State: 0-255
+#   Digital LED Outputs	 	= 'D' -read only   -Pin State: 0,1
+#	Analog Inputs		   	= 'A' -write only  -Pin State: 0-1024
 #	Latching Potentiometers = 'L' -write only  -Pin State: 0-max Position
 #	binary encoded Selector = 'K' -write only  -Pin State: 0-32
 #	Matrix Keypad			= 'M' -write only  -Pin State: 0,1
+#	Quadrature Encoders 	= 'R' -write only  -Pin State: 0(down),1(up),-2147483648 to 2147483647(counter)
+#	Joystick Input		 	= 'R' -write only  -Pin State: -2147483648 to 2147483647(counter)
+
 
 
 #	Command 'E0:0' is used for connectivity checks and is send every 5 seconds as keep alive signal
@@ -183,43 +186,43 @@ min_update_interval = 100
 
 # setup Input halpins
 for port in range(Inputs):
-	c.newpin("dIn.{}".format(InPinmap[port]), hal.HAL_BIT, hal.HAL_OUT)
-	c.newparam("dIn.{}-invert".format(InPinmap[port]), hal.HAL_BIT, hal.HAL_RW)
+	c.newpin("din.{}".format(InPinmap[port]), hal.HAL_BIT, hal.HAL_OUT)
+	c.newparam("din.{}-invert".format(InPinmap[port]), hal.HAL_BIT, hal.HAL_RW)
 
 # setup Output halpins
 for port in range(Outputs):
-	c.newpin("dOut.{}".format(OutPinmap[port]), hal.HAL_BIT, hal.HAL_IN)
+	c.newpin("dout.{}".format(OutPinmap[port]), hal.HAL_BIT, hal.HAL_IN)
 	olddOutStates[port] = 0
 
 # setup Pwm Output halpins
 for port in range(PwmOutputs):
-	c.newpin("PwmOut.{}".format(PwmOutPinmap[port]), hal.HAL_FLOAT, hal.HAL_IN)
+	c.newpin("pwmout.{}".format(PwmOutPinmap[port]), hal.HAL_FLOAT, hal.HAL_IN)
 	oldPwmOutStates[port] = 255
 # setup Analog Input halpins
 for port in range(AInputs):
-	c.newpin("aIn.{}".format(AInPinmap[port]), hal.HAL_FLOAT, hal.HAL_OUT)
+	c.newpin("ain.{}".format(AInPinmap[port]), hal.HAL_FLOAT, hal.HAL_OUT)
 
 # setup Latching Poti halpins
 for Poti in range(LPoti):
 	if SetLPotiValue[port]== 0:
 		for Pin in range(LPotiLatches[Poti][1]):
-			c.newpin("LPoti.{}.{}" .format(LPotiLatches[Poti][0],Pin), hal.HAL_BIT, hal.HAL_OUT)
+			c.newpin("lpoti.{}.{}" .format(LPotiLatches[Poti][0],Pin), hal.HAL_BIT, hal.HAL_OUT)
 	else:
-		c.newpin("LPoti.{}.{}" .format(LPotiLatches[Poti][0],"out"), hal.HAL_S32, hal.HAL_OUT)
+		c.newpin("lpoti.{}.{}" .format(LPotiLatches[Poti][0],"out"), hal.HAL_S32, hal.HAL_OUT)
 
 # setup Absolute Encoder Knob halpins
 if BinSelKnob:
 	if SetBinSelKnobValue == 0:
 		for port in range(BinSelKnobPos):
-			c.newpin("BinSelKnob.0.{}".format(port), hal.HAL_BIT, hal.HAL_OUT)
+			c.newpin("binselknob.0.{}".format(port), hal.HAL_BIT, hal.HAL_OUT)
 	else :
-		c.newpin("BinSelKnob.{}.{}" .format("0","out"), hal.HAL_S32, hal.HAL_OUT)
+		c.newpin("binselknob.{}.{}" .format("0","out"), hal.HAL_S32, hal.HAL_OUT)
 
 
 # setup Digital LED halpins
 if DLEDcount > 0:
 	for port in range(DLEDcount):
-		c.newpin("DLED.{}".format(port), hal.HAL_BIT, hal.HAL_IN)
+		c.newpin("dled.{}".format(port), hal.HAL_BIT, hal.HAL_IN)
 		oldDLEDStates[port] = 0
 # setup MatrixKeyboard halpins
 if Keypad > 0:
@@ -227,20 +230,20 @@ if Keypad > 0:
 		if Destination[port] == 0 & LinuxKeyboardInput:
 			pass #if destination is set to Linux, don't register a Hal Pin for this key.
 		else:
-			c.newpin("Keypad.{}".format(Chars[port]), hal.HAL_BIT, hal.HAL_IN)
+			c.newpin("keypad.{}".format(Chars[port]), hal.HAL_BIT, hal.HAL_IN)
 #setup JoyStick Pins
 if JoySticks > 0:
 	for port in range(JoySticks*2):
-		c.newpin("Counter.{}".format(JoyStickPins[port]), hal.HAL_S32, hal.HAL_OUT)
+		c.newpin("counter.{}".format(JoyStickPins[port]), hal.HAL_S32, hal.HAL_OUT)
 
 
 if QuadEncs > 0:
 	for port in range(QuadEncs):
 		if QuadEncSig[port] == 1:
-			c.newpin("CounterUp.{}".format(port), hal.HAL_BIT, hal.HAL_OUT)
-			c.newpin("CounterDown.{}".format(port), hal.HAL_BIT, hal.HAL_OUT)
+			c.newpin("counterup.{}".format(port), hal.HAL_BIT, hal.HAL_OUT)
+			c.newpin("counterdown.{}".format(port), hal.HAL_BIT, hal.HAL_OUT)
 		if QuadEncSig[port] == 2:
-			c.newpin("Counter.{}".format(port), hal.HAL_S32, hal.HAL_OUT)
+			c.newpin("counter.{}".format(port), hal.HAL_S32, hal.HAL_OUT)
 		
 
 
@@ -281,7 +284,7 @@ def extract_nbr(input_str):
 
 def managageOutputs():
 	for port in range(PwmOutputs):
-		State = int(c["PwmOut.{}".format(PwmOutPinmap[port])])
+		State = int(c["pwmout.{}".format(PwmOutPinmap[port])])
 		if oldPwmOutStates[port] != State: 	#check if states have changed
 			Sig = 'P'
 			Pin = int(PwmOutPinmap[port])
@@ -291,7 +294,7 @@ def managageOutputs():
 			oldPwmOutStates[port]= State
 
 	for port in range(Outputs):
-		State = int(c["dOut.{}".format(OutPinmap[port])])
+		State = int(c["dout.{}".format(OutPinmap[port])])
 		if olddOutStates[port] != State:	#check if states have changed
 			Sig = 'O'
 			Pin = int(OutPinmap[port])
@@ -301,7 +304,7 @@ def managageOutputs():
 			olddOutStates[port]= State
 		
 	for port in range(DLEDcount):
-		State = int(c["DLED.{}".format(port)])
+		State = int(c["dled.{}".format(port)])
 		if oldDLEDStates[port] != State: #check if states have changed
 			Sig = 'D'
 			Pin = int(port)
@@ -334,20 +337,20 @@ while True:
 				if cmd == "I":
 					firstcom = 1
 					if value == 1:
-						c["dIn.{}".format(io)] = 1
-						c["dIn.{}-invert".format(io)] = 0
-						if(Debug):print("dIn{}:{}".format(io,1))
+						c["din.{}".format(io)] = 1
+						c["din.{}-invert".format(io)] = 0
+						if(Debug):print("din{}:{}".format(io,1))
 						
 					if value == 0:
-						c["dIn.{}".format(io)] = 0
-						c["dIn.{}-invert".format(io)] = 1
-						if(Debug):print("dIn{}:{}".format(io,0))
+						c["din.{}".format(io)] = 0
+						c["din.{}-invert".format(io)] = 1
+						if(Debug):print("din{}:{}".format(io,0))
 					else:pass
 
 				elif cmd == "A":
 					firstcom = 1
-					c["aIn.{}".format(io)] = value
-					if (Debug):print("aIn.{}:{}".format(io,value))
+					c["ain.{}".format(io)] = value
+					if (Debug):print("ain.{}:{}".format(io,value))
 
 				elif cmd == "L":
 					firstcom = 1
@@ -355,28 +358,28 @@ while True:
 						if LPotiLatches[Poti][0] == io and SetLPotiValue[Poti] == 0:
 							for Pin in range(LPotiLatches[Poti][1]):
 								if Pin == value:
-									c["LPoti.{}.{}" .format(io,Pin)] = 1
-									if(Debug):print("LPoti.{}.{} =1".format(io,Pin))
+									c["lpoti.{}.{}" .format(io,Pin)] = 1
+									if(Debug):print("lpoti.{}.{} =1".format(io,Pin))
 								else:
-									c["LPoti.{}.{}" .format(io,Pin)] = 0
-									if(Debug):print("LPoti.{}.{} =0".format(io,Pin))
+									c["lpoti.{}.{}" .format(io,Pin)] = 0
+									if(Debug):print("lpoti.{}.{} =0".format(io,Pin))
 						
 						if LPotiLatches[Poti][0] == io and SetLPotiValue[Poti] == 1:
-							c["LPoti.{}.{}" .format(io,"out")] = LPotiValues[Poti][value]
-							if(Debug):print("LPoti.{}.{} = 0".format("out",LPotiValues[Poti][value]))
+							c["lpoti.{}.{}" .format(io,"out")] = LPotiValues[Poti][value]
+							if(Debug):print("lpoti.{}.{} = 0".format("out",LPotiValues[Poti][value]))
 
 				elif cmd == "K":
 					firstcom = 1
 					if SetBinSelKnobValue == 0:
 						for port in range(BinSelKnobPos):
 							if port == value:
-								c["BinSelKnob.{}".format(port)] = 1
-								if(Debug):print("BinSelKnob.{}:{}".format(port,1))
+								c["binselknob.{}".format(port)] = 1
+								if(Debug):print("binselknob.{}:{}".format(port,1))
 							else:
-								c["BinSelKnob.{}".format(port)] = 0
-								if(Debug):print("BinSelKnob.{}:{}".format(port,0))
+								c["binselknob.{}".format(port)] = 0
+								if(Debug):print("binselknob.{}:{}".format(port,0))
 					else: 
-						c["BinSelKnob.{}.{}" .format(0,"out")] = BinSelKnobvalues[value]
+						c["binselknob.{}.{}" .format(0,"out")] = BinSelKnobvalues[value]
 
 
 				elif cmd == "M":
@@ -386,34 +389,34 @@ while True:
 							subprocess.call(["xdotool", "key", Chars[io]])
 							if(Debug):print("Emulating Keypress{}".format(Chars[io]))
 						else:
-							c["Keypad.{}".format(Chars[io])] = 1
-							if(Debug):print("Keypad{}:{}".format(Chars[io],1))
+							c["keypad.{}".format(Chars[io])] = 1
+							if(Debug):print("keypad{}:{}".format(Chars[io],1))
 
 					if value == 0 & Destination[io] == 0:
-						c["Keypad.{}".format(Chars[io])] = 0
-						if(Debug):print("Keypad{}:{}".format(Chars[io],0))
+						c["keypad.{}".format(Chars[io])] = 0
+						if(Debug):print("keypad{}:{}".format(Chars[io],0))
 
 				elif cmd == "R":
 					firstcom = 1
 					if JoySticks > 0:
 						for pins in range(JoySticks*2):
 							if (io == JoyStickPins[pins]):
-								c["Counter.{}".format(io)] = value
-						if (Debug):print("Counter.{}:{}".format(io,value))
+								c["counter.{}".format(io)] = value
+						if (Debug):print("counter.{}:{}".format(io,value))
 					if QuadEncs > 0:
 						if QuadEncSig[io]== 1:
 							if value == 0:
-								c["CounterDown.{}".format(io)] = 1
+								c["counterdown.{}".format(io)] = 1
 								time.sleep(0.05)
-								c["CounterDown.{}".format(io)] = 0
+								c["counterdown.{}".format(io)] = 0
 								time.sleep(0.05)
 							if value == 1:
-								c["CounterUp.{}".format(io)] = 1
+								c["counterup.{}".format(io)] = 1
 								time.sleep(0.05)
-								c["CounterUp.{}".format(io)] = 0
+								c["counterup.{}".format(io)] = 0
 								time.sleep(0.05)
 						if QuadEncSig[io]== 2:
-									c["Counter.{}".format(io)] = value
+									c["counter.{}".format(io)] = value
 
 				elif cmd == 'E':
 					arduino.write(b"E0:0\n")
