@@ -11,7 +11,7 @@ import serial, time, hal
 #	You can also generate "virtual Pins" by using latching Potentiometers, which are connected to one analog Pin, but are read in Hal as individual Pins.
 
 #	Currently the Software provides: 
-#	- analog Inputs
+#	- analog Inputss
 #	- latching Potentiometers
 #	- 1 binary encoded Selector Switch
 #	- digital Inputs
