@@ -63,10 +63,10 @@ Communication Status      = 'E' -read/Write  -Pin State: 0:0
 //###################################################IO's###################################################
 
 
-//#define INPUTS                       //Use Arduino IO's as Inputs. Define how many Inputs you want in total and then which Pins you want to be Inputs.
+#define INPUTS                       //Use Arduino IO's as Inputs. Define how many Inputs you want in total and then which Pins you want to be Inputs.
 #ifdef INPUTS
   const int Inputs = 5;               //number of inputs using internal Pullup resistor. (short to ground to trigger)
-  int InPinmap[] = {37,38,39,40,41};
+  int InPinmap[] = {52,38,39,40,41};
 #endif
 
                                        //Use Arduino IO's as Toggle Inputs, which means Inputs (Buttons for example) keep HIGH State after Release and Send LOW only after beeing Pressed again. 
@@ -128,7 +128,7 @@ Note that Analog Pin numbering is different to the Print on the PCB.
 #endif
 
 
-#define ROTENC                   
+//#define ROTENC                   
 //Support for Rotatary Encoders with Quadrature Output. Define Pins for A and B Signals for your encoders. Visit https://www.pjrc.com/teensy/td_libs_Encoder.html for further explanation.
 
 #ifdef ROTENC
@@ -155,19 +155,17 @@ Note that Analog Pin numbering is different to the Print on the PCB.
     //Sanguino	        2, 10, 11	                  0
 
 Encoder Encoder0(2,3);      //A,B Pin
-Encoder Encoder1(18,19);    //A,B Pin
+Encoder Encoder1(31,33);    //A,B Pin
 //Encoder Encoder2(A,B);
 //Encoder Encoder3(A,B);
 //Encoder Encoder4(A,B);                      
-  const int RotEncData[] = {1,2}; //define wich kind of Signal you want to generate. 
+  const int RotEncSig[] = {1,1};   //define wich kind of Signal you want to generate. 
                                   //1= send up or down signal (typical use for selecting modes in hal)
                                   //2= send position signal (typical use for MPG wheel)
-
-  const int RotEncMp[] = {1,4};  //some Rotary encoders send multiple Electronical Impulses per mechanical pulse. How many Electrical impulses are send for each mechanical Latch?            
-
+  const int RotEncMp[] = {1,4};   //some Rotary encoders send multiple Electronical Impulses per mechanical pulse. How many Electrical impulses are send for each mechanical Latch?            
 #endif
 
-#define JOYSTICK                   //Support of an Rotating Knob that was build in my Machine. It encodes 32 Positions with 5 Pins in Binary. This will generate 32 Pins in LinuxCNC Hal.
+//#define JOYSTICK                   //Support of an Rotating Knob that was build in my Machine. It encodes 32 Positions with 5 Pins in Binary. This will generate 32 Pins in LinuxCNC Hal.
 #ifdef JOYSTICK
 const int JoySticks = 1;             // Number of potentiometers connected
 const int JoyStickPins[JoySticks*2] = {A0, A1}; // Analog input pins for the potentiometers
@@ -192,7 +190,7 @@ const float scalingFactor = 0.01;   // Scaling factor to control the impact of d
 
 //#define STATUSLED
 #ifdef STATUSLED
-  const int StatLedPin = 5;                //Pin for Status LED
+  const int StatLedPin = 13;                //Pin for Status LED
   const int StatLedErrDel[] = {1000,10};   //Blink Timing for Status LED Error (no connection)
   const int DLEDSTATUSLED = 1;              //set to 1 to use Digital LED instead. set StatLedPin to the according LED number in the chain.
 #endif
@@ -508,28 +506,41 @@ void readJoySticks() {
 
 void readEncoders(){
     if(RotEncs>=1){
-      EncCount[0] = RotEncMp[0]* Encoder0.read();
+      EncCount[0] = Encoder0.read()/RotEncMp[0];
     }
     if(RotEncs>=2){
-      EncCount[1] = RotEncMp[1]* Encoder1.read();
+      EncCount[1] = Encoder1.read()/RotEncMp[1];
     }
     if(RotEncs>=3){
-      //EncCount[2] = RotEncMp[2]* Encoder2.read();
+      //EncCount[2] = Encoder2.read()/RotEncMp[2];
     }
     if(RotEncs>=4){
-      //EncCount[3] = RotEncMp[3]* Encoder3.read();
+      //EncCount[3] = Encoder3.read()/RotEncMp[3];
     }
     if(RotEncs>=5){
-      //EncCount[4] = RotEncMp[4]* Encoder4.read();
+      //EncCount[4] = Encoder4.read()/RotEncMp[4];
     }
 
-    for(int i=0; i<=RotEncs;i++){
-      if(OldEncCount[i] != EncCount[i]){
-         //("R",i,EncCount[i]);
-         OldEncCount[i] = EncCount[i];
+    for(int i=0; i<RotEncs;i++){
+      if(RotEncSig[i]==2){
+        if(OldEncCount[i] != EncCount[i]){
+          sendData('R',i,EncCount[i]);//send Counter
+          OldEncCount[i] = EncCount[i];
+        }
+      }  
+      if(RotEncSig[i]==1){
+        if(OldEncCount[i] < EncCount[i]){
+        sendData('R',i,1); //send Increase by 1 Signal
+        OldEncCount[i] = EncCount[i];
+        }
+        if(OldEncCount[i] > EncCount[i]){
+        sendData('R',i,0); //send Increase by 1 Signal
+        OldEncCount[i] = EncCount[i];
+        }
       }
     }
 }
+
 
 void comalive(){
   #ifdef STATUSLED
