@@ -9,7 +9,7 @@
   You can create as many digital & analog Inputs, Outputs and PWM Outputs as your Arduino can handle.
   You can also generate "virtual Pins" by using latching Potentiometers, which are connected to one analog Pin, but are read in Hal as individual Pins.
 
-  Currently the Software provides: 
+  Currently the Software Supports: 
   - analog Inputs
   - latching Potentiometers
   - 1 binary encoded selector Switch
@@ -29,7 +29,9 @@
   Analog Inputs           = 'A' -write only  -Pin State: 0-1024
   Latching Potentiometers = 'L' -write only  -Pin State: 0-max Position
   binary encoded Selector = 'K' -write only  -Pin State: 0-32
-
+  rotary encoder          = 'R' -write only  -Pin State: up/ down / -32768 to 32767
+  joystick                = 'R' -write only  -Pin State: up/ down / -32768 to 32767
+  
 Keyboard Input:
   Matrix Keypad           = 'M' -write only  -Pin State: Number of Matrix Key. 
 
@@ -64,17 +66,17 @@ Communication Status      = 'E' -read/Write  -Pin State: 0:0
 #define INPUTS                       //Use Arduino IO's as Inputs. Define how many Inputs you want in total and then which Pins you want to be Inputs.
 #ifdef INPUTS
   const int Inputs = 5;               //number of inputs using internal Pullup resistor. (short to ground to trigger)
-  int InPinmap[] = {37,38,39,40,41};
+  int InPinmap[] = {52,38,39,40,41};
 #endif
 
                                        //Use Arduino IO's as Toggle Inputs, which means Inputs (Buttons for example) keep HIGH State after Release and Send LOW only after beeing Pressed again. 
-#define SINPUTS                        //Define how many Toggle Inputs you want in total and then which Pins you want to be Toggle Inputs.
+//#define SINPUTS                        //Define how many Toggle Inputs you want in total and then which Pins you want to be Toggle Inputs.
 #ifdef SINPUTS
   const int sInputs = 5;              //number of inputs using internal Pullup resistor. (short to ground to trigger)
   int sInPinmap[] = {32,33,34,35,36};
 #endif
 
-#define OUTPUTS                     //Use Arduino IO's as Outputs. Define how many Outputs you want in total and then which Pins you want to be Outputs.
+//#define OUTPUTS                     //Use Arduino IO's as Outputs. Define how many Outputs you want in total and then which Pins you want to be Outputs.
 #ifdef OUTPUTS
   const int Outputs = 9;              //number of outputs
   int OutPinmap[] = {10,9,8,7,6,5,4,3,2,21};
@@ -89,8 +91,8 @@ Communication Status      = 'E' -read/Write  -Pin State: 0:0
 //#define AINPUTS                       //Use Arduino ADC's as Analog Inputs. Define how many Analog Inputs you want in total and then which Pins you want to be Analog Inputs.
                                         //Note that Analog Pin numbering is different to the Print on the PCB.
 #ifdef AINPUTS
-  const int AInputs = 1; 
-  int AInPinmap[] = {1};                //Potentiometer for SpindleSpeed override
+  const int AInputs = 2; 
+  int AInPinmap[] = {0,2};                //Potentiometer for SpindleSpeed override
   int smooth = 200;                     //number of samples to denoise ADC, try lower numbers on your setup 200 worked good for me.
 #endif
 
@@ -113,7 +115,7 @@ Note that Analog Pin numbering is different to the Print on the PCB.
 //#define LPOTIS
 #ifdef LPOTIS
   const int LPotis = 2; 
-  int LPotiPins[LPotis][2] = {
+  const int LPotiPins[LPotis][2] = {
                     {2,9},             //Latching Knob Spindle Overdrive on A1, has 9 Positions
                     {3,4}              //Latching Knob Feed Resolution on A2, has 4 Positions
                     };
@@ -124,6 +126,60 @@ Note that Analog Pin numbering is different to the Print on the PCB.
 #ifdef BINSEL
   const int BinSelKnobPins[] = {27,28,31,29,30};  //1,2,4,8,16
 #endif
+
+
+#define QUADENC                   
+//Support for Rotatary Encoders with Quadrature Output. Define Pins for A and B Signals for your encoders. Visit https://www.pjrc.com/teensy/td_libs_Encoder.html for further explanation.
+
+#ifdef QUADENC
+  #include <Encoder.h>
+  const int QuadEncs = 2; //how many Rotary Encoders do you want?
+  #define QUADENCS 2
+  
+    // Encoders have 2 signals, which must be connected to 2 pins. There are three options.
+
+    //Best Performance: Both signals connect to interrupt pins.
+    //Good Performance: First signal connects to an interrupt pin, second to a non-interrupt pin.
+    //Low Performance: Both signals connect to non-interrupt pins, details below. 
+
+    //Board	            Interrupt Pins	            LED Pin(do not use)
+    //Teensy 4.0 - 4.1	All Digital Pins	          13
+    //Teensy 3.0 - 3.6	All Digital Pins	          13
+    //Teensy LC	        2 - 12, 14, 15, 20 - 23	    13
+    //Teensy 2.0	      5, 6, 7, 8	                11
+    //Teensy 1.0	      0, 1, 2, 3, 4, 6, 7, 16	
+    //Teensy++ 2.0	    0, 1, 2, 3, 18, 19, 36, 37  6
+    //Teensy++ 1.0	    0, 1, 2, 3, 18, 19, 36, 37	
+    //Arduino Due	      All Digital Pins	          13
+    //Arduino Uno	      2, 3	                      13
+    //Arduino Leonardo	0, 1, 2, 3	                13
+    //Arduino Mega	    2, 3, 18, 19, 20, 21	      13
+    //Sanguino	        2, 10, 11	                  0
+
+Encoder Encoder0(2,3);      //A,B Pin
+Encoder Encoder1(31,33);    //A,B Pin
+//Encoder Encoder2(A,B);
+//Encoder Encoder3(A,B);
+//Encoder Encoder4(A,B);                      
+  const int QuadEncSig[] = {1,1};   //define wich kind of Signal you want to generate. 
+                                  //1= send up or down signal (typical use for selecting modes in hal)
+                                  //2= send position signal (typical use for MPG wheel)
+  const int QuadEncMp[] = {1,4};   //some Rotary encoders send multiple Electronical Impulses per mechanical pulse. How many Electrical impulses are send for each mechanical Latch?            
+
+#endif
+
+//#define JOYSTICK                   //Support of an Rotating Knob that was build in my Machine. It encodes 32 Positions with 5 Pins in Binary. This will generate 32 Pins in LinuxCNC Hal.
+#ifdef JOYSTICK
+const int JoySticks = 1;             // Number of potentiometers connected
+const int JoyStickPins[JoySticks*2] = {A0, A1}; // Analog input pins for the potentiometers
+const int middleValue = 512;        // Middle value of the potentiometer
+const int deadband = 20;            // Deadband range around the middleValue
+const float scalingFactor = 0.01;   // Scaling factor to control the impact of distanceFromMiddle
+#endif
+
+
+
+
 
 
 //The Software will detect if there is an communication issue. When you power on your machine, the Buttons etc won't work, till LinuxCNC is running. THe StatusLED will inform you about the State of Communication.
@@ -137,7 +193,7 @@ Note that Analog Pin numbering is different to the Print on the PCB.
 
 //#define STATUSLED
 #ifdef STATUSLED
-  const int StatLedPin = 5;                //Pin for Status LED
+  const int StatLedPin = 13;                //Pin for Status LED
   const int StatLedErrDel[] = {1000,10};   //Blink Timing for Status LED Error (no connection)
   const int DLEDSTATUSLED = 1;              //set to 1 to use Digital LED instead. set StatLedPin to the according LED number in the chain.
 #endif
@@ -266,7 +322,18 @@ const int debounceDelay = 50;
 #ifdef KEYPAD
   byte KeyState = 0;
 #endif
+#ifdef QUADENC
+  long EncCount[QuadEncs];
+  long OldEncCount[QuadEncs];
+#endif
+#ifdef JOYSTICK
 
+long counter[JoySticks*2] = {0};      // Initialize an array for the counters
+long prevCounter[JoySticks*2] = {0};  // Initialize an array for the previous counters
+float incrementFactor[JoySticks*2] = {0.0}; // Initialize an array for the incrementFactors
+unsigned long lastUpdateTime[JoySticks*2] = {0}; // Store the time of the last update for each potentiometer
+  
+#endif
 
 //### global Variables setup###
 //Please don't touch them
@@ -285,8 +352,6 @@ byte bufferIndex = 0;
 char cmd = 0;
 uint16_t io = 0;
 uint16_t value = 0;
-
-
 
 void setup() {
 
@@ -351,6 +416,7 @@ for(int col = 0; col < numCols; col++) {
 }
 #endif
 
+
 //Setup Serial
   Serial.begin(115200);
   while (!Serial){}
@@ -358,6 +424,7 @@ for(int col = 0; col < numCols; col++) {
     readCommands();
     flushSerial();
     Serial.println("E0:0");
+    delay(200);
     #ifdef STATUSLED
       StatLedErr(1000,1000);
     #endif
@@ -391,7 +458,100 @@ void loop() {
   readKeypad(); //read Keyboard & send data
 #endif
 
+#ifdef QUADENC
+  readEncoders(); //read Encoders & send data
+#endif
+#ifdef JOYSTICK
+  readJoySticks(); //read Encoders & send data
+#endif
+}
 
+#ifdef JOYSTICK
+
+void readJoySticks() {
+  for (int i = 0; i < JoySticks*2; i++) {
+    unsigned long currentTime = millis(); // Get the current time
+
+    // Check if it's time to update the counter for this potentiometer
+    if (currentTime - lastUpdateTime[i] >= 100) { // Adjust 100 milliseconds based on your needs
+      lastUpdateTime[i] = currentTime; // Update the last update time for this potentiometer
+
+      int potValue = analogRead(JoyStickPins[i]); // Read the potentiometer value
+
+      // Calculate the distance of the potentiometer value from the middle
+      int distanceFromMiddle = potValue - middleValue;
+
+      // Apply deadband to ignore small variations around middleValue
+      if (abs(distanceFromMiddle) <= deadband) {
+        incrementFactor[i] = 0.0; // Set incrementFactor to 0 within the deadband range
+      } else {
+        // Apply non-linear scaling to distanceFromMiddle to get the incrementFactor
+        incrementFactor[i] = pow((distanceFromMiddle * scalingFactor), 3);
+      }
+
+      // Update the counter if the incrementFactor has reached a full number
+      if (incrementFactor[i] >= 1.0 || incrementFactor[i] <= -1.0) {
+        counter[i] += static_cast<long>(incrementFactor[i]); // Increment or decrement the counter by the integer part of incrementFactor
+        incrementFactor[i] -= static_cast<long>(incrementFactor[i]); // Subtract the integer part from incrementFactor
+      }
+
+      // Check if the counter value has changed
+      if (counter[i] != prevCounter[i]) {
+        sendData('R',JoyStickPins[i],counter[i]);
+        // Update the previous counter value with the current counter value
+        prevCounter[i] = counter[i];
+      }
+    }
+  }
+}
+#endif
+
+
+void readEncoders(){
+    if(QuadEncs>=1){
+      #if QUADENCS >= 1
+        EncCount[0] = Encoder0.read()/QuadEncMp[0];
+      #endif
+    }
+    if(QuadEncs>=2){
+      #if QUADENCS >= 2
+        EncCount[1] = Encoder1.read()/QuadEncMp[1];
+      #endif
+    }
+    if(QuadEncs>=3){
+      #if QUADENCS >= 3
+        EncCount[2] = Encoder2.read()/QuadEncMp[2];
+      #endif
+    }
+    if(QuadEncs>=4){
+      #if QUADENCS >= 4
+        EncCount[3] = Encoder3.read()/QuadEncMp[3];
+      #endif
+    }
+    if(QuadEncs>=5){
+      #if QUADENCS >= 5
+        EncCount[4] = Encoder4.read()/QuadEncMp[4];
+      #endif
+    }
+
+    for(int i=0; i<QuadEncs;i++){
+      if(QuadEncSig[i]==2){
+        if(OldEncCount[i] != EncCount[i]){
+          sendData('R',i,EncCount[i]);//send Counter
+          OldEncCount[i] = EncCount[i];
+        }
+      }  
+      if(QuadEncSig[i]==1){
+        if(OldEncCount[i] < EncCount[i]){
+        sendData('R',i,1); //send Increase by 1 Signal
+        OldEncCount[i] = EncCount[i];
+        }
+        if(OldEncCount[i] > EncCount[i]){
+        sendData('R',i,0); //send Increase by 1 Signal
+        OldEncCount[i] = EncCount[i];
+        }
+      }
+    }
 }
 
 
@@ -510,10 +670,10 @@ int readLPoti(){
 
 #ifdef AINPUTS
 int readAInputs(){
-   unsigned long var = 0;
+   
    for(int i= 0;i<AInputs; i++){
-      int State = analogRead(AInPinmap[i]);
-      for(int i= 0;i<smooth; i++){// take couple samples to denoise signal
+      unsigned long var = 0;
+      for(int d= 0;d<smooth; d++){// take couple samples to denoise signal
         var = var+ analogRead(AInPinmap[i]);
       }
       var = var / smooth;
@@ -600,20 +760,13 @@ void readKeypad(){
       pinMode(rowPins[row], INPUT_PULLUP);
       if (digitalRead(rowPins[row]) == LOW && lastKey != keys[row][col]) {
         // A button has been pressed
-        
-        Serial.print("M");
-        Serial.print(keys[row][col]);
-        Serial.print(":");
-        Serial.println(1);
+        sendData('M',keys[row][col],1);
         lastKey = keys[row][col];
         row = numRows;
       }
       if (digitalRead(rowPins[row]) == HIGH && lastKey == keys[row][col]) {
         // The Last Button has been unpressed
-        Serial.print("M");
-        Serial.print(keys[row][col]);
-        Serial.print(":");
-        Serial.println(0);
+        sendData('M',keys[row][col],0);
         lastKey = 0;
         row = numRows;
       }

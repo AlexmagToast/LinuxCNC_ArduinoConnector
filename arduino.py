@@ -22,10 +22,10 @@ import serial, time, hal
 #	Data is only send everythime it changes once.
 
 #	Inputs & Toggle Inputs  = 'I' -write only  -Pin State: 0,1
-#	Outputs                 = 'O' -read only   -Pin State: 0,1
-#	PWM Outputs             = 'P' -read only   -Pin State: 0-255
-#   Digital LED Outputs     = 'D' -read only   -Pin State: 0,1
-#	Analog Inputs           = 'A' -write only  -Pin State: 0-1024
+#	Outputs				 = 'O' -read only   -Pin State: 0,1
+#	PWM Outputs			 = 'P' -read only   -Pin State: 0-255
+#   Digital LED Outputs	 = 'D' -read only   -Pin State: 0,1
+#	Analog Inputs		   = 'A' -write only  -Pin State: 0-1024
 #	Latching Potentiometers = 'L' -write only  -Pin State: 0-max Position
 #	binary encoded Selector = 'K' -write only  -Pin State: 0-32
 #	Matrix Keypad			= 'M' -write only  -Pin State: 0,1
@@ -51,16 +51,16 @@ connection = '/dev/ttyACM0' 	#this is the port your Arduino is connected to. You
 
 
 # Set how many Inputs you have programmed in Arduino and which pins are Inputs, Set Inputs = 0 to disable
-Inputs = 5
+Inputs = 0
 InPinmap = [37,38,39,40,41]
 
 # Set how many Toggled ("sticky") Inputs you have programmed in Arduino and which pins are Toggled Inputs , Set SInputs = 0 to disable
-SInputs = 5
+SInputs = 0
 sInPinmap = [32,33,34,35,36]
 
 
 # Set how many Outputs you have programmed in Arduino and which pins are Outputs, Set Outputs = 0 to disable
-Outputs = 9				#9 Outputs, Set Outputs = 0 to disable
+Outputs = 0				#9 Outputs, Set Outputs = 0 to disable
 OutPinmap = [10,9,8,7,6,5,4,3,2,21]	
 
 # Set how many PWM Outputs you have programmed in Arduino and which pins are PWM Outputs, you can set as many as your Arduino has PWM pins. List the connected pins below.
@@ -93,6 +93,25 @@ BinSelKnobPos = 32
 SetBinSelKnobValue = [1]
 BinSelKnobvalues = [[180,190,200,0,0,0,0,0,0,0,0,0,0,0,0,10,20,30,40,50,60,70,80,90,100,110,120,130,140,150,160,170],
 			   [0.001,0.01,0.1,1]]
+
+#Enable Quadrature Encoders
+QuadEncs = 2
+QuadEncSig = [2,2] 
+#1 = send up or down signal (typical use for selecting modes in hal)
+#2 = send position signal (typical use for MPG wheel)
+
+
+#Enable Joystick support. 
+# Intended for use as MPG. useing the Joystick will update a counter, which can be used as Jog Input. 
+# Moving the Joystick will either increase or decrease the counter. Modify Jog-scale in hal to increase or decrease speed.
+JoySticks = 1	#number of installed Joysticks
+JoyStickPins = [54,55] #Pins the Joysticks are connected to. 
+	#in this example X&Y Pins of the Joystick are connected to Pin A0& A1. Remember, to use the Atmega Pin names here!
+	# for more than one Joystick just add the other pins to the array for example: JoyStickPins = [54,55,56,57] 
+
+
+
+
 # Set how many Digital LED's you have connected. 
 DLEDcount = 0 
 
@@ -115,14 +134,14 @@ DLEDcount = 0
 
 Keypad = 0	# Set to 1 to Activate
 LinuxKeyboardInput = 1	#Activate direct Keyboard integration to Linux.
-Columns = 4
-Rows = 4
+Columns = 24
+Rows = 8
 Chars = [			#here you must define as many characters as your Keypad has keys. calculate columns * rows . for example 4 *4 = 16. You can write it down like in the example for ease of readability.
  "1", "2", "3", "A",
  "4", "5", "6", "B",
  "7", "8", "9", "C",
  "#", "0", "*", "D"
-] 
+]
 
 # These are Settings to connect Keystrokes to Linux, you can ignore them if you only use them as LinuxCNC Inputs.
 
@@ -132,7 +151,7 @@ Destination = [		#define, which Key should be inserted in LinuxCNC as Input or a
 					# 1 = Linux
 	0, 0, 0, 1,
 	0, 0, 0, 1,
-	0, 0, 0, 1, 
+	0, 0, 0, 1,
 	1, 0, 1, 1
 ]
 
@@ -155,25 +174,30 @@ if LinuxKeyboardInput:
 
 Inputs = Inputs+ SInputs
 InPinmap += sInPinmap
+
+
+# Storing Variables for counter timing Stuff
+counter_last_update = {}
+min_update_interval = 100
 ######## SetUp of HalPins ########
 
 # setup Input halpins
 for port in range(Inputs):
-    c.newpin("din.{}".format(InPinmap[port]), hal.HAL_BIT, hal.HAL_OUT)
-    c.newparam("din.{}-invert".format(InPinmap[port]), hal.HAL_BIT, hal.HAL_RW)
+	c.newpin("din.{}".format(InPinmap[port]), hal.HAL_BIT, hal.HAL_OUT)
+	c.newparam("din.{}-invert".format(InPinmap[port]), hal.HAL_BIT, hal.HAL_RW)
 
 # setup Output halpins
 for port in range(Outputs):
-    c.newpin("dout.{}".format(OutPinmap[port]), hal.HAL_BIT, hal.HAL_IN)
-    olddOutStates[port] = 0
+	c.newpin("dout.{}".format(OutPinmap[port]), hal.HAL_BIT, hal.HAL_IN)
+	olddOutStates[port] = 0
 
 # setup Pwm Output halpins
 for port in range(PwmOutputs):
-    c.newpin("pwmout.{}".format(PwmOutPinmap[port]), hal.HAL_FLOAT, hal.HAL_IN)
-    oldPwmOutStates[port] = 255
+	c.newpin("pwmout.{}".format(PwmOutPinmap[port]), hal.HAL_FLOAT, hal.HAL_IN)
+	oldPwmOutStates[port] = 255
 # setup Analog Input halpins
 for port in range(AInputs):
-    c.newpin("ain.{}".format(AInPinmap[port]), hal.HAL_FLOAT, hal.HAL_OUT)
+	c.newpin("ain.{}".format(AInPinmap[port]), hal.HAL_FLOAT, hal.HAL_OUT)
 
 # setup Latching Poti halpins
 for Poti in range(LPoti):
@@ -204,6 +228,22 @@ if Keypad > 0:
 			pass #if destination is set to Linux, don't register a Hal Pin for this key.
 		else:
 			c.newpin("keypad.{}".format(Chars[port]), hal.HAL_BIT, hal.HAL_IN)
+#setup JoyStick Pins
+if JoySticks > 0:
+	for port in range(JoySticks*2):
+		c.newpin("Counter.{}".format(JoyStickPins[port]), hal.HAL_S32, hal.HAL_OUT)
+
+
+if QuadEncs > 0:
+	for port in range(QuadEncs):
+		if QuadEncSig[port] == 1:
+			c.newpin("CounterUp.{}".format(port), hal.HAL_BIT, hal.HAL_OUT)
+			c.newpin("CounterDown.{}".format(port), hal.HAL_BIT, hal.HAL_OUT)
+		if QuadEncSig[port] == 2:
+			c.newpin("Counter.{}".format(port), hal.HAL_S32, hal.HAL_OUT)
+		
+
+
 c.ready()
 
 #setup Serial connection
@@ -217,7 +257,7 @@ timeout = 9 #send something after max 9 seconds
 ######## Functions ########
 
 def keepAlive(event):
-    return event + timeout < time.time()
+	return event + timeout < time.time()
 
 def readinput(input_str):
 	for i in range(50):
@@ -230,14 +270,14 @@ def readinput(input_str):
 
 
 def extract_nbr(input_str):
-    if input_str is None or input_str == '':
-        return 0
+	if input_str is None or input_str == '':
+		return 0
 
-    out_number = ''
-    for ele in input_str:
-        if ele.isdigit():
-            out_number += ele
-    return int(out_number) 
+	out_number = ''
+	for i, ele in enumerate(input_str):
+		if ele.isdigit() or (ele == '-' and i+1 < len(input_str) and input_str[i+1].isdigit()):
+			out_number += ele
+	return int(out_number)
 
 def managageOutputs():
 	for port in range(PwmOutputs):
@@ -272,7 +312,6 @@ def managageOutputs():
 
 
 while True:
-	
 	try:
 		data = arduino.readline().decode('utf-8')					#read Data received from Arduino and decode it
 		if (Debug):print ("I received:{}".format(data))
@@ -281,7 +320,7 @@ while True:
 		try:
 			cmd = data[0][0]
 			if cmd == "":
-				if (Debug):print ("No Command!:{}.".format(cmd))
+				if (Debug):print ("No Command!:{}".format(cmd))
 			
 			else:
 				if not data[0][1]:
@@ -289,8 +328,8 @@ while True:
 				else:
 					io = extract_nbr(data[0])
 				value = extract_nbr(data[1])
-				if value<0: value = 0
-				
+				#if value<0: value = 0
+				if (Debug):print ("No Command!:{}.".format(cmd))
 
 				if cmd == "I":
 					firstcom = 1
@@ -354,7 +393,27 @@ while True:
 						c["keypad.{}".format(Chars[io])] = 0
 						if(Debug):print("keypad{}:{}".format(Chars[io],0))
 
-
+				elif cmd == "R":
+					firstcom = 1
+					if JoySticks > 0:
+						for pins in range(JoySticks*2):
+							if (io == JoyStickPins[pins]):
+								c["Counter.{}".format(io)] = value
+						if (Debug):print("Counter.{}:{}".format(io,value))
+					if QuadEncs > 0:
+						if QuadEncSig[io]== 1:
+							if value == 0:
+								c["CounterDown.{}".format(io)] = 1
+								time.sleep(0.05)
+								c["CounterDown.{}".format(io)] = 0
+								time.sleep(0.05)
+							if value == 1:
+								c["CounterUp.{}".format(io)] = 1
+								time.sleep(0.05)
+								c["CounterUp.{}".format(io)] = 0
+								time.sleep(0.05)
+						if QuadEncSig[io]== 2:
+									c["Counter.{}".format(io)] = value
 
 				elif cmd == 'E':
 					arduino.write(b"E0:0\n")
@@ -378,4 +437,6 @@ while True:
 		arduino.write(b"E:\n")
 		if (Debug):print("keepAlive")
 		event = time.time()
+	
+	time.sleep(0.01)	
 	
