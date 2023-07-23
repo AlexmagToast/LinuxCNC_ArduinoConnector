@@ -22,10 +22,10 @@ import serial, time, hal
 #	Data is only send everythime it changes once.
 
 #	Inputs & Toggle Inputs  = 'I' -write only  -Pin State: 0,1
-#	Outputs                 = 'O' -read only   -Pin State: 0,1
-#	PWM Outputs             = 'P' -read only   -Pin State: 0-255
-#   Digital LED Outputs     = 'D' -read only   -Pin State: 0,1
-#	Analog Inputs           = 'A' -write only  -Pin State: 0-1024
+#	Outputs				 = 'O' -read only   -Pin State: 0,1
+#	PWM Outputs			 = 'P' -read only   -Pin State: 0-255
+#   Digital LED Outputs	 = 'D' -read only   -Pin State: 0,1
+#	Analog Inputs		   = 'A' -write only  -Pin State: 0-1024
 #	Latching Potentiometers = 'L' -write only  -Pin State: 0-max Position
 #	binary encoded Selector = 'K' -write only  -Pin State: 0-32
 #	Matrix Keypad			= 'M' -write only  -Pin State: 0,1
@@ -94,7 +94,12 @@ SetBinSelKnobValue = [1]
 BinSelKnobvalues = [[180,190,200,0,0,0,0,0,0,0,0,0,0,0,0,10,20,30,40,50,60,70,80,90,100,110,120,130,140,150,160,170],
 			   [0.001,0.01,0.1,1]]
 
-#Quadrature Encoders
+#Enable Quadrature Encoders
+QuadEncs = 2
+QuadEncSig = [1,1] 
+#1 = send up or down signal (typical use for selecting modes in hal)
+#2 = send position signal (typical use for MPG wheel)
+
 
 #Enable Joystick support. 
 # Intended for use as MPG. useing the Joystick will update a counter, which can be used as Jog Input. 
@@ -169,25 +174,30 @@ if LinuxKeyboardInput:
 
 Inputs = Inputs+ SInputs
 InPinmap += sInPinmap
+
+
+# Storing Variables for counter timing Stuff
+counter_last_update = {}
+counter_hold_interval = 100
 ######## SetUp of HalPins ########
 
 # setup Input halpins
 for port in range(Inputs):
-    c.newpin("dIn.{}".format(InPinmap[port]), hal.HAL_BIT, hal.HAL_OUT)
-    c.newparam("dIn.{}-invert".format(InPinmap[port]), hal.HAL_BIT, hal.HAL_RW)
+	c.newpin("dIn.{}".format(InPinmap[port]), hal.HAL_BIT, hal.HAL_OUT)
+	c.newparam("dIn.{}-invert".format(InPinmap[port]), hal.HAL_BIT, hal.HAL_RW)
 
 # setup Output halpins
 for port in range(Outputs):
-    c.newpin("dOut.{}".format(OutPinmap[port]), hal.HAL_BIT, hal.HAL_IN)
-    olddOutStates[port] = 0
+	c.newpin("dOut.{}".format(OutPinmap[port]), hal.HAL_BIT, hal.HAL_IN)
+	olddOutStates[port] = 0
 
 # setup Pwm Output halpins
 for port in range(PwmOutputs):
-    c.newpin("PwmOut.{}".format(PwmOutPinmap[port]), hal.HAL_FLOAT, hal.HAL_IN)
-    oldPwmOutStates[port] = 255
+	c.newpin("PwmOut.{}".format(PwmOutPinmap[port]), hal.HAL_FLOAT, hal.HAL_IN)
+	oldPwmOutStates[port] = 255
 # setup Analog Input halpins
 for port in range(AInputs):
-    c.newpin("aIn.{}".format(AInPinmap[port]), hal.HAL_FLOAT, hal.HAL_OUT)
+	c.newpin("aIn.{}".format(AInPinmap[port]), hal.HAL_FLOAT, hal.HAL_OUT)
 
 # setup Latching Poti halpins
 for Poti in range(LPoti):
@@ -221,7 +231,19 @@ if Keypad > 0:
 #setup JoyStick Pins
 if JoySticks > 0:
 	for port in range(JoySticks*2):
-		c.newpin("Joystick.{}".format(JoyStickPins[port]), hal.HAL_S32, hal.HAL_OUT)
+		c.newpin("Counter.{}".format(JoyStickPins[port]), hal.HAL_S32, hal.HAL_OUT)
+
+
+if QuadEncs > 0:
+	for port in range(QuadEncs):
+		if QuadEncSig[port] == 1:
+			c.newpin("CounterUp.{}".format(port), hal.HAL_BIT, hal.HAL_OUT)
+			c.newpin("CounterDown.{}".format(port), hal.HAL_BIT, hal.HAL_OUT)
+		if QuadEncSig[port] == 2:
+			c.newpin("Counter.{}".format(port), hal.HAL_S32, hal.HAL_OUT)
+		
+
+
 c.ready()
 
 #setup Serial connection
@@ -373,11 +395,57 @@ while True:
 
 				elif cmd == "R":
 					firstcom = 1
-					c["Joystick.{}".format(io)] = value
-					if (Debug):print("Joystick.{}:{}".format(io,value))
+					if JoySticks > 0:
+						for pins in range(JoySticks*2):
+							if (io == JoyStickPins[pins]):
+								c["Counter.{}".format(io)] = value
+						if (Debug):print("Counter.{}:{}".format(io,value))
+					if QuadEncs > 0:
+						if QuadEncSig[io]== 1:
+							if value == 0:
+								c["CounterDown.{}".format(io)] = 1
+								time.sleep(0.1)
+								c["CounterDown.{}".format(io)] = 0
+							if value == 1:
+								c["CounterUp.{}".format(io)] = 1
+								time.sleep(0.1)
+								c["CounterUp.{}".format(io)] = 0
+						if QuadEncSig[io]== 2:
+							c["Counter.{}".format(io)] = value
+
+						
+					# Check if the button is not already in the dictionary, and set its last update time to 0
+					if io not in counter_last_update:
+						counter_last_update[io] = 0
 
 
+						
+		if JoySticks > 0:
+			for pins in range(JoySticks*2):
+				if (io == JoyStickPins[pins]):
+					c["Counter.{}".format(io)] = value
+					if Debug:
+						print("Counter.{}:{}".format(io, value))
+		
+		if QuadEncs > 0:
+			if QuadEncSig[io] == 1:
+				# Check if enough time has passed since the last update
+				if millis() - counter_last_update[io] >= counter_hold_interval:
+					counter_last_update[io] = millis()  # Update the last update time for the button
+					if value == 0:
+						c["CounterDown.{}".format(io)] = 1
+						counter_last_update[io] = millis()  # Update the last update time for the button
+					if value == 1:
+						c["CounterUp.{}".format(io)] = 1
+						counter_last_update[io] = millis()  # Update the last update time for the button
+			elif QuadEncSig[io] == 2:
+				c["Counter.{}".format(io)] = value
 
+
+			elif cmd == "R":
+			firstcom = 1
+			handle_button_press(io, value)						
+							
 				elif cmd == 'E':
 					arduino.write(b"E0:0\n")
 					if (Debug):print("Sending E0:0 to establish contact")
