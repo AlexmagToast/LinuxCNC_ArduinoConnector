@@ -169,16 +169,11 @@ Encoder Encoder1(18,19);    //A,B Pin
 
 #define JOYSTICK                   //Support of an Rotating Knob that was build in my Machine. It encodes 32 Positions with 5 Pins in Binary. This will generate 32 Pins in LinuxCNC Hal.
 #ifdef JOYSTICK
-  const int JoySticks = 1;
-  const int JoyStickPins[JoySticks][2] = {
-                        {A0,A2},//Analog Pins JoyStick 1 is connected to
-                        //{2,3}//Analog Pins JoyStick 2 is connected to 
-                        };                                   
-  const int JoyStickDeadband = 50; //Area around Middle Position that gets ignored. 
-  const int JoyStickSpeed = 100; //Multiplier to slow down the Output Speed if in counter mode. Higher number = slower. 
-
-
-  const int JoyStickMaxVal = 500; //The Analog Input gets transformed from 0-1023 to -JoyStickMaxVal to +JoyStickMaxVal, so that the Middle Position of the Joystick is 0. I don't think you should change this.
+const int JoySticks = 1;             // Number of potentiometers connected
+const int JoyStickPins[JoySticks*2] = {A0, A1}; // Analog input pins for the potentiometers
+const int middleValue = 512;        // Middle value of the potentiometer
+const int deadband = 20;            // Deadband range around the middleValue
+const float scalingFactor = 0.01;   // Scaling factor to control the impact of distanceFromMiddle
 #endif
 
 
@@ -331,8 +326,11 @@ const int debounceDelay = 50;
   long OldEncCount[RotEncs];
 #endif
 #ifdef JOYSTICK
-  //int oldJoyStick[JoySticks];
-  long JoyStickCount[JoySticks][2];
+
+long counter[JoySticks*2] = {0};      // Initialize an array for the counters
+long prevCounter[JoySticks*2] = {0};  // Initialize an array for the previous counters
+float incrementFactor[JoySticks*2] = {0.0}; // Initialize an array for the incrementFactors
+unsigned long lastUpdateTime[JoySticks*2] = {0}; // Store the time of the last update for each potentiometer
   
 #endif
 
@@ -417,14 +415,6 @@ for(int col = 0; col < numCols; col++) {
 }
 #endif
 
-#ifdef JOYSTICK
-  for(int i= 0; i<JoySticks;i++){
-    JoyStickCount[i][0] = 0;
-    JoyStickCount[i][1] = 0;
-    pinMode(JoyStickPins[i][0], INPUT);
-    pinMode(JoyStickPins[i][1], INPUT);
-    }
-#endif
 
 //Setup Serial
   Serial.begin(115200);
@@ -433,6 +423,7 @@ for(int col = 0; col < numCols; col++) {
     readCommands();
     flushSerial();
     Serial.println("E0:0");
+    delay(200);
     #ifdef STATUSLED
       StatLedErr(1000,1000);
     #endif
@@ -475,32 +466,46 @@ void loop() {
 }
 
 #ifdef JOYSTICK
-void readJoySticks(){
-  for(int i= 0;i<JoySticks; i++){
-    long var0 = 0;
-    long var1 = 0;
-    for(int d= 0;d<5; d++){// take couple samples to denoise signal
-        var0 = var0+ analogRead(JoyStickPins[i][0]);
-        var1 = var1+ analogRead(JoyStickPins[i][1]);
-    }
-    var0 = var0 / 5; //0-1023
-    var1 = var1 / 5; //0-1023
 
+void readJoySticks() {
+  for (int i = 0; i < JoySticks*2; i++) {
+    unsigned long currentTime = millis(); // Get the current time
 
-    if(var0 > 510+JoyStickDeadband || var0 < 510-JoyStickDeadband){
-      var0 = map(var0,0,1023,JoyStickMaxVal*-1,JoyStickMaxVal);
-      JoyStickCount[i][0] = JoyStickCount[i][0] + (var0*2);
-      sendData('R',JoyStickPins[i][0],JoyStickCount[i][0]/(JoyStickMaxVal*JoyStickSpeed));
-    }
-    if(var1 > 510 + JoyStickDeadband || var1 < 510 - JoyStickDeadband){
-      var1 = map(var1,0,1023,JoyStickMaxVal*-1,JoyStickMaxVal);
-      JoyStickCount[i][1] = JoyStickCount[i][1] + (var1*2) ;
-      sendData('R',JoyStickPins[i][1],JoyStickCount[i][1]/(JoyStickMaxVal*JoyStickSpeed));
-    }
+    // Check if it's time to update the counter for this potentiometer
+    if (currentTime - lastUpdateTime[i] >= 100) { // Adjust 100 milliseconds based on your needs
+      lastUpdateTime[i] = currentTime; // Update the last update time for this potentiometer
 
+      int potValue = analogRead(JoyStickPins[i]); // Read the potentiometer value
+
+      // Calculate the distance of the potentiometer value from the middle
+      int distanceFromMiddle = potValue - middleValue;
+
+      // Apply deadband to ignore small variations around middleValue
+      if (abs(distanceFromMiddle) <= deadband) {
+        incrementFactor[i] = 0.0; // Set incrementFactor to 0 within the deadband range
+      } else {
+        // Apply non-linear scaling to distanceFromMiddle to get the incrementFactor
+        incrementFactor[i] = pow((distanceFromMiddle * scalingFactor), 3);
+      }
+
+      // Update the counter if the incrementFactor has reached a full number
+      if (incrementFactor[i] >= 1.0 || incrementFactor[i] <= -1.0) {
+        counter[i] += static_cast<long>(incrementFactor[i]); // Increment or decrement the counter by the integer part of incrementFactor
+        incrementFactor[i] -= static_cast<long>(incrementFactor[i]); // Subtract the integer part from incrementFactor
+      }
+
+      // Check if the counter value has changed
+      if (counter[i] != prevCounter[i]) {
+        sendData('R',JoyStickPins[i],counter[i]);
+        // Update the previous counter value with the current counter value
+        prevCounter[i] = counter[i];
+      }
+    }
   }
 }
 #endif
+
+
 void readEncoders(){
     if(RotEncs>=1){
       EncCount[0] = RotEncMp[0]* Encoder0.read();
@@ -520,7 +525,7 @@ void readEncoders(){
 
     for(int i=0; i<=RotEncs;i++){
       if(OldEncCount[i] != EncCount[i]){
-         //sendData("R",i,EncCount[i]);
+         //("R",i,EncCount[i]);
          OldEncCount[i] = EncCount[i];
       }
     }
@@ -731,20 +736,13 @@ void readKeypad(){
       pinMode(rowPins[row], INPUT_PULLUP);
       if (digitalRead(rowPins[row]) == LOW && lastKey != keys[row][col]) {
         // A button has been pressed
-        
-        Serial.print("M");
-        Serial.print(keys[row][col]);
-        Serial.print(":");
-        Serial.println(1);
+        sendData('M',keys[row][col],1);
         lastKey = keys[row][col];
         row = numRows;
       }
       if (digitalRead(rowPins[row]) == HIGH && lastKey == keys[row][col]) {
         // The Last Button has been unpressed
-        Serial.print("M");
-        Serial.print(keys[row][col]);
-        Serial.print(":");
-        Serial.println(0);
+        sendData('M',keys[row][col],0);
         lastKey = 0;
         row = numRows;
       }
