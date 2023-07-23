@@ -30,8 +30,8 @@ It also supports Digital LEDs such as WS2812 or PL9823. This way you can have as
 | Digital RGB LEDs like WS2812 or PL9823        | ~ 1000       | ~ 1000         | ~ 1000      |
 | latching Potentiometers / Selector Switches   | Up to 16     | Up to 12       | Up to 6     |
 | binary encoded Selector Switch                | 1            | 1              | 1           |
-| Quadrature Encoder Input                      | 1            | 1              | 1           |
-| Joystick Support                              | 1            | 1              | 1           |
+| Quadrature Encoder Input                      | 3 or more    | 1 or more      | 1 or more   |
+| Joystick Support                              | 8 (2Axis)    |  6 (2Axis)     | 3 (2Axis)   |
 
 
 # Compatiblity
@@ -182,6 +182,25 @@ For easy implementation in LinuxCNC two modes are supported.
 
 If your Encoder can be pressed and there is a button inside, use the Input or Latching Input functionality mentioned above.
 
+Encoders have 2 signals, which must be connected to 2 pins. There are three options.
+
+Best Performance: Both signals connect to interrupt pins.
+Good Performance: First signal connects to an interrupt pin, second to a non-interrupt pin.
+Low Performance: Both signals connect to non-interrupt pins, details below. 
+
+Board	            Interrupt Pins	            LED Pin(do not use)
+Teensy 4.0 - 4.1	All Digital Pins	          13
+Teensy 3.0 - 3.6	All Digital Pins	          13
+Teensy LC	        2 - 12, 14, 15, 20 - 23	    13
+Teensy 2.0	      5, 6, 7, 8	                11
+Teensy 1.0	      0, 1, 2, 3, 4, 6, 7, 16	
+Teensy++ 2.0	    0, 1, 2, 3, 18, 19, 36, 37  6
+Teensy++ 1.0	    0, 1, 2, 3, 18, 19, 36, 37	
+Arduino Due	      All Digital Pins	          13
+Arduino Uno	      2, 3	                      13
+Arduino Leonardo	0, 1, 2, 3	                13
+Arduino Mega	    2, 3, 18, 19, 20, 21	      13
+Sanguino	        2, 10, 11	                  0
 
 # Joysticks
 Joysticks use a similar implementation as Quadrature encoders and are implemented with the usecase as MPG in mind. 
@@ -208,6 +227,8 @@ Data is always only send once, everytime it changes.
 | Latching Potentiometers | L             | write only   |0-max Position|
 | binary encoded Selector | K             | write only   |0-32          |
 | Matrix Keyboard         | M             | write only   |0,1           |
+| Quadrature Encoders     | R             | write only   |0,1,counter   |
+| Joystick                | R             | write only   |counter       |
 | Connection established  | E             | read/ write  |0:0           |
 
 
