@@ -30,23 +30,19 @@ It also supports Digital LEDs such as WS2812 or PL9823. This way you can have as
 | Digital RGB LEDs like WS2812 or PL9823        | ~ 1000       | ~ 1000         | ~ 1000      |
 | latching Potentiometers / Selector Switches   | Up to 16     | Up to 12       | Up to 6     |
 | binary encoded Selector Switch                | 1            | 1              | 1           |
-| Matrix Keyboard Support                       | 1            | 1              | 1           |
+| Quadrature Encoder Input                      | 1            | 1              | 1           |
+| Joystick Support                              | 1            | 1              | 1           |
 
-
-TODO  
-- Rotary Encoder Input
-
-Should this be supported?  
-- RC Servo  Support
 
 # Compatiblity
 This software works with LinuxCNC 2.8, 2.9 and 2.10. For 2.8 however you have to change #!/usr/bin/python3.9 in the first line of arduino.py to #!/usr/bin/python2.7.
 
-You should be able to use any Arduino, currently Tested are:
+You should be able to use any Arduino or Arduino compatible Board, currently Tested are:
 Arduino Mega 2560
 Arduino Nano
 Arduino Duemilanove
 
+but others like Teensy should work fine also.
 
 # Configuration
 To Install LinuxCNC_ArduinoConnector.ino on your Arduino first work through the settings in the beginning of the file.
@@ -68,16 +64,16 @@ Just return ```E0:0``` to it. You can now communicate with the Arduino. Further 
 6. make arduino.py executable with chmod +x, delete the suffix .py and copy
 it to /usr/bin  
     ```sudo chmod +x arduino.py  ```  
-    ```sudo cp arduino.py /usr/bin/arduino  ```  
+    ```sudo cp arduino-connector.py /usr/bin/arduino-connector  ```  
 
-7. add this entry to the end of your hal file: ```loadusr arduino```  
+7. add this entry to the end of your hal file: ```loadusr arduino-connector```  
 
 
 # Testing
 To test your Setup, you can run ```halrun``` in Terminal.
 Then you will see halcmd:
 
-Enter ```loadusr arduino``` and then ```show pin```  
+Enter ```loadusr arduino-connector``` and then ```show pin```  
 
 All the Arduino generated Pins should now be listed and the State they are in. 
 You can click buttons now and if you run show pin again the state should've changed. 
@@ -172,6 +168,27 @@ If it doesn't, something is not working and this program will not work either. P
 
 In the Settings a cheap 4x4 Keyboard is used such as https://theartoftinkering.com/recommends/matrix-keyboard/ (referral link)
 
+# Quadrature Encoders
+Quadrature Encoders require a Library to be installed. 
+More Info about the used Library can be found here: https://www.pjrc.com/teensy/td_libs_Encoder.html
+It can be downloaded here: https://www.arduino.cc/reference/en/libraries/encoder/
+
+This function is made with Rotating encoders in mind but supports all kinds of quadrature Signals. 
+For easy implementation in LinuxCNC two modes are supported. 
+
+1 = Up or Down Signals per Impuls , this is intended for use with Feed or Spindle Speed Override.
+2 = Counter Signal, this is intended for the usecase of using the Encoder as MPG for example. Arduino will count Impulses and add them to a counter, which then is send to LinuxCNC.
+    there you can connect it to x & y yog signals.
+
+If your Encoder can be pressed and there is a button inside, use the Input or Latching Input functionality mentioned above.
+
+
+# Joysticks
+Joysticks use a similar implementation as Quadrature encoders and are implemented with the usecase as MPG in mind. 
+Connect your X and Y Pin of your Joystick to an Analog Pin of your choice. 
+Depending of the position of the Joystick it will add or substract from a counter, which then is send to LinuxCNC. The more you move the Joystick from the middle Position to the end of movement the more will be added to the counter, which will increase the speed of motion in Jog mode. 
+
+Currently Joysticks will only generate an counter in LinuxCNC.
 
 # Serial communication over USB
 The Send and receive Protocol is <Signal><PinNumber>:<Pin State>
