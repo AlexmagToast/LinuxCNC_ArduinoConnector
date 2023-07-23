@@ -178,7 +178,7 @@ InPinmap += sInPinmap
 
 # Storing Variables for counter timing Stuff
 counter_last_update = {}
-counter_hold_interval = 100
+min_update_interval = 100
 ######## SetUp of HalPins ########
 
 # setup Input halpins
@@ -394,58 +394,33 @@ while True:
 						if(Debug):print("Keypad{}:{}".format(Chars[io],0))
 
 				elif cmd == "R":
-					firstcom = 1
-					if JoySticks > 0:
-						for pins in range(JoySticks*2):
-							if (io == JoyStickPins[pins]):
-								c["Counter.{}".format(io)] = value
-						if (Debug):print("Counter.{}:{}".format(io,value))
-					if QuadEncs > 0:
-						if QuadEncSig[io]== 1:
-							if value == 0:
-								c["CounterDown.{}".format(io)] = 1
-								time.sleep(0.1)
-								c["CounterDown.{}".format(io)] = 0
-							if value == 1:
-								c["CounterUp.{}".format(io)] = 1
-								time.sleep(0.1)
-								c["CounterUp.{}".format(io)] = 0
-						if QuadEncSig[io]== 2:
-							c["Counter.{}".format(io)] = value
+				firstcom = 1
 
-						
-					# Check if the button is not already in the dictionary, and set its last update time to 0
+				if JoySticks > 0:
+					for pins in range(JoySticks * 2):
+						if io == JoyStickPins[pins]:
+							c["Counter.{}".format(io)] = value
+							if Debug:
+								print("Counter.{}:{}".format(io, value))
+
+				if QuadEncs > 0:
 					if io not in counter_last_update:
 						counter_last_update[io] = 0
 
+					if time.time() - counter_last_update[io] >= min_update_interval:
+						global counter_last_update
 
+						if QuadEncSig[io] == 1:
+							if value == 0:
+								c["CounterDown.{}".format(io)] = 1
+								counter_last_update[io] = time.time()  # Set the last update time
+							elif value == 1:
+								c["CounterUp.{}".format(io)] = 1
+								counter_last_update[io] = time.time()  # Set the last update time
+						elif QuadEncSig[io] == 2:
+							c["Counter.{}".format(io)] = value
 						
-		if JoySticks > 0:
-			for pins in range(JoySticks*2):
-				if (io == JoyStickPins[pins]):
-					c["Counter.{}".format(io)] = value
-					if Debug:
-						print("Counter.{}:{}".format(io, value))
-		
-		if QuadEncs > 0:
-			if QuadEncSig[io] == 1:
-				# Check if enough time has passed since the last update
-				if millis() - counter_last_update[io] >= counter_hold_interval:
-					counter_last_update[io] = millis()  # Update the last update time for the button
-					if value == 0:
-						c["CounterDown.{}".format(io)] = 1
-						counter_last_update[io] = millis()  # Update the last update time for the button
-					if value == 1:
-						c["CounterUp.{}".format(io)] = 1
-						counter_last_update[io] = millis()  # Update the last update time for the button
-			elif QuadEncSig[io] == 2:
-				c["Counter.{}".format(io)] = value
 
-
-			elif cmd == "R":
-			firstcom = 1
-			handle_button_press(io, value)						
-							
 				elif cmd == 'E':
 					arduino.write(b"E0:0\n")
 					if (Debug):print("Sending E0:0 to establish contact")

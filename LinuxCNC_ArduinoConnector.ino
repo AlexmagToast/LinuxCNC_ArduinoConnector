@@ -128,12 +128,14 @@ Note that Analog Pin numbering is different to the Print on the PCB.
 #endif
 
 
-//#define ROTENC                   
+#define QUADENC                   
 //Support for Rotatary Encoders with Quadrature Output. Define Pins for A and B Signals for your encoders. Visit https://www.pjrc.com/teensy/td_libs_Encoder.html for further explanation.
 
-#ifdef ROTENC
+#ifdef QUADENC
   #include <Encoder.h>
-  const int RotEncs = 2; //how many Rotary Encoders do you want?
+  const int QuadEncs = 2; //how many Rotary Encoders do you want?
+  #define QUADENCS 2
+  
     // Encoders have 2 signals, which must be connected to 2 pins. There are three options.
 
     //Best Performance: Both signals connect to interrupt pins.
@@ -159,10 +161,11 @@ Encoder Encoder1(31,33);    //A,B Pin
 //Encoder Encoder2(A,B);
 //Encoder Encoder3(A,B);
 //Encoder Encoder4(A,B);                      
-  const int RotEncSig[] = {1,1};   //define wich kind of Signal you want to generate. 
+  const int QuadEncSig[] = {1,1};   //define wich kind of Signal you want to generate. 
                                   //1= send up or down signal (typical use for selecting modes in hal)
                                   //2= send position signal (typical use for MPG wheel)
-  const int RotEncMp[] = {1,4};   //some Rotary encoders send multiple Electronical Impulses per mechanical pulse. How many Electrical impulses are send for each mechanical Latch?            
+  const int QuadEncMp[] = {1,4};   //some Rotary encoders send multiple Electronical Impulses per mechanical pulse. How many Electrical impulses are send for each mechanical Latch?            
+
 #endif
 
 //#define JOYSTICK                   //Support of an Rotating Knob that was build in my Machine. It encodes 32 Positions with 5 Pins in Binary. This will generate 32 Pins in LinuxCNC Hal.
@@ -319,9 +322,9 @@ const int debounceDelay = 50;
 #ifdef KEYPAD
   byte KeyState = 0;
 #endif
-#ifdef ROTENC
-  long EncCount[RotEncs];
-  long OldEncCount[RotEncs];
+#ifdef QUADENC
+  long EncCount[QuadEncs];
+  long OldEncCount[QuadEncs];
 #endif
 #ifdef JOYSTICK
 
@@ -455,7 +458,7 @@ void loop() {
   readKeypad(); //read Keyboard & send data
 #endif
 
-#ifdef ROTENC
+#ifdef QUADENC
   readEncoders(); //read Encoders & send data
 #endif
 #ifdef JOYSTICK
@@ -505,30 +508,40 @@ void readJoySticks() {
 
 
 void readEncoders(){
-    if(RotEncs>=1){
-      EncCount[0] = Encoder0.read()/RotEncMp[0];
+    if(QuadEncs>=1){
+      #if QUADENCS >= 1
+        EncCount[0] = Encoder0.read()/QuadEncMp[0];
+      #endif
     }
-    if(RotEncs>=2){
-      EncCount[1] = Encoder1.read()/RotEncMp[1];
+    if(QuadEncs>=2){
+      #if QUADENCS >= 2
+        EncCount[1] = Encoder1.read()/QuadEncMp[1];
+      #endif
     }
-    if(RotEncs>=3){
-      //EncCount[2] = Encoder2.read()/RotEncMp[2];
+    if(QuadEncs>=3){
+      #if QUADENCS >= 3
+        EncCount[2] = Encoder2.read()/QuadEncMp[2];
+      #endif
     }
-    if(RotEncs>=4){
-      //EncCount[3] = Encoder3.read()/RotEncMp[3];
+    if(QuadEncs>=4){
+      #if QUADENCS >= 4
+        EncCount[3] = Encoder3.read()/QuadEncMp[3];
+      #endif
     }
-    if(RotEncs>=5){
-      //EncCount[4] = Encoder4.read()/RotEncMp[4];
+    if(QuadEncs>=5){
+      #if QUADENCS >= 5
+        EncCount[4] = Encoder4.read()/QuadEncMp[4];
+      #endif
     }
 
-    for(int i=0; i<RotEncs;i++){
-      if(RotEncSig[i]==2){
+    for(int i=0; i<QuadEncs;i++){
+      if(QuadEncSig[i]==2){
         if(OldEncCount[i] != EncCount[i]){
           sendData('R',i,EncCount[i]);//send Counter
           OldEncCount[i] = EncCount[i];
         }
       }  
-      if(RotEncSig[i]==1){
+      if(QuadEncSig[i]==1){
         if(OldEncCount[i] < EncCount[i]){
         sendData('R',i,1); //send Increase by 1 Signal
         OldEncCount[i] = EncCount[i];
