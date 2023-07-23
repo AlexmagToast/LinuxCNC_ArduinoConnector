@@ -9,7 +9,7 @@
   You can create as many digital & analog Inputs, Outputs and PWM Outputs as your Arduino can handle.
   You can also generate "virtual Pins" by using latching Potentiometers, which are connected to one analog Pin, but are read in Hal as individual Pins.
 
-  Currently the Software provides: 
+  Currently the Software Supports: 
   - analog Inputs
   - latching Potentiometers
   - 1 binary encoded selector Switch
@@ -29,7 +29,9 @@
   Analog Inputs           = 'A' -write only  -Pin State: 0-1024
   Latching Potentiometers = 'L' -write only  -Pin State: 0-max Position
   binary encoded Selector = 'K' -write only  -Pin State: 0-32
-
+  rotary encoder          = 'R' -write only  -Pin State: up/ down / -32768 to 32767
+  joystick                = 'R' -write only  -Pin State: up/ down / -32768 to 32767
+  
 Keyboard Input:
   Matrix Keypad           = 'M' -write only  -Pin State: Number of Matrix Key. 
 
@@ -61,20 +63,20 @@ Communication Status      = 'E' -read/Write  -Pin State: 0:0
 //###################################################IO's###################################################
 
 
-#define INPUTS                       //Use Arduino IO's as Inputs. Define how many Inputs you want in total and then which Pins you want to be Inputs.
+//#define INPUTS                       //Use Arduino IO's as Inputs. Define how many Inputs you want in total and then which Pins you want to be Inputs.
 #ifdef INPUTS
   const int Inputs = 5;               //number of inputs using internal Pullup resistor. (short to ground to trigger)
   int InPinmap[] = {37,38,39,40,41};
 #endif
 
                                        //Use Arduino IO's as Toggle Inputs, which means Inputs (Buttons for example) keep HIGH State after Release and Send LOW only after beeing Pressed again. 
-#define SINPUTS                        //Define how many Toggle Inputs you want in total and then which Pins you want to be Toggle Inputs.
+//#define SINPUTS                        //Define how many Toggle Inputs you want in total and then which Pins you want to be Toggle Inputs.
 #ifdef SINPUTS
   const int sInputs = 5;              //number of inputs using internal Pullup resistor. (short to ground to trigger)
   int sInPinmap[] = {32,33,34,35,36};
 #endif
 
-#define OUTPUTS                     //Use Arduino IO's as Outputs. Define how many Outputs you want in total and then which Pins you want to be Outputs.
+//#define OUTPUTS                     //Use Arduino IO's as Outputs. Define how many Outputs you want in total and then which Pins you want to be Outputs.
 #ifdef OUTPUTS
   const int Outputs = 9;              //number of outputs
   int OutPinmap[] = {10,9,8,7,6,5,4,3,2,21};
@@ -89,8 +91,8 @@ Communication Status      = 'E' -read/Write  -Pin State: 0:0
 //#define AINPUTS                       //Use Arduino ADC's as Analog Inputs. Define how many Analog Inputs you want in total and then which Pins you want to be Analog Inputs.
                                         //Note that Analog Pin numbering is different to the Print on the PCB.
 #ifdef AINPUTS
-  const int AInputs = 1; 
-  int AInPinmap[] = {1};                //Potentiometer for SpindleSpeed override
+  const int AInputs = 2; 
+  int AInPinmap[] = {0,2};                //Potentiometer for SpindleSpeed override
   int smooth = 200;                     //number of samples to denoise ADC, try lower numbers on your setup 200 worked good for me.
 #endif
 
@@ -113,7 +115,7 @@ Note that Analog Pin numbering is different to the Print on the PCB.
 //#define LPOTIS
 #ifdef LPOTIS
   const int LPotis = 2; 
-  int LPotiPins[LPotis][2] = {
+  const int LPotiPins[LPotis][2] = {
                     {2,9},             //Latching Knob Spindle Overdrive on A1, has 9 Positions
                     {3,4}              //Latching Knob Feed Resolution on A2, has 4 Positions
                     };
@@ -124,6 +126,64 @@ Note that Analog Pin numbering is different to the Print on the PCB.
 #ifdef BINSEL
   const int BinSelKnobPins[] = {27,28,31,29,30};  //1,2,4,8,16
 #endif
+
+
+#define ROTENC                   
+//Support for Rotatary Encoders with Quadrature Output. Define Pins for A and B Signals for your encoders. Visit https://www.pjrc.com/teensy/td_libs_Encoder.html for further explanation.
+
+#ifdef ROTENC
+  #include <Encoder.h>
+  const int RotEncs = 2; //how many Rotary Encoders do you want?
+    // Encoders have 2 signals, which must be connected to 2 pins. There are three options.
+
+    //Best Performance: Both signals connect to interrupt pins.
+    //Good Performance: First signal connects to an interrupt pin, second to a non-interrupt pin.
+    //Low Performance: Both signals connect to non-interrupt pins, details below. 
+
+    //Board	            Interrupt Pins	            LED Pin(do not use)
+    //Teensy 4.0 - 4.1	All Digital Pins	          13
+    //Teensy 3.0 - 3.6	All Digital Pins	          13
+    //Teensy LC	        2 - 12, 14, 15, 20 - 23	    13
+    //Teensy 2.0	      5, 6, 7, 8	                11
+    //Teensy 1.0	      0, 1, 2, 3, 4, 6, 7, 16	
+    //Teensy++ 2.0	    0, 1, 2, 3, 18, 19, 36, 37  6
+    //Teensy++ 1.0	    0, 1, 2, 3, 18, 19, 36, 37	
+    //Arduino Due	      All Digital Pins	          13
+    //Arduino Uno	      2, 3	                      13
+    //Arduino Leonardo	0, 1, 2, 3	                13
+    //Arduino Mega	    2, 3, 18, 19, 20, 21	      13
+    //Sanguino	        2, 10, 11	                  0
+
+Encoder Encoder0(2,3);      //A,B Pin
+Encoder Encoder1(18,19);    //A,B Pin
+//Encoder Encoder2(A,B);
+//Encoder Encoder3(A,B);
+//Encoder Encoder4(A,B);                      
+  const int RotEncData[] = {1,2}; //define wich kind of Signal you want to generate. 
+                                  //1= send up or down signal (typical use for selecting modes in hal)
+                                  //2= send position signal (typical use for MPG wheel)
+
+  const int RotEncMp[] = {1,4};  //some Rotary encoders send multiple Electronical Impulses per mechanical pulse. How many Electrical impulses are send for each mechanical Latch?            
+
+#endif
+
+#define JOYSTICK                   //Support of an Rotating Knob that was build in my Machine. It encodes 32 Positions with 5 Pins in Binary. This will generate 32 Pins in LinuxCNC Hal.
+#ifdef JOYSTICK
+  const int JoySticks = 1;
+  const int JoyStickPins[JoySticks][2] = {
+                        {A0,A2},//Analog Pins JoyStick 1 is connected to
+                        //{2,3}//Analog Pins JoyStick 2 is connected to 
+                        };                                   
+  const int JoyStickDeadband = 50; //Area around Middle Position that gets ignored. 
+  const int JoyStickSpeed = 100; //Multiplier to slow down the Output Speed if in counter mode. Higher number = slower. 
+
+
+  const int JoyStickMaxVal = 500; //The Analog Input gets transformed from 0-1023 to -JoyStickMaxVal to +JoyStickMaxVal, so that the Middle Position of the Joystick is 0. I don't think you should change this.
+#endif
+
+
+
+
 
 
 //The Software will detect if there is an communication issue. When you power on your machine, the Buttons etc won't work, till LinuxCNC is running. THe StatusLED will inform you about the State of Communication.
@@ -266,7 +326,15 @@ const int debounceDelay = 50;
 #ifdef KEYPAD
   byte KeyState = 0;
 #endif
-
+#ifdef ROTENC
+  long EncCount[RotEncs];
+  long OldEncCount[RotEncs];
+#endif
+#ifdef JOYSTICK
+  //int oldJoyStick[JoySticks];
+  long JoyStickCount[JoySticks][2];
+  
+#endif
 
 //### global Variables setup###
 //Please don't touch them
@@ -285,8 +353,6 @@ byte bufferIndex = 0;
 char cmd = 0;
 uint16_t io = 0;
 uint16_t value = 0;
-
-
 
 void setup() {
 
@@ -351,6 +417,15 @@ for(int col = 0; col < numCols; col++) {
 }
 #endif
 
+#ifdef JOYSTICK
+  for(int i= 0; i<JoySticks;i++){
+    JoyStickCount[i][0] = 0;
+    JoyStickCount[i][1] = 0;
+    pinMode(JoyStickPins[i][0], INPUT);
+    pinMode(JoyStickPins[i][1], INPUT);
+    }
+#endif
+
 //Setup Serial
   Serial.begin(115200);
   while (!Serial){}
@@ -391,9 +466,65 @@ void loop() {
   readKeypad(); //read Keyboard & send data
 #endif
 
-
+#ifdef ROTENC
+  readEncoders(); //read Encoders & send data
+#endif
+#ifdef JOYSTICK
+  readJoySticks(); //read Encoders & send data
+#endif
 }
 
+#ifdef JOYSTICK
+void readJoySticks(){
+  for(int i= 0;i<JoySticks; i++){
+    long var0 = 0;
+    long var1 = 0;
+    for(int d= 0;d<5; d++){// take couple samples to denoise signal
+        var0 = var0+ analogRead(JoyStickPins[i][0]);
+        var1 = var1+ analogRead(JoyStickPins[i][1]);
+    }
+    var0 = var0 / 5; //0-1023
+    var1 = var1 / 5; //0-1023
+
+
+    if(var0 > 510+JoyStickDeadband || var0 < 510-JoyStickDeadband){
+      var0 = map(var0,0,1023,JoyStickMaxVal*-1,JoyStickMaxVal);
+      JoyStickCount[i][0] = JoyStickCount[i][0] + (var0*2);
+      sendData('R',JoyStickPins[i][0],JoyStickCount[i][0]/(JoyStickMaxVal*JoyStickSpeed));
+    }
+    if(var1 > 510 + JoyStickDeadband || var1 < 510 - JoyStickDeadband){
+      var1 = map(var1,0,1023,JoyStickMaxVal*-1,JoyStickMaxVal);
+      JoyStickCount[i][1] = JoyStickCount[i][1] + (var1*2) ;
+      sendData('R',JoyStickPins[i][1],JoyStickCount[i][1]/(JoyStickMaxVal*JoyStickSpeed));
+    }
+
+  }
+}
+#endif
+void readEncoders(){
+    if(RotEncs>=1){
+      EncCount[0] = RotEncMp[0]* Encoder0.read();
+    }
+    if(RotEncs>=2){
+      EncCount[1] = RotEncMp[1]* Encoder1.read();
+    }
+    if(RotEncs>=3){
+      //EncCount[2] = RotEncMp[2]* Encoder2.read();
+    }
+    if(RotEncs>=4){
+      //EncCount[3] = RotEncMp[3]* Encoder3.read();
+    }
+    if(RotEncs>=5){
+      //EncCount[4] = RotEncMp[4]* Encoder4.read();
+    }
+
+    for(int i=0; i<=RotEncs;i++){
+      if(OldEncCount[i] != EncCount[i]){
+         //sendData("R",i,EncCount[i]);
+         OldEncCount[i] = EncCount[i];
+      }
+    }
+}
 
 void comalive(){
   #ifdef STATUSLED
@@ -510,10 +641,10 @@ int readLPoti(){
 
 #ifdef AINPUTS
 int readAInputs(){
-   unsigned long var = 0;
+   
    for(int i= 0;i<AInputs; i++){
-      int State = analogRead(AInPinmap[i]);
-      for(int i= 0;i<smooth; i++){// take couple samples to denoise signal
+      unsigned long var = 0;
+      for(int d= 0;d<smooth; d++){// take couple samples to denoise signal
         var = var+ analogRead(AInPinmap[i]);
       }
       var = var / smooth;
