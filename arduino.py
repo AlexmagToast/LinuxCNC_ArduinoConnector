@@ -96,10 +96,13 @@ BinSelKnobvalues = [[180,190,200,0,0,0,0,0,0,0,0,0,0,0,0,10,20,30,40,50,60,70,80
 
 #Quadrature Encoders
 
-#Joystick
-JoySticks = 1
-JoyStickPins = [[54,56],
-			   [3,1]]
+#Enable Joystick support. 
+# Intended for use as MPG. useing the Joystick will update a counter, which can be used as Jog Input. 
+# Moving the Joystick will either increase or decrease the counter. Modify Jog-scale in hal to increase or decrease speed.
+JoySticks = 1	#number of installed Joysticks
+JoyStickPins = [54,55] #Pins the Joysticks are connected to. 
+	#in this example X&Y Pins of the Joystick are connected to Pin A0& A1. Remember, to use the Atmega Pin names here!
+	# for more than one Joystick just add the other pins to the array for example: JoyStickPins = [54,55,56,57] 
 
 
 
@@ -217,8 +220,8 @@ if Keypad > 0:
 			c.newpin("Keypad.{}".format(Chars[port]), hal.HAL_BIT, hal.HAL_IN)
 #setup JoyStick Pins
 if JoySticks > 0:
-	for port in range(JoySticks):
-		c.newpin("Jsk.{}".format(JoyStickPins[port]), hal.HAL_FLOAT, hal.HAL_OUT)
+	for port in range(JoySticks*2):
+		c.newpin("Joystick.{}".format(JoyStickPins[port]), hal.HAL_S32, hal.HAL_OUT)
 c.ready()
 
 #setup Serial connection
@@ -232,7 +235,7 @@ timeout = 9 #send something after max 9 seconds
 ######## Functions ########
 
 def keepAlive(event):
-    return event + timeout < time.time()
+	return event + timeout < time.time()
 
 def readinput(input_str):
 	for i in range(50):
@@ -245,14 +248,14 @@ def readinput(input_str):
 
 
 def extract_nbr(input_str):
-    if input_str is None or input_str == '':
-        return 0
+	if input_str is None or input_str == '':
+		return 0
 
-    out_number = ''
-    for ele in input_str:
-        if ele.isdigit():
-            out_number += ele
-    return int(out_number) 
+	out_number = ''
+	for i, ele in enumerate(input_str):
+		if ele.isdigit() or (ele == '-' and i+1 < len(input_str) and input_str[i+1].isdigit()):
+			out_number += ele
+	return int(out_number)
 
 def managageOutputs():
 	for port in range(PwmOutputs):
@@ -295,7 +298,7 @@ while True:
 		try:
 			cmd = data[0][0]
 			if cmd == "":
-				if (Debug):print ("No Command!:{}.".format(cmd))
+				if (Debug):print ("No Command!:{}".format(cmd))
 			
 			else:
 				if not data[0][1]:
@@ -303,8 +306,8 @@ while True:
 				else:
 					io = extract_nbr(data[0])
 				value = extract_nbr(data[1])
-				if value<0: value = 0
-				
+				#if value<0: value = 0
+				if (Debug):print ("No Command!:{}.".format(cmd))
 
 				if cmd == "I":
 					firstcom = 1
@@ -370,8 +373,8 @@ while True:
 
 				elif cmd == "R":
 					firstcom = 1
-					c["Jsk.{}".format(io)] = value
-					if (Debug):print("aIn.{}:{}".format(io,value))
+					c["Joystick.{}".format(io)] = value
+					if (Debug):print("Joystick.{}:{}".format(io,value))
 
 
 
@@ -398,5 +401,5 @@ while True:
 		if (Debug):print("keepAlive")
 		event = time.time()
 	
-	time.wait(0.01)	
+	time.sleep(0.01)	
 	
