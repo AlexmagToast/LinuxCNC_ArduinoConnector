@@ -96,7 +96,7 @@ BinSelKnobvalues = [[180,190,200,0,0,0,0,0,0,0,0,0,0,0,0,10,20,30,40,50,60,70,80
 
 #Enable Quadrature Encoders
 QuadEncs = 2
-QuadEncSig = [1,1] 
+QuadEncSig = [2,2] 
 #1 = send up or down signal (typical use for selecting modes in hal)
 #2 = send position signal (typical use for MPG wheel)
 
@@ -394,32 +394,26 @@ while True:
 						if(Debug):print("Keypad{}:{}".format(Chars[io],0))
 
 				elif cmd == "R":
-				firstcom = 1
-
-				if JoySticks > 0:
-					for pins in range(JoySticks * 2):
-						if io == JoyStickPins[pins]:
-							c["Counter.{}".format(io)] = value
-							if Debug:
-								print("Counter.{}:{}".format(io, value))
-
-				if QuadEncs > 0:
-					if io not in counter_last_update:
-						counter_last_update[io] = 0
-
-					if time.time() - counter_last_update[io] >= min_update_interval:
-						global counter_last_update
-
-						if QuadEncSig[io] == 1:
+					firstcom = 1
+					if JoySticks > 0:
+						for pins in range(JoySticks*2):
+							if (io == JoyStickPins[pins]):
+								c["Counter.{}".format(io)] = value
+						if (Debug):print("Counter.{}:{}".format(io,value))
+					if QuadEncs > 0:
+						if QuadEncSig[io]== 1:
 							if value == 0:
 								c["CounterDown.{}".format(io)] = 1
-								counter_last_update[io] = time.time()  # Set the last update time
-							elif value == 1:
+								time.sleep(0.05)
+								c["CounterDown.{}".format(io)] = 0
+								time.sleep(0.05)
+							if value == 1:
 								c["CounterUp.{}".format(io)] = 1
-								counter_last_update[io] = time.time()  # Set the last update time
-						elif QuadEncSig[io] == 2:
-							c["Counter.{}".format(io)] = value
-						
+								time.sleep(0.05)
+								c["CounterUp.{}".format(io)] = 0
+								time.sleep(0.05)
+						if QuadEncSig[io]== 2:
+									c["Counter.{}".format(io)] = value
 
 				elif cmd == 'E':
 					arduino.write(b"E0:0\n")
