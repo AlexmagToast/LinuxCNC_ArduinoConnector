@@ -184,9 +184,9 @@ If your Encoder can be pressed and there is a button inside, use the Input or La
 
 Encoders have 2 signals, which must be connected to 2 pins. There are three options.
 
-Best Performance: Both signals connect to interrupt pins.
-Good Performance: First signal connects to an interrupt pin, second to a non-interrupt pin.
-Low Performance: Both signals connect to non-interrupt pins, details below.
+Best Performance: Both signals connect to interrupt pins.  
+Good Performance: First signal connects to an interrupt pin, second to a non-interrupt pin.  
+Low Performance: Both signals connect to non-interrupt pins, details below.  
 
 | Board           | Interrupt Pins            |LED Pin(do not use) |
 | -------------   | -------------             |-------------       |
