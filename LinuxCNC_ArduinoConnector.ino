@@ -129,12 +129,12 @@ Note that Analog Pin numbering is different to the Print on the PCB.
 
 
 #define QUADENC                   
-//Support for Rotatary Encoders with Quadrature Output. Define Pins for A and B Signals for your encoders. Visit https://www.pjrc.com/teensy/td_libs_Encoder.html for further explanation.
+//Support for Quadrature Encoders. Define Pins for A and B Signals for your encoders. Visit https://www.pjrc.com/teensy/td_libs_Encoder.html for further explanation.
 
 #ifdef QUADENC
   #include <Encoder.h>
-  const int QuadEncs = 2; //how many Rotary Encoders do you want?
-  #define QUADENCS 2
+  const int QuadEncs = 2; //how many Rotary Encoders do you want? 
+  #define QUADENCS 2  //You have to set it twice unfortunately...
   
     // Encoders have 2 signals, which must be connected to 2 pins. There are three options.
 
@@ -161,7 +161,7 @@ Encoder Encoder1(31,33);    //A,B Pin
 //Encoder Encoder2(A,B);
 //Encoder Encoder3(A,B);
 //Encoder Encoder4(A,B);                      
-  const int QuadEncSig[] = {1,1};   //define wich kind of Signal you want to generate. 
+  const int QuadEncSig[] = {2,2};   //define wich kind of Signal you want to generate. 
                                   //1= send up or down signal (typical use for selecting modes in hal)
                                   //2= send position signal (typical use for MPG wheel)
   const int QuadEncMp[] = {1,4};   //some Rotary encoders send multiple Electronical Impulses per mechanical pulse. How many Electrical impulses are send for each mechanical Latch?            
