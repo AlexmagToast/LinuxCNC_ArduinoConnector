@@ -37,19 +37,19 @@ It also supports Digital LEDs such as WS2812 or PL9823. This way you can have as
 # Compatiblity
 This software works with LinuxCNC 2.8, 2.9 and 2.10. For 2.8 however you have to change #!/usr/bin/python3.9 in the first line of arduino.py to #!/usr/bin/python2.7.
 
-You should be able to use any Arduino or Arduino compatible Board, currently Tested are:
+You should be able to use any Arduino or Arduino compatible Boards, currently Tested are:
 Arduino Mega 2560
 Arduino Nano
 Arduino Duemilanove
 
-but others like Teensy should work fine also.
+Other Arduino compatible Boards like Teensy should work fine also.
 
 # Configuration
 To Install LinuxCNC_ArduinoConnector.ino on your Arduino first work through the settings in the beginning of the file.
 The Settings are commented in the file.
 
 To test you Arduino you can connect to it after flashing with the Arduino IDE. Set your Baudrate to 115200. 
-In the Beginning the ARduino will Spam ```E0:0``` to the console. This is used to establish connection. 
+In the Beginning the Arduino will Spam ```E0:0``` to the console. This is used to establish connection. 
 Just return ```E0:0``` to it. You can now communicate with the Arduino. Further info is in the Chapter [Serial Communication](#serial-communication-over-usb)
 
 # Installation
