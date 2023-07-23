@@ -186,21 +186,22 @@ Encoders have 2 signals, which must be connected to 2 pins. There are three opti
 
 Best Performance: Both signals connect to interrupt pins.
 Good Performance: First signal connects to an interrupt pin, second to a non-interrupt pin.
-Low Performance: Both signals connect to non-interrupt pins, details below. 
+Low Performance: Both signals connect to non-interrupt pins, details below.
 
-Board	            Interrupt Pins	            LED Pin(do not use)
-Teensy 4.0 - 4.1	All Digital Pins	          13
-Teensy 3.0 - 3.6	All Digital Pins	          13
-Teensy LC	        2 - 12, 14, 15, 20 - 23	    13
-Teensy 2.0	      5, 6, 7, 8	                11
-Teensy 1.0	      0, 1, 2, 3, 4, 6, 7, 16	
-Teensy++ 2.0	    0, 1, 2, 3, 18, 19, 36, 37  6
-Teensy++ 1.0	    0, 1, 2, 3, 18, 19, 36, 37	
-Arduino Due	      All Digital Pins	          13
-Arduino Uno	      2, 3	                      13
-Arduino Leonardo	0, 1, 2, 3	                13
-Arduino Mega	    2, 3, 18, 19, 20, 21	      13
-Sanguino	        2, 10, 11	                  0
+| Board           | Interrupt Pins            |LED Pin(do not use) |
+| -------------   | -------------             |-------------       |
+|Teensy 4.0 - 4.1	|All Digital Pins	          |13                  |
+|Teensy 3.0 - 3.6	|All Digital Pins	          |13                  |
+|Teensy LC	      | 2 - 12, 14, 15, 20 - 23	  |13                  |
+|Teensy 2.0	      |5, 6, 7, 8	                |11                  |
+|Teensy 1.0	      |0, 1, 2, 3, 4, 6, 7, 16	  |                    |
+|Teensy++ 2.0	    |0, 1, 2, 3, 18, 19, 36, 37 |6                   |
+|Teensy++ 1.0	    |0, 1, 2, 3, 18, 19, 36, 37	|                    |
+|Arduino Due	    | All Digital Pins	        |13                  |
+|Arduino Uno	    | 2, 3	                    |13                  |
+|Arduino Leonardo	|0, 1, 2, 3	                |13                  |
+|Arduino Mega	    |2, 3, 18, 19, 20, 21	      |13                  |
+|Sanguino	        |2, 10, 11	                |0                   |
 
 # Joysticks
 Joysticks use a similar implementation as Quadrature encoders and are implemented with the usecase as MPG in mind. 
