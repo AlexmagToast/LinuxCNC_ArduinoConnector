@@ -31,7 +31,7 @@ It also supports Digital LEDs such as WS2812 or PL9823. This way you can have as
 | latching Potentiometers / Selector Switches   | Up to 16     | Up to 12       | Up to 6     |
 | binary encoded Selector Switch                | 1            | 1              | 1           |
 | Quadrature Encoder Input                      | 3 or more    | 1 or more      | 1 or more   |
-| Joystick Support                              | 8 (2Axis)    |  6 (2Axis)     | 3 (2Axis)   |
+| Joystick Support (2Axis)                      | 8            | 6              | 3           |
 
 
 # Compatiblity
