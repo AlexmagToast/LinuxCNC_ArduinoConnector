@@ -128,7 +128,7 @@ Note that Analog Pin numbering is different to the Print on the PCB.
 #endif
 
 
-#define QUADENC                   
+//#define QUADENC                   
 //Support for Quadrature Encoders. Define Pins for A and B Signals for your encoders. Visit https://www.pjrc.com/teensy/td_libs_Encoder.html for further explanation.
 
 #ifdef QUADENC
@@ -259,7 +259,7 @@ Adafruit_NeoPixel strip(DLEDcount, DLEDPin, NEO_GRB + NEO_KHZ800);//Color sequen
 Matrix Keypads are supported. The input is NOT added as HAL Pin to LinuxCNC. Instead it is inserted to Linux as Keyboard direktly. 
 So you could attach a QWERT* Keyboard to the arduino and you will be able to write in Linux with it (only while LinuxCNC is running!)
 */
-//#define KEYPAD
+#define KEYPAD
 #ifdef KEYPAD
 const int numRows = 4;  // Define the number of rows in the matrix
 const int numCols = 4;  // Define the number of columns in the matrix
@@ -270,14 +270,9 @@ const int colPins[numCols] = {6, 7, 8, 9};
 
 
 
-int keys[numRows][numCols] = {
-  {1,2,3,4},
-  {5,6,7,8},
-  {9,10,11,12},
-  {13,14,15,16}
-};
+int keys[numRows][numCols] = {0};
 
-int lastKey= 0;
+int lastKey= -1;
 #endif
 
 
@@ -411,7 +406,7 @@ void setup() {
 #ifdef KEYPAD
 for(int col = 0; col < numCols; col++) {
   for (int row = 0; row < numRows; row++) {
-    keys[row][col] = row * numRows + col+1;
+    keys[row][col] = row * numRows + col;
   }
 }
 #endif
@@ -506,7 +501,7 @@ void readJoySticks() {
 }
 #endif
 
-
+#ifdef QUADENC
 void readEncoders(){
     if(QuadEncs>=1){
       #if QUADENCS >= 1
@@ -554,7 +549,7 @@ void readEncoders(){
     }
 }
 
-
+#endif
 void comalive(){
   #ifdef STATUSLED
     if(millis() - lastcom > timeout){
@@ -767,7 +762,7 @@ void readKeypad(){
       if (digitalRead(rowPins[row]) == HIGH && lastKey == keys[row][col]) {
         // The Last Button has been unpressed
         sendData('M',keys[row][col],0);
-        lastKey = 0;
+        lastKey = -1; //reset Key pressed
         row = numRows;
       }
     }

@@ -81,7 +81,7 @@ LPotiLatches = [[2,9],	#Poti is connected to Pin 2 (A1) and has 9 positions
 				[3,4]]	#Poti is connected to Pin 3 (A2) and has 4 positions
 
 #Do you want the Latching Potis to control override Settings in LinuxCNC? This function lets you define values for each Position. 
-SetLPotiValue = [1,1]
+SetLPotiValue = [1,1] #0 = disable 1= enable
 LPotiValues = [[40, 50,60,70,80,90,100,110,120],
 			   [0.001,0.01,0.1,1]]
 
@@ -93,12 +93,12 @@ BinSelKnob = 0 	#1 enable
 BinSelKnobPos = 32
 
 #Do you want the Binary Encoded Selector Switches to control override Settings in LinuxCNC? This function lets you define values for each Position. 
-SetBinSelKnobValue = [1]
+SetBinSelKnobValue = [1] #0 = disable 1= enable
 BinSelKnobvalues = [[180,190,200,0,0,0,0,0,0,0,0,0,0,0,0,10,20,30,40,50,60,70,80,90,100,110,120,130,140,150,160,170],
 			   [0.001,0.01,0.1,1]]
 
 #Enable Quadrature Encoders
-QuadEncs = 2
+QuadEncs = 0
 QuadEncSig = [2,2] 
 #1 = send up or down signal (typical use for selecting modes in hal)
 #2 = send position signal (typical use for MPG wheel)
@@ -107,7 +107,7 @@ QuadEncSig = [2,2]
 #Enable Joystick support. 
 # Intended for use as MPG. useing the Joystick will update a counter, which can be used as Jog Input. 
 # Moving the Joystick will either increase or decrease the counter. Modify Jog-scale in hal to increase or decrease speed.
-JoySticks = 1	#number of installed Joysticks
+JoySticks = 0	#number of installed Joysticks
 JoyStickPins = [54,55] #Pins the Joysticks are connected to. 
 	#in this example X&Y Pins of the Joystick are connected to Pin A0& A1. Remember, to use the Atmega Pin names here!
 	# for more than one Joystick just add the other pins to the array for example: JoyStickPins = [54,55,56,57] 
@@ -119,47 +119,48 @@ JoyStickPins = [54,55] #Pins the Joysticks are connected to.
 DLEDcount = 0 
 
 
-
 # Support For Matrix Keypads. This requires you to install and test "xdotool". 
-#You can install it by typing "sudo apt install xdotool" in your console. After installing "xdotool type "Hello World" should return Hello World in the Terminal. 
+# You can install it by typing "sudo apt install xdotool" in your console. After installing you can test your setup by entering: " xdotool type 'Hello World' " in Terminal. 
+# It should enter Hello World. 
 # If it doesn't, something is not working and this program will not work either. Please get xdotool working first. 
-# The Key press is received as M Number of Key:HIGH/LOW. M2:1 would represent Key 2 beeing Pressed. M2:0 represents letting go of the key.
-# Key Numbering is calculated in the Matrix. for a 4x4 Keypad the numbering of the Keys will be like this:
-#	1,	2,	3,	4
-#	5,	6,	7,	8
-#	9,	10,	11,	12
-#	13,	14,	15,	16
 #
 # Assign Values to each Key in the following Settings.
 # These Inputs are handled differently from everything else, because thy are send to the Host instead and emulate actual Keyboard input.
 # You can specify special Charakters however, which will be handled as Inputs in LinuxCNC. Define those in the LCNC Array below.
 
 
-Keypad = 0	# Set to 1 to Activate
-LinuxKeyboardInput = 1	#Activate direct Keyboard integration to Linux.
-Columns = 24
-Rows = 8
-Chars = [			#here you must define as many characters as your Keypad has keys. calculate columns * rows . for example 4 *4 = 16. You can write it down like in the example for ease of readability.
+Keypad = 0  # Set to 1 to Activate
+LinuxKeyboardInput = 1  #Activate direct Keyboard integration to Linux.
+Columns = 4
+Rows = 4
+Chars = [      #here you must define as many characters as your Keypad has keys. calculate columns * rows . for example 4 *4 = 16. You can write it down like in the example for ease of readability.
  "1", "2", "3", "A",
  "4", "5", "6", "B",
  "7", "8", "9", "C",
- "#", "0", "*", "D"
-]
+ "Yay", "0", "#", "D"
+] 
 
 # These are Settings to connect Keystrokes to Linux, you can ignore them if you only use them as LinuxCNC Inputs.
 
-Destination = [		#define, which Key should be inserted in LinuxCNC as Input or as Keystroke in Linux. 
-					#you can ignore it if you want to use all Keys as LinuxCNC Inputs.
-					# 0 = LinuxCNC 
-					# 1 = Linux
-	0, 0, 0, 1,
-	0, 0, 0, 1,
-	0, 0, 0, 1,
-	1, 0, 1, 1
+Destination = [    #define, which Key should be inserted in LinuxCNC as Input or as Keystroke in Linux. 
+          #you can ignore it if you want to use all Keys as LinuxCNC Inputs.
+          # 0 = LinuxCNC 
+          # 1 = press Key in Linux
+          # 2 = write Text in Linux
+  1, 1, 1, 0,
+  1, 1, 1, 0,
+  1, 1, 1, 0, 
+  2, 1, 0, 0
 ]
-
-
-
+# Background Info:
+# The Key press is received as M Number of Key:HIGH/LOW. M2:1 would represent Key 2 beeing Pressed. M2:0 represents letting go of the key.
+# Key Numbering is calculated in an 2D Matrix. for a 4x4 Keypad the numbering of the Keys will be like this:
+#
+#  0,  1,  2,  3,
+#  4,  5,  6,  7,
+#  8,  9,  10,  11,
+#  12,  13,  14,  15
+#
 
 Debug = 0		#only works when this script is run from halrun in Terminal. "halrun","loadusr arduino" now Debug info will be displayed.
 ########  End of Config!  ########
@@ -224,13 +225,14 @@ if DLEDcount > 0:
 	for port in range(DLEDcount):
 		c.newpin("dled.{}".format(port), hal.HAL_BIT, hal.HAL_IN)
 		oldDLEDStates[port] = 0
+
 # setup MatrixKeyboard halpins
 if Keypad > 0:
-	for port in range(Columns*Rows):
-		if Destination[port] == 0 & LinuxKeyboardInput:
-			pass #if destination is set to Linux, don't register a Hal Pin for this key.
-		else:
-			c.newpin("keypad.{}".format(Chars[port]), hal.HAL_BIT, hal.HAL_IN)
+  for port in range(Columns*Rows):
+    if Destination[port] == 0 & LinuxKeyboardInput:
+      c.newpin("keypad.{}".format(Chars[port]), hal.HAL_BIT, hal.HAL_IN)
+      
+
 #setup JoyStick Pins
 if JoySticks > 0:
 	for port in range(JoySticks*2):
@@ -381,21 +383,25 @@ while True:
 					else: 
 						c["binselknob.{}.{}" .format(0,"out")] = BinSelKnobvalues[value]
 
-
 				elif cmd == "M":
-					firstcom = 1
-					if value == 1:
-						if Destination[io] == 0 and LinuxKeyboardInput == 1:
+						firstcom = 1
+						if value == 1:
+							if Destination[io] == 1 and LinuxKeyboardInput == 1:
 							subprocess.call(["xdotool", "key", Chars[io]])
 							if(Debug):print("Emulating Keypress{}".format(Chars[io]))
-						else:
+							if Destination[io] == 2 and LinuxKeyboardInput == 1:
+							subprocess.call(["xdotool", "type", Chars[io]])
+							if(Debug):print("Emulating Keypress{}".format(Chars[io]))
+								
+							else:
 							c["keypad.{}".format(Chars[io])] = 1
 							if(Debug):print("keypad{}:{}".format(Chars[io],1))
 
-					if value == 0 & Destination[io] == 0:
-						c["keypad.{}".format(Chars[io])] = 0
-						if(Debug):print("keypad{}:{}".format(Chars[io],0))
+						if value == 0 & Destination[io] == 0:
+							c["keypad.{}".format(Chars[io])] = 0
+							if(Debug):print("keypad{}:{}".format(Chars[io],0))
 
+							
 				elif cmd == "R":
 					firstcom = 1
 					if JoySticks > 0:
