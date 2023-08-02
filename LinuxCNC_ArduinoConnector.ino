@@ -16,7 +16,8 @@
   - digital Inputs
   - digital Outputs
   - Matrix Keypad
-
+  - Quadrature encoders
+  - Joysticks
   
   The Send and receive Protocol is <Signal><PinNumber>:<Pin State>
   To begin Transmitting Ready is send out and expects to receive E: to establish connection. Afterwards Data is exchanged.
@@ -29,8 +30,8 @@
   Analog Inputs           = 'A' -write only  -Pin State: 0-1024
   Latching Potentiometers = 'L' -write only  -Pin State: 0-max Position
   binary encoded Selector = 'K' -write only  -Pin State: 0-32
-  rotary encoder          = 'R' -write only  -Pin State: up/ down / -32768 to 32767
-  joystick                = 'R' -write only  -Pin State: up/ down / -32768 to 32767
+  rotary encoder          = 'R' -write only  -Pin State: up/ down / -2147483648 to 2147483647
+  joystick                = 'R' -write only  -Pin State: up/ down / -2147483648 to 2147483647
   
 Keyboard Input:
   Matrix Keypad           = 'M' -write only  -Pin State: Number of Matrix Key. 
@@ -63,7 +64,7 @@ Communication Status      = 'E' -read/Write  -Pin State: 0:0
 //###################################################IO's###################################################
 
 
-#define INPUTS                       //Use Arduino IO's as Inputs. Define how many Inputs you want in total and then which Pins you want to be Inputs.
+//#define INPUTS                       //Use Arduino IO's as Inputs. Define how many Inputs you want in total and then which Pins you want to be Inputs.
 #ifdef INPUTS
   const int Inputs = 5;               //number of inputs using internal Pullup resistor. (short to ground to trigger)
   int InPinmap[] = {52,38,39,40,41};
@@ -259,7 +260,7 @@ Adafruit_NeoPixel strip(DLEDcount, DLEDPin, NEO_GRB + NEO_KHZ800);//Color sequen
 Matrix Keypads are supported. The input is NOT added as HAL Pin to LinuxCNC. Instead it is inserted to Linux as Keyboard direktly. 
 So you could attach a QWERT* Keyboard to the arduino and you will be able to write in Linux with it (only while LinuxCNC is running!)
 */
-#define KEYPAD
+//#define KEYPAD
 #ifdef KEYPAD
 const int numRows = 4;  // Define the number of rows in the matrix
 const int numCols = 4;  // Define the number of columns in the matrix
@@ -550,17 +551,23 @@ void readEncoders(){
 }
 
 #endif
+
 void comalive(){
   #ifdef STATUSLED
     if(millis() - lastcom > timeout){
       StatLedErr(500,200);
     }
     else{
-      if(DLEDSTATUSLED){controlDLED(StatLedPin, 1);}
-      else{digitalWrite(StatLedPin, HIGH);}
+      #ifdef DLED
+      controlDLED(StatLedPin, 1);
+      #endif
+      #ifndef DLED
+        digitalWrite(StatLedPin, HIGH);
+      #endif
     }
   #endif
 }
+
 
 
 
@@ -582,14 +589,22 @@ void StatLedErr(int offtime, int ontime){
   unsigned long newMillis = millis();
   
   if (newMillis - oldmillis >= offtime){
-      
-      if(DLEDSTATUSLED){controlDLED(StatLedPin, 1);}
-      else{digitalWrite(StatLedPin, HIGH);}
+      #ifdef DLED
+      controlDLED(StatLedPin, 1);
+      #endif
+      #ifndef DLED
+      digitalWrite(StatLedPin, HIGH);
+      #endif
     } 
   if (newMillis - oldmillis >= offtime+ontime){{
-      if(DLEDSTATUSLED){controlDLED(StatLedPin, 0);}
-      else{digitalWrite(StatLedPin, LOW);}
+      #ifdef DLED
+      controlDLED(StatLedPin, 0)
+      #endif
+      #ifndef DLED
+      digitalWrite(StatLedPin, LOW);
+      #endif
       oldmillis = newMillis;
+      
     }
   }
 

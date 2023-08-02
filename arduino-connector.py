@@ -387,14 +387,14 @@ while True:
 						firstcom = 1
 						if value == 1:
 							if Destination[io] == 1 and LinuxKeyboardInput == 1:
-							subprocess.call(["xdotool", "key", Chars[io]])
+								subprocess.call(["xdotool", "key", Chars[io]])
 							if(Debug):print("Emulating Keypress{}".format(Chars[io]))
 							if Destination[io] == 2 and LinuxKeyboardInput == 1:
-							subprocess.call(["xdotool", "type", Chars[io]])
+								subprocess.call(["xdotool", "type", Chars[io]])
 							if(Debug):print("Emulating Keypress{}".format(Chars[io]))
 								
 							else:
-							c["keypad.{}".format(Chars[io])] = 1
+								c["keypad.{}".format(Chars[io])] = 1
 							if(Debug):print("keypad{}:{}".format(Chars[io],1))
 
 						if value == 0 & Destination[io] == 0:
