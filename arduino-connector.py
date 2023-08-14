@@ -54,17 +54,17 @@ connection = '/dev/ttyACM0' 	#this is the port your Arduino is connected to. You
 
 
 # Set how many Inputs you have programmed in Arduino and which pins are Inputs, Set Inputs = 0 to disable
-Inputs = 0
-InPinmap = [37,38,39,40,41]
+Inputs = 0 
+InPinmap = [37,38,39,40,41] #Which Pins are Inputs?
 
 # Set how many Toggled ("sticky") Inputs you have programmed in Arduino and which pins are Toggled Inputs , Set SInputs = 0 to disable
 SInputs = 0
-sInPinmap = [32,33,34,35,36]
+sInPinmap = [32,33,34,35,36] #Which Pins are SInputs?
 
 
 # Set how many Outputs you have programmed in Arduino and which pins are Outputs, Set Outputs = 0 to disable
 Outputs = 0				#9 Outputs, Set Outputs = 0 to disable
-OutPinmap = [10,9,8,7,6,5,4,3,2,21]	
+OutPinmap = [10,9,8,7,6,5,4,3,2,21]	#Which Pins are Outputs?
 
 # Set how many PWM Outputs you have programmed in Arduino and which pins are PWM Outputs, you can set as many as your Arduino has PWM pins. List the connected pins below.
 PwmOutputs = 0			#number of PwmOutputs, Set PwmOutputs = 0 to disable 
@@ -192,7 +192,7 @@ min_update_interval = 100
 # setup Input halpins
 for port in range(Inputs):
 	c.newpin("din.{}".format(InPinmap[port]), hal.HAL_BIT, hal.HAL_OUT)
-	c.newpin("din.{}-invert".format(InPinmap[port]), hal.HAL_BIT, hal.HAL_OUT)
+	c.newpin("din.{}-invert".format(InPinmap[port]), hal.HAL_BIT, hal.HAL_RW)
 
 # setup Output halpins
 for port in range(Outputs):
