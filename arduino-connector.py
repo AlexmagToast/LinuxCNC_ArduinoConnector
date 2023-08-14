@@ -343,15 +343,23 @@ while True:
 				if cmd == "I":
 					firstcom = 1
 					if value == 1:
-						c["din.{}".format(io)] = 1
-						c["din.{}-invert".format(io)] = 0
-						if(Debug):print("din{}:{}".format(io,1))
+						if c["din.{}-invert".format(io)] == 0:
+							c["din.{}".format(io)] = 1
+							if(Debug):print("din{}:{}".format(io,1))
+						else: 
+							c["din.{}".format(io)] = 0
+							if(Debug):print("din{}:{}".format(io,0))
+						
 						
 					if value == 0:
-						c["din.{}".format(io)] = 0
-						c["din.{}-invert".format(io)] = 1
-						if(Debug):print("din{}:{}".format(io,0))
+						if c["din.{}-invert".format(io)] == 0:
+							c["din.{}".format(io)] = 0
+							if(Debug):print("din{}:{}".format(io,0))
+						else: 
+							c["din.{}".format(io)] = 1
+							if(Debug):print("din{}:{}".format(io,1))
 					else:pass
+
 
 				elif cmd == "A":
 					firstcom = 1
