@@ -77,11 +77,11 @@ AInPinmap = [1]			#Potentiometer connected to Pin 1 (A0)
 
 # Set how many Latching Analog Inputs you have programmed in Arduino and how many latches there are, you can set as many as your Arduino has Analog pins. List the connected pins below.
 LPoti = 0				#number of LPotis, Set LPoti = 0 to disable 
-LPotiLatches = [[2,9],	#Poti is connected to Pin 2 (A1) and has 9 positions
-				[3,4]]	#Poti is connected to Pin 3 (A2) and has 4 positions
+LPotiLatches = [[1,9],	#Poti is connected to Pin 1 (A1) and has 9 positions
+				[2,4]]	#Poti is connected to Pin 2 (A2) and has 4 positions
 
 #Do you want the Latching Potis to control override Settings in LinuxCNC? This function lets you define values for each Position. 
-SetLPotiValue = [1,1] #0 = disable 1= enable
+SetLPotiValue = [0,0] #0 = disable 1= enable
 LPotiValues = [[40, 50,60,70,80,90,100,110,120],
 			   [0.001,0.01,0.1,1]]
 
@@ -93,9 +93,8 @@ BinSelKnob = 0 	#1 enable
 BinSelKnobPos = 32
 
 #Do you want the Binary Encoded Selector Switches to control override Settings in LinuxCNC? This function lets you define values for each Position. 
-SetBinSelKnobValue = [1] #0 = disable 1= enable
-BinSelKnobvalues = [[180,190,200,0,0,0,0,0,0,0,0,0,0,0,0,10,20,30,40,50,60,70,80,90,100,110,120,130,140,150,160,170],
-			   [0.001,0.01,0.1,1]]
+SetBinSelKnobValue = [0] #0 = disable 1= enable
+BinSelKnobvalues = [[180,190,200,0,0,0,0,0,0,0,0,0,0,0,0,10,20,30,40,50,60,70,80,90,100,110,120,130,140,150,160,170]]
 
 #Enable Quadrature Encoders
 QuadEncs = 0
@@ -108,9 +107,8 @@ QuadEncSig = [2,2]
 # Intended for use as MPG. useing the Joystick will update a counter, which can be used as Jog Input. 
 # Moving the Joystick will either increase or decrease the counter. Modify Jog-scale in hal to increase or decrease speed.
 JoySticks = 0	#number of installed Joysticks
-JoyStickPins = [54,55] #Pins the Joysticks are connected to. 
-	#in this example X&Y Pins of the Joystick are connected to Pin A0& A1. Remember, to use the Atmega Pin names here!
-	# for more than one Joystick just add the other pins to the array for example: JoyStickPins = [54,55,56,57] 
+JoyStickPins = [0,1] #Pins the Joysticks are connected to. 
+	#in this example X&Y Pins of the Joystick are connected to Pin A0& A1. 
 
 
 
@@ -131,6 +129,8 @@ DLEDcount = 0
 
 Keypad = 0  # Set to 1 to Activate
 LinuxKeyboardInput = 1  #Activate direct Keyboard integration to Linux.
+
+
 Columns = 4
 Rows = 4
 Chars = [      #here you must define as many characters as your Keypad has keys. calculate columns * rows . for example 4 *4 = 16. You can write it down like in the example for ease of readability.
@@ -164,6 +164,10 @@ Destination = [    #define, which Key should be inserted in LinuxCNC as Input or
 
 Debug = 0		#only works when this script is run from halrun in Terminal. "halrun","loadusr arduino" now Debug info will be displayed.
 ########  End of Config!  ########
+
+
+
+
 olddOutStates= [0]*Outputs
 oldPwmOutStates=[0]*PwmOutputs
 oldDLEDStates=[0]*DLEDcount
@@ -188,7 +192,7 @@ min_update_interval = 100
 # setup Input halpins
 for port in range(Inputs):
 	c.newpin("din.{}".format(InPinmap[port]), hal.HAL_BIT, hal.HAL_OUT)
-	c.newparam("din.{}-invert".format(InPinmap[port]), hal.HAL_BIT, hal.HAL_RW)
+	c.newpin("din.{}-invert".format(InPinmap[port]), hal.HAL_BIT, hal.HAL_OUT)
 
 # setup Output halpins
 for port in range(Outputs):
