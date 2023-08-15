@@ -64,23 +64,23 @@ Communication Status      = 'E' -read/Write  -Pin State: 0:0
 //###################################################IO's###################################################
 
 
-//#define INPUTS                       //Use Arduino IO's as Inputs. Define how many Inputs you want in total and then which Pins you want to be Inputs.
+#define INPUTS                       //Use Arduino IO's as Inputs. Define how many Inputs you want in total and then which Pins you want to be Inputs.
 #ifdef INPUTS
-  const int Inputs = 5;               //number of inputs using internal Pullup resistor. (short to ground to trigger)
-  int InPinmap[] = {52,38,39,40,41};
+  const int Inputs = 2;               //number of inputs using internal Pullup resistor. (short to ground to trigger)
+  int InPinmap[] = {8,9};
 #endif
 
                                        //Use Arduino IO's as Toggle Inputs, which means Inputs (Buttons for example) keep HIGH State after Release and Send LOW only after beeing Pressed again. 
-//#define SINPUTS                        //Define how many Toggle Inputs you want in total and then which Pins you want to be Toggle Inputs.
+#define SINPUTS                        //Define how many Toggle Inputs you want in total and then which Pins you want to be Toggle Inputs.
 #ifdef SINPUTS
-  const int sInputs = 5;              //number of inputs using internal Pullup resistor. (short to ground to trigger)
-  int sInPinmap[] = {32,33,34,35,36};
+  const int sInputs = 1;              //number of inputs using internal Pullup resistor. (short to ground to trigger)
+  int sInPinmap[] = {10};
 #endif
 
-//#define OUTPUTS                     //Use Arduino IO's as Outputs. Define how many Outputs you want in total and then which Pins you want to be Outputs.
+#define OUTPUTS                     //Use Arduino IO's as Outputs. Define how many Outputs you want in total and then which Pins you want to be Outputs.
 #ifdef OUTPUTS
-  const int Outputs = 9;              //number of outputs
-  int OutPinmap[] = {10,9,8,7,6,5,4,3,2,21};
+  const int Outputs = 2;              //number of outputs
+  int OutPinmap[] = {11,12};
 #endif
 
 //#define PWMOUTPUTS                     //Use Arduino PWM Capable IO's as PWM Outputs. Define how many  PWM Outputs you want in total and then which Pins you want to be  PWM Outputs.
@@ -192,7 +192,7 @@ const float scalingFactor = 0.01;   // Scaling factor to control the impact of d
 // Define an Pin you want to connect the LED to. it will be set as Output indipendand of the OUTPUTS function, so don't use Pins twice.
 // If you use Digital LED's such as WS2812 or PL9823 (only works if you set up the DLED settings below) you can also define a position of the LED. In this case StatLedPin will set the number of the Digital LED Chain. 
 
-//#define STATUSLED
+#define STATUSLED
 #ifdef STATUSLED
   const int StatLedPin = 13;                //Pin for Status LED
   const int StatLedErrDel[] = {1000,10};   //Blink Timing for Status LED Error (no connection)
