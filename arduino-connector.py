@@ -309,15 +309,17 @@ def managageOutputs():
 			if (Debug):print ("Sending:{}".format(command.encode()))
 			olddOutStates[port]= State
 		
-	for port in range(DLEDcount):
-		State = int(c["dled.{}".format(port)])
-		if oldDLEDStates[port] != State: #check if states have changed
+	for dled in range(DLEDcount):
+		State = int(c["dled.{}".format(dled)])
+		if oldDLEDStates[dled] != State: #check if states have changed
 			Sig = 'D'
-			Pin = int(port)
+			Pin = dled
 			command = "{}{}:{}\n".format(Sig,Pin,State)
 			arduino.write(command.encode())
-			oldDLEDStates[port] = State
 			if (Debug):print ("Sending:{}".format(command.encode()))
+			oldDLEDStates[dled] = State
+
+
 
 
 while True:

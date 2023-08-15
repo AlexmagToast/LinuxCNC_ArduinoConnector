@@ -196,7 +196,7 @@ const float scalingFactor = 0.01;   // Scaling factor to control the impact of d
 #ifdef STATUSLED
   const int StatLedPin = 13;                //Pin for Status LED
   const int StatLedErrDel[] = {1000,10};   //Blink Timing for Status LED Error (no connection)
-  const int DLEDSTATUSLED = 1;              //set to 1 to use Digital LED instead. set StatLedPin to the according LED number in the chain.
+  const int DLEDSTATUSLED = 0;              //set to 1 to use Digital LED instead. set StatLedPin to the according LED number in the chain.
 #endif
 
 
@@ -221,7 +221,7 @@ If you want the LED to be off just define {0,0,0}, .
 If you use STATUSLED, it will also take the colors of your definition here.
 */
 
-#define DLED
+//#define DLED
 #ifdef DLED
   #include <Adafruit_NeoPixel.h>
 
@@ -465,7 +465,7 @@ void loop() {
 #endif
 
 #ifdef DLED
-  updateDLEDs(); //read Encoders & send data
+  //updateDLEDs(); //read Encoders & send data
 #endif
 
 }
@@ -475,6 +475,7 @@ void updateDLEDs(){
    for(int i = 0; i< DLEDcount; i++){
      controlDLED(i, DLEDstate[i]);
      //update all DLEDs regulary
+
    }
 
   
@@ -579,12 +580,17 @@ void comalive(){
       StatLedErr(500,200);
     }
     else{
-      #ifdef DLED
-      controlDLED(StatLedPin, 1);
-      #endif
-      #ifndef DLED
-        digitalWrite(StatLedPin, HIGH);
-      #endif
+      
+        if(DLEDSTATUSLED == 1){
+          #ifdef DLED
+            controlDLED(StatLedPin, 1);
+          #endif
+        }
+        else{
+          digitalWrite(StatLedPin, HIGH);
+        }
+        
+      
     }
   #endif
 }
@@ -831,8 +837,15 @@ void commandReceived(char cmd, uint16_t io, uint16_t value){
   #ifdef DLED
   if(cmd == 'D'){
     DLEDstate[io] = value;
-    controlDLED(io,value);
+    updateDLEDs();
+    //controlDLED(io,value);
     lastcom=millis();
+    #ifdef debug
+      Serial.print("DLED:");
+      Serial.print(io);
+      Serial.print(" State:");
+      Serial.println(DLEDstate[io]);
+    #endif
 
   }
   #endif
