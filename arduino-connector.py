@@ -192,7 +192,7 @@ min_update_interval = 100
 # setup Input halpins
 for port in range(Inputs):
 	c.newpin("din.{}".format(InPinmap[port]), hal.HAL_BIT, hal.HAL_OUT)
-	c.newpin("din.{}-invert".format(InPinmap[port]), hal.HAL_BIT, hal.HAL_RW)
+	c.newparam("din.{}-invert".format(InPinmap[port]), hal.HAL_BIT, hal.HAL_RW)
 
 # setup Output halpins
 for port in range(Outputs):

@@ -598,7 +598,7 @@ void StatLedErr(int offtime, int ontime){
     } 
   if (newMillis - oldmillis >= offtime+ontime){{
       #ifdef DLED
-      controlDLED(StatLedPin, 0)
+      controlDLED(StatLedPin, 0);
       #endif
       #ifndef DLED
       digitalWrite(StatLedPin, LOW);
