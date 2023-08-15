@@ -221,7 +221,7 @@ If you want the LED to be off just define {0,0,0}, .
 If you use STATUSLED, it will also take the colors of your definition here.
 */
 
-//#define DLED
+#define DLED
 #ifdef DLED
   #include <Adafruit_NeoPixel.h>
 
@@ -322,8 +322,11 @@ const int debounceDelay = 50;
   long EncCount[QuadEncs];
   long OldEncCount[QuadEncs];
 #endif
-#ifdef JOYSTICK
+#ifdef DLED
+  int DLEDstate[DLEDcount];
+#endif
 
+#ifdef JOYSTICK
 long counter[JoySticks*2] = {0};      // Initialize an array for the counters
 long prevCounter[JoySticks*2] = {0};  // Initialize an array for the previous counters
 float incrementFactor[JoySticks*2] = {0.0}; // Initialize an array for the incrementFactors
@@ -460,7 +463,25 @@ void loop() {
 #ifdef JOYSTICK
   readJoySticks(); //read Encoders & send data
 #endif
+
+#ifdef DLED
+  updateDLEDs(); //read Encoders & send data
+#endif
+
 }
+
+#ifdef DLED
+void updateDLEDs(){
+   for(int i = 0; i< DLEDcount; i++){
+     controlDLED(i, DLEDstate[i]);
+     //update all DLEDs regulary
+   }
+
+  
+}
+
+#endif
+
 
 #ifdef JOYSTICK
 
@@ -590,7 +611,8 @@ void StatLedErr(int offtime, int ontime){
   
   if (newMillis - oldmillis >= offtime){
       #ifdef DLED
-      controlDLED(StatLedPin, 1);
+        if(DLEDSTATUSLED == 1){
+          controlDLED(StatLedPin, 1);}
       #endif
       #ifndef DLED
       digitalWrite(StatLedPin, HIGH);
@@ -598,7 +620,8 @@ void StatLedErr(int offtime, int ontime){
     } 
   if (newMillis - oldmillis >= offtime+ontime){{
       #ifdef DLED
-      controlDLED(StatLedPin, 0);
+        if(DLEDSTATUSLED == 1){
+          controlDLED(StatLedPin, 0);}
       #endif
       #ifndef DLED
       digitalWrite(StatLedPin, LOW);
@@ -640,6 +663,7 @@ void initDLED(){
 
 void controlDLED(int Pin, int Stat){
   if(Stat == 1){
+
     strip.setPixelColor(Pin, strip.Color(DledOnColors[Pin][0],DledOnColors[Pin][1],DledOnColors[Pin][2]));
     #ifdef DEBUG
       Serial.print("DLED No.");
@@ -650,6 +674,7 @@ void controlDLED(int Pin, int Stat){
     #endif
     } 
     else{
+
       strip.setPixelColor(Pin, strip.Color(DledOffColors[Pin][0],DledOffColors[Pin][1],DledOffColors[Pin][2]));
       #ifdef DEBUG
         Serial.print("DLED No.");
@@ -805,6 +830,7 @@ void commandReceived(char cmd, uint16_t io, uint16_t value){
   #endif
   #ifdef DLED
   if(cmd == 'D'){
+    DLEDstate[io] = value;
     controlDLED(io,value);
     lastcom=millis();
 
