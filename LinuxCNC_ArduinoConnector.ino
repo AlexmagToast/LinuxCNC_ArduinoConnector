@@ -322,9 +322,7 @@ const int debounceDelay = 50;
   long EncCount[QuadEncs];
   long OldEncCount[QuadEncs];
 #endif
-#ifdef DLED
-  int DLEDstate[DLEDcount];
-#endif
+
 
 #ifdef JOYSTICK
 long counter[JoySticks*2] = {0};      // Initialize an array for the counters
@@ -464,24 +462,7 @@ void loop() {
   readJoySticks(); //read Encoders & send data
 #endif
 
-#ifdef DLED
-  //updateDLEDs(); //read Encoders & send data
-#endif
-
 }
-
-#ifdef DLED
-void updateDLEDs(){
-   for(int i = 0; i< DLEDcount; i++){
-     controlDLED(i, DLEDstate[i]);
-     //update all DLEDs regulary
-
-   }
-
-  
-}
-
-#endif
 
 
 #ifdef JOYSTICK
@@ -836,9 +817,7 @@ void commandReceived(char cmd, uint16_t io, uint16_t value){
   #endif
   #ifdef DLED
   if(cmd == 'D'){
-    DLEDstate[io] = value;
-    updateDLEDs();
-    //controlDLED(io,value);
+    controlDLED(io,value);
     lastcom=millis();
     #ifdef debug
       Serial.print("DLED:");

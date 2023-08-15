@@ -298,6 +298,7 @@ def managageOutputs():
 			arduino.write(command.encode())
 			if (Debug):print ("Sending:{}".format(command.encode()))
 			oldPwmOutStates[port]= State
+			time.sleep(0.01)
 
 	for port in range(Outputs):
 		State = int(c["dout.{}".format(OutPinmap[port])])
@@ -308,6 +309,7 @@ def managageOutputs():
 			arduino.write(command.encode())
 			if (Debug):print ("Sending:{}".format(command.encode()))
 			olddOutStates[port]= State
+			time.sleep(0.01)
 		
 	for dled in range(DLEDcount):
 		State = int(c["dled.{}".format(dled)])
@@ -318,6 +320,7 @@ def managageOutputs():
 			arduino.write(command.encode())
 			if (Debug):print ("Sending:{}".format(command.encode()))
 			oldDLEDStates[dled] = State
+			time.sleep(0.01)
 
 
 
