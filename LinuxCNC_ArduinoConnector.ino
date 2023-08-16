@@ -172,7 +172,7 @@ Encoder Encoder1(31,33);    //A,B Pin
 //#define JOYSTICK                   //Support of an Rotating Knob that was build in my Machine. It encodes 32 Positions with 5 Pins in Binary. This will generate 32 Pins in LinuxCNC Hal.
 #ifdef JOYSTICK
 const int JoySticks = 1;             // Number of potentiometers connected
-const int JoyStickPins[JoySticks*2] = {A0, A1}; // Analog input pins for the potentiometers
+const int JoyStickPins[JoySticks*2] = {0, 1}; // Analog input pins for the potentiometers
 const int middleValue = 512;        // Middle value of the potentiometer
 const int deadband = 20;            // Deadband range around the middleValue
 const float scalingFactor = 0.01;   // Scaling factor to control the impact of distanceFromMiddle
@@ -601,18 +601,15 @@ void StatLedErr(int offtime, int ontime){
         if(DLEDSTATUSLED == 1){
           controlDLED(StatLedPin, 1);}
       #endif
-      #ifndef DLED
-      digitalWrite(StatLedPin, HIGH);
-      #endif
+      if(DLEDSTATUSLED == 0){digitalWrite(StatLedPin, HIGH);}
     } 
   if (newMillis - oldmillis >= offtime+ontime){{
       #ifdef DLED
         if(DLEDSTATUSLED == 1){
           controlDLED(StatLedPin, 0);}
       #endif
-      #ifndef DLED
-      digitalWrite(StatLedPin, LOW);
-      #endif
+      if(DLEDSTATUSLED == 0){digitalWrite(StatLedPin, LOW);}
+            
       oldmillis = newMillis;
       
     }

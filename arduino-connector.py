@@ -209,7 +209,7 @@ for port in range(AInputs):
 
 # setup Latching Poti halpins
 for Poti in range(LPoti):
-	if SetLPotiValue[port]== 0:
+	if SetLPotiValue[Poti]== 0:
 		for Pin in range(LPotiLatches[Poti][1]):
 			c.newpin("lpoti.{}.{}" .format(LPotiLatches[Poti][0],Pin), hal.HAL_BIT, hal.HAL_OUT)
 	else:
@@ -217,7 +217,7 @@ for Poti in range(LPoti):
 
 # setup Absolute Encoder Knob halpins
 if BinSelKnob:
-	if SetBinSelKnobValue == 0:
+	if SetBinSelKnobValue[0] == 0:
 		for port in range(BinSelKnobPos):
 			c.newpin("binselknob.0.{}".format(port), hal.HAL_BIT, hal.HAL_OUT)
 	else :
