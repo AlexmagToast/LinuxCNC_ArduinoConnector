@@ -134,8 +134,7 @@ Note that Analog Pin numbering is different to the Print on the PCB.
 
 #ifdef QUADENC
   #include <Encoder.h>
-  const int QuadEncs = 2; //how many Rotary Encoders do you want? 
-  #define QUADENCS 2  //You have to set it twice unfortunately...
+  #define QUADENCS 2  //how many Rotary Encoders do you want?
   
     // Encoders have 2 signals, which must be connected to 2 pins. There are three options.
 
@@ -317,6 +316,21 @@ const int debounceDelay = 50;
 #endif
 #ifdef KEYPAD
   byte KeyState = 0;
+#endif
+#if QUADENC == 1 
+  const int QuadEncs = 1;  
+#endif
+#if QUADENC == 2 
+  const int QuadEncs = 2;  
+#endif
+#if QUADENC == 3 
+  const int QuadEncs = 3;  
+#endif
+#if QUADENC == 4 
+  const int QuadEncs = 4;  
+#endif
+#if QUADENC == 5 
+  const int QuadEncs = 5;  
 #endif
 #ifdef QUADENC
   long EncCount[QuadEncs];
