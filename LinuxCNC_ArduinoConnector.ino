@@ -194,7 +194,6 @@ const float scalingFactor = 0.01;   // Scaling factor to control the impact of d
 #define STATUSLED
 #ifdef STATUSLED
   const int StatLedPin = 13;                //Pin for Status LED
-  const int StatLedErrDel[] = {1000,10};   //Blink Timing for Status LED Error (no connection)
   const int DLEDSTATUSLED = 0;              //set to 1 to use Digital LED instead. set StatLedPin to the according LED number in the chain.
 #endif
 
@@ -356,7 +355,7 @@ unsigned long lastcom = 0;
 #define STATE_IO 1
 #define STATE_VALUE 2
 
-
+byte reconnected = 2;
 byte state = STATE_CMD;
 char inputbuffer[5];
 byte bufferIndex = 0;
@@ -568,11 +567,43 @@ void readEncoders(){
 }
 
 #endif
+void reconnect(){
+reconnected = 1
+#ifdef INPUTS
+  oldInState[Inputs] = -1;
+#endif
+#ifdef SINPUTS
+  soldInState[sInputs] = -1;
+  togglesinputs[sInputs] = -1;
+#endif
+#ifdef OUTPUTS
+  oldOutState[Outputs] = -1;
+#endif
+#ifdef PWMOUTPUTS
+  oldOutPWMState[PwmOutputs] = -1;
+#endif
+#ifdef AINPUTS
+  oldAinput[AInputs] = -1;
+#endif
+#ifdef LPOTIS
+  oldLpoti[LPotis] = -1;
+#endif
+#ifdef BINSEL
+oldAbsEncState = -1;
+#endif
+#ifdef KEYPAD
+  KeyState = -1;
+#endif
+#ifdef QUADENC
+  OldEncCount[QuadEncs] = -1;
+#endif
+}
 
 void comalive(){
   #ifdef STATUSLED
     if(millis() - lastcom > timeout){
       StatLedErr(500,200);
+      reconnected = 0;
     }
     else{
       
@@ -583,6 +614,9 @@ void comalive(){
         }
         else{
           digitalWrite(StatLedPin, HIGH);
+          if (reconnected == 0){
+            reconnect()
+          }
         }
         
       
