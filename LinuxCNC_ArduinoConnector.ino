@@ -77,7 +77,7 @@ Communication Status      = 'E' -read/Write  -Pin State: 0:0
   int sInPinmap[] = {10};
 #endif
 
-#define OUTPUTS                     //Use Arduino IO's as Outputs. Define how many Outputs you want in total and then which Pins you want to be Outputs.
+//#define OUTPUTS                     //Use Arduino IO's as Outputs. Define how many Outputs you want in total and then which Pins you want to be Outputs.
 #ifdef OUTPUTS
   const int Outputs = 2;              //number of outputs
   int OutPinmap[] = {11,12};
@@ -89,11 +89,11 @@ Communication Status      = 'E' -read/Write  -Pin State: 0:0
   int PwmOutPinmap[] = {12,11};
 #endif
 
-//#define AINPUTS                       //Use Arduino ADC's as Analog Inputs. Define how many Analog Inputs you want in total and then which Pins you want to be Analog Inputs.
+#define AINPUTS                       //Use Arduino ADC's as Analog Inputs. Define how many Analog Inputs you want in total and then which Pins you want to be Analog Inputs.
                                         //Note that Analog Pin numbering is different to the Print on the PCB.
 #ifdef AINPUTS
-  const int AInputs = 2; 
-  int AInPinmap[] = {0,2};                //Potentiometer for SpindleSpeed override
+  const int AInputs = 1; 
+  int AInPinmap[] = {0};                //Potentiometer for SpindleSpeed override
   int smooth = 200;                     //number of samples to denoise ADC, try lower numbers on your setup 200 worked good for me.
 #endif
 
@@ -113,19 +113,21 @@ Then in the Array, {which Pin, How many Positions}
 Note that Analog Pin numbering is different to the Print on the PCB.                                        
 
 */
-//#define LPOTIS
+#define LPOTIS
 #ifdef LPOTIS
   const int LPotis = 2; 
   const int LPotiPins[LPotis][2] = {
-                    {2,9},             //Latching Knob Spindle Overdrive on A1, has 9 Positions
-                    {3,4}              //Latching Knob Feed Resolution on A2, has 4 Positions
+                    {1,9},             //Latching Knob Spindle Overdrive on A1, has 9 Positions
+                    {2,4}              //Latching Knob Feed Resolution on A2, has 4 Positions
                     };
   int margin = 20;                      //giving it some margin so Numbers dont jitter, make this number smaller if your knob has more than 50 Positions
 #endif
 
-//#define BINSEL                   //Support of an Rotating Knob that was build in my Machine. It encodes 32 Positions with 5 Pins in Binary. This will generate 32 Pins in LinuxCNC Hal.
+
+
+#define BINSEL                   //Support of an Rotating Knob that was build in my Machine. It encodes 32 Positions with 5 Pins in Binary. This will generate 32 Pins in LinuxCNC Hal.
 #ifdef BINSEL
-  const int BinSelKnobPins[] = {27,28,31,29,30};  //1,2,4,8,16
+  const int BinSelKnobPins[] = {2,6,4,3,5};  //1,2,4,8,16
 #endif
 
 
@@ -351,6 +353,7 @@ unsigned long lastUpdateTime[JoySticks*2] = {0}; // Store the time of the last u
 unsigned long oldmillis = 0;
 unsigned long newcom = 0;
 unsigned long lastcom = 0;
+int connectionState = 0;
 
 #define STATE_CMD 0
 #define STATE_IO 1
@@ -431,15 +434,7 @@ for(int col = 0; col < numCols; col++) {
 //Setup Serial
   Serial.begin(115200);
   while (!Serial){}
-  while (lastcom == 0){
-    readCommands();
-    flushSerial();
-    Serial.println("E0:0");
-    delay(200);
-    #ifdef STATUSLED
-      StatLedErr(1000,1000);
-    #endif
-    }
+  comalive();
 }
 
 
@@ -568,14 +563,41 @@ void readEncoders(){
 }
 
 #endif
-
+void initialiseIO(){
+  
+}
 void comalive(){
+  if(lastcom == 0){ //no connection yet. send E0:0 periodicly and wait for response
+    while (lastcom == 0){
+      readCommands();
+      flushSerial();
+      Serial.println("E0:0");
+      delay(200);
+      #ifdef STATUSLED
+        StatLedErr(1000,1000);
+      #endif
+    }  
+    connectionState = 1;
+    flushSerial();
+    #ifdef DEBUG
+      Serial.println("first connect");
+    #endif
+  }
+  if(millis() - lastcom > timeout){  
   #ifdef STATUSLED
-    if(millis() - lastcom > timeout){
-      StatLedErr(500,200);
-    }
-    else{
-      
+     StatLedErr(500,200);
+  #endif
+      if(connectionState == 1){
+        #ifdef DEBUG
+          Serial.println("disconnected");
+        #endif
+        connectionState = 2;
+      }
+            
+   }
+   else{  
+      connectionState=1;
+      #ifdef STATUSLED
         if(DLEDSTATUSLED == 1){
           #ifdef DLED
             controlDLED(StatLedPin, 1);
@@ -584,13 +606,68 @@ void comalive(){
         else{
           digitalWrite(StatLedPin, HIGH);
         }
-        
-      
+          
     }
+    
   #endif
 }
 
 
+void reconnect(){
+  #ifdef DEBUG
+    Serial.println("reconnected");
+  #endif
+  #ifdef DEBUG
+    Serial.println("resending Data");
+  #endif
+    
+  #ifdef INPUT
+    for (int x = 0; x < Inputs; x++){
+      InState[x]= -1;
+    }
+  #endif
+  #ifdef SINPUTS
+    for (int x = 0; x < sInputs; x++){
+      soldInState[x]= -1;
+      togglesinputs[x] = 0;
+    }
+  #endif
+  #ifdef AINPUTS
+    for (int x = 0; x < AInputs; x++){
+      oldAinput[x] = -1;
+    }
+  #endif
+  #ifdef LPOTIS
+    for (int x = 0; x < LPotis; x++){
+      oldLpoti[x] = -1;
+    }
+  #endif
+  #ifdef BINSEL
+    oldAbsEncState = -1;
+  #endif
+  
+  
+  #ifdef INPUTS
+    readInputs(); //read Inputs & send data
+  #endif
+  #ifdef SINPUTS
+    readsInputs(); //read Inputs & send data
+  #endif
+  #ifdef AINPUTS
+    readAInputs();  //read Analog Inputs & send data
+  #endif
+  #ifdef LPOTIS
+    readLPoti(); //read LPotis & send data
+  #endif
+  #ifdef BINSEL
+    readAbsKnob(); //read ABS Encoder & send data
+  #endif
+  
+
+  connectionState = 1;
+
+   
+}
 
 
 void sendData(char sig, int pin, int state){
@@ -841,6 +918,9 @@ void commandReceived(char cmd, uint16_t io, uint16_t value){
   #endif
   if(cmd == 'E'){
     lastcom=millis();
+    if(connectionState == 2){
+     reconnect(); 
+    }
   }
 
 
@@ -853,11 +933,6 @@ void commandReceived(char cmd, uint16_t io, uint16_t value){
   #endif
 }
 
-//This Funktion checks if Received Command is valid. Insert your custom Letter here by inserting another , for example: "||cmd == 'X'" 
-int isCmdChar(char cmd){
-  if(cmd == 'O'||cmd == 'P'||cmd == 'E'||cmd == 'D') {return true;}
-  else{return false;}
-}
 
 void readCommands(){
     byte current;
@@ -865,11 +940,9 @@ void readCommands(){
         current = Serial.read();
         switch(state){
             case STATE_CMD:
-                if(isCmdChar(current)){
-                    cmd = current;
-                    state = STATE_IO;
-                    bufferIndex = 0;
-                }
+                   cmd = current;
+                   state = STATE_IO;
+                   bufferIndex = 0;
                 break;
             case STATE_IO:
                 if(isDigit(current)){
