@@ -75,13 +75,17 @@ AInputs = 0				#number of AInputs, Set AInputs = 0 to disable
 AInPinmap = [1]			#Potentiometer connected to Pin 1 (A0)
 
 
+
 # Set how many Latching Analog Inputs you have programmed in Arduino and how many latches there are, you can set as many as your Arduino has Analog pins. List the connected pins below.
 LPoti = 0				#number of LPotis, Set LPoti = 0 to disable 
+
 LPotiLatches = [[1,9],	#Poti is connected to Pin 1 (A1) and has 9 positions
 				[2,4]]	#Poti is connected to Pin 2 (A2) and has 4 positions
 
-#Do you want the Latching Potis to control override Settings in LinuxCNC? This function lets you define values for each Position. 
-SetLPotiValue = [0,0] #0 = disable 1= enable
+SetLPotiValue = [1,2] 	#0 OFF - creates Pin for each Position
+					  	#1 S32 - Whole Number between -2147483648 to 2147483647
+						#2 FLOAT - 32 bit floating point value
+
 LPotiValues = [[40, 50,60,70,80,90,100,110,120],
 			   [0.001,0.01,0.1,1]]
 
@@ -206,14 +210,15 @@ for port in range(PwmOutputs):
 # setup Analog Input halpins
 for port in range(AInputs):
 	c.newpin("ain.{}".format(AInPinmap[port]), hal.HAL_FLOAT, hal.HAL_OUT)
-
 # setup Latching Poti halpins
 for Poti in range(LPoti):
-	if SetLPotiValue[Poti]== 0:
+	if SetLPotiValue[Poti] == 0:
 		for Pin in range(LPotiLatches[Poti][1]):
-			c.newpin("lpoti.{}.{}" .format(LPotiLatches[Poti][0],Pin), hal.HAL_BIT, hal.HAL_OUT)
-	else:
-		c.newpin("lpoti.{}.{}" .format(LPotiLatches[Poti][0],"out"), hal.HAL_S32, hal.HAL_OUT)
+			c.newpin("LPoti.{}.{}" .format(LPotiLatches[Poti][0],Pin), hal.HAL_BIT, hal.HAL_OUT)
+	if SetLPotiValue[Poti] == 1:
+		c.newpin("LPoti.{}.{}" .format(LPotiLatches[Poti][0],"out"), hal.HAL_S32, hal.HAL_OUT)
+	if SetLPotiValue[Poti] == 2:
+		c.newpin("LPoti.{}.{}" .format(LPotiLatches[Poti][0],"out"), hal.HAL_FLOAT, hal.HAL_OUT)
 
 # setup Absolute Encoder Knob halpins
 if BinSelKnob:
@@ -398,7 +403,7 @@ while True:
 								c["binselknob.{}".format(port)] = 0
 								if(Debug):print("binselknob.{}:{}".format(port,0))
 					else: 
-						c["binselknob.{}.{}" .format(0,"out")] = BinSelKnobvalues[value]
+						c["binselknob.{}.{}" .format(0,"out")] = BinSelKnobvalues[0][value]
 
 				elif cmd == "M":
 						firstcom = 1
@@ -430,14 +435,14 @@ while True:
 						if QuadEncSig[io]== 1:
 							if value == 0:
 								c["counterdown.{}".format(io)] = 1
-								time.sleep(0.05)
+								time.sleep(0.001)
 								c["counterdown.{}".format(io)] = 0
-								time.sleep(0.05)
+								time.sleep(0.001)
 							if value == 1:
 								c["counterup.{}".format(io)] = 1
-								time.sleep(0.05)
+								time.sleep(0.001)
 								c["counterup.{}".format(io)] = 0
-								time.sleep(0.05)
+								time.sleep(0.001)
 						if QuadEncSig[io]== 2:
 									c["counter.{}".format(io)] = value
 
