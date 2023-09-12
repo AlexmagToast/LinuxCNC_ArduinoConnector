@@ -133,7 +133,7 @@ Note that Analog Pin numbering is different to the Print on the PCB.
 
 //#define QUADENC                   
 //Support for Quadrature Encoders. Define Pins for A and B Signals for your encoders. Visit https://www.pjrc.com/teensy/td_libs_Encoder.html for further explanation.
-
+// Download Zip from here: https://github.com/PaulStoffregen/Encoder and import as Library to your Arduino IDE. 
 #ifdef QUADENC
   #include <Encoder.h>
   #define QUADENCS 2  //how many Rotary Encoders do you want?
@@ -319,19 +319,19 @@ const int debounceDelay = 50;
 #ifdef KEYPAD
   byte KeyState = 0;
 #endif
-#if QUADENC == 1 
+#if QUADENCS == 1 
   const int QuadEncs = 1;  
 #endif
-#if QUADENC == 2 
+#if QUADENCS == 2 
   const int QuadEncs = 2;  
 #endif
-#if QUADENC == 3 
+#if QUADENCS == 3 
   const int QuadEncs = 3;  
 #endif
-#if QUADENC == 4 
+#if QUADENCS == 4 
   const int QuadEncs = 4;  
 #endif
-#if QUADENC == 5 
+#if QUADENCS == 5 
   const int QuadEncs = 5;  
 #endif
 #ifdef QUADENC

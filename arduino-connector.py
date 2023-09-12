@@ -75,16 +75,17 @@ AInputs = 0				#number of AInputs, Set AInputs = 0 to disable
 AInPinmap = [1]			#Potentiometer connected to Pin 1 (A0)
 
 
+
 # Set how many Latching Analog Inputs you have programmed in Arduino and how many latches there are, you can set as many as your Arduino has Analog pins. List the connected pins below.
-SetLPotiValue = [1,2] 	#0 OFF - creates Pin for each Position
-					  	#1 S32 - Whole Number between -2147483648 to 2147483647
-						#2 FLOAT - 32 bit floating point value
+LPoti = 0				#number of LPotis, Set LPoti = 0 to disable 
 
 LPotiLatches = [[1,9],	#Poti is connected to Pin 1 (A1) and has 9 positions
 				[2,4]]	#Poti is connected to Pin 2 (A2) and has 4 positions
 
-#Do you want the Latching Potis to control override Settings in LinuxCNC? This function lets you define values for each Position. 
-SetLPotiValue = [0,0] #0 = disable 1= enable
+SetLPotiValue = [1,2] 	#0 OFF - creates Pin for each Position
+					  	#1 S32 - Whole Number between -2147483648 to 2147483647
+						#2 FLOAT - 32 bit floating point value
+
 LPotiValues = [[40, 50,60,70,80,90,100,110,120],
 			   [0.001,0.01,0.1,1]]
 
@@ -402,7 +403,7 @@ while True:
 								c["binselknob.{}".format(port)] = 0
 								if(Debug):print("binselknob.{}:{}".format(port,0))
 					else: 
-						c["binselknob.{}.{}" .format(0,"out")] = BinSelKnobvalues[value]
+						c["binselknob.{}.{}" .format(0,"out")] = BinSelKnobvalues[0][value]
 
 				elif cmd == "M":
 						firstcom = 1
