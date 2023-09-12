@@ -435,14 +435,14 @@ while True:
 						if QuadEncSig[io]== 1:
 							if value == 0:
 								c["counterdown.{}".format(io)] = 1
-								time.sleep(0.05)
+								time.sleep(0.001)
 								c["counterdown.{}".format(io)] = 0
-								time.sleep(0.05)
+								time.sleep(0.001)
 							if value == 1:
 								c["counterup.{}".format(io)] = 1
-								time.sleep(0.05)
+								time.sleep(0.001)
 								c["counterup.{}".format(io)] = 0
-								time.sleep(0.05)
+								time.sleep(0.001)
 						if QuadEncSig[io]== 2:
 									c["counter.{}".format(io)] = value
 
