@@ -64,14 +64,14 @@ Communication Status      = 'E' -read/Write  -Pin State: 0:0
 //###################################################IO's###################################################
 
 
-#define INPUTS                       //Use Arduino IO's as Inputs. Define how many Inputs you want in total and then which Pins you want to be Inputs.
+//#define INPUTS                       //Use Arduino IO's as Inputs. Define how many Inputs you want in total and then which Pins you want to be Inputs.
 #ifdef INPUTS
   const int Inputs = 2;               //number of inputs using internal Pullup resistor. (short to ground to trigger)
   int InPinmap[] = {8,9};
 #endif
 
                                        //Use Arduino IO's as Toggle Inputs, which means Inputs (Buttons for example) keep HIGH State after Release and Send LOW only after beeing Pressed again. 
-#define SINPUTS                        //Define how many Toggle Inputs you want in total and then which Pins you want to be Toggle Inputs.
+//#define SINPUTS                        //Define how many Toggle Inputs you want in total and then which Pins you want to be Toggle Inputs.
 #ifdef SINPUTS
   const int sInputs = 1;              //number of inputs using internal Pullup resistor. (short to ground to trigger)
   int sInPinmap[] = {10};
@@ -89,7 +89,7 @@ Communication Status      = 'E' -read/Write  -Pin State: 0:0
   int PwmOutPinmap[] = {12,11};
 #endif
 
-#define AINPUTS                       //Use Arduino ADC's as Analog Inputs. Define how many Analog Inputs you want in total and then which Pins you want to be Analog Inputs.
+//#define AINPUTS                       //Use Arduino ADC's as Analog Inputs. Define how many Analog Inputs you want in total and then which Pins you want to be Analog Inputs.
                                         //Note that Analog Pin numbering is different to the Print on the PCB.
 #ifdef AINPUTS
   const int AInputs = 1; 
@@ -113,7 +113,7 @@ Then in the Array, {which Pin, How many Positions}
 Note that Analog Pin numbering is different to the Print on the PCB.                                        
 
 */
-#define LPOTIS
+//#define LPOTIS
 #ifdef LPOTIS
   const int LPotis = 2; 
   const int LPotiPins[LPotis][2] = {
@@ -125,7 +125,7 @@ Note that Analog Pin numbering is different to the Print on the PCB.
 
 
 
-#define BINSEL                   //Support of an Rotating Knob that was build in my Machine. It encodes 32 Positions with 5 Pins in Binary. This will generate 32 Pins in LinuxCNC Hal.
+//#define BINSEL                   //Support of an Rotating Knob that was build in my Machine. It encodes 32 Positions with 5 Pins in Binary. This will generate 32 Pins in LinuxCNC Hal.
 #ifdef BINSEL
   const int BinSelKnobPins[] = {2,6,4,3,5};  //1,2,4,8,16
 #endif
@@ -261,7 +261,7 @@ Adafruit_NeoPixel strip(DLEDcount, DLEDPin, NEO_GRB + NEO_KHZ800);//Color sequen
 Matrix Keypads are supported. The input is NOT added as HAL Pin to LinuxCNC. Instead it is inserted to Linux as Keyboard direktly. 
 So you could attach a QWERT* Keyboard to the arduino and you will be able to write in Linux with it (only while LinuxCNC is running!)
 */
-//#define KEYPAD
+#define KEYPAD
 #ifdef KEYPAD
 const int numRows = 4;  // Define the number of rows in the matrix
 const int numCols = 4;  // Define the number of columns in the matrix
@@ -270,15 +270,35 @@ const int numCols = 4;  // Define the number of columns in the matrix
 const int rowPins[numRows] = {2, 3, 4, 5};
 const int colPins[numCols] = {6, 7, 8, 9};
 
-
-
 int keys[numRows][numCols] = {0};
-
 int lastKey= -1;
 #endif
 
 
-//#define DEBUG
+#define MULTIPLEXLEDS // Special mode for Multiplexed LEDs.
+// check out this thread on LinuxCNC Forum for context. https://forum.linuxcnc.org/show-your-stuff/49606-matrix-keyboard-controlling-linuxcnc
+// for Each LED an Output Pin is generated in LinuxCNC.
+
+#ifdef MULTIPLEXLEDS
+
+const int numVccPins = 4;      // Number of rows in the matrix
+const int numGndPins = 4;      // Number of columns in the matrix
+const int LedVccPins[] = {6, 3, 4, 5}; // Arduino pins connected to rows
+const int LedGndPins[] = {2, 7, 8, 9}; // Arduino pins connected to columns
+
+// Define the LED matrix
+int ledStates[numVccPins*numGndPins] = {0};
+
+unsigned long previousMillis = 0;
+const unsigned long interval = 0; // Time (in milliseconds) per LED display
+
+int currentLED = 0;
+#endif
+
+
+
+
+#define DEBUG
 //#######################################   END OF CONFIG     ###########################
 
 //###Misc Settings###
@@ -318,6 +338,9 @@ const int debounceDelay = 50;
 #endif
 #ifdef KEYPAD
   byte KeyState = 0;
+#endif
+#ifdef MULTIPLEXLEDS
+  byte KeyLedStates[numRows*numCols];
 #endif
 #if QUADENCS == 1 
   const int QuadEncs = 1;  
@@ -470,7 +493,7 @@ void loop() {
 #ifdef JOYSTICK
   readJoySticks(); //read Encoders & send data
 #endif
-
+  multiplexLeds();
 }
 
 
@@ -563,9 +586,7 @@ void readEncoders(){
 }
 
 #endif
-void initialiseIO(){
-  
-}
+
 void comalive(){
   if(lastcom == 0){ //no connection yet. send E0:0 periodicly and wait for response
     while (lastcom == 0){
@@ -621,7 +642,7 @@ void reconnect(){
     Serial.println("resending Data");
   #endif
     
-  #ifdef INPUT
+  #ifdef INPUTS
     for (int x = 0; x < Inputs; x++){
       InState[x]= -1;
     }
@@ -662,7 +683,9 @@ void reconnect(){
   #ifdef BINSEL
     readAbsKnob(); //read ABS Encoder & send data
   #endif
-  
+  #ifdef MULTIPLEXLEDS
+    multiplexLeds(); //Flash LEDS.
+  #endif
 
   connectionState = 1;
 
@@ -862,7 +885,7 @@ int readAbsKnob(){
 #ifdef KEYPAD
 void readKeypad(){
   //detect if Button is Pressed
-   for (int col = 0; col < numCols; col++) {
+  for (int col = 0; col < numCols; col++) {
     pinMode(colPins[col], OUTPUT);
     digitalWrite(colPins[col], LOW);
     // Read the state of the row pins
@@ -873,6 +896,7 @@ void readKeypad(){
         sendData('M',keys[row][col],1);
         lastKey = keys[row][col];
         row = numRows;
+
       }
       if (digitalRead(rowPins[row]) == HIGH && lastKey == keys[row][col]) {
         // The Last Button has been unpressed
@@ -885,8 +909,44 @@ void readKeypad(){
     // Set the column pin back to input mode
     pinMode(colPins[col], INPUT);
   }
+
 }
 #endif
+
+void multiplexLeds() {
+  unsigned long currentMillis = millis();
+  //init Multiplex
+  for (int i = 0; i < numVccPins; i++) {
+    pinMode(LedVccPins[i], OUTPUT);
+    digitalWrite(LedVccPins[i], LOW); // Set to LOW to disable all Vcc Pins
+  }
+  for (int i = 0; i < numGndPins; i++) {
+    pinMode(LedGndPins[i], OUTPUT);
+    digitalWrite(LedGndPins[i], HIGH); // Set to HIGH to disable all GND Pins
+  }
+
+    if(ledStates[currentLED]==1){
+      digitalWrite(LedVccPins[currentLED%numVccPins],ledStates[currentLED]);
+      digitalWrite(LedGndPins[currentLED/numVccPins],LOW);
+      Serial.print(currentLED/numVccPins); //row
+      Serial.print(":");
+      Serial.println(currentLED%numVccPins);  //column
+      //delay(1);
+      }
+    else{ //ignore LEDs that are shut off...
+      currentLED++;
+      previousMillis = currentMillis; 
+    } 
+
+  if (currentMillis - previousMillis >= interval) {   // Check if it's time to update the LED matrix
+    previousMillis = currentMillis;                   // Save the last update time
+    currentLED++;
+  }
+  if(currentLED >= numVccPins*numGndPins){
+      currentLED= 0;
+  } 
+}
+
 
 void commandReceived(char cmd, uint16_t io, uint16_t value){
   #ifdef OUTPUTS
@@ -916,6 +976,21 @@ void commandReceived(char cmd, uint16_t io, uint16_t value){
 
   }
   #endif
+  #ifdef MULTIPLEXLEDS
+    if(cmd == 'M'){
+      ledStates[io] = value; // Set the LED state
+      lastcom=millis();
+      #ifdef DEBUG
+        Serial.print("multiplexed Led No:");
+        Serial.print(io);
+        Serial.print("Set to:");
+        Serial.println(ledStates[io]);
+      #endif
+
+  }
+  #endif
+
+  
   if(cmd == 'E'){
     lastcom=millis();
     if(connectionState == 2){
