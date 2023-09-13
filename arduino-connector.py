@@ -169,8 +169,8 @@ Destination = [    #define, which Key should be inserted in LinuxCNC as Input or
 
 
 MultiplexLED = 1  # Set to 1 to Activate
-LedVccPins = 4
-LedGndPins = 4
+LedVccPins = 8
+LedGndPins = 7
 
 
 

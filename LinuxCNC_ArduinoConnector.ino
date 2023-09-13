@@ -281,10 +281,10 @@ int lastKey= -1;
 
 #ifdef MULTIPLEXLEDS
 
-const int numVccPins = 4;      // Number of rows in the matrix
-const int numGndPins = 4;      // Number of columns in the matrix
-const int LedVccPins[] = {6, 3, 4, 5}; // Arduino pins connected to rows
-const int LedGndPins[] = {2, 7, 8, 9}; // Arduino pins connected to columns
+const int numVccPins = 8;      // Number of rows in the matrix
+const int numGndPins = 7;      // Number of columns in the matrix
+const int LedVccPins[] = {0,1,2,3,4,5,6,7}; // Arduino pins connected to rows
+const int LedGndPins[] = {8,9,10,11,12,13,14}; // Arduino pins connected to columns
 
 // Define the LED matrix
 int ledStates[numVccPins*numGndPins] = {0};
