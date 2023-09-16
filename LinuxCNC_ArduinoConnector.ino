@@ -924,23 +924,26 @@ void multiplexLeds() {
     pinMode(LedGndPins[i], OUTPUT);
     digitalWrite(LedGndPins[i], HIGH); // Set to HIGH to disable all GND Pins
   }
-  if(ledStates[currentLED]==1){
-    digitalWrite(LedVccPins[currentLED%numVccPins],ledStates[currentLED]);
+  if(ledStates[currentLED]==1){//turn active LEDs on. 
+    digitalWrite(LedVccPins[currentLED%numVccPins],HIGH);
     digitalWrite(LedGndPins[currentLED/numVccPins],LOW);
+    delayMicroseconds(interval);
     #ifdef DEBUG
       Serial.print(currentLED%numVccPins); //row
-      Serial.print("/ ");
+      Serial.print(" % row ;/ col");
       Serial.print(currentLED/numVccPins);  //column
-      Serial.print(" wrt ");
-      Serial.print(ledStates[currentLED]); //row
+      Serial.print(" write ");
+      Serial.print(ledStates[currentLED]); //LED State
       Serial.println(" /");
     #endif
     }
-
+  currentLED++;
+  /*
   if (currentMillis - previousMillis >= interval) {   // Check if it's time to update the LED matrix
     previousMillis = currentMillis;                   // Save the last update time
     currentLED++;
   }
+  */
   if(currentLED >= numVccPins*numGndPins){
       currentLED= 0;
   } 
