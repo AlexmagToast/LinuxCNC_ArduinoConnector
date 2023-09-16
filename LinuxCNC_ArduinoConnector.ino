@@ -261,7 +261,7 @@ Adafruit_NeoPixel strip(DLEDcount, DLEDPin, NEO_GRB + NEO_KHZ800);//Color sequen
 Matrix Keypads are supported. The input is NOT added as HAL Pin to LinuxCNC. Instead it is inserted to Linux as Keyboard direktly. 
 So you could attach a QWERT* Keyboard to the arduino and you will be able to write in Linux with it (only while LinuxCNC is running!)
 */
-#define KEYPAD
+//#define KEYPAD
 #ifdef KEYPAD
 const int numRows = 4;  // Define the number of rows in the matrix
 const int numCols = 4;  // Define the number of columns in the matrix
@@ -281,16 +281,16 @@ int lastKey= -1;
 
 #ifdef MULTIPLEXLEDS
 
-const int numVccPins = 8;      // Number of rows in the matrix
-const int numGndPins = 7;      // Number of columns in the matrix
-const int LedVccPins[] = {0,1,2,3,4,5,6,7}; // Arduino pins connected to rows
-const int LedGndPins[] = {8,9,10,11,12,13,14}; // Arduino pins connected to columns
+const int numVccPins = 3;      // Number of rows in the matrix
+const int numGndPins = 3;      // Number of columns in the matrix
+const int LedVccPins[] = {3,4,5}; // Arduino pins connected to rows
+const int LedGndPins[] = {8,9,10}; // Arduino pins connected to columns
 
 // Define the LED matrix
 int ledStates[numVccPins*numGndPins] = {0};
 
 unsigned long previousMillis = 0;
-const unsigned long interval = 0; // Time (in milliseconds) per LED display
+const unsigned long interval = 1; // Time (in milliseconds) per LED display
 
 int currentLED = 0;
 #endif
@@ -340,7 +340,7 @@ const int debounceDelay = 50;
   byte KeyState = 0;
 #endif
 #ifdef MULTIPLEXLEDS
-  byte KeyLedStates[numRows*numCols];
+  byte KeyLedStates[numVccPins*numGndPins];
 #endif
 #if QUADENCS == 1 
   const int QuadEncs = 1;  
@@ -924,19 +924,18 @@ void multiplexLeds() {
     pinMode(LedGndPins[i], OUTPUT);
     digitalWrite(LedGndPins[i], HIGH); // Set to HIGH to disable all GND Pins
   }
-
-    if(ledStates[currentLED]==1){
-      digitalWrite(LedVccPins[currentLED%numVccPins],ledStates[currentLED]);
-      digitalWrite(LedGndPins[currentLED/numVccPins],LOW);
-      Serial.print(currentLED/numVccPins); //row
-      Serial.print(":");
-      Serial.println(currentLED%numVccPins);  //column
-      //delay(1);
-      }
-    else{ //ignore LEDs that are shut off...
-      currentLED++;
-      previousMillis = currentMillis; 
-    } 
+  if(ledStates[currentLED]==1){
+    digitalWrite(LedVccPins[currentLED%numVccPins],ledStates[currentLED]);
+    digitalWrite(LedGndPins[currentLED/numVccPins],LOW);
+    #ifdef DEBUG
+      Serial.print(currentLED%numVccPins); //row
+      Serial.print("/ ");
+      Serial.print(currentLED/numVccPins);  //column
+      Serial.print(" wrt ");
+      Serial.print(ledStates[currentLED]); //row
+      Serial.println(" /");
+    #endif
+    }
 
   if (currentMillis - previousMillis >= interval) {   // Check if it's time to update the LED matrix
     previousMillis = currentMillis;                   // Save the last update time
