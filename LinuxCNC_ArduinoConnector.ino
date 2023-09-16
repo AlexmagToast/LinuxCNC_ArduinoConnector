@@ -263,12 +263,12 @@ So you could attach a QWERT* Keyboard to the arduino and you will be able to wri
 */
 //#define KEYPAD
 #ifdef KEYPAD
-const int numRows = 4;  // Define the number of rows in the matrix
-const int numCols = 4;  // Define the number of columns in the matrix
+const int numRows = 3;  // Define the number of rows in the matrix 
+const int numCols = 3;  // Define the number of columns in the matrix
 
 // Define the pins connected to the rows and columns of the matrix
-const int rowPins[numRows] = {2, 3, 4, 5};
-const int colPins[numCols] = {6, 7, 8, 9};
+const int rowPins[numRows] = {5,6,7}; //Iputs
+const int colPins[numCols] = {8, 9, 10}; //"Output 8-14"
 
 int keys[numRows][numCols] = {0};
 int lastKey= -1;
@@ -283,7 +283,7 @@ int lastKey= -1;
 
 const int numVccPins = 3;      // Number of rows in the matrix
 const int numGndPins = 3;      // Number of columns in the matrix
-const int LedVccPins[] = {3,4,5}; // Arduino pins connected to rows
+const int LedVccPins[] = {2,3,4}; // Arduino pins connected to rows
 const int LedGndPins[] = {8,9,10}; // Arduino pins connected to columns
 
 // Define the LED matrix
@@ -916,34 +916,33 @@ void readKeypad(){
 void multiplexLeds() {
   unsigned long currentMillis = millis();
   //init Multiplex
-  for (int i = 0; i < numVccPins; i++) {
-    pinMode(LedVccPins[i], OUTPUT);
-    digitalWrite(LedVccPins[i], LOW); // Set to LOW to disable all Vcc Pins
-  }
-  for (int i = 0; i < numGndPins; i++) {
-    pinMode(LedGndPins[i], OUTPUT);
-    digitalWrite(LedGndPins[i], HIGH); // Set to HIGH to disable all GND Pins
-  }
   if(ledStates[currentLED]==1){//turn active LEDs on. 
+    #ifdef KEYPAD //if Keyboard is presend disable Pullup Resistors to not mess with LEDs while a Button is pressed.
+      for (int row = 0; row < numRows; row++) {
+        pinMode(rowPins[row], OUTPUT);
+        digitalWrite(rowPins[row], LOW);
+      }
+    #endif
+
+    for (int i = 0; i < numVccPins; i++) {
+      pinMode(LedVccPins[i], OUTPUT);
+      digitalWrite(LedVccPins[i], LOW); // Set to LOW to disable all Vcc Pins
+    }
+    for (int i = 0; i < numGndPins; i++) {
+      pinMode(LedGndPins[i], OUTPUT);
+      digitalWrite(LedGndPins[i], HIGH); // Set to HIGH to disable all GND Pins
+    }
     digitalWrite(LedVccPins[currentLED%numVccPins],HIGH);
     digitalWrite(LedGndPins[currentLED/numVccPins],LOW);
-    delayMicroseconds(interval);
-    #ifdef DEBUG
-      Serial.print(currentLED%numVccPins); //row
-      Serial.print(" % row ;/ col");
-      Serial.print(currentLED/numVccPins);  //column
-      Serial.print(" write ");
-      Serial.print(ledStates[currentLED]); //LED State
-      Serial.println(" /");
-    #endif
+
+    if (currentMillis - previousMillis >= interval) {   // Check if it's time to update the LED matrix  
+      previousMillis = currentMillis;                   // Save the last update time
+      currentLED++;
     }
-  currentLED++;
-  /*
-  if (currentMillis - previousMillis >= interval) {   // Check if it's time to update the LED matrix
-    previousMillis = currentMillis;                   // Save the last update time
+  }
+  if(ledStates[currentLED]==0){//If currentLED is Off, manage next one. 
     currentLED++;
   }
-  */
   if(currentLED >= numVccPins*numGndPins){
       currentLED= 0;
   } 
