@@ -261,7 +261,7 @@ Adafruit_NeoPixel strip(DLEDcount, DLEDPin, NEO_GRB + NEO_KHZ800);//Color sequen
 Matrix Keypads are supported. The input is NOT added as HAL Pin to LinuxCNC. Instead it is inserted to Linux as Keyboard direktly. 
 So you could attach a QWERT* Keyboard to the arduino and you will be able to write in Linux with it (only while LinuxCNC is running!)
 */
-//#define KEYPAD
+#define KEYPAD
 #ifdef KEYPAD
 const int numRows = 3;  // Define the number of rows in the matrix 
 const int numCols = 3;  // Define the number of columns in the matrix
@@ -298,7 +298,7 @@ int currentLED = 0;
 
 
 
-#define DEBUG
+//#define DEBUG
 //#######################################   END OF CONFIG     ###########################
 
 //###Misc Settings###
@@ -490,12 +490,14 @@ void loop() {
 #ifdef QUADENC
   readEncoders(); //read Encoders & send data
 #endif
+
 #ifdef JOYSTICK
   readJoySticks(); //read Encoders & send data
 #endif
+#ifdef MULTIPLEXLEDS
   multiplexLeds();
+#endif
 }
-
 
 #ifdef JOYSTICK
 
@@ -913,6 +915,7 @@ void readKeypad(){
 }
 #endif
 
+#ifdef MULTIPLEXLEDS
 void multiplexLeds() {
   unsigned long currentMillis = millis();
   //init Multiplex
@@ -947,7 +950,7 @@ void multiplexLeds() {
       currentLED= 0;
   } 
 }
-
+#endif
 
 void commandReceived(char cmd, uint16_t io, uint16_t value){
   #ifdef OUTPUTS

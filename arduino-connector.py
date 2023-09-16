@@ -132,12 +132,12 @@ DLEDcount = 0
 # You can specify special Charakters however, which will be handled as Inputs in LinuxCNC. Define those in the LCNC Array below.
 
 
-Keypad = 0  # Set to 1 to Activate
+Keypad = 1  # Set to 1 to Activate
 LinuxKeyboardInput = 1  #Activate direct Keyboard integration to Linux.
 
 
-Columns = 4
-Rows = 4
+Columns = 3
+Rows = 3
 Chars = [      #here you must define as many characters as your Keypad has keys. calculate columns * rows . for example 4 *4 = 16. You can write it down like in the example for ease of readability.
  "1", "2", "3", "A",
  "4", "5", "6", "B",
@@ -169,8 +169,8 @@ Destination = [    #define, which Key should be inserted in LinuxCNC as Input or
 
 
 MultiplexLED = 1  # Set to 1 to Activate
-LedVccPins = 8
-LedGndPins = 7
+LedVccPins = 3
+LedGndPins = 3
 
 
 
@@ -339,22 +339,17 @@ def managageOutputs():
 			if (Debug):print ("Sending:{}".format(command.encode()))
 			oldDLEDStates[dled] = State
 			time.sleep(0.01)
-	
-	for mled in range(LedVccPins*LedGndPins):
-		State = int(c["mled.{}".format(mled)])
-		if oldMledStates[mled] != State: #check if states have changed
-			Sig = 'M'
-			Pin = mled
-			command = "{}{}:{}\n".format(Sig,Pin,State)
-			arduino.write(command.encode())
-			if (Debug):print ("Sending:{}".format(command.encode()))
-			oldMledStates[mled] = State
-			time.sleep(0.01)
-
-# setup MultiplexLED halpins
-if MultiplexLED > 0:
-  for port in range(LedVccPins*LedGndPins):
-      c.newpin("mled.{}".format(port), hal.HAL_BIT, hal.HAL_OUT)
+	if MultiplexLED > 0:
+		for mled in range(LedVccPins*LedGndPins):
+			State = int(c["mled.{}".format(mled)])
+			if oldMledStates[mled] != State: #check if states have changed
+				Sig = 'M'
+				Pin = mled
+				command = "{}{}:{}\n".format(Sig,Pin,State)
+				arduino.write(command.encode())
+				if (Debug):print ("Sending:{}".format(command.encode()))
+				oldMledStates[mled] = State
+				time.sleep(0.01)
 
 
 while True:
