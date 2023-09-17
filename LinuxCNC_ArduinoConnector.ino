@@ -937,17 +937,17 @@ void multiplexLeds() {
   
   for(currentLED = 0; currentLED < numVccPins*numGndPins ;currentLED ++){
     if(ledStates[currentLED] == 1){                         //only handle turned on LEDs 
-      digitalWrite(LedVccPins[currentLED%numVccPins],HIGH); //turn current LED on
-      digitalWrite(LedGndPins[currentLED/numVccPins],LOW);
+      digitalWrite(LedVccPins[currentLED/numVccPins],HIGH); //turn current LED on
+      digitalWrite(LedGndPins[currentLED%numVccPins],LOW);
       
       Serial.print("VCC: ");
-      Serial.print(LedVccPins[currentLED%numVccPins]);
+      Serial.print(LedVccPins[currentLED/numVccPins]);
       Serial.print(" GND: ");
-      Serial.println(LedGndPins[currentLED/numVccPins]);
+      Serial.println(LedGndPins[currentLED%numVccPins]);
       
       delayMicroseconds(interval);                          //wait couple ms
-      digitalWrite(LedVccPins[currentLED%numVccPins],LOW);  //turn off and go to next one
-      digitalWrite(LedGndPins[currentLED/numVccPins],HIGH);
+      digitalWrite(LedVccPins[currentLED/numVccPins],LOW);  //turn off and go to next one
+      digitalWrite(LedGndPins[currentLED%numVccPins],HIGH);
     }
   }
 /*
