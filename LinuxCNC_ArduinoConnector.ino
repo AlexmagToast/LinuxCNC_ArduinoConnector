@@ -263,13 +263,12 @@ So you could attach a QWERT* Keyboard to the arduino and you will be able to wri
 */
 #define KEYPAD
 #ifdef KEYPAD
-const int numRows = 3;  // Define the number of rows in the matrix 
-const int numCols = 3;  // Define the number of columns in the matrix
+const int numRows = 8;  // Define the number of rows in the matrix 
+const int numCols = 8;  // Define the number of columns in the matrix
 
 // Define the pins connected to the rows and columns of the matrix
-const int rowPins[numRows] = {5,6,7}; //Iputs
-const int colPins[numCols] = {8, 9, 10}; //"Output 8-14"
-
+const int rowPins[numRows] = {2,3,4,5,6,7,8,9}; //Iputs
+const int colPins[numCols] = {40,41,42,43,44,45,46,47}; //"Output 8-14"
 int keys[numRows][numCols] = {0};
 int lastKey= -1;
 #endif
@@ -281,16 +280,16 @@ int lastKey= -1;
 
 #ifdef MULTIPLEXLEDS
 
-const int numVccPins = 3;      // Number of rows in the matrix
-const int numGndPins = 3;      // Number of columns in the matrix
-const int LedVccPins[] = {2,3,4}; // Arduino pins connected to rows
-const int LedGndPins[] = {8,9,10}; // Arduino pins connected to columns
+const int numVccPins = 8;      // Number of rows in the matrix
+const int numGndPins = 8;      // Number of columns in the matrix
+const int LedVccPins[] = {30,31,32,33,34,35,36,37}; // Arduino pins connected to rows
+const int LedGndPins[] = {40,41,42,43,44,45,46,47}; // Arduino pins connected to columns
 
 // Define the LED matrix
 int ledStates[numVccPins*numGndPins] = {0};
 
 unsigned long previousMillis = 0;
-const unsigned long interval = 1; // Time (in milliseconds) per LED display
+const unsigned long interval = 0; // Time (in milliseconds) per LED display
 
 int currentLED = 0;
 #endif
@@ -495,7 +494,8 @@ void loop() {
   readJoySticks(); //read Encoders & send data
 #endif
 #ifdef MULTIPLEXLEDS
-  multiplexLeds();
+//for(int i=0;i<20;i++){
+  multiplexLeds();//}
 #endif
 }
 
@@ -919,29 +919,28 @@ void readKeypad(){
 void multiplexLeds() {
   unsigned long currentMillis = millis();
   //init Multiplex
-  if(ledStates[currentLED]==1){//turn active LEDs on. 
-    #ifdef KEYPAD //if Keyboard is presend disable Pullup Resistors to not mess with LEDs while a Button is pressed.
-      for (int row = 0; row < numRows; row++) {
-        pinMode(rowPins[row], OUTPUT);
-        digitalWrite(rowPins[row], LOW);
-      }
-    #endif
+  #ifdef KEYPAD //if Keyboard is presend disable Pullup Resistors to not mess with LEDs while a Button is pressed.
+    for (int row = 0; row < numRows; row++) {
+      pinMode(rowPins[row], OUTPUT);
+      digitalWrite(rowPins[row], LOW);
+    }
+  #endif
 
-    for (int i = 0; i < numVccPins; i++) {
-      pinMode(LedVccPins[i], OUTPUT);
-      digitalWrite(LedVccPins[i], LOW); // Set to LOW to disable all Vcc Pins
+  for (int i = 0; i < numVccPins; i++) {
+    pinMode(LedVccPins[i], OUTPUT);
+    digitalWrite(LedVccPins[i], LOW); // Set to LOW to disable all Vcc Pins
+  }
+  for (int i = 0; i < numGndPins; i++) {
+    pinMode(LedGndPins[i], OUTPUT);
+    digitalWrite(LedGndPins[i], HIGH); // Set to HIGH to disable all GND Pins
+  }
+  for(currentLED = 0; currentLED < numVccPins*numGndPins ;currentLED ++){
+    if(ledStates[currentLED] == 1){
+      digitalWrite(LedVccPins[currentLED%numVccPins],HIGH);
+      digitalWrite(LedGndPins[currentLED/numVccPins],LOW);
     }
-    for (int i = 0; i < numGndPins; i++) {
-      pinMode(LedGndPins[i], OUTPUT);
-      digitalWrite(LedGndPins[i], HIGH); // Set to HIGH to disable all GND Pins
-    }
-    digitalWrite(LedVccPins[currentLED%numVccPins],HIGH);
-    digitalWrite(LedGndPins[currentLED/numVccPins],LOW);
-
-    if (currentMillis - previousMillis >= interval) {   // Check if it's time to update the LED matrix  
-      previousMillis = currentMillis;                   // Save the last update time
-      currentLED++;
-    }
+  }
+/*
   }
   if(ledStates[currentLED]==0){//If currentLED is Off, manage next one. 
     currentLED++;
@@ -949,6 +948,7 @@ void multiplexLeds() {
   if(currentLED >= numVccPins*numGndPins){
       currentLED= 0;
   } 
+  */
 }
 #endif
 
