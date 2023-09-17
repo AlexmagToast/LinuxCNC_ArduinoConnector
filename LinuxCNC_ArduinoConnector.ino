@@ -289,7 +289,7 @@ const int LedGndPins[] = {40,41,42,43,44,45,46,47}; // Arduino pins connected to
 int ledStates[numVccPins*numGndPins] = {0};
 
 unsigned long previousMillis = 0;
-const unsigned long interval = 0; // Time (in milliseconds) per LED display
+const unsigned long interval = 500; // Time (in milliseconds) per LED display
 
 int currentLED = 0;
 #endif
@@ -934,10 +934,20 @@ void multiplexLeds() {
     pinMode(LedGndPins[i], OUTPUT);
     digitalWrite(LedGndPins[i], HIGH); // Set to HIGH to disable all GND Pins
   }
+  
   for(currentLED = 0; currentLED < numVccPins*numGndPins ;currentLED ++){
-    if(ledStates[currentLED] == 1){
-      digitalWrite(LedVccPins[currentLED%numVccPins],HIGH);
+    if(ledStates[currentLED] == 1){                         //only handle turned on LEDs 
+      digitalWrite(LedVccPins[currentLED%numVccPins],HIGH); //turn current LED on
       digitalWrite(LedGndPins[currentLED/numVccPins],LOW);
+      
+      Serial.print("VCC: ");
+      Serial.print(LedVccPins[currentLED%numVccPins]);
+      Serial.print(" GND: ");
+      Serial.println(LedGndPins[currentLED/numVccPins]);
+      
+      delayMicroseconds(interval);                          //wait couple ms
+      digitalWrite(LedVccPins[currentLED%numVccPins],LOW);  //turn off and go to next one
+      digitalWrite(LedGndPins[currentLED/numVccPins],HIGH);
     }
   }
 /*
