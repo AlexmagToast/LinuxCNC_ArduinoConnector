@@ -32,6 +32,9 @@ It also supports Digital LEDs such as WS2812 or PL9823. This way you can have as
 | binary encoded Selector Switch                | 1            | 1              | 1           |
 | Quadrature Encoder Input                      | 3 or more    | 1 or more      | 1 or more   |
 | Joystick Support (2Axis)                      | 8            | 6              | 3           |
+| Matrix Keyboard                               | 1            | 1              | 1           |
+| Multiplexed LEDs                              | ~ 1000       | ~ 1000         | ~ 1000      |
+
 
 
 # Compatiblity
@@ -167,6 +170,19 @@ You can install it by typing "sudo apt install xdotool" in your console. After i
 If it doesn't, something is not working and this program will not work either. Please get xdotool working first.
 
 In the Settings a cheap 4x4 Keyboard is used such as https://theartoftinkering.com/recommends/matrix-keyboard/ (referral link)
+
+# Multiplexed LEDs
+Special mode for Multiplexed LEDs. This mode is experimental and implemented to support Matrix Keyboards with integrated Key LEDs. Please provide feedback if u use this feature.
+check out this thread on LinuxCNC Forum for context. https://forum.linuxcnc.org/show-your-stuff/49606-matrix-keyboard-controlling-linuxcnc
+for Each LED an Output Pin is generated in LinuxCNC.
+
+If your Keyboard shares pins with the LEDs, you have to check polarity. The Matrix Keyboard uses Pins as such: 
+
+rowPins[numRows] = {} are Pullup Inputs
+colPins[numCols] = {} are GND Pins
+
+the matrix keyboard described in the thread shares GND Pins between LEDs and KEYs, therefore LedGndPins[] and colPins[numCols] = {} use same Pins, LedVccPins[] are Outputs and drive the LEDs. 
+
 
 # Quadrature Encoders
 Quadrature Encoders require a Library to be installed. 

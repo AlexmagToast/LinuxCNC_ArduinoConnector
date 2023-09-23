@@ -29,6 +29,7 @@ import serial, time, hal
 #	Latching Potentiometers = 'L' -write only  -Pin State: 0-max Position
 #	binary encoded Selector = 'K' -write only  -Pin State: 0-32
 #	Matrix Keypad			= 'M' -write only  -Pin State: 0,1
+#	Multiplexed LEDs		= 'M' -read only   -Pin State: 0,1
 #	Quadrature Encoders 	= 'R' -write only  -Pin State: 0(down),1(up),-2147483648 to 2147483647(counter)
 #	Joystick Input		 	= 'R' -write only  -Pin State: -2147483648 to 2147483647(counter)
 
@@ -132,7 +133,7 @@ DLEDcount = 0
 
 
 Keypad = 0  # Set to 1 to Activate
-LinuxKeyboardInput = 1  #Activate direct Keyboard integration to Linux.
+LinuxKeyboardInput = 0  # set to 1 to Activate direct Keyboard integration to Linux.
 
 
 Columns = 4
@@ -166,16 +167,25 @@ Destination = [    #define, which Key should be inserted in LinuxCNC as Input or
 #  12,  13,  14,  15
 #
 
+# this is an experimental feature, meant to support MatrixKeyboards with integrated LEDs in each Key but should work with any other LED Matrix too.
+# It creates Output Halpins that can be connected to signals in LinuxCNC
+MultiplexLED = 0  # Set to 1 to Activate
+LedVccPins = 3 
+LedGndPins = 3
+
+
+
 Debug = 0		#only works when this script is run from halrun in Terminal. "halrun","loadusr arduino" now Debug info will be displayed.
+
 ########  End of Config!  ########
 
 
-
+# global Variables for State Saving
 
 olddOutStates= [0]*Outputs
 oldPwmOutStates=[0]*PwmOutputs
 oldDLEDStates=[0]*DLEDcount
-
+oldMledStates = [0]*LedVccPins*LedGndPins
 
 if LinuxKeyboardInput:
 	import subprocess
@@ -241,6 +251,11 @@ if Keypad > 0:
     if Destination[port] == 0 & LinuxKeyboardInput:
       c.newpin("keypad.{}".format(Chars[port]), hal.HAL_BIT, hal.HAL_IN)
       
+# setup MultiplexLED halpins
+if MultiplexLED > 0:
+  for port in range(LedVccPins*LedGndPins):
+      c.newpin("mled.{}".format(port), hal.HAL_BIT, hal.HAL_OUT)
+
 
 #setup JoyStick Pins
 if JoySticks > 0:
@@ -326,8 +341,17 @@ def managageOutputs():
 			if (Debug):print ("Sending:{}".format(command.encode()))
 			oldDLEDStates[dled] = State
 			time.sleep(0.01)
-
-
+	if MultiplexLED > 0:
+		for mled in range(LedVccPins*LedGndPins):
+			State = int(c["mled.{}".format(mled)])
+			if oldMledStates[mled] != State: #check if states have changed
+				Sig = 'M'
+				Pin = mled
+				command = "{}{}:{}\n".format(Sig,Pin,State)
+				arduino.write(command.encode())
+				if (Debug):print ("Sending:{}".format(command.encode()))
+				oldMledStates[mled] = State
+				time.sleep(0.01)
 
 
 while True:
