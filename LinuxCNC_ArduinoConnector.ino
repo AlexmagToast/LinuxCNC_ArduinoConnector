@@ -621,7 +621,7 @@ void reconnect(){
     Serial.println("resending Data");
   #endif
     
-  #ifdef INPUT
+  #ifdef INPUTS
     for (int x = 0; x < Inputs; x++){
       InState[x]= -1;
     }
