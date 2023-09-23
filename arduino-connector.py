@@ -132,12 +132,12 @@ DLEDcount = 0
 # You can specify special Charakters however, which will be handled as Inputs in LinuxCNC. Define those in the LCNC Array below.
 
 
-Keypad = 1  # Set to 1 to Activate
-LinuxKeyboardInput = 1  #Activate direct Keyboard integration to Linux.
+Keypad = 0  # Set to 1 to Activate
+LinuxKeyboardInput = 0  # set to 1 to Activate direct Keyboard integration to Linux.
 
 
-Columns = 3
-Rows = 3
+Columns = 4
+Rows = 4
 Chars = [      #here you must define as many characters as your Keypad has keys. calculate columns * rows . for example 4 *4 = 16. You can write it down like in the example for ease of readability.
  "1", "2", "3", "A",
  "4", "5", "6", "B",
@@ -167,14 +167,16 @@ Destination = [    #define, which Key should be inserted in LinuxCNC as Input or
 #  12,  13,  14,  15
 #
 
-
-MultiplexLED = 1  # Set to 1 to Activate
-LedVccPins = 3
+# this is an experimental feature, meant to support MatrixKeyboards with integrated LEDs in each Key but should work with any other LED Matrix too.
+# It creates Output Halpins that can be connected to signals in LinuxCNC
+MultiplexLED = 0  # Set to 1 to Activate
+LedVccPins = 3 
 LedGndPins = 3
 
 
 
 Debug = 0		#only works when this script is run from halrun in Terminal. "halrun","loadusr arduino" now Debug info will be displayed.
+
 ########  End of Config!  ########
 
 

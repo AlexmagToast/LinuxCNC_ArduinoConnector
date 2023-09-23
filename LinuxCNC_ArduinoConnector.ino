@@ -16,6 +16,7 @@
   - digital Inputs
   - digital Outputs
   - Matrix Keypad
+  - Multiplexed LEDs
   - Quadrature encoders
   - Joysticks
   
@@ -32,9 +33,10 @@
   binary encoded Selector = 'K' -write only  -Pin State: 0-32
   rotary encoder          = 'R' -write only  -Pin State: up/ down / -2147483648 to 2147483647
   joystick                = 'R' -write only  -Pin State: up/ down / -2147483648 to 2147483647
-  
+  multiplexed LEDs        = 'M' -read only   -Pin State: 0,1
+
 Keyboard Input:
-  Matrix Keypad           = 'M' -write only  -Pin State: Number of Matrix Key. 
+  Matrix Keypad           = 'M' -write only  -Pin State: 0,1
 
 Communication Status      = 'E' -read/Write  -Pin State: 0:0
 
@@ -64,20 +66,20 @@ Communication Status      = 'E' -read/Write  -Pin State: 0:0
 //###################################################IO's###################################################
 
 
-//#define INPUTS                       //Use Arduino IO's as Inputs. Define how many Inputs you want in total and then which Pins you want to be Inputs.
+#define INPUTS                       //Use Arduino IO's as Inputs. Define how many Inputs you want in total and then which Pins you want to be Inputs.
 #ifdef INPUTS
   const int Inputs = 2;               //number of inputs using internal Pullup resistor. (short to ground to trigger)
   int InPinmap[] = {8,9};
 #endif
 
                                        //Use Arduino IO's as Toggle Inputs, which means Inputs (Buttons for example) keep HIGH State after Release and Send LOW only after beeing Pressed again. 
-//#define SINPUTS                        //Define how many Toggle Inputs you want in total and then which Pins you want to be Toggle Inputs.
+#define SINPUTS                        //Define how many Toggle Inputs you want in total and then which Pins you want to be Toggle Inputs.
 #ifdef SINPUTS
   const int sInputs = 1;              //number of inputs using internal Pullup resistor. (short to ground to trigger)
   int sInPinmap[] = {10};
 #endif
 
-//#define OUTPUTS                     //Use Arduino IO's as Outputs. Define how many Outputs you want in total and then which Pins you want to be Outputs.
+#define OUTPUTS                     //Use Arduino IO's as Outputs. Define how many Outputs you want in total and then which Pins you want to be Outputs.
 #ifdef OUTPUTS
   const int Outputs = 2;              //number of outputs
   int OutPinmap[] = {11,12};
@@ -166,7 +168,7 @@ Encoder Encoder1(31,33);    //A,B Pin
   const int QuadEncSig[] = {2,2};   //define wich kind of Signal you want to generate. 
                                   //1= send up or down signal (typical use for selecting modes in hal)
                                   //2= send position signal (typical use for MPG wheel)
-  const int QuadEncMp[] = {1,4};   //some Rotary encoders send multiple Electronical Impulses per mechanical pulse. How many Electrical impulses are send for each mechanical Latch?            
+  const int QuadEncMp[] = {4,4};   //some Rotary encoders send multiple Electronical Impulses per mechanical pulse. How many Electrical impulses are send for each mechanical Latch?            
 
 #endif
 
@@ -261,22 +263,27 @@ Adafruit_NeoPixel strip(DLEDcount, DLEDPin, NEO_GRB + NEO_KHZ800);//Color sequen
 Matrix Keypads are supported. The input is NOT added as HAL Pin to LinuxCNC. Instead it is inserted to Linux as Keyboard direktly. 
 So you could attach a QWERT* Keyboard to the arduino and you will be able to write in Linux with it (only while LinuxCNC is running!)
 */
-#define KEYPAD
+//#define KEYPAD
 #ifdef KEYPAD
-const int numRows = 8;  // Define the number of rows in the matrix 
-const int numCols = 8;  // Define the number of columns in the matrix
+const int numRows = 4;  // Define the number of rows in the matrix 
+const int numCols = 4;  // Define the number of columns in the matrix
 
 // Define the pins connected to the rows and columns of the matrix
-const int rowPins[numRows] = {2,3,4,5,6,7,8,9}; //Iputs
-const int colPins[numCols] = {40,41,42,43,44,45,46,47}; //"Output 8-14"
+const int rowPins[numRows] = {2, 3, 4, 5};
+const int colPins[numCols] = {6, 7, 8, 9};
 int keys[numRows][numCols] = {0};
 int lastKey= -1;
 #endif
 
 
-#define MULTIPLEXLEDS // Special mode for Multiplexed LEDs.
+//#define MULTIPLEXLEDS // Special mode for Multiplexed LEDs. This mode is experimental and implemented to support Matrix Keyboards with integrated Key LEDs.
 // check out this thread on LinuxCNC Forum for context. https://forum.linuxcnc.org/show-your-stuff/49606-matrix-keyboard-controlling-linuxcnc
 // for Each LED an Output Pin is generated in LinuxCNC.
+
+//If your Keyboard shares pins with the LEDs, you have to check polarity. 
+//rowPins[numRows] = {} are Pullup Inputs
+//colPins[numCols] = {} are GND Pins
+//the matrix keyboard described in the thread shares GND Pins between LEDs and KEys, therefore LedGndPins[] and colPins[numCols] = {} use same Pins. 
 
 #ifdef MULTIPLEXLEDS
 
@@ -494,8 +501,7 @@ void loop() {
   readJoySticks(); //read Encoders & send data
 #endif
 #ifdef MULTIPLEXLEDS
-//for(int i=0;i<20;i++){
-  multiplexLeds();//}
+  multiplexLeds();// cycle through the 2D LED Matrix}
 #endif
 }
 
