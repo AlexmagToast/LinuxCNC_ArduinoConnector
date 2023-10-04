@@ -98,7 +98,7 @@ BinSelKnob = 0 	#1 enable
 BinSelKnobPos = 32
 
 #Do you want the Binary Encoded Selector Switches to control override Settings in LinuxCNC? This function lets you define values for each Position. 
-SetBinSelKnobValue = [0] #0 = disable 1= enable
+SetBinSelKnobValue = [[0]] #0 = disable 1= enable
 BinSelKnobvalues = [[180,190,200,0,0,0,0,0,0,0,0,0,0,0,0,10,20,30,40,50,60,70,80,90,100,110,120,130,140,150,160,170]]
 
 #Enable Quadrature Encoders
@@ -412,13 +412,13 @@ while True:
 									c["lpoti.{}.{}" .format(io,Pin)] = 0
 									if(Debug):print("lpoti.{}.{} =0".format(io,Pin))
 						
-						if LPotiLatches[Poti][0] == io and SetLPotiValue[Poti] == 1:
+						if LPotiLatches[Poti][0] == io and SetLPotiValue[Poti] >= 1:
 							c["lpoti.{}.{}" .format(io,"out")] = LPotiValues[Poti][value]
 							if(Debug):print("lpoti.{}.{} = 0".format("out",LPotiValues[Poti][value]))
 
 				elif cmd == "K":
 					firstcom = 1
-					if SetBinSelKnobValue == 0:
+					if SetBinSelKnobValue[0] == 0:
 						for port in range(BinSelKnobPos):
 							if port == value:
 								c["binselknob.{}".format(port)] = 1
