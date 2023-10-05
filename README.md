@@ -93,7 +93,7 @@ Pin Names are named arduino.[Pin Type]-[Pin Number]. Example:
 arduino.digital-in-32 for Pin 32 on an Arduino Mega2560
 
 Watch the Video explanation on Youtube:  
-[![IMAGE ALT TEXT](https://img.youtube.com/vi/bjKfnLbsvgA/0.jpg)](https://www.youtube.com/watch?v=bjKfnLbsvgA "How to set up and test arduino-connector with LinuxCNC")
+[![IMAGE ALT TEXT](https://img.youtube.com/vi/bjKfnLbsvgA/0.jpg)](https://www.youtube.com/watch?v=bjKfnLbsvgA&list=PLdrOU2f3sjtApTdxhmAiXL4lET_ZnntGc "How to set up and test arduino-connector with LinuxCNC")
 
 
 # Configuration - HowTo
@@ -151,7 +151,7 @@ Typically it should be R G B for WS2812 and G R B for PL9823.
 You can mix both in one chain, just modify the color values accordingly.
 
 Watch the Video explanation on Youtube:  
-[![IMAGE ALT TEXT](https://img.youtube.com/vi/L_FBEtP9il0/0.jpg)](https://www.youtube.com/watch?v=L_FBEtP9il0 "using digital RGB LEDs with LinuxCNC")
+[![IMAGE ALT TEXT](https://img.youtube.com/vi/L_FBEtP9il0/0.jpg)](https://www.youtube.com/watch?v=L_FBEtP9il0&list=PLdrOU2f3sjtApTdxhmAiXL4lET_ZnntGc&index=2 "using digital RGB LEDs with LinuxCNC")
 
 
 
@@ -185,7 +185,7 @@ In the Settings a cheap 4x4 Keyboard is used such as https://theartoftinkering.c
 
 WaWatch the Video explanation on Youtube:
 ch the Video explanation on Youtube:
-[![IMAGE ALT TEXT](https://img.youtube.com/vi/oOhzm7pbvXo/0.jpg)](https://www.youtube.com/watch?v=oOhzm7pbvXo "connect Matrix Keyboards to LinuxCNC using ArduinoC")
+[![IMAGE ALT TEXT](https://img.youtube.com/vi/oOhzm7pbvXo/0.jpg)](https://www.youtube.com/watch?v=oOhzm7pbvXo&list=PLdrOU2f3sjtApTdxhmAiXL4lET_ZnntGc&index=4 "connect Matrix Keyboards to LinuxCNC using ArduinoC")
 
 
 # Multiplexed LEDs
@@ -239,7 +239,7 @@ Low Performance: Both signals connect to non-interrupt pins, details below.
 |Sanguino	        |2, 10, 11	                |0                   |
 
 Watch the Video explanation on Youtube:  
-[![IMAGE ALT TEXT](https://img.youtube.com/vi/hgKXgRvjwPg/0.jpg)](https://youtu.be/hgKXgRvjwPg "How to connect Rotary Encoders and Joysticks for MPG to LinuxCNC using Arduino")
+[![IMAGE ALT TEXT](https://img.youtube.com/vi/hgKXgRvjwPg/0.jpg)](https://www.youtube.com/watch?v=hgKXgRvjwPg&list=PLdrOU2f3sjtApTdxhmAiXL4lET_ZnntGc&index=3 "How to connect Rotary Encoders and Joysticks for MPG to LinuxCNC using Arduino")
 
 # Joysticks
 Joysticks use a similar implementation as Quadrature encoders and are implemented with the usecase as MPG in mind. 
@@ -249,7 +249,7 @@ Depending of the position of the Joystick it will add or substract from a counte
 Currently Joysticks will only generate an counter in LinuxCNC.
 
 Watch the Video explanation on Youtube:  
-[![IMAGE ALT TEXT](https://img.youtube.com/vi/hgKXgRvjwPg/0.jpg)](https://youtu.be/hgKXgRvjwPg?si=fK5umqKZm-i0UVMP&t=780 "How to connect Rotary Encoders and Joysticks to LinuxCNC using Arduino")
+[![IMAGE ALT TEXT](https://img.youtube.com/vi/hgKXgRvjwPg/0.jpg)](https://youtu.be/hgKXgRvjwPg?si=nVdQgR5Q6rLq4QGQ&t=780 "How to connect Rotary Encoders and Joysticks to LinuxCNC using Arduino")
 
 # Serial communication over USB
 The Send and receive Protocol is <Signal><PinNumber>:<Pin State>
