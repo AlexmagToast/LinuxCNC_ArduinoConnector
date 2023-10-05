@@ -90,9 +90,10 @@ Enter "setp arduino.DLED.1 TRUE" for example. This will set said Pin to HIGH or 
 You can now use arduino pins in your hal file. 
 Pin Names are named arduino.[Pin Type]-[Pin Number]. Example:
 arduino.digital-in-32 for Pin 32 on an Arduino Mega2560
-<p align="center">
+
+Watch the Video explanation on Youtube:
 [![IMAGE ALT TEXT](https://img.youtube.com/vi/bjKfnLbsvgA/0.jpg)](https://www.youtube.com/watch?v=bjKfnLbsvgA "How to set up and test arduino-connector with LinuxCNC")
-</p>
+
 
 # Configuration - HowTo
 In the Arduino .ino File you will see the configuration Parameters for each kind of Signal. 
@@ -148,7 +149,7 @@ Depending on the used LED Chipset, Color sequence can vary. Please try, which va
 Typically it should be R G B for WS2812 and G R B for PL9823.
 You can mix both in one chain, just modify the color values accordingly.
 
-
+Watch the Video explanation on Youtube:
 [![IMAGE ALT TEXT](https://img.youtube.com/vi/L_FBEtP9il0/0.jpg)](https://www.youtube.com/watch?v=L_FBEtP9il0 "using digital RGB LEDs with LinuxCNC")
 
 
@@ -181,7 +182,8 @@ If it doesn't, something is not working and this program will not work either. P
 
 In the Settings a cheap 4x4 Keyboard is used such as https://theartoftinkering.com/recommends/matrix-keyboard/ (referral link)
 
-
+WaWatch the Video explanation on Youtube:
+ch the Video explanation on Youtube:
 [![IMAGE ALT TEXT](https://img.youtube.com/vi/oOhzm7pbvXo/0.jpg)](https://www.youtube.com/watch?v=oOhzm7pbvXo "connect Matrix Keyboards to LinuxCNC using ArduinoC")
 
 
@@ -235,7 +237,7 @@ Low Performance: Both signals connect to non-interrupt pins, details below.
 |Arduino Mega	    |2, 3, 18, 19, 20, 21	      |13                  |
 |Sanguino	        |2, 10, 11	                |0                   |
 
-
+Watch the Video explanation on Youtube:
 [![IMAGE ALT TEXT](https://img.youtube.com/vi/hgKXgRvjwPg/0.jpg)](https://youtu.be/hgKXgRvjwPg "How to connect Rotary Encoders and Joysticks for MPG to LinuxCNC using Arduino")
 
 # Joysticks
@@ -244,6 +246,8 @@ Connect your X and Y Pin of your Joystick to an Analog Pin of your choice.
 Depending of the position of the Joystick it will add or substract from a counter, which then is send to LinuxCNC. The more you move the Joystick from the middle Position to the end of movement the more will be added to the counter, which will increase the speed of motion in Jog mode. 
 
 Currently Joysticks will only generate an counter in LinuxCNC.
+Watch the Video explanation on Youtube:
+[![IMAGE ALT TEXT](https://img.youtube.com/vi/hgKXgRvjwPg/0.jpg)](https://youtu.be/hgKXgRvjwPg?si=fK5umqKZm-i0UVMP&t=780 "How to connect Rotary Encoders and Joysticks to LinuxCNC using Arduino")
 
 # Serial communication over USB
 The Send and receive Protocol is <Signal><PinNumber>:<Pin State>
