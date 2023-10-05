@@ -90,9 +90,9 @@ Enter "setp arduino.DLED.1 TRUE" for example. This will set said Pin to HIGH or 
 You can now use arduino pins in your hal file. 
 Pin Names are named arduino.[Pin Type]-[Pin Number]. Example:
 arduino.digital-in-32 for Pin 32 on an Arduino Mega2560
-
+<p align="center">
 [![IMAGE ALT TEXT](https://img.youtube.com/vi/bjKfnLbsvgA/0.jpg)](https://www.youtube.com/watch?v=bjKfnLbsvgA "How to set up and test arduino-connector with LinuxCNC")
-
+</p>
 
 # Configuration - HowTo
 In the Arduino .ino File you will see the configuration Parameters for each kind of Signal. 
@@ -180,6 +180,10 @@ You can install it by typing "sudo apt install xdotool" in your console. After i
 If it doesn't, something is not working and this program will not work either. Please get xdotool working first.
 
 In the Settings a cheap 4x4 Keyboard is used such as https://theartoftinkering.com/recommends/matrix-keyboard/ (referral link)
+
+
+[![IMAGE ALT TEXT](https://img.youtube.com/vi/oOhzm7pbvXo/0.jpg)](https://www.youtube.com/watch?v=oOhzm7pbvXo "connect Matrix Keyboards to LinuxCNC using ArduinoC")
+
 
 # Multiplexed LEDs
 Special mode for Multiplexed LEDs. This mode is experimental and implemented to support Matrix Keyboards with integrated Key LEDs. Please provide feedback if u use this feature.
