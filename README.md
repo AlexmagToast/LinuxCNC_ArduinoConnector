@@ -36,7 +36,9 @@ It also supports Digital LEDs such as WS2812 or PL9823. This way you can have as
 | Multiplexed LEDs                              | ~ 1000       | ~ 1000         | ~ 1000      |
 
 
-
+Planned Features: 
+- Temperature Probes using 4.7k Pullup-Resistor
+- 
 # Compatiblity
 This software works with LinuxCNC 2.8, 2.9 and 2.10. For 2.8 however you have to change #!/usr/bin/python3.9 in the first line of arduino.py to #!/usr/bin/python2.7.
 
@@ -55,6 +57,7 @@ To test you Arduino you can connect to it after flashing with the Arduino IDE. S
 In the Beginning the Arduino will Spam ```E0:0``` to the console. This is used to establish connection. 
 Just return ```E0:0``` to it. You can now communicate with the Arduino. Further info is in the Chapter [Serial Communication](#serial-communication-over-usb)
 
+
 # Installation
 1. configure the .ino file to your demands and flash it to your arduino
 2. connect the arduino to your LinuxCNC Computer via USB
@@ -70,7 +73,6 @@ it to /usr/bin
     ```sudo cp arduino-connector.py /usr/bin/arduino-connector  ```  
 
 7. add this entry to the end of your hal file: ```loadusr arduino-connector```  
-
 
 # Testing
 To test your Setup, you can run ```halrun``` in Terminal.
@@ -88,6 +90,9 @@ Enter "setp arduino.DLED.1 TRUE" for example. This will set said Pin to HIGH or 
 You can now use arduino pins in your hal file. 
 Pin Names are named arduino.[Pin Type]-[Pin Number]. Example:
 arduino.digital-in-32 for Pin 32 on an Arduino Mega2560
+
+[![IMAGE ALT TEXT](https://img.youtube.com/vi/bjKfnLbsvgA/0.jpg)](https://www.youtube.com/watch?v=bjKfnLbsvgA "How to set up and test arduino-connector with LinuxCNC")
+
 
 # Configuration - HowTo
 In the Arduino .ino File you will see the configuration Parameters for each kind of Signal. 
@@ -142,6 +147,11 @@ Here are two examples:
 Depending on the used LED Chipset, Color sequence can vary. Please try, which value correspons to which color with your LED's.
 Typically it should be R G B for WS2812 and G R B for PL9823.
 You can mix both in one chain, just modify the color values accordingly.
+
+
+[![IMAGE ALT TEXT](https://img.youtube.com/vi/L_FBEtP9il0/0.jpg)](https://www.youtube.com/watch?v=L_FBEtP9il0 "using digital RGB LEDs with LinuxCNC")
+
+
 
 # Latching Potentiometers / Selector Switches
 This is a special Feature for rotary Selector Switches. Instead of loosing one Pin per Selection you can turn your Switch in a Potentiometer by soldering 10K resistors between the Pins and connecting the Selector Pin to an Analog Input. 
@@ -220,6 +230,9 @@ Low Performance: Both signals connect to non-interrupt pins, details below.
 |Arduino Leonardo	|0, 1, 2, 3	                |13                  |
 |Arduino Mega	    |2, 3, 18, 19, 20, 21	      |13                  |
 |Sanguino	        |2, 10, 11	                |0                   |
+
+
+[![IMAGE ALT TEXT](https://img.youtube.com/vi/hgKXgRvjwPg/0.jpg)](https://youtu.be/hgKXgRvjwPg "How to connect Rotary Encoders and Joysticks for MPG to LinuxCNC using Arduino")
 
 # Joysticks
 Joysticks use a similar implementation as Quadrature encoders and are implemented with the usecase as MPG in mind. 
