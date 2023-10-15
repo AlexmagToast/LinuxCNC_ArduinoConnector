@@ -635,10 +635,8 @@ void comalive(){
         else{
           digitalWrite(StatLedPin, HIGH);
         }
-          
+      #endif 
     }
-    
-  #endif
 }
 
 
