@@ -249,12 +249,12 @@ if DLEDcount > 0:
 if Keypad > 0:
   for port in range(Columns*Rows):
     if Destination[port] == 0 & LinuxKeyboardInput:
-      c.newpin("keypad.{}".format(Chars[port]), hal.HAL_BIT, hal.HAL_IN)
+      c.newpin("keypad.{}".format(Chars[port]), hal.HAL_BIT, hal.HAL_OUT)
       
 # setup MultiplexLED halpins
 if MultiplexLED > 0:
   for port in range(LedVccPins*LedGndPins):
-      c.newpin("mled.{}".format(port), hal.HAL_BIT, hal.HAL_OUT)
+      c.newpin("mled.{}".format(port), hal.HAL_BIT, hal.HAL_IN)
 
 
 #setup JoyStick Pins
