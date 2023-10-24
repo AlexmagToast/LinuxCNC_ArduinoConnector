@@ -11,7 +11,7 @@ Website: https://theartoftinkering.com
 Youtube: https://youtube.com/@theartoftinkering
 
 
-This Projekt enables you to connect an Arduino to LinuxCNC and provides as many IO's as you could ever wish for.
+This Project enables you to connect an Arduino to LinuxCNC and provides as many IO's as you could ever wish for.
 This Software is used as IO Expansion for LinuxCNC.
 
 ## It is NOT intended for timing and security relevant IO's. Don't use it for Emergency Stops or Endstop switches! ##
@@ -41,7 +41,7 @@ Planned Features:
 - Support for i2C LCDs
 
 # Compatiblity
-This software works with LinuxCNC 2.8, 2.9 and 2.10. For 2.8 however you have to change #!/usr/bin/python3.9 in the first line of arduino.py to #!/usr/bin/python2.7.
+This software works with LinuxCNC 2.8, 2.9 and 2.10. For 2.8, however, you have to change #!/usr/bin/python3.9 in the first line of arduino.py to #!/usr/bin/python2.7.
 
 You should be able to use any Arduino or Arduino compatible Boards, currently Tested are:
 Arduino Mega 2560
@@ -54,8 +54,8 @@ Other Arduino compatible Boards like Teensy should work fine also.
 To Install LinuxCNC_ArduinoConnector.ino on your Arduino first work through the settings in the beginning of the file.
 The Settings are commented in the file.
 
-To test you Arduino you can connect to it after flashing with the Arduino IDE. Set your Baudrate to 115200. 
-In the Beginning the Arduino will Spam ```E0:0``` to the console. This is used to establish connection. 
+To test your Arduino you can connect to it after flashing with the Arduino IDE. Set your Baudrate to 115200. 
+In the beginning the Arduino will Spam ```E0:0``` to the console. This is used to establish connection. 
 Just return ```E0:0``` to it. You can now communicate with the Arduino. Further info is in the Chapter [Serial Communication](#serial-communication-over-usb)
 
 
