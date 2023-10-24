@@ -224,11 +224,11 @@ for port in range(AInputs):
 for Poti in range(LPoti):
 	if SetLPotiValue[Poti] == 0:
 		for Pin in range(LPotiLatches[Poti][1]):
-			c.newpin("LPoti.{}.{}" .format(LPotiLatches[Poti][0],Pin), hal.HAL_BIT, hal.HAL_OUT)
+			c.newpin("lpoti.{}.{}" .format(LPotiLatches[Poti][0],Pin), hal.HAL_BIT, hal.HAL_OUT)
 	if SetLPotiValue[Poti] == 1:
-		c.newpin("LPoti.{}.{}" .format(LPotiLatches[Poti][0],"out"), hal.HAL_S32, hal.HAL_OUT)
+		c.newpin("lpoti.{}.out" .format(LPotiLatches[Poti][0]), hal.HAL_S32, hal.HAL_OUT)
 	if SetLPotiValue[Poti] == 2:
-		c.newpin("LPoti.{}.{}" .format(LPotiLatches[Poti][0],"out"), hal.HAL_FLOAT, hal.HAL_OUT)
+		c.newpin("lpoti.{}.out" .format(LPotiLatches[Poti][0]), hal.HAL_FLOAT, hal.HAL_OUT)
 
 # setup Absolute Encoder Knob halpins
 if BinSelKnob:
@@ -413,8 +413,8 @@ while True:
 									if(Debug):print("lpoti.{}.{} =0".format(io,Pin))
 						
 						if LPotiLatches[Poti][0] == io and SetLPotiValue[Poti] >= 1:
-							c["lpoti.{}.{}" .format(io,"out")] = LPotiValues[Poti][value]
-							if(Debug):print("lpoti.{}.{} = 0".format("out",LPotiValues[Poti][value]))
+							c["lpoti.{}.out" .format(io)] = LPotiValues[Poti][value]
+							if(Debug):print("lpoti.{}.out = {}".format(io,LPotiValues[Poti][value]))
 
 				elif cmd == "K":
 					firstcom = 1
