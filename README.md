@@ -62,8 +62,10 @@ Just return ```E0:0``` to it. You can now communicate with the Arduino. Further 
 # Installation
 1. configure the .ino file to your demands and flash it to your arduino
 2. connect the arduino to your LinuxCNC Computer via USB
-3. install python-serial  
+3. install python-serial via apt-get
     ```sudo apt-get install python-serial```  
+    or via pip
+    ```sudo pip3 install pyserial```
 4. edit arduino.py to match your arduino settings. If you're running 2.8 change  
   #!/usr/bin/python3.9 in the first line of arduino.py to #!/usr/bin/python2.7.
 5. also check if the Serial adress is correct for your Arduino. I found it easyest to run  
