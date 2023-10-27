@@ -11,7 +11,7 @@ Website: https://theartoftinkering.com
 Youtube: https://youtube.com/@theartoftinkering
 
 
-This Projekt enables you to connect an Arduino to LinuxCNC and provides as many IO's as you could ever wish for.
+This Project enables you to connect an Arduino to LinuxCNC and provides as many IO's as you could ever wish for.
 This Software is used as IO Expansion for LinuxCNC.
 
 ## It is NOT intended for timing and security relevant IO's. Don't use it for Emergency Stops or Endstop switches! ##
@@ -32,10 +32,16 @@ It also supports Digital LEDs such as WS2812 or PL9823. This way you can have as
 | binary encoded Selector Switch                | 1            | 1              | 1           |
 | Quadrature Encoder Input                      | 3 or more    | 1 or more      | 1 or more   |
 | Joystick Support (2Axis)                      | 8            | 6              | 3           |
+| Matrix Keyboard                               | 1            | 1              | 1           |
+| Multiplexed LEDs                              | ~ 1000       | ~ 1000         | ~ 1000      |
 
+
+Planned Features: 
+- Temperature Probes using 4.7k Pullup-Resistor
+- Support for i2C LCDs
 
 # Compatiblity
-This software works with LinuxCNC 2.8, 2.9 and 2.10. For 2.8 however you have to change #!/usr/bin/python3.9 in the first line of arduino.py to #!/usr/bin/python2.7.
+This software works with LinuxCNC 2.8, 2.9 and 2.10. For 2.8, however, you have to change #!/usr/bin/python3.9 in the first line of arduino.py to #!/usr/bin/python2.7.
 
 You should be able to use any Arduino or Arduino compatible Boards, currently Tested are:
 Arduino Mega 2560
@@ -48,9 +54,10 @@ Other Arduino compatible Boards like Teensy should work fine also.
 To Install LinuxCNC_ArduinoConnector.ino on your Arduino first work through the settings in the beginning of the file.
 The Settings are commented in the file.
 
-To test you Arduino you can connect to it after flashing with the Arduino IDE. Set your Baudrate to 115200. 
-In the Beginning the Arduino will Spam ```E0:0``` to the console. This is used to establish connection. 
+To test your Arduino you can connect to it after flashing with the Arduino IDE. Set your Baudrate to 115200. 
+In the beginning the Arduino will Spam ```E0:0``` to the console. This is used to establish connection. 
 Just return ```E0:0``` to it. You can now communicate with the Arduino. Further info is in the Chapter [Serial Communication](#serial-communication-over-usb)
+
 
 # Installation
 1. configure the .ino file to your demands and flash it to your arduino
@@ -68,7 +75,6 @@ it to /usr/bin
 
 7. add this entry to the end of your hal file: ```loadusr arduino-connector```  
 
-
 # Testing
 To test your Setup, you can run ```halrun``` in Terminal.
 Then you will see halcmd:
@@ -85,6 +91,10 @@ Enter "setp arduino.DLED.1 TRUE" for example. This will set said Pin to HIGH or 
 You can now use arduino pins in your hal file. 
 Pin Names are named arduino.[Pin Type]-[Pin Number]. Example:
 arduino.digital-in-32 for Pin 32 on an Arduino Mega2560
+
+Watch the Video explanation on Youtube:  
+[![IMAGE ALT TEXT](https://img.youtube.com/vi/bjKfnLbsvgA/0.jpg)](https://www.youtube.com/watch?v=bjKfnLbsvgA&list=PLdrOU2f3sjtApTdxhmAiXL4lET_ZnntGc "How to set up and test arduino-connector with LinuxCNC")
+
 
 # Configuration - HowTo
 In the Arduino .ino File you will see the configuration Parameters for each kind of Signal. 
@@ -140,6 +150,11 @@ Depending on the used LED Chipset, Color sequence can vary. Please try, which va
 Typically it should be R G B for WS2812 and G R B for PL9823.
 You can mix both in one chain, just modify the color values accordingly.
 
+Watch the Video explanation on Youtube:  
+[![IMAGE ALT TEXT](https://img.youtube.com/vi/L_FBEtP9il0/0.jpg)](https://www.youtube.com/watch?v=L_FBEtP9il0&list=PLdrOU2f3sjtApTdxhmAiXL4lET_ZnntGc&index=2 "using digital RGB LEDs with LinuxCNC")
+
+
+
 # Latching Potentiometers / Selector Switches
 This is a special Feature for rotary Selector Switches. Instead of loosing one Pin per Selection you can turn your Switch in a Potentiometer by soldering 10K resistors between the Pins and connecting the Selector Pin to an Analog Input. 
 The Software will divide the Measured Value and create Hal Pins from it. This way you can have Selector Switches with many positions while only needing one Pin for it.
@@ -167,6 +182,24 @@ You can install it by typing "sudo apt install xdotool" in your console. After i
 If it doesn't, something is not working and this program will not work either. Please get xdotool working first.
 
 In the Settings a cheap 4x4 Keyboard is used such as https://theartoftinkering.com/recommends/matrix-keyboard/ (referral link)
+
+WaWatch the Video explanation on Youtube:
+ch the Video explanation on Youtube:
+[![IMAGE ALT TEXT](https://img.youtube.com/vi/oOhzm7pbvXo/0.jpg)](https://www.youtube.com/watch?v=oOhzm7pbvXo&list=PLdrOU2f3sjtApTdxhmAiXL4lET_ZnntGc&index=4 "connect Matrix Keyboards to LinuxCNC using ArduinoC")
+
+
+# Multiplexed LEDs
+Special mode for Multiplexed LEDs. This mode is experimental and implemented to support Matrix Keyboards with integrated Key LEDs. Please provide feedback if u use this feature.
+check out this thread on LinuxCNC Forum for context. https://forum.linuxcnc.org/show-your-stuff/49606-matrix-keyboard-controlling-linuxcnc
+for Each LED an Output Pin is generated in LinuxCNC.
+
+If your Keyboard shares pins with the LEDs, you have to check polarity. The Matrix Keyboard uses Pins as such: 
+
+rowPins[numRows] = {} are Pullup Inputs
+colPins[numCols] = {} are GND Pins
+
+the matrix keyboard described in the thread shares GND Pins between LEDs and KEYs, therefore LedGndPins[] and colPins[numCols] = {} use same Pins, LedVccPins[] are Outputs and drive the LEDs. 
+
 
 # Quadrature Encoders
 Quadrature Encoders require a Library to be installed. 
@@ -205,12 +238,18 @@ Low Performance: Both signals connect to non-interrupt pins, details below.
 |Arduino Mega	    |2, 3, 18, 19, 20, 21	      |13                  |
 |Sanguino	        |2, 10, 11	                |0                   |
 
+Watch the Video explanation on Youtube:  
+[![IMAGE ALT TEXT](https://img.youtube.com/vi/hgKXgRvjwPg/0.jpg)](https://www.youtube.com/watch?v=hgKXgRvjwPg&list=PLdrOU2f3sjtApTdxhmAiXL4lET_ZnntGc&index=3 "How to connect Rotary Encoders and Joysticks for MPG to LinuxCNC using Arduino")
+
 # Joysticks
 Joysticks use a similar implementation as Quadrature encoders and are implemented with the usecase as MPG in mind. 
 Connect your X and Y Pin of your Joystick to an Analog Pin of your choice. 
 Depending of the position of the Joystick it will add or substract from a counter, which then is send to LinuxCNC. The more you move the Joystick from the middle Position to the end of movement the more will be added to the counter, which will increase the speed of motion in Jog mode. 
 
 Currently Joysticks will only generate an counter in LinuxCNC.
+
+Watch the Video explanation on Youtube:  
+[![IMAGE ALT TEXT](https://img.youtube.com/vi/hgKXgRvjwPg/0.jpg)](https://youtu.be/hgKXgRvjwPg?si=nVdQgR5Q6rLq4QGQ&t=780 "How to connect Rotary Encoders and Joysticks to LinuxCNC using Arduino")
 
 # Serial communication over USB
 The Send and receive Protocol is <Signal><PinNumber>:<Pin State>

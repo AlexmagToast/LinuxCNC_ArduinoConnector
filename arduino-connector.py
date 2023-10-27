@@ -29,6 +29,7 @@ import serial, time, hal
 #	Latching Potentiometers = 'L' -write only  -Pin State: 0-max Position
 #	binary encoded Selector = 'K' -write only  -Pin State: 0-32
 #	Matrix Keypad			= 'M' -write only  -Pin State: 0,1
+#	Multiplexed LEDs		= 'M' -read only   -Pin State: 0,1
 #	Quadrature Encoders 	= 'R' -write only  -Pin State: 0(down),1(up),-2147483648 to 2147483647(counter)
 #	Joystick Input		 	= 'R' -write only  -Pin State: -2147483648 to 2147483647(counter)
 
@@ -97,7 +98,7 @@ BinSelKnob = 0 	#1 enable
 BinSelKnobPos = 32
 
 #Do you want the Binary Encoded Selector Switches to control override Settings in LinuxCNC? This function lets you define values for each Position. 
-SetBinSelKnobValue = [0] #0 = disable 1= enable
+SetBinSelKnobValue = [[0]] #0 = disable 1= enable
 BinSelKnobvalues = [[180,190,200,0,0,0,0,0,0,0,0,0,0,0,0,10,20,30,40,50,60,70,80,90,100,110,120,130,140,150,160,170]]
 
 #Enable Quadrature Encoders
@@ -132,7 +133,7 @@ DLEDcount = 0
 
 
 Keypad = 0  # Set to 1 to Activate
-LinuxKeyboardInput = 1  #Activate direct Keyboard integration to Linux.
+LinuxKeyboardInput = 0  # set to 1 to Activate direct Keyboard integration to Linux.
 
 
 Columns = 4
@@ -166,16 +167,25 @@ Destination = [    #define, which Key should be inserted in LinuxCNC as Input or
 #  12,  13,  14,  15
 #
 
+# this is an experimental feature, meant to support MatrixKeyboards with integrated LEDs in each Key but should work with any other LED Matrix too.
+# It creates Output Halpins that can be connected to signals in LinuxCNC
+MultiplexLED = 0  # Set to 1 to Activate
+LedVccPins = 3 
+LedGndPins = 3
+
+
+
 Debug = 0		#only works when this script is run from halrun in Terminal. "halrun","loadusr arduino" now Debug info will be displayed.
+
 ########  End of Config!  ########
 
 
-
+# global Variables for State Saving
 
 olddOutStates= [0]*Outputs
 oldPwmOutStates=[0]*PwmOutputs
 oldDLEDStates=[0]*DLEDcount
-
+oldMledStates = [0]*LedVccPins*LedGndPins
 
 if LinuxKeyboardInput:
 	import subprocess
@@ -214,11 +224,11 @@ for port in range(AInputs):
 for Poti in range(LPoti):
 	if SetLPotiValue[Poti] == 0:
 		for Pin in range(LPotiLatches[Poti][1]):
-			c.newpin("LPoti.{}.{}" .format(LPotiLatches[Poti][0],Pin), hal.HAL_BIT, hal.HAL_OUT)
+			c.newpin("lpoti.{}.{}" .format(LPotiLatches[Poti][0],Pin), hal.HAL_BIT, hal.HAL_OUT)
 	if SetLPotiValue[Poti] == 1:
-		c.newpin("LPoti.{}.{}" .format(LPotiLatches[Poti][0],"out"), hal.HAL_S32, hal.HAL_OUT)
+		c.newpin("lpoti.{}.out" .format(LPotiLatches[Poti][0]), hal.HAL_S32, hal.HAL_OUT)
 	if SetLPotiValue[Poti] == 2:
-		c.newpin("LPoti.{}.{}" .format(LPotiLatches[Poti][0],"out"), hal.HAL_FLOAT, hal.HAL_OUT)
+		c.newpin("lpoti.{}.out" .format(LPotiLatches[Poti][0]), hal.HAL_FLOAT, hal.HAL_OUT)
 
 # setup Absolute Encoder Knob halpins
 if BinSelKnob:
@@ -239,8 +249,13 @@ if DLEDcount > 0:
 if Keypad > 0:
   for port in range(Columns*Rows):
     if Destination[port] == 0 & LinuxKeyboardInput:
-      c.newpin("keypad.{}".format(Chars[port]), hal.HAL_BIT, hal.HAL_IN)
+      c.newpin("keypad.{}".format(Chars[port]), hal.HAL_BIT, hal.HAL_OUT)
       
+# setup MultiplexLED halpins
+if MultiplexLED > 0:
+  for port in range(LedVccPins*LedGndPins):
+      c.newpin("mled.{}".format(port), hal.HAL_BIT, hal.HAL_IN)
+
 
 #setup JoyStick Pins
 if JoySticks > 0:
@@ -326,8 +341,17 @@ def managageOutputs():
 			if (Debug):print ("Sending:{}".format(command.encode()))
 			oldDLEDStates[dled] = State
 			time.sleep(0.01)
-
-
+	if MultiplexLED > 0:
+		for mled in range(LedVccPins*LedGndPins):
+			State = int(c["mled.{}".format(mled)])
+			if oldMledStates[mled] != State: #check if states have changed
+				Sig = 'M'
+				Pin = mled
+				command = "{}{}:{}\n".format(Sig,Pin,State)
+				arduino.write(command.encode())
+				if (Debug):print ("Sending:{}".format(command.encode()))
+				oldMledStates[mled] = State
+				time.sleep(0.01)
 
 
 while True:
@@ -388,13 +412,13 @@ while True:
 									c["lpoti.{}.{}" .format(io,Pin)] = 0
 									if(Debug):print("lpoti.{}.{} =0".format(io,Pin))
 						
-						if LPotiLatches[Poti][0] == io and SetLPotiValue[Poti] == 1:
-							c["lpoti.{}.{}" .format(io,"out")] = LPotiValues[Poti][value]
-							if(Debug):print("lpoti.{}.{} = 0".format("out",LPotiValues[Poti][value]))
+						if LPotiLatches[Poti][0] == io and SetLPotiValue[Poti] >= 1:
+							c["lpoti.{}.out" .format(io)] = LPotiValues[Poti][value]
+							if(Debug):print("lpoti.{}.out = {}".format(io,LPotiValues[Poti][value]))
 
 				elif cmd == "K":
 					firstcom = 1
-					if SetBinSelKnobValue == 0:
+					if SetBinSelKnobValue[0] == 0:
 						for port in range(BinSelKnobPos):
 							if port == value:
 								c["binselknob.{}".format(port)] = 1
