@@ -19,6 +19,7 @@
   - Multiplexed LEDs
   - Quadrature encoders
   - Joysticks
+  - Dallas-compatible Temperature Sensors
   
   The Send and receive Protocol is <Signal><PinNumber>:<Pin State>
   To begin Transmitting Ready is send out and expects to receive E: to establish connection. Afterwards Data is exchanged.
@@ -34,6 +35,7 @@
   rotary encoder          = 'R' -write only  -Pin State: up/ down / -2147483648 to 2147483647
   joystick                = 'R' -write only  -Pin State: up/ down / -2147483648 to 2147483647
   multiplexed LEDs        = 'M' -read only   -Pin State: 0,1
+  temperature reading     = 'T' -read only   -Current Reading in C or F
 
 Keyboard Input:
   Matrix Keypad           = 'M' -write only  -Pin State: 0,1
@@ -98,6 +100,24 @@ Communication Status      = 'E' -read/Write  -Pin State: 0:0
   int AInPinmap[] = {0};                //Potentiometer for SpindleSpeed override
   int smooth = 200;                     //number of samples to denoise ADC, try lower numbers on your setup 200 worked good for me.
 #endif
+
+//#define DALLAS_TEMP_SENSOR
+#ifdef DALLAS_TEMP_SENSOR
+// Required Libaries: DallasTemperature, OneWire
+// In the US, Dallas-Compatible temp sensors can be found on Amazon at: https://www.amazon.com/gp/product/B08V93CTM2/ref=ppx_yo_dt_b_search_asin_title?ie=UTF8&psc=1
+// The current listing is titled: Gikfun DS18B20 Waterproof Digital Temperature Sensor with Adapter Module for Arduino (Pack of 3 Sets) EK1183
+// The nice thing about this sensor option is the provided pull-up circuitry and filter PCB (I believe its a filter cap, but I could be wrong)
+  #include <OneWire.h>
+  #include <DallasTemperature.h>
+
+  const int TmpSensors = 1;  // The Dallas-compatible sesnsors can share a pin and be indexed by an int value when reading.
+  // This version is expecting 1 sensor per pin. Future todo: add multi sensors per-pin support
+  int TmpSensorMap[] = {2};
+  DallasTemperature * TmpSensorControlMap[TmpSensors];
+  #define TEMP_OUTPUT_C 1 // 1 to output in C, any other value to output in F
+#endif
+
+
 
 
                        
@@ -327,6 +347,10 @@ const int debounceDelay = 50;
   int OutState[Outputs];
   int oldOutState[Outputs];
 #endif
+#ifdef DALLAS_TEMP_SENSOR
+  double inTmpSensorState[TmpSensors];
+  //int oldInTempSensorState[TmpSensors];
+#endif
 #ifdef PWMOUTPUTS
   int OutPWMState[PwmOutputs];
   int oldOutPWMState[PwmOutputs];
@@ -434,6 +458,21 @@ void setup() {
     oldOutPWMState[o] = 0;
     }
 #endif
+
+#ifdef DALLAS_TEMP_SENSOR
+
+  for(int o= 0; o<TmpSensors;o++){
+    pinMode(TmpSensorMap[o], OUTPUT);
+    inTmpSensorState[o] = -1;
+    // Setup a oneWire instance to communicate with any OneWire devices
+    OneWire * oneWire = new OneWire(TmpSensorMap[o]);
+
+    // Pass our oneWire reference to Dallas Temperature sensor 
+    DallasTemperature * sensors = new DallasTemperature(oneWire);
+    TmpSensorControlMap[o] = sensors;
+    }
+#endif
+
 #ifdef STATUSLED
   pinMode(StatLedPin, OUTPUT);
 #endif
@@ -474,6 +513,9 @@ void loop() {
 
 #ifdef INPUTS
   readInputs(); //read Inputs & send data
+#endif
+#ifdef DALLAS_TEMP_SENSOR
+  readTmpInputs();
 #endif
 #ifdef SINPUTS
   readsInputs(); //read Inputs & send data
@@ -679,6 +721,11 @@ void reconnect(){
   #ifdef INPUTS
     readInputs(); //read Inputs & send data
   #endif
+  
+  #ifdef DALLAS_TEMP_SENSOR
+    readTmpInputs(); //read Inputs & send data
+  #endif
+
   #ifdef SINPUTS
     readsInputs(); //read Inputs & send data
   #endif
@@ -834,6 +881,27 @@ void readInputs(){
         sendData('I',InPinmap[i],InState[i]);
       
       lastInputDebounce[i] = millis();
+      }
+    }
+}
+#endif
+#ifdef DALLAS_TEMP_SENSOR
+void readTmpInputs(){
+    for(int i= 0;i<TmpSensors; i++){
+      DallasTemperature * sensor = TmpSensorControlMap[i];
+      sensor->requestTemperatures(); 
+      int v = sensor->getTempCByIndex(0); // Future Todo: Add in support for multiple sensors per pin.
+      // The sensor is returning a double. Future Todo: Enable an option that ouputs the double value if desired
+      int v_f = (v * 9/5) + 32; // Perform conversion to Farenheit if output in F is toggled on below
+      
+      if(inTmpSensorState[i]!= v){
+        inTmpSensorState[i] = v;
+        
+        #if TEMP_OUTPUT_C == 1
+          sendData('T',TmpSensorMap[i],inTmpSensorState[i]);
+        #else
+          sendData('T',TmpSensorMap[i],v_f);
+        #endif
       }
     }
 }
@@ -1051,7 +1119,7 @@ void readCommands(){
                 }
                 else{
                     #ifdef DEBUG
-                    Serial.print("Ungültiges zeichen: ");
+                    Serial.print("Invalid character: ");
                     Serial.println(current);
                     #endif
                 }
@@ -1068,7 +1136,7 @@ void readCommands(){
                 }
                 else{
                   #ifdef DEBUG
-                  Serial.print("Ungültiges zeichen: ");
+                  Serial.print("Invalid character: ");
                   Serial.println(current);
                   #endif
                 
