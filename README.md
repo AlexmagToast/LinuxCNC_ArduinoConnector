@@ -72,7 +72,7 @@ Just return ```E0:0``` to it. You can now communicate with the Arduino. Further 
   ```sudo   dmesg | grep tty``` in Terminal while plugging and unplugging the arduino a couple of times and whatch which entry is changing. 
 6. make arduino.py executable with chmod +x, delete the suffix .py and copy
 it to /usr/bin  
-    ```sudo chmod +x arduino.py  ```  
+    ```sudo chmod +x arduino-connector.py  ```  
     ```sudo cp arduino-connector.py /usr/bin/arduino-connector  ```  
 
 7. add this entry to the end of your hal file: ```loadusr arduino-connector```  
