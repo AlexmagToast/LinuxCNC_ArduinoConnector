@@ -12,8 +12,9 @@
 //#define STATUSLED
 //#define DLED
 //#define KEYPAD
-#define SERIAL_TO_LINUXCNC
-#define TCP_TO_LINUXCNC
+//#define SERIAL_TO_LINUXCNC
+#define ETHERNET_TO_LINUXCNC
+#define WIFI_TO_LINUXCNC
 
 
 
@@ -21,8 +22,8 @@
 #define DEFAULT_SERIAL_BAUD_RATE 115200
 //#define ENABLE_SERIAL2 TRUE // For future
 
-//################################################### SERIAL CONNECTION OPTIONS ###################################################
-#ifdef TCP_TO_LINUXCNC
+//################################################### ETHERNET CONNECTION OPTIONS ###################################################
+#ifdef ETHERNET_TO_LINUXCNC
 #include <SPI.h>
 #include <Ethernet.h>
 

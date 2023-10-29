@@ -64,8 +64,7 @@ Communication Status      = 'E' -read/Write  -Pin State: 0:0
 
 
 #include "Config.h"
-
-
+#include "EthernetFuncs.h"
 
 //Variables for Saving States
 #ifdef INPUTS
@@ -157,34 +156,50 @@ uint16_t value = 0;
 
 void setup() {
 
-#ifdef TCP_TO_LINUXCNC
-  #ifdef DHCP
-    if (Ethernet.begin(mac) == 0) {
-  #else
-    if (Ethernet.begin(mac, ip) == 0)
-  #endif
+#ifdef ETHERNET_TO_LINUXCNC
+  Serial.begin(DEFAULT_SERIAL_BAUD_RATE);
 
-    Serial.println("Failed to configure Ethernet using DHCP");
+  while (!Serial) {
 
-    if (Ethernet.hardwareStatus() == EthernetNoHardware) {
-
-      Serial.println("Ethernet shield was not found.  Sorry, can't run without hardware. :(");
-
-    } else if (Ethernet.linkStatus() == LinkOFF) {
-
-      Serial.println("Ethernet cable is not connected.");
-
-    }
-
-    // no point in carrying on, so do nothing forevermore:
-
-    while (true) {
-
-      delay(1);
-
-    }
+    ; // wait for serial port to connect. Needed for native USB port only
 
   }
+  #ifdef DEBUG
+    #if DHCP == 1
+      Serial.println("Starting up.. DHCP = Enabled");
+    #else
+      Serial.print("Starting up.  DHCP = False. Static IP = ");
+      //Serial.println(ip.toString());
+    #endif
+  #endif
+  #if DHCP == 1
+    if (Ethernet.begin(mac) == 0) {
+      Serial.println("Failed to configure Ethernet using DHCP");
+
+      if (Ethernet.hardwareStatus() == EthernetNoHardware) {
+
+        Serial.println("Ethernet shield was not found.  Sorry, can't run without hardware. :(");
+
+      } else if (Ethernet.linkStatus() == LinkOFF) {
+
+        Serial.println("Ethernet cable is not connected.");
+
+      }
+      // no point in carrying on, so do nothing forevermore:
+
+      while (true) {
+
+        delay(1);
+    }
+    }
+  #else
+    Ethernet.begin(mac, ip); // Per Arduino documentation, only DHCP version of .begin returns an int.
+  #endif
+  #ifdef DEBUG
+    Serial.print("My IP address: ");
+    Serial.println(Ethernet.localIP());
+  #endif
+  
   
 #endif
 
@@ -266,8 +281,8 @@ for(int col = 0; col < numCols; col++) {
 
 
 //Setup Serial
-  Serial.begin(DEFAULT_SERIAL_BAUD_RATE);
-  while (!Serial){}
+  //Serial.begin(DEFAULT_SERIAL_BAUD_RATE);
+  //while (!Serial){}
   comalive();
 }
 
@@ -277,7 +292,11 @@ void loop() {
   readCommands(); //receive and execute Commands 
   comalive(); //if nothing is received for 10 sec. blink warning LED 
 
-
+#ifdef ETHERNET_TO_LINUXCNC
+  #if DHCP == 1
+    do_dhcp_maintain();
+  #endif
+#endif
 #ifdef INPUTS
   readInputs(); //read Inputs & send data
 #endif
