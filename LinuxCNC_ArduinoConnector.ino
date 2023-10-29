@@ -334,6 +334,7 @@ const int debounceDelay = 50;
 #endif
 #ifdef AINPUTS
   int oldAinput[AInputs];
+  unsigned long sumAinput[AInputs];
 #endif
 #ifdef LPOTIS
   int Lpoti[LPotis];
@@ -420,6 +421,7 @@ void setup() {
   for(int i= 0; i<AInputs;i++){
     pinMode(AInPinmap[i], INPUT);
     oldAinput[i] = -1;
+    sumAinput[i] = 0;
     }
 #endif
 #ifdef OUTPUTS
@@ -662,6 +664,7 @@ void reconnect(){
   #ifdef AINPUTS
     for (int x = 0; x < AInputs; x++){
       oldAinput[x] = -1;
+      sumAinput[x] = 0;
     }
   #endif
   #ifdef LPOTIS
@@ -793,7 +796,7 @@ void controlDLED(int Pin, int Stat){
 #endif
 
 #ifdef LPOTIS
-int readLPoti(){
+void readLPoti(){
     for(int i= 0;i<LPotis; i++){
       int var = analogRead(LPotiPins[i][0])+margin;
       int pos = 1024/(LPotiPins[i][1]-1);
@@ -808,19 +811,27 @@ int readLPoti(){
 
 
 #ifdef AINPUTS
-int readAInputs(){
-   
+void readAInputs(){
+  static unsigned int samplecount = 0;
+    
    for(int i= 0;i<AInputs; i++){
-      unsigned long var = 0;
-      for(int d= 0;d<smooth; d++){// take couple samples to denoise signal
-        var = var+ analogRead(AInPinmap[i]);
-      }
-      var = var / smooth;
-      if(oldAinput[i]!= var){
-        oldAinput[i] = var;
+
+    if (samplecount < smooth) {
+      sumAinput[i] = sumAinput[i] + analogRead(AInPinmap[i]);
+    }
+    else {
+      sumAinput[i] = sumAinput[i] / smooth;
+      if(oldAinput[i]!= sumAinput[i]){
+        oldAinput[i] = sumAinput[i];
         sendData('A',AInPinmap[i],oldAinput[i]);
       }
+      sumAinput[i] = 0;
     }
+   }
+
+  if(samplecount < smooth){ samplecount = samplecount + 1;}
+  else {samplecount = 0;}
+
 }
 #endif
 #ifdef INPUTS
