@@ -12,7 +12,8 @@
 //#define STATUSLED
 //#define DLED
 //#define KEYPAD
-//#define 
+#define SERIAL_TO_LINUXCNC
+#define TCP_TO_LINUXCNC
 
 
 //###################################################IO's###################################################
