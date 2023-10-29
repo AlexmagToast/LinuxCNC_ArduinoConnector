@@ -793,7 +793,7 @@ void controlDLED(int Pin, int Stat){
 #endif
 
 #ifdef LPOTIS
-int readLPoti(){
+void readLPoti(){
     for(int i= 0;i<LPotis; i++){
       int var = analogRead(LPotiPins[i][0])+margin;
       int pos = 1024/(LPotiPins[i][1]-1);
@@ -808,10 +808,11 @@ int readLPoti(){
 
 
 #ifdef AINPUTS
-int readAInputs(){
-   
+void readAInputs(){
+  unsigned long var = 0;
+  
    for(int i= 0;i<AInputs; i++){
-      unsigned long var = 0;
+
       for(int d= 0;d<smooth; d++){// take couple samples to denoise signal
         var = var+ analogRead(AInPinmap[i]);
       }
