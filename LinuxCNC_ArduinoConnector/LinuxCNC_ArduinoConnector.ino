@@ -157,6 +157,37 @@ uint16_t value = 0;
 
 void setup() {
 
+#ifdef TCP_TO_LINUXCNC
+  #ifdef DHCP
+    if (Ethernet.begin(mac) == 0) {
+  #else
+    if (Ethernet.begin(mac, ip) == 0)
+  #endif
+
+    Serial.println("Failed to configure Ethernet using DHCP");
+
+    if (Ethernet.hardwareStatus() == EthernetNoHardware) {
+
+      Serial.println("Ethernet shield was not found.  Sorry, can't run without hardware. :(");
+
+    } else if (Ethernet.linkStatus() == LinkOFF) {
+
+      Serial.println("Ethernet cable is not connected.");
+
+    }
+
+    // no point in carrying on, so do nothing forevermore:
+
+    while (true) {
+
+      delay(1);
+
+    }
+
+  }
+  
+#endif
+
 #ifdef INPUTS
 //setting Inputs with internal Pullup Resistors
   for(int i= 0; i<Inputs;i++){
@@ -235,7 +266,7 @@ for(int col = 0; col < numCols; col++) {
 
 
 //Setup Serial
-  Serial.begin(115200);
+  Serial.begin(DEFAULT_SERIAL_BAUD_RATE);
   while (!Serial){}
   comalive();
 }

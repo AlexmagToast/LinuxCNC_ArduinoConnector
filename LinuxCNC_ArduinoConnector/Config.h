@@ -16,6 +16,34 @@
 #define TCP_TO_LINUXCNC
 
 
+
+//################################################### SERIAL CONNECTION OPTIONS ###################################################
+#define DEFAULT_SERIAL_BAUD_RATE 115200
+//#define ENABLE_SERIAL2 TRUE // For future
+
+//################################################### SERIAL CONNECTION OPTIONS ###################################################
+#ifdef TCP_TO_LINUXCNC
+#include <SPI.h>
+#include <Ethernet.h>
+
+#define DHCP 0 // 1 for DHCP, 0 for static
+
+// Enter a MAC address and IP address for your controller below.
+// The IP address will be dependent on your local network:
+byte mac[] = {
+  0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED
+};
+
+#if DHCP == 0
+  IPAddress ip(192, 168, 2, 2);
+#endif
+
+// Enter the IP address of the linuxcnc server you're connecting to:
+IPAddress server(192, 168, 2, 1);
+
+EthernetClient ethernetClient;
+#endif
+
 //###################################################IO's###################################################
 
                  
