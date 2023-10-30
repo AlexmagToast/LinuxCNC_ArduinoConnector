@@ -7,9 +7,9 @@
 #define SINPUTS               2                      
 #define OUTPUTS               3
 #define PWMOUTPUTS            4
-#define AINPUTS               5   
+//#define AINPUTS               5   
 #define DALLAS_TEMP_SENSOR    6
-#define LPOTIS                7
+//#define LPOTIS                7
 #define BINSEL                8
 //#define QUADENC               9
 #define JOYSTICK              10
@@ -33,7 +33,7 @@
 #include <SPI.h>
 #include <Ethernet.h>
 #include "TCPClient.h"
-#define DHCP 1// 1 for DHCP, 0 for static
+#define DHCP 0// 1 for DHCP, 0 for static
 #define TCP_RECONNECT_RETRY 3000 // Delay before attemtping reconnect to server
 #define TCP_MAX_MESSAGE_SIZE 512 // Max TCP message size in bytes.
 #define TCP_PROTOCOL_VERSION 1 // Server and client must agree on version during handshake
@@ -42,19 +42,17 @@
 
 // Enter a MAC address and IP address for your controller below.
 // The IP address will be dependent on your local network:
-byte mac[] = {
+byte ARDUINO_MAC[] = {
   0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED
 };
 
 #if DHCP == 0
-  IPAddress myip(192, 168, 2, 2);
+  IPAddress ARDUINO_IP(192, 168, 2, 2);
 #endif
 
 // Enter the IP address of the linuxcnc server you're connecting to:
-IPAddress SERVER_IP(192, 168, 1, 28);
+IPAddress SERVER_IP(192, 168, 2, 1);
 #define SERVER_PORT 10001
-
-EthernetClient ethernetClient;
 #endif
 
 //###################################################IO's###################################################

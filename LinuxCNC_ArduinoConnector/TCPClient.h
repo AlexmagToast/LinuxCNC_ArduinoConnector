@@ -39,8 +39,8 @@ enum TcpState
 
 class TCPClient {
 public:
-  TCPClient(IPAddress& serverIP, uint16_t port, uint32_t retryPeriod, uint16_t maxMessageSize=512, uint8_t protocolVersion=1) 
-  : _serverIP(serverIP), _port(port), _retryPeriod(retryPeriod), _maxMessageSize(maxMessageSize), _protocolVersion(protocolVersion)
+  TCPClient(IPAddress& arduinoIP, byte* macAddress, IPAddress& serverIP, uint16_t port=10001, uint32_t retryPeriod=3000, uint16_t maxMessageSize=512, uint8_t protocolVersion=1)
+  : _myIP(arduinoIP), _myMAC(macAddress), _serverIP(serverIP), _port(port), _retryPeriod(retryPeriod), _maxMessageSize(maxMessageSize), _protocolVersion(protocolVersion)
   {
   }
 
@@ -124,12 +124,52 @@ public:
   }
 
 private:
+  uint8_t Init()
+  {
+    #ifdef DEBUG
+      #if DHCP == 1
+        Serial.println("Starting up.. DHCP = Enabled");
+      #else
+        Serial.print("Starting up.  DHCP = False. Static IP = ");
+        Serial.println(this->IpAddress2String(this->_myIP));
+      #endif
+    #endif
+    #if DHCP == 1
+      if (Ethernet.begin(this->_myMAC) == 0) {
+        Serial.println("Failed to configure Ethernet using DHCP");
 
+        if (Ethernet.hardwareStatus() == EthernetNoHardware) {
+
+          Serial.println("Ethernet shield was not found.  Sorry, can't run without hardware. :(");
+
+        } else if (Ethernet.linkStatus() == LinkOFF) {
+
+          Serial.println("Ethernet cable is not connected.");
+
+        }
+        // no point in carrying on, so do nothing forevermore:
+
+        while (true) {
+
+          delay(1);
+      }
+      }
+    #else
+      Ethernet.begin(this->_myMAC, this->_myIP); // Per Arduino documentation, only DHCP versio of .begin returns an int.
+      
+    #endif
+    #ifdef DEBUG
+      Serial.print("DEBUG: My IP address: ");
+      Serial.println(Ethernet.localIP());
+    #endif
+  }
   uint8_t Connect()
   {
     if ( this->isConnected() ) {
       return 0;
     }
+    if (!this->Init())
+      return 0;
     if (_client.connect(_serverIP, _port)) {
       return 1;
     } else {
@@ -168,7 +208,7 @@ private:
     this->_myState = new_state;
   }
 
-  int _myState = TCP_DISCONNECTED;
+  int _myState = TCP_CONNECTING;
   EthernetClient _client;
   IPAddress & _serverIP;
   uint16_t _port;
@@ -176,5 +216,7 @@ private:
   uint32_t _timeNow = 0;
   uint16_t _maxMessageSize;
   uint8_t _protocolVersion;
+  byte * _myMAC;
+  IPAddress _myIP;
 };
 #endif

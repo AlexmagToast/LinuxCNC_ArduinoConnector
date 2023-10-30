@@ -2,8 +2,8 @@
 #define ETHERNETFUNCS_H_
   #if DHCP == 1
     #include "EthernetFuncs.h"
-    #include <Ethernet.h>
-    #include <Serial.h>
+    //#include <Ethernet.h>
+    //#include <Serial.h>
     void do_dhcp_maint()
     {
         switch (Ethernet.maintain()) {

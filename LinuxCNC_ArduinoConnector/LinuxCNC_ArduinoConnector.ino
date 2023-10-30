@@ -159,12 +159,14 @@ uint16_t value = 0;
 
 #ifdef ETHERNET_TO_LINUXCNC
   #include "EthernetFuncs.h"
-  TCPClient _client(SERVER_IP, SERVER_PORT, TCP_RECONNECT_RETRY, TCP_PROTOCOL_VERSION);
-  EthernetClient _eth;
+  //EthernetClient _eth;
+  TCPClient _client(ARDUINO_IP, ARDUINO_MAC, SERVER_IP, SERVER_PORT, TCP_RECONNECT_RETRY, TCP_PROTOCOL_VERSION);
+ 
 #endif
 
 
 void setup() {
+  
 #ifdef ENABLE_FEATUREMAP
   initFeatureMap();
 #endif
@@ -183,42 +185,7 @@ void setup() {
     //Serial.println("Dumping Feature Map to Serial..");
     DumpFeatureMapToSerial();
   #endif
-  #ifdef DEBUG
-    #if DHCP == 1
-      Serial.println("Starting up.. DHCP = Enabled");
-    #else
-      Serial.print("Starting up.  DHCP = False. Static IP = ");
-      //Serial.println(ip.toString());
-    #endif
-  #endif
-  #if DHCP == 1
-    if (Ethernet.begin(mac) == 0) {
-      Serial.println("Failed to configure Ethernet using DHCP");
 
-      if (Ethernet.hardwareStatus() == EthernetNoHardware) {
-
-        Serial.println("Ethernet shield was not found.  Sorry, can't run without hardware. :(");
-
-      } else if (Ethernet.linkStatus() == LinkOFF) {
-
-        Serial.println("Ethernet cable is not connected.");
-
-      }
-      // no point in carrying on, so do nothing forevermore:
-
-      while (true) {
-
-        delay(1);
-    }
-    }
-  #else
-    Ethernet.begin(mac, myip); // Per Arduino documentation, only DHCP versio of .begin returns an int.
-    
-  #endif
-  #ifdef DEBUG
-    Serial.print("DEBUG: My IP address: ");
-    Serial.println(Ethernet.localIP());
-  #endif
   delay(3000);
   _client.doWork();
   /*
@@ -317,7 +284,15 @@ for(int col = 0; col < numCols; col++) {
 
 
 void loop() {
-
+  /*
+    if (_eth.connect(SERVER_IP, SERVER_PORT)) {
+      Serial.println("Connected!!!!!");
+   
+    } else {
+      Serial.println("ERRRRROR!!!!!");
+    
+    }
+  */
 //  readCommands(); //receive and execute Commands 
 //  comalive(); //if nothing is received for 10 sec. blink warning LED 
 
@@ -325,7 +300,7 @@ void loop() {
   #if DHCP == 1
     do_dhcp_maint();
   #endif
-  _client.doWork();
+  //_client.doWork();
   return; // TODO REMOVE THIS RETURN - ONLY FOR TESTING
 #endif
 #ifdef INPUTS
