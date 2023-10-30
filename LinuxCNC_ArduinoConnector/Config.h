@@ -35,6 +35,7 @@
 //#include "TCPClient.h"
 #define DHCP 0// 1 for DHCP, 0 for static.  DHCP support is highly expiremental and leaving this option disabled (i.e., using a static IP address) is recommended.
 #define TCP_RECONNECT_RETRY 3000 // Delay before attemtping reconnect to server
+#define TCP_CONNECTION_TIMEOUT 1000 // Arduino default is 1000 ms.  This value represents the timeout duration for .connect() and .stop()
 #define TCP_MAX_MESSAGE_SIZE 512 // Max TCP message size in bytes.
 #define TCP_PROTOCOL_VERSION 1 // Server and client must agree on version during handshake
 #define BOARD_INDEX 0 // Each board connecting to the server should have a differnet index number.
@@ -65,7 +66,7 @@ IPAddress SERVER_IP(192, 168, 1, 2);
 // Enable USE_ETHERNET_SHIELD_DELAY to force a delay set by the JANKY_ETHERNET_SHIELD_DELAY value. This is a work around to resolve a hardware issue with certain Ethernet Shields which prevent soft resets (e.g., when a connection retry is necessary).  
 #define USE_ETHERNET_SHIELD_DELAY
 #ifdef USE_ETHERNET_SHIELD_DELAY
-  #define JANKY_ETHERNET_SHIELD_DELAY 5000
+  #define JANKY_ETHERNET_SHIELD_DELAY 500
 #endif
 
 //###################################################IO's###################################################

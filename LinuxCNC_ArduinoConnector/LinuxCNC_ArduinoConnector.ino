@@ -174,6 +174,7 @@ void setup() {
   initFeatureMap();
 #endif
 #ifdef ETHERNET_TO_LINUXCNC
+
   Serial.begin(DEFAULT_SERIAL_BAUD_RATE);
 
   while (!Serial) {
@@ -184,10 +185,12 @@ void setup() {
   #ifdef SERIAL_START_DELAY
     delay(SERIAL_START_DELAY);
   #endif
+  
   #ifdef ENABLE_FEATUREMAP
     //Serial.println("Dumping Feature Map to Serial..");
     DumpFeatureMapToSerial();
   #endif
+  //_client.Init();
   _client.doWork();
 #endif
 

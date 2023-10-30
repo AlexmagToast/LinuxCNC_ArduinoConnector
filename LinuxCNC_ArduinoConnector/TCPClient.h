@@ -81,6 +81,7 @@ public:
     {
       case TCP_DISCONNECTED:
       {
+        this->_client.stop();
         this->setState(TCP_CONNECTING);
         
         //if (_client != NULL)
@@ -146,9 +147,9 @@ public:
     Ethernet.init(ETHERNET_INIT_PIN);
     #ifdef DEBUG
       #if DHCP == 1
-        Serial.println("Starting up.. DHCP = Enabled");
+        Serial.println("DEBUG: Initializing Ethernet. DHCP = Enabled");
       #else
-        Serial.print("Starting up.  DHCP = False. Static IP = ");
+        Serial.print("DEBUG: Initializing Ethernet. DHCP = False. Static IP = ");
         Serial.println(this->IpAddress2String(this->_myIP));
       #endif
     #endif
@@ -157,16 +158,21 @@ public:
         delay(JANKY_ETHERNET_SHIELD_DELAY);
       #endif
       if (Ethernet.begin(this->_myMAC) == 0) {
-        Serial.println("Failed to configure Ethernet using DHCP");
+        #ifdef DEBUG
+          Serial.print("DEBUG: Failed to configure Ethernet using DHCP");
+        #endif
 
         if (Ethernet.hardwareStatus() == EthernetNoHardware) {
+          #ifdef DEBUG
+              Serial.println("DEBUG: Ethernet shield was not found.  Sorry, can't run without hardware. :(");
+          #endif
 
-          Serial.println("Ethernet shield was not found.  Sorry, can't run without hardware. :(");
 
         } else if (Ethernet.linkStatus() == LinkOFF) {
-
-          Serial.println("Ethernet cable is not connected.");
-
+          #ifdef DEBUG
+              Serial.println("DEBUG: Ethernet cable is not connected.");
+          #endif
+          
         }
         // no point in carrying on, so do nothing forevermore:
 
@@ -187,6 +193,7 @@ public:
       Serial.print("DEBUG: My IP address: ");
       Serial.println(Ethernet.localIP());
     #endif
+
     return 1;
   }
   private:
@@ -197,6 +204,7 @@ public:
     }
     //if (!this->Init())
     //  return 0;
+    _client.setConnectionTimeout(TCP_CONNECTION_TIMEOUT);
     if (_client.connect(_serverIP, _port)) {
       return 1;
     } else {
