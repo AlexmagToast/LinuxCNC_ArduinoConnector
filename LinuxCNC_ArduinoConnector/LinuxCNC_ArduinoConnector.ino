@@ -158,10 +158,13 @@ uint16_t io = 0;
 uint16_t value = 0;
 
 #ifdef ETHERNET_TO_LINUXCNC
-  #include "EthernetFuncs.h"
-  //EthernetClient _eth;
-  TCPClient _client(ARDUINO_IP, ARDUINO_MAC, SERVER_IP, SERVER_PORT, TCP_RECONNECT_RETRY, TCP_PROTOCOL_VERSION);
- 
+  #include "TCPClient.h"
+  #if DHCP == 1
+    TCPClient _client(ARDUINO_MAC, SERVER_IP, SERVER_PORT, TCP_RECONNECT_RETRY, TCP_PROTOCOL_VERSION);
+  #else
+    TCPClient _client(ARDUINO_IP, ARDUINO_MAC, SERVER_IP, SERVER_PORT, TCP_RECONNECT_RETRY, TCP_PROTOCOL_VERSION);
+  #endif
+  
 #endif
 
 
@@ -185,18 +188,7 @@ void setup() {
     //Serial.println("Dumping Feature Map to Serial..");
     DumpFeatureMapToSerial();
   #endif
-
-  delay(3000);
   _client.doWork();
-  /*
-    if (_eth.connect(SERVER_IP, SERVER_PORT)) {
-      Serial.println("Connected!!!!!");
-   
-    } else {
-      Serial.println("ERRRRROR!!!!!");
-    
-    }
-  */
 #endif
 
 #ifdef INPUTS
@@ -297,10 +289,7 @@ void loop() {
 //  comalive(); //if nothing is received for 10 sec. blink warning LED 
 
 #ifdef ETHERNET_TO_LINUXCNC
-  #if DHCP == 1
-    do_dhcp_maint();
-  #endif
-  //_client.doWork();
+  _client.doWork();
   return; // TODO REMOVE THIS RETURN - ONLY FOR TESTING
 #endif
 #ifdef INPUTS

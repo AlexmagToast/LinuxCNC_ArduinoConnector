@@ -1,63 +1,46 @@
 #ifndef ETHERNETFUNCS_H_
 #define ETHERNETFUNCS_H_
   #if DHCP == 1
-    #include "EthernetFuncs.h"
-    //#include <Ethernet.h>
-    //#include <Serial.h>
-    void do_dhcp_maint()
+    uint8_t do_dhcp_maint()
     {
         switch (Ethernet.maintain()) {
 
         case 1:
 
           //renewed fail
+          #ifdef DEBUG
+            Serial.println("Error: DCHP renewed fail");
+          #endif
 
-          Serial.println("Error: renewed fail");
-
-          break;
+          return -1;
 
         case 2:
 
-          //renewed success
-
-          Serial.println("Renewed success");
-
-          //print your local IP address:
-
-          Serial.print("My IP address: ");
-
-          Serial.println(Ethernet.localIP());
-
-          break;
+          #ifdef DEBUG
+            Serial.println("Renewed success");
+            Serial.print("My IP address: ");
+            Serial.println(Ethernet.localIP());
+          #endif
+          return 1;
 
         case 3:
-
-          //rebind fail
-
-          Serial.println("Error: rebind fail");
-
-          break;
+          #ifdef DEBUG
+            Serial.println("Error: rebind fail");
+          #endif
+          return -2;
 
         case 4:
-
-          //rebind success
-
-          Serial.println("Rebind success");
-
-          //print your local IP address:
-
-          Serial.print("My IP address: ");
-
-          Serial.println(Ethernet.localIP());
-
-          break;
+          #ifdef DEBUG
+            Serial.println("Rebind success");
+            Serial.print("My IP address: ");
+            Serial.println(Ethernet.localIP());
+          #endif
+          return 1;
 
         default:
 
           //nothing happened
-
-          break;
-
+          return 1;
       }
     }
   #endif

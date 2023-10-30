@@ -27,6 +27,7 @@ SOFTWARE.
 #define TCPCLIENT_H_
 //#include <Ethernet.h>
 #include <String.h>
+#include "EthernetFuncs.h"
 
 enum TcpState
 {
@@ -39,10 +40,29 @@ enum TcpState
 
 class TCPClient {
 public:
-  TCPClient(IPAddress& arduinoIP, byte* macAddress, IPAddress& serverIP, uint16_t port=10001, uint32_t retryPeriod=3000, uint16_t maxMessageSize=512, uint8_t protocolVersion=1)
+  #if DHCP == 1
+    TCPClient(byte* macAddress, IPAddress& serverIP, uint16_t port=10001, uint32_t retryPeriod=3000, uint16_t maxMessageSize=512, uint8_t protocolVersion=1)
+  : _myMAC(macAddress), _serverIP(serverIP), _port(port), _retryPeriod(retryPeriod), _maxMessageSize(maxMessageSize), _protocolVersion(protocolVersion)
+  {    
+    //_client = new EthernetClient();
+    //this->Init();
+
+    //Ethernet.init(ETHERNET_INIT_PIN);
+     //
+ 
+  }
+  #else
+    TCPClient(IPAddress& arduinoIP, byte* macAddress, IPAddress& serverIP, uint16_t port=10001, uint32_t retryPeriod=3000, uint16_t maxMessageSize=512, uint8_t protocolVersion=1)
   : _myIP(arduinoIP), _myMAC(macAddress), _serverIP(serverIP), _port(port), _retryPeriod(retryPeriod), _maxMessageSize(maxMessageSize), _protocolVersion(protocolVersion)
   {
+      //_client = new EthernetClient();
+      //this->Init();
+      
+    
+    //Ethernet.init(ETHERNET_INIT_PIN);
+ 
   }
+  #endif
 
   String IpAddress2String(const IPAddress& ipAddress)
   {
@@ -59,6 +79,13 @@ public:
 
   uint8_t doWork()
   {
+    #if DHCP == 1
+      if(millis() > this->_dhcpMaintTimer + _retryPeriod /*reusing reconnect period for DCHP maint- may be wiser to have a seperate value in later version*/)
+      {
+        do_dhcp_maint();
+        this->_dhcpMaintTimer = millis();
+      }
+    #endif
 
     switch(_myState)
     {
@@ -66,6 +93,10 @@ public:
       {
         this->setState(TCP_CONNECTING);
         this->_timeNow = millis();
+        //if (_client != NULL)
+        //  delete _client;
+        //_client = new EthernetClient();
+        this->Init();
         #ifdef DEBUG
           Serial.print("DEBUG: TCP disconnected, retrying connection to ");
           Serial.print(this->IpAddress2String(this->_serverIP));
@@ -123,9 +154,10 @@ public:
     return 0;
   }
 
-private:
+
   uint8_t Init()
   {
+    Ethernet.init(ETHERNET_INIT_PIN);
     #ifdef DEBUG
       #if DHCP == 1
         Serial.println("Starting up.. DHCP = Enabled");
@@ -135,6 +167,9 @@ private:
       #endif
     #endif
     #if DHCP == 1
+      #ifdef USE_ETHERNET_SHIELD_DELAY
+        delay(JANKY_ETHERNET_SHIELD_DELAY);
+      #endif
       if (Ethernet.begin(this->_myMAC) == 0) {
         Serial.println("Failed to configure Ethernet using DHCP");
 
@@ -155,6 +190,10 @@ private:
       }
       }
     #else
+      #ifdef USE_ETHERNET_SHIELD_DELAY
+        delay(JANKY_ETHERNET_SHIELD_DELAY);
+      #endif
+      
       Ethernet.begin(this->_myMAC, this->_myIP); // Per Arduino documentation, only DHCP versio of .begin returns an int.
       
     #endif
@@ -162,14 +201,16 @@ private:
       Serial.print("DEBUG: My IP address: ");
       Serial.println(Ethernet.localIP());
     #endif
+    return 1;
   }
+  private:
   uint8_t Connect()
   {
     if ( this->isConnected() ) {
       return 0;
     }
-    if (!this->Init())
-      return 0;
+    //if (!this->Init())
+    //  return 0;
     if (_client.connect(_serverIP, _port)) {
       return 1;
     } else {
@@ -216,7 +257,13 @@ private:
   uint32_t _timeNow = 0;
   uint16_t _maxMessageSize;
   uint8_t _protocolVersion;
+
+  
   byte * _myMAC;
-  IPAddress _myIP;
+  #if DHCP == 0
+    IPAddress & _myIP;
+  #else
+    uint32_t _dhcpMaintTimer = 0;
+  #endif
 };
 #endif

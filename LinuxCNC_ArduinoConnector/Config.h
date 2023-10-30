@@ -32,8 +32,8 @@
 #ifdef ETHERNET_TO_LINUXCNC
 #include <SPI.h>
 #include <Ethernet.h>
-#include "TCPClient.h"
-#define DHCP 0// 1 for DHCP, 0 for static
+//#include "TCPClient.h"
+#define DHCP 1// 1 for DHCP, 0 for static 
 #define TCP_RECONNECT_RETRY 3000 // Delay before attemtping reconnect to server
 #define TCP_MAX_MESSAGE_SIZE 512 // Max TCP message size in bytes.
 #define TCP_PROTOCOL_VERSION 1 // Server and client must agree on version during handshake
@@ -46,13 +46,26 @@ byte ARDUINO_MAC[] = {
   0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED
 };
 
+// 10 = Most Boards
+// 5 = MKR ETH Shield
+// 0 = Teensy 2.0
+// 20 = Teensy++ 2.0
+// 15 = ESP8266 with Adafruit Featherwing Ethernet
+// 33 =  ESP32 with Adafruit Featherwing Ethernet
+#define ETHERNET_INIT_PIN 10 // Most Arduino shields
 #if DHCP == 0
-  IPAddress ARDUINO_IP(192, 168, 2, 2);
+  IPAddress ARDUINO_IP(192, 168, 1, 88);
 #endif
 
 // Enter the IP address of the linuxcnc server you're connecting to:
-IPAddress SERVER_IP(192, 168, 2, 1);
+IPAddress SERVER_IP(192, 168, 1, 2);
 #define SERVER_PORT 10001
+#endif
+
+// Enable USE_ETHERNET_SHIELD_DELAY to force a delay set by the JANKY_ETHERNET_SHIELD_DELAY value. This is a work around to resolve a hardware issue with certain Ethernet Shields which prevent soft resets (e.g., when a connection retry is necessary).  
+#define USE_ETHERNET_SHIELD_DELAY
+#ifdef USE_ETHERNET_SHIELD_DELAY
+  #define JANKY_ETHERNET_SHIELD_DELAY 5000
 #endif
 
 //###################################################IO's###################################################
