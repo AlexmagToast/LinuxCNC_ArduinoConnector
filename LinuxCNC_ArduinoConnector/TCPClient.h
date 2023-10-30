@@ -44,23 +44,11 @@ public:
     TCPClient(byte* macAddress, IPAddress& serverIP, uint16_t port=10001, uint32_t retryPeriod=3000, uint16_t maxMessageSize=512, uint8_t protocolVersion=1)
   : _myMAC(macAddress), _serverIP(serverIP), _port(port), _retryPeriod(retryPeriod), _maxMessageSize(maxMessageSize), _protocolVersion(protocolVersion)
   {    
-    //_client = new EthernetClient();
-    //this->Init();
-
-    //Ethernet.init(ETHERNET_INIT_PIN);
-     //
- 
   }
   #else
     TCPClient(IPAddress& arduinoIP, byte* macAddress, IPAddress& serverIP, uint16_t port=10001, uint32_t retryPeriod=3000, uint16_t maxMessageSize=512, uint8_t protocolVersion=1)
   : _myIP(arduinoIP), _myMAC(macAddress), _serverIP(serverIP), _port(port), _retryPeriod(retryPeriod), _maxMessageSize(maxMessageSize), _protocolVersion(protocolVersion)
   {
-      //_client = new EthernetClient();
-      //this->Init();
-      
-    
-    //Ethernet.init(ETHERNET_INIT_PIN);
- 
   }
   #endif
 
@@ -74,6 +62,8 @@ public:
 
   uint8_t isConnected()
   {
+    //if( Ethernet.linkStatus() == LinkOFF )
+    //  return 0;
     return _client.connected();
   }
 
@@ -92,11 +82,12 @@ public:
       case TCP_DISCONNECTED:
       {
         this->setState(TCP_CONNECTING);
-        this->_timeNow = millis();
+        
         //if (_client != NULL)
         //  delete _client;
         //_client = new EthernetClient();
         this->Init();
+        this->_timeNow = millis();
         #ifdef DEBUG
           Serial.print("DEBUG: TCP disconnected, retrying connection to ");
           Serial.print(this->IpAddress2String(this->_serverIP));
@@ -146,11 +137,6 @@ public:
         return 0;
       }
     }
-
-    //if(this->isConnected() == 0)
-    //{
-     // this->Connect();
-    //}
     return 0;
   }
 
