@@ -190,13 +190,6 @@ oldMledStates = [0]*LedVccPins*LedGndPins
 if LinuxKeyboardInput:
 	import subprocess
 
-# Inputs and Toggled Inputs are handled the same. 
-# For DAU compatiblity we set them up seperately. 
-# Here we merge the arrays.
-
-Inputs = Inputs+ SInputs
-InPinmap += sInPinmap
-
 
 # Storing Variables for counter timing Stuff
 counter_last_update = {}
@@ -207,6 +200,11 @@ min_update_interval = 100
 for port in range(Inputs):
 	c.newpin("din.{}".format(InPinmap[port]), hal.HAL_BIT, hal.HAL_OUT)
 	c.newparam("din.{}-invert".format(InPinmap[port]), hal.HAL_BIT, hal.HAL_RW)
+
+# setup SInput halpins
+for port in range(SInputs):
+	c.newpin("sdin.{}".format(sInPinmap[port]), hal.HAL_BIT, hal.HAL_OUT)
+	c.newparam("sdin.{}-invert".format(sInPinmap[port]), hal.HAL_BIT, hal.HAL_RW)
 
 # setup Output halpins
 for port in range(Outputs):
@@ -393,7 +391,26 @@ while True:
 							c["din.{}".format(io)] = 1
 							if(Debug):print("din{}:{}".format(io,1))
 					else:pass
-
+                    
+				elif cmd == "S":
+					firstcom = 1
+					if value == 1:
+						if c["sdin.{}-invert".format(io)] == 0:
+							c["sdin.{}".format(io)] = 1
+							if(Debug):print("sdin{}:{}".format(io,1))
+						else: 
+							c["sdin.{}".format(io)] = 0
+							if(Debug):print("sdin{}:{}".format(io,0))
+						
+						
+					if value == 0:
+						if c["sdin.{}-invert".format(io)] == 0:
+							c["sdin.{}".format(io)] = 0
+							if(Debug):print("sdin{}:{}".format(io,0))
+						else: 
+							c["sdin.{}".format(io)] = 1
+							if(Debug):print("sdin{}:{}".format(io,1))
+					else:pass
 
 				elif cmd == "A":
 					firstcom = 1
