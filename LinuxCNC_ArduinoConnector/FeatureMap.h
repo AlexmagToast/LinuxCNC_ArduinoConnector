@@ -1,3 +1,5 @@
+#ifndef FEATUREMAP_H_
+#define FEATUREMAP_H_
 uint64_t featureMap;
 
 /**
@@ -223,4 +225,5 @@ void DumpFeatureMapToSerial()
   #endif
 
 }
+#endif //#define FEATUREMAP_H_
 

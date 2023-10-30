@@ -1,3 +1,6 @@
+#ifndef CONFIG_H_
+#define CONFIG_H_
+
 #define ENABLE_FEATUREMAP
 #define DEBUG                 0
 #define INPUTS                1                       
@@ -15,7 +18,7 @@
 #define KEYPAD                13
 #define SERIAL_TO_LINUXCNC    14
 #define ETHERNET_TO_LINUXCNC  15
-#define WIFI_TO_LINUXCNC      16
+//define WIFI_TO_LINUXCNC      16
 
 //################################################### SERIAL CONNECTION OPTIONS ###################################################
 #define DEFAULT_SERIAL_BAUD_RATE 115200
@@ -29,8 +32,13 @@
 #ifdef ETHERNET_TO_LINUXCNC
 #include <SPI.h>
 #include <Ethernet.h>
-
-#define DHCP 0 // 1 for DHCP, 0 for static
+#include "TCPClient.h"
+#define DHCP 1// 1 for DHCP, 0 for static
+#define TCP_RECONNECT_RETRY 3000 // Delay before attemtping reconnect to server
+#define TCP_MAX_MESSAGE_SIZE 512 // Max TCP message size in bytes.
+#define TCP_PROTOCOL_VERSION 1 // Server and client must agree on version during handshake
+#define BOARD_INDEX 0 // Each board connecting to the server should have a differnet index number.
+// Should you want to have multiple arduiono boards connecting to the same server, remember to change the IP address (if using static IPs) and MAC address of each Arduino to be destinct
 
 // Enter a MAC address and IP address for your controller below.
 // The IP address will be dependent on your local network:
@@ -39,11 +47,12 @@ byte mac[] = {
 };
 
 #if DHCP == 0
-  IPAddress ip(192, 168, 2, 2);
+  IPAddress myip(192, 168, 2, 2);
 #endif
 
 // Enter the IP address of the linuxcnc server you're connecting to:
-IPAddress server(192, 168, 2, 1);
+IPAddress SERVER_IP(192, 168, 1, 28);
+#define SERVER_PORT 10001
 
 EthernetClient ethernetClient;
 #endif
@@ -309,3 +318,4 @@ const int debounceDelay = 50;
 
 
 //#######################################   END OF CONFIG     ###########################
+#endif // #define CONFIG_H_

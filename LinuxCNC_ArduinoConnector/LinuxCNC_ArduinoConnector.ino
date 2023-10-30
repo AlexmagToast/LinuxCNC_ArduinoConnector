@@ -63,10 +63,11 @@ Communication Status      = 'E' -read/Write  -Pin State: 0:0
 */
 #include "Version.h"
 #include "Config.h"
+
+
 #ifdef ENABLE_FEATUREMAP
   #include "FeatureMap.h"
 #endif
-#include "EthernetFuncs.h"
 
 //Variables for Saving States
 #ifdef INPUTS
@@ -156,6 +157,12 @@ char cmd = 0;
 uint16_t io = 0;
 uint16_t value = 0;
 
+#ifdef ETHERNET_TO_LINUXCNC
+  #include "EthernetFuncs.h"
+  TCPClient _client(SERVER_IP, SERVER_PORT, TCP_RECONNECT_RETRY, TCP_PROTOCOL_VERSION);
+  EthernetClient _eth;
+#endif
+
 
 void setup() {
 #ifdef ENABLE_FEATUREMAP
@@ -205,14 +212,24 @@ void setup() {
     }
     }
   #else
-    Ethernet.begin(mac, ip); // Per Arduino documentation, only DHCP version of .begin returns an int.
+    Ethernet.begin(mac, myip); // Per Arduino documentation, only DHCP versio of .begin returns an int.
+    
   #endif
   #ifdef DEBUG
-    Serial.print("My IP address: ");
+    Serial.print("DEBUG: My IP address: ");
     Serial.println(Ethernet.localIP());
   #endif
-  
-  
+  delay(3000);
+  _client.doWork();
+  /*
+    if (_eth.connect(SERVER_IP, SERVER_PORT)) {
+      Serial.println("Connected!!!!!");
+   
+    } else {
+      Serial.println("ERRRRROR!!!!!");
+    
+    }
+  */
 #endif
 
 #ifdef INPUTS
@@ -300,14 +317,16 @@ for(int col = 0; col < numCols; col++) {
 
 
 void loop() {
-return;
-  readCommands(); //receive and execute Commands 
-  comalive(); //if nothing is received for 10 sec. blink warning LED 
+
+//  readCommands(); //receive and execute Commands 
+//  comalive(); //if nothing is received for 10 sec. blink warning LED 
 
 #ifdef ETHERNET_TO_LINUXCNC
   #if DHCP == 1
-    do_dhcp_maintain();
+    do_dhcp_maint();
   #endif
+  _client.doWork();
+  return; // TODO REMOVE THIS RETURN - ONLY FOR TESTING
 #endif
 #ifdef INPUTS
   readInputs(); //read Inputs & send data
