@@ -33,7 +33,7 @@
 #include <SPI.h>
 #include <Ethernet.h>
 //#include "TCPClient.h"
-#define DHCP 1// 1 for DHCP, 0 for static 
+#define DHCP 0// 1 for DHCP, 0 for static.  DHCP support is highly expiremental and leaving this option disabled (i.e., using a static IP address) is recommended.
 #define TCP_RECONNECT_RETRY 3000 // Delay before attemtping reconnect to server
 #define TCP_MAX_MESSAGE_SIZE 512 // Max TCP message size in bytes.
 #define TCP_PROTOCOL_VERSION 1 // Server and client must agree on version during handshake
