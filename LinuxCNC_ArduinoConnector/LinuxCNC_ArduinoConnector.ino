@@ -61,9 +61,11 @@ Communication Status      = 'E' -read/Write  -Pin State: 0:0
   along with this program; if not, write to the Free Software
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
-
-
+#include "Version.h"
 #include "Config.h"
+#ifdef ENABLE_FEATUREMAP
+  #include "FeatureMap.h"
+#endif
 #include "EthernetFuncs.h"
 
 //Variables for Saving States
@@ -154,8 +156,11 @@ char cmd = 0;
 uint16_t io = 0;
 uint16_t value = 0;
 
-void setup() {
 
+void setup() {
+#ifdef ENABLE_FEATUREMAP
+  initFeatureMap();
+#endif
 #ifdef ETHERNET_TO_LINUXCNC
   Serial.begin(DEFAULT_SERIAL_BAUD_RATE);
 
@@ -164,6 +169,13 @@ void setup() {
     ; // wait for serial port to connect. Needed for native USB port only
 
   }
+  #ifdef SERIAL_START_DELAY
+    delay(SERIAL_START_DELAY);
+  #endif
+  #ifdef ENABLE_FEATUREMAP
+    //Serial.println("Dumping Feature Map to Serial..");
+    DumpFeatureMapToSerial();
+  #endif
   #ifdef DEBUG
     #if DHCP == 1
       Serial.println("Starting up.. DHCP = Enabled");
@@ -283,12 +295,12 @@ for(int col = 0; col < numCols; col++) {
 //Setup Serial
   //Serial.begin(DEFAULT_SERIAL_BAUD_RATE);
   //while (!Serial){}
-  comalive();
+  //comalive();
 }
 
 
 void loop() {
-
+return;
   readCommands(); //receive and execute Commands 
   comalive(); //if nothing is received for 10 sec. blink warning LED 
 

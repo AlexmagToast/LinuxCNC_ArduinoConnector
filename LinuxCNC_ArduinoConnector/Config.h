@@ -1,28 +1,31 @@
-#define DEBUG
-//#define INPUTS                       
-//#define SINPUTS                      
-//#define OUTPUTS
-//#define PWMOUTPUTS
-//#define AINPUTS   
-//#define DALLAS_TEMP_SENSOR
-//#define LPOTIS
-//#define BINSEL
-//#define QUADENC
-//#define JOYSTICK
-//#define STATUSLED
-//#define DLED
-//#define KEYPAD
-//#define SERIAL_TO_LINUXCNC
-#define ETHERNET_TO_LINUXCNC
-#define WIFI_TO_LINUXCNC
-
-
+#define ENABLE_FEATUREMAP
+#define DEBUG                 0
+#define INPUTS                1                       
+#define SINPUTS               2                      
+#define OUTPUTS               3
+#define PWMOUTPUTS            4
+#define AINPUTS               5   
+#define DALLAS_TEMP_SENSOR    6
+#define LPOTIS                7
+#define BINSEL                8
+//#define QUADENC               9
+#define JOYSTICK              10
+//#define STATUSLED             11
+//#define DLED                  12
+#define KEYPAD                13
+#define SERIAL_TO_LINUXCNC    14
+#define ETHERNET_TO_LINUXCNC  15
+#define WIFI_TO_LINUXCNC      16
 
 //################################################### SERIAL CONNECTION OPTIONS ###################################################
 #define DEFAULT_SERIAL_BAUD_RATE 115200
+#define SERIAL_START_DELAY 3000 // To avoid initial serial output failing to arrive during debugging.
 //#define ENABLE_SERIAL2 TRUE // For future
 
 //################################################### ETHERNET CONNECTION OPTIONS ###################################################
+// Requires an Arduino / Shield that is compatible with the Arduino Ethernet Library
+// Tested and working models:
+//      - Ethernet Network Shield W5100
 #ifdef ETHERNET_TO_LINUXCNC
 #include <SPI.h>
 #include <Ethernet.h>
