@@ -36,8 +36,6 @@
 #define DHCP 0// 1 for DHCP, 0 for static.  DHCP support is highly expiremental and leaving this option disabled (i.e., using a static IP address) is recommended.
 #define TCP_RECONNECT_RETRY 3000 // Delay before attemtping reconnect to server
 #define TCP_CONNECTION_TIMEOUT 1000 // Arduino default is 1000 ms.  This value represents the timeout duration for .connect() and .stop()
-#define TCP_MAX_MESSAGE_SIZE 512 // Max TCP message size in bytes.
-#define TCP_PROTOCOL_VERSION 1 // Server and client must agree on version during handshake
 #define BOARD_INDEX 0 // Each board connecting to the server should have a differnet index number.
 // Should you want to have multiple arduiono boards connecting to the same server, remember to change the IP address (if using static IPs) and MAC address of each Arduino to be destinct
 

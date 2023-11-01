@@ -25,9 +25,11 @@ SOFTWARE.
 */
 #ifndef TCPCLIENT_H_
 #define TCPCLIENT_H_
-//#include <Ethernet.h>
+#include <ArduinoJson.h>  // include before MsgPacketizer.h
+#include <MsgPacketizer.h>
 #include <String.h>
 #include "EthernetFuncs.h"
+#include "Protocol.h"
 
 enum TcpState
 {
@@ -41,13 +43,13 @@ enum TcpState
 class TCPClient {
 public:
   #if DHCP == 1
-    TCPClient(byte* macAddress, IPAddress& serverIP, uint16_t port=10001, uint32_t retryPeriod=3000, uint16_t maxMessageSize=512, uint8_t protocolVersion=1)
-  : _myMAC(macAddress), _serverIP(serverIP), _port(port), _retryPeriod(retryPeriod), _maxMessageSize(maxMessageSize), _protocolVersion(protocolVersion)
+    TCPClient(byte* macAddress, IPAddress& serverIP, uint16_t port=10001, uint32_t retryPeriod=3000)
+  : _myMAC(macAddress), _serverIP(serverIP), _port(port), _retryPeriod(retryPeriod)
   {    
   }
   #else
-    TCPClient(IPAddress& arduinoIP, byte* macAddress, IPAddress& serverIP, uint16_t port=10001, uint32_t retryPeriod=3000, uint16_t maxMessageSize=512, uint8_t protocolVersion=1)
-  : _myIP(arduinoIP), _myMAC(macAddress), _serverIP(serverIP), _port(port), _retryPeriod(retryPeriod), _maxMessageSize(maxMessageSize), _protocolVersion(protocolVersion)
+    TCPClient(IPAddress& arduinoIP, byte* macAddress, IPAddress& serverIP, uint16_t port=10001, uint32_t retryPeriod=3000)
+  : _myIP(arduinoIP), _myMAC(macAddress), _serverIP(serverIP), _port(port), _retryPeriod(retryPeriod)
   {
   }
   #endif
@@ -62,13 +64,71 @@ public:
 
   uint8_t isConnected()
   {
-    //if( Ethernet.linkStatus() == LinkOFF )
-    //  return 0;
     return _client.connected();
   }
+  const uint8_t msg_index = 0x12;
+  
+
 
   uint8_t doWork()
   {
+    //DynamicJsonDocument doc(512);
+    // make your json here
+    //doc["sensor"] = "gps";
+    //doc["time"]   = 1351824120;
+    //doc["data"][0] = 48.756080;
+    //doc["data"][1] = 2.302038;
+
+    //MsgPacketizer::send(this->_client, this->_mi, doc);
+    //MsgPacketizer::send(this->_client, this->_mi, this->_i, this->_f, this->_s);
+            // just encode your data manually and get binary packet from MsgPacketizer
+    //const auto& packet = MsgPacketizer::encode(send_index, i, f, s);
+            // send the packet data with your interface
+
+    /*
+    DynamicJsonDocument doc(1024);
+
+    doc["sensor"] = "gps";
+    doc["time"]   = 1351824120;
+    doc["data"][0] = 48.756080;
+    doc["data"][1] = 2.302038;
+    MsgPacketizer::send(this->_client, this->_mi, doc);
+    */
+
+    //MsgPack::Packer packer;
+     // serialize directly
+    //packer.serialize(doc)
+    //this->_client.write()
+    //serializeJson(doc, this->_client);
+    
+    
+    //MsgPack::Packer packer;
+    //this->_s = "HELLO WORLD";
+    //packer.serialize(this->_i, this->_f, this->_s);
+    //this->_client.write(packer.data(), packer.size());
+    
+    
+    //MsgPacketizer::send(this->_client, this->_mi, doc);
+    //Serial.write(packet.data.data(), packet.data.size());
+
+    HandshakeMessage hm;
+    hm.featureMap = featureMap;
+    hm.boardIndex = BOARD_INDEX;
+    #ifdef DEBUG
+      Serial.println("DEBUG: ---- HANDSHAKE MESSAGE DUMP ----");
+      Serial.print("DEBUG: Protocol Version: 0x");
+      Serial.println(hm.protocolVersion, HEX);
+      Serial.print("DEBUG: Feature Map: ");
+      Serial.println(hm.featureMap, HEX);
+      Serial.print("DEBUG: Board Index: ");
+      Serial.println(hm.featureMap);
+    #endif
+    MsgPacketizer::send(this->_client, this->_mi, hm);
+
+    delay(1000);
+
+    // must be called to trigger callback and publish data
+    MsgPacketizer::update();
     #if DHCP == 1
       if(millis() > this->_dhcpMaintTimer + _retryPeriod /*reusing reconnect period for DCHP maint- may be wiser to have a seperate value in later version*/)
       {
@@ -81,13 +141,13 @@ public:
     {
       case TCP_DISCONNECTED:
       {
-        this->_client.stop();
+        //this->_client.stop();
         this->setState(TCP_CONNECTING);
         
         //if (_client != NULL)
         //  delete _client;
         //_client = new EthernetClient();
-        this->Init();
+        this->_init();
         this->_timeNow = millis();
         #ifdef DEBUG
           Serial.print("DEBUG: TCP disconnected, retrying connection to ");
@@ -141,9 +201,107 @@ public:
     return 0;
   }
 
-
-  uint8_t Init()
+  void subscribe()
   {
+
+    
+    //MsgPacketizer::subscribe(client, index,
+    //   [&](const int i, const float f, const String& s) {
+            // do something with received data
+    //    }
+    //);
+    /*
+        MsgPacketizer::subscribe(this->_client, msg_index,
+        [&](const StaticJsonDocument<200>& doc) {
+            Serial.print(doc["us"].as<uint32_t>());
+            Serial.print(" ");
+            Serial.print(doc["usstr"].as<String>());
+            Serial.print(" [");
+            Serial.print(doc["now"][0].as<double>());
+            Serial.print(" ");
+            Serial.print(doc["now"][1].as<double>());
+            Serial.println("]");
+        });
+    
+            // you can also use DynamicJsonDocument if you want
+    // MsgPacketizer::subscribe(client, msg_index,
+    //     [&](const DynamicJsonDocument& doc) {
+    //         Serial.print(doc["us"].as<uint32_t>());
+    //         Serial.print(" ");
+    //         Serial.print(doc["usstr"].as<String>());
+    //         Serial.print(" [");
+    //         Serial.print(doc["now"][0].as<double>());
+    //         Serial.print(" ");
+    //         Serial.print(doc["now"][1].as<double>());
+    //         Serial.println("]");
+    //     });
+        */
+  }
+  #ifdef DEBUG
+  String stateToString(int& state)
+  {
+    switch(state)
+    {
+      case TCP_DISCONNECTED:
+        return String("TCP_DISCONNECTED");
+      case TCP_CONNECTING:
+        return String("TCP_CONNECTING");
+      case TCP_CONNECTED:
+        return String("TCP_CONNECTED");
+      case TCP_DISCONNECTING:
+        return String("TCP_DISCONNECTING");
+      case TCP_ERROR:
+        return String("TCP_ERROR");
+      default:
+        return String("TCP_UNKNOWN_STATE");
+    }
+  }
+  #endif
+  void setState(int new_state)
+  {
+    #ifdef DEBUG
+      Serial.print("DEBUG: TCP client transitioning from current state of [");
+      Serial.print(this->stateToString(this->_myState));
+      Serial.print("] to [");
+      Serial.print(this->stateToString(new_state));
+      Serial.println("]");
+    #endif
+    this->_myState = new_state;
+  }
+  private:
+  void _msgPacketizerInit()
+  {
+    if (this->_isMsgPackInit)
+      return;
+    this->_isMsgPackInit = true;
+
+    //MsgPacketizer::publish(this->_client, this->_mi, this->_i, this->_f, //this->_s)->setFrameRate(1);
+    /*
+    MsgPacketizer::subscribe(this->_client, this->_mi,
+        [&](const DynamicJsonDocument& doc) {
+            Serial.println("RECV:");
+            //Serial.print("doc[\"sensor\"] = ");
+            Serial.println(doc["sensor"].as<String>());
+            //Serial.print("doc[\"time\"] = ");
+            //Serial.println(doc["time"].as<uint32_t>());
+        });
+    */
+    
+    MsgPacketizer::subscribe(this->_client, this->_mi,
+        [&](const int i, const float f, const String& s) {
+            Serial.print(i);
+            Serial.print(" ");
+            Serial.print(f);
+            Serial.print(" ");
+            Serial.println(s);
+        });
+    //MsgPacketizer::publish(this->_client, this->_mi, this->_i, this->_f, this->_s)->setFrameRate(1);
+         
+  }
+
+  uint8_t _init()
+  {
+    this->_msgPacketizerInit();
     Ethernet.init(ETHERNET_INIT_PIN);
     #ifdef DEBUG
       #if DHCP == 1
@@ -187,6 +345,11 @@ public:
       #endif
       
       Ethernet.begin(this->_myMAC, this->_myIP); // Per Arduino documentation, only DHCP versio of .begin returns an int.
+      // Ethernet with useful options
+      // Ethernet.begin(mac, ip, dns, gateway, subnet); // full
+      // Ethernet.setRetransmissionCount(4); // default: 8[times]
+      // Ethernet.setRetransmissionTimeout(50); // default: 200[ms]
+
       
     #endif
     #ifdef DEBUG
@@ -196,7 +359,7 @@ public:
 
     return 1;
   }
-  private:
+  
   uint8_t Connect()
   {
     if ( this->isConnected() ) {
@@ -211,37 +374,6 @@ public:
       return 0;
     }
   }
-  #ifdef DEBUG
-  String stateToString(int& state)
-  {
-    switch(state)
-    {
-      case TCP_DISCONNECTED:
-        return String("TCP_DISCONNECTED");
-      case TCP_CONNECTING:
-        return String("TCP_CONNECTING");
-      case TCP_CONNECTED:
-        return String("TCP_CONNECTED");
-      case TCP_DISCONNECTING:
-        return String("TCP_DISCONNECTING");
-      case TCP_ERROR:
-        return String("TCP_ERROR");
-      default:
-        return String("TCP_UNKNOWN_STATE");
-    }
-  }
-  #endif
-  void setState(int new_state)
-  {
-    #ifdef DEBUG
-      Serial.print("DEBUG: TCP client transitioning from current state of [");
-      Serial.print(this->stateToString(this->_myState));
-      Serial.print("] to [");
-      Serial.print(this->stateToString(new_state));
-      Serial.println("]");
-    #endif
-    this->_myState = new_state;
-  }
 
   int _myState = TCP_CONNECTING;
   EthernetClient _client;
@@ -249,8 +381,13 @@ public:
   uint16_t _port;
   uint32_t _retryPeriod = 0;
   uint32_t _timeNow = 0;
-  uint16_t _maxMessageSize;
-  uint8_t _protocolVersion;
+
+  bool _isMsgPackInit = false;
+  // The following variables are used by MsgPacketerizer as working memory - do not alter
+  uint8_t _mi = 255;
+  int _i = 1; 
+  float _f = 2;
+  String _s;
 
   
   byte * _myMAC;
