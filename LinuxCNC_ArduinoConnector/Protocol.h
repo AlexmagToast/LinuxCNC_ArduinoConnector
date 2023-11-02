@@ -39,7 +39,7 @@ enum MessageTypes
 struct HandshakeMessage {
     uint8_t protocolVersion = PROTOCOL_VERSION;
     //uint16_t messageType = MT_HANDSHAKE;
-    uint64_t featureMap = featureMap;
+    uint64_t featureMap = 0;
     uint8_t boardIndex = BOARD_INDEX;
     MSGPACK_DEFINE(protocolVersion, featureMap, boardIndex); 
 };

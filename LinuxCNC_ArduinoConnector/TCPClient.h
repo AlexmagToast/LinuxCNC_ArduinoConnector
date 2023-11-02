@@ -31,6 +31,7 @@ SOFTWARE.
 #include "EthernetFuncs.h"
 #include "Protocol.h"
 
+
 enum TcpState
 {
   TCP_DISCONNECTED = 0,
@@ -113,15 +114,15 @@ public:
 
     HandshakeMessage hm;
     hm.featureMap = featureMap;
-    hm.boardIndex = BOARD_INDEX;
-    #ifdef DEBUG
+    //hm.boardIndex = BOARD_INDEX;
+    #ifdef DEBUG1
       Serial.println("DEBUG: ---- HANDSHAKE MESSAGE DUMP ----");
       Serial.print("DEBUG: Protocol Version: 0x");
       Serial.println(hm.protocolVersion, HEX);
       Serial.print("DEBUG: Feature Map: ");
       Serial.println(hm.featureMap, HEX);
       Serial.print("DEBUG: Board Index: ");
-      Serial.println(hm.featureMap);
+      Serial.println(hm.boardIndex);
     #endif
     MsgPacketizer::send(this->_client, this->_mi, hm);
 
@@ -141,7 +142,7 @@ public:
     {
       case TCP_DISCONNECTED:
       {
-        //this->_client.stop();
+        this->_client.stop();
         this->setState(TCP_CONNECTING);
         
         //if (_client != NULL)
@@ -185,8 +186,8 @@ public:
         }
         else
         {
-            if (_client.available()) {
-              char c = _client.read();
+            if (this->_client.available()) {
+              char c = this->_client.read();
               Serial.print(c);
             }
             break;
@@ -301,8 +302,11 @@ public:
 
   uint8_t _init()
   {
+    // disable SD card if one in the slot
+    //pinMode(10,OUTPUT);
+    //digitalWrite(10,HIGH);
     this->_msgPacketizerInit();
-    Ethernet.init(ETHERNET_INIT_PIN);
+    //Ethernet.init(ETHERNET_INIT_PIN);
     #ifdef DEBUG
       #if DHCP == 1
         Serial.println("DEBUG: Initializing Ethernet. DHCP = Enabled");
@@ -344,7 +348,7 @@ public:
         delay(JANKY_ETHERNET_SHIELD_DELAY);
       #endif
       
-      Ethernet.begin(this->_myMAC, this->_myIP); // Per Arduino documentation, only DHCP versio of .begin returns an int.
+      Ethernet.begin(this->_myMAC, this->_myIP, NET_DNS); // Per Arduino documentation, only DHCP versio of .begin returns an int.
       // Ethernet with useful options
       // Ethernet.begin(mac, ip, dns, gateway, subnet); // full
       // Ethernet.setRetransmissionCount(4); // default: 8[times]
@@ -362,13 +366,13 @@ public:
   
   uint8_t Connect()
   {
-    if ( this->isConnected() ) {
-      return 0;
-    }
+    //if ( this->isConnected() ) {
+   //   return 0;
+   // }
     //if (!this->Init())
     //  return 0;
-    _client.setConnectionTimeout(TCP_CONNECTION_TIMEOUT);
-    if (_client.connect(_serverIP, _port)) {
+    this->_client.setConnectionTimeout(TCP_CONNECTION_TIMEOUT);
+    if (this->_client.connect(_serverIP, _port)) {
       return 1;
     } else {
       return 0;

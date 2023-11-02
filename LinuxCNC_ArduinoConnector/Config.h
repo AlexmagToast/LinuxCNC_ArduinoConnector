@@ -34,8 +34,8 @@
 #include <Ethernet.h>
 //#include "TCPClient.h"
 #define DHCP 0// 1 for DHCP, 0 for static.  DHCP support is highly expiremental and leaving this option disabled (i.e., using a static IP address) is recommended.
-#define TCP_RECONNECT_RETRY 3000 // Delay before attemtping reconnect to server
-#define TCP_CONNECTION_TIMEOUT 1000 // Arduino default is 1000 ms.  This value represents the timeout duration for .connect() and .stop()
+#define TCP_RECONNECT_RETRY 1000 // Delay before attemtping reconnect to server
+#define TCP_CONNECTION_TIMEOUT 100 // Arduino default is 1000 ms.  This value represents the timeout duration for .connect() and .stop()
 #define BOARD_INDEX 0 // Each board connecting to the server should have a differnet index number.
 // Should you want to have multiple arduiono boards connecting to the same server, remember to change the IP address (if using static IPs) and MAC address of each Arduino to be destinct
 
@@ -58,13 +58,14 @@ byte ARDUINO_MAC[] = {
 
 // Enter the IP address of the linuxcnc server you're connecting to:
 IPAddress SERVER_IP(192, 168, 1, 2);
-#define SERVER_PORT 10001
+IPAddress NET_DNS(192, 168, 1, 1); // Use 8.8.8.8 for Google DNS
+#define SERVER_PORT 10002
 #endif
 
 // Enable USE_ETHERNET_SHIELD_DELAY to force a delay set by the JANKY_ETHERNET_SHIELD_DELAY value. This is a work around to resolve a hardware issue with certain Ethernet Shields which prevent soft resets (e.g., when a connection retry is necessary).  
 #define USE_ETHERNET_SHIELD_DELAY
 #ifdef USE_ETHERNET_SHIELD_DELAY
-  #define JANKY_ETHERNET_SHIELD_DELAY 500
+  #define JANKY_ETHERNET_SHIELD_DELAY 5000
 #endif
 
 //###################################################IO's###################################################
