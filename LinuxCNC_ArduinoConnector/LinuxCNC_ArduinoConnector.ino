@@ -67,6 +67,7 @@ Communication Status      = 'E' -read/Write  -Pin State: 0:0
 
 #ifdef ENABLE_FEATUREMAP
   #include "FeatureMap.h"
+  featureMap fm;
 #endif
 
 //Variables for Saving States
@@ -160,19 +161,16 @@ uint16_t value = 0;
 #ifdef ETHERNET_TO_LINUXCNC
   #include "UDPClient.h"
   #if DHCP == 1
-    UDPClient _client(ARDUINO_MAC, SERVER_IP, UDP_RX_PORT, UDP_TX_PORT, UDP_RX_TIMOUT);
+    UDPClient _client(ARDUINO_MAC, SERVER_IP, fm.features, UDP_RX_PORT, UDP_TX_PORT, UDP_RX_TIMOUT);
   #else
-    UDPClient _client(ARDUINO_IP, ARDUINO_MAC, SERVER_IP, UDP_RX_PORT, UDP_TX_PORT, UDP_RX_TIMOUT);
+    UDPClient _client(ARDUINO_IP, ARDUINO_MAC, SERVER_IP,  fm.features, UDP_RX_PORT, UDP_TX_PORT, UDP_RX_TIMOUT);
   #endif
   
 #endif
 
 
 void setup() {
-  
-#ifdef ENABLE_FEATUREMAP
-  initFeatureMap();
-#endif
+
 #ifdef ETHERNET_TO_LINUXCNC
 
   Serial.begin(DEFAULT_SERIAL_BAUD_RATE);
@@ -188,10 +186,10 @@ void setup() {
   
   #ifdef ENABLE_FEATUREMAP
     //Serial.println("Dumping Feature Map to Serial..");
-    DumpFeatureMapToSerial();
+    fm.DumpFeatureMapToSerial();
   #endif
   //_client.Init();
-  _client.doWork();
+  _client.onDoWork();
 #endif
 
 #ifdef INPUTS
@@ -292,7 +290,7 @@ void loop() {
 //  comalive(); //if nothing is received for 10 sec. blink warning LED 
 
 #ifdef ETHERNET_TO_LINUXCNC
-  _client.doWork();
+  _client.onDoWork();
   return; // TODO REMOVE THIS RETURN - ONLY FOR TESTING
 #endif
 #ifdef INPUTS

@@ -25,6 +25,8 @@
 #define SERIAL_START_DELAY 3000 // To avoid initial serial output failing to arrive during debugging.
 //#define ENABLE_SERIAL2 TRUE // For future
 
+const uint16_t RX_BUFFER_SIZE = 512; // Serial, TCP and UDP connections utilize this constant for their RX buffers
+
 //################################################### ETHERNET CONNECTION OPTIONS ###################################################
 // Requires an Arduino / Shield that is compatible with the Arduino Ethernet Library
 // Tested and working models:
@@ -36,7 +38,6 @@
 const uint16_t UDP_RX_TIMOUT = 3000;
 const int UDP_RX_PORT = 54321;
 const int UDP_TX_PORT = 54321;
-const uint16_t UDP_RX_BUFFER_SIZE = 512;
 const uint8_t BOARD_INDEX = 0; // Each board connecting to the server should have a differnet index number.
 
 // Should you want to have multiple arduiono boards connecting to the same server, remember to change the IP address (if using static IPs) and MAC address of each Arduino to be destinct
