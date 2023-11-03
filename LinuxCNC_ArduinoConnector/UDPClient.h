@@ -111,99 +111,15 @@ public:
   //void onError();
 
 
-  void onDoWork()
+
+  protected:
+
+  virtual void onDoWork()
   {
-    if( _initialized == false)
-    {
-      this->onInit();
-      delay(1000);
-      _initialized = true;
-    }
-
-    #if DHCP == 1
-      if(millis() > this->_dhcpMaintTimer + _retryPeriod)
-      {
-        do_dhcp_maint();
-        this->_dhcpMaintTimer = millis();
-      }
-    #endif
-    
-
-    switch(_myState)
-    {
-      case CS_DISCONNECTED:
-      {
-        this->setState(CS_CONNECTING);
-        this->sendHandshakeMessage();
-        
-        this->_timeNow = millis();
-        /*
-        #ifdef DEBUG
-          Serial.print("DEBUG: UDP disconnected, retrying connection to ");
-          Serial.print(this->IpAddress2String(this->_serverIP));
-          Serial.print(":");
-          Serial.print(this->_txPort);
-          Serial.print(" in ");
-          Serial.print(_retryPeriod/1000);
-          Serial.println(" seconds...");
-        #endif
-        */
-        break;
-      }
-      case CS_CONNECTING:
-      {
-        //Serial.println(_retryPeriod);
-        if(millis() > this->_timeNow + _retryPeriod)
-        {
-          // TIMED OUT
-          this->setState(CS_ERROR);
-          /*
-          if(!this->Connect())
-          {
-           
-            return 1;
-          }
-          else
-          {
-           this->setState(UDP_CONNECTED);
-          }
-          */
-        }
-        break;
-      }
-      case CS_CONNECTED:
-      {
-        
-          int packetSize = _udpClient.parsePacket();
-          if (packetSize) {
-            Serial.print("Received packet of size ");
-            Serial.println(packetSize);
-            Serial.print("From ");
-            IPAddress remote = _udpClient.remoteIP();
-            for (int i=0; i < 4; i++) {
-              Serial.print(remote[i], DEC);
-              if (i < 3) {
-                Serial.print(".");
-              }
-            }
-            Serial.print(", port ");
-            Serial.println(_udpClient.remotePort());
-          }
-          
-          break;
-      }
-      case CS_ERROR:
-      {
-        this->setState(CS_DISCONNECTED);
-        //return 0;
-      }
-    }
-        // must be called to trigger callback and publish data
-    MsgPacketizer::update();
+    // Do UDP stuff, maybe.
   }
-  
-  private:
-  void sendHandshakeMessage()
+
+  virtual void sendHandshakeMessage()
   {
     HandshakeMessage hm;
     hm.featureMap = this->_featureMap;

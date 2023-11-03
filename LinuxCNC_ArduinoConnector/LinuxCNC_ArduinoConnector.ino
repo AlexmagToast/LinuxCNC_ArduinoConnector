@@ -189,7 +189,7 @@ void setup() {
     fm.DumpFeatureMapToSerial();
   #endif
   //_client.Init();
-  _client.onDoWork();
+  _client.DoWork();
 #endif
 
 #ifdef INPUTS
@@ -290,7 +290,7 @@ void loop() {
 //  comalive(); //if nothing is received for 10 sec. blink warning LED 
 
 #ifdef ETHERNET_TO_LINUXCNC
-  _client.onDoWork();
+  _client.DoWork();
   return; // TODO REMOVE THIS RETURN - ONLY FOR TESTING
 #endif
 #ifdef INPUTS
