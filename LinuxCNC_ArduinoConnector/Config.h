@@ -3,20 +3,20 @@
 
 #define ENABLE_FEATUREMAP
 #define DEBUG                 0
-#define INPUTS                1                       
-#define SINPUTS               2                      
-#define OUTPUTS               3
-#define PWMOUTPUTS            4
+//#define INPUTS                1                       
+//#define SINPUTS               2                      
+//#define OUTPUTS               3
+//#define PWMOUTPUTS            4
 //#define AINPUTS               5   
-#define DALLAS_TEMP_SENSOR    6
+//#define DALLAS_TEMP_SENSOR    6
 //#define LPOTIS                7
-#define BINSEL                8
+//#define BINSEL                8
 //#define QUADENC               9
-#define JOYSTICK              10
+//#define JOYSTICK              10
 //#define STATUSLED             11
 //#define DLED                  12
-#define KEYPAD                13
-#define SERIAL_TO_LINUXCNC    14
+//#define KEYPAD                13
+//#define SERIAL_TO_LINUXCNC    14
 #define ETHERNET_TO_LINUXCNC  15
 //define WIFI_TO_LINUXCNC      16
 
@@ -32,11 +32,13 @@
 #ifdef ETHERNET_TO_LINUXCNC
 #include <SPI.h>
 #include <Ethernet.h>
-//#include "TCPClient.h"
 #define DHCP 0// 1 for DHCP, 0 for static.  DHCP support is highly expiremental and leaving this option disabled (i.e., using a static IP address) is recommended.
-#define TCP_RECONNECT_RETRY 1000 // Delay before attemtping reconnect to server
-#define TCP_CONNECTION_TIMEOUT 100 // Arduino default is 1000 ms.  This value represents the timeout duration for .connect() and .stop()
-#define BOARD_INDEX 0 // Each board connecting to the server should have a differnet index number.
+const uint16_t UDP_RX_TIMOUT = 3000;
+const int UDP_RX_PORT = 54321;
+const int UDP_TX_PORT = 54321;
+const uint16_t UDP_RX_BUFFER_SIZE = 512;
+const uint8_t BOARD_INDEX = 0; // Each board connecting to the server should have a differnet index number.
+
 // Should you want to have multiple arduiono boards connecting to the same server, remember to change the IP address (if using static IPs) and MAC address of each Arduino to be destinct
 
 // Enter a MAC address and IP address for your controller below.
@@ -45,6 +47,13 @@ byte ARDUINO_MAC[] = {
   0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED
 };
 
+#if DHCP == 0
+  IPAddress ARDUINO_IP(192, 168, 1, 88);
+#endif
+
+  //IPAddress SERVER_IP(192, 168, 1, 2);
+  const char* SERVER_IP = "192.168.1.2";
+
 // 10 = Most Boards
 // 5 = MKR ETH Shield
 // 0 = Teensy 2.0
@@ -52,22 +61,9 @@ byte ARDUINO_MAC[] = {
 // 15 = ESP8266 with Adafruit Featherwing Ethernet
 // 33 =  ESP32 with Adafruit Featherwing Ethernet
 #define ETHERNET_INIT_PIN 10 // Most Arduino shields
-#if DHCP == 0
-  IPAddress ARDUINO_IP(192, 168, 1, 88);
-#endif
 
-// Enter the IP address of the linuxcnc server you're connecting to:
-IPAddress SERVER_IP(192, 168, 1, 2);
-IPAddress NET_DNS(192, 168, 1, 1); // Use 8.8.8.8 for Google DNS
-#define SERVER_PORT 10002
-#endif
 
-// Enable USE_ETHERNET_SHIELD_DELAY to force a delay set by the JANKY_ETHERNET_SHIELD_DELAY value. This is a work around to resolve a hardware issue with certain Ethernet Shields which prevent soft resets (e.g., when a connection retry is necessary).  
-#define USE_ETHERNET_SHIELD_DELAY
-#ifdef USE_ETHERNET_SHIELD_DELAY
-  #define JANKY_ETHERNET_SHIELD_DELAY 5000
 #endif
-
 //###################################################IO's###################################################
 
                  

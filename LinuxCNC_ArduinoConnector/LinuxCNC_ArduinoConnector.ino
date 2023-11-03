@@ -158,11 +158,11 @@ uint16_t io = 0;
 uint16_t value = 0;
 
 #ifdef ETHERNET_TO_LINUXCNC
-  #include "TCPClient.h"
+  #include "UDPClient.h"
   #if DHCP == 1
-    TCPClient _client(ARDUINO_MAC, SERVER_IP, SERVER_PORT, TCP_RECONNECT_RETRY);
+    UDPClient _client(ARDUINO_MAC, SERVER_IP, UDP_RX_PORT, UDP_TX_PORT, UDP_RX_TIMOUT);
   #else
-    TCPClient _client(ARDUINO_IP, ARDUINO_MAC, SERVER_IP, SERVER_PORT, TCP_RECONNECT_RETRY);
+    UDPClient _client(ARDUINO_IP, ARDUINO_MAC, SERVER_IP, UDP_RX_PORT, UDP_TX_PORT, UDP_RX_TIMOUT);
   #endif
   
 #endif
