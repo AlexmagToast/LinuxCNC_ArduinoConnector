@@ -9,8 +9,7 @@
  * can allow the Python/LinuxCNC side to output helpful information during debugging, e.g., "Error. X-command failed. The Y feature is disabled on Arduino"
  * The featureMap may also be useful in future features, such as the ability to display what features are enabled via the UI of LinuxCNC.  Why would this be
  * Another use case for debugging is during the initial testing using the halrun command.  If the user enters a command for a disabled feature,
- * the python side can catch the attempt before passing the command to the Arduino and instruct the user to enable the feature on the Arduino to use the feature.
- * useful one may ask?  The answer is that over time new features will be added, and it will be difficult to remember if your Arduino has that version which
+ * the python side can catch the attempt before passing the command to the Arduino and instruct the user to enable the feature on the Arduino to use the feature. useful one may ask?  The answer is that over time new features will be added, and it will be difficult to remember if your Arduino has that version which
  * X feature or not.  
  */
 struct featureMap
@@ -84,7 +83,7 @@ struct featureMap
 
   void DumpFeatureMapToSerial()
   {
-    Serial.print("Feature Map = 0x");
+    Serial.print("DEBUG: Feature Map = 0x");
     Serial.println(this->features, HEX);
     int flag = 0;
     #ifdef DEBUG

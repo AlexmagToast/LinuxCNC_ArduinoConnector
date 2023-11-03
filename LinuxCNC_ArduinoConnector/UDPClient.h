@@ -116,7 +116,39 @@ public:
 
   virtual void onDoWork()
   {
-    // Do UDP stuff, maybe.
+    
+    // Do UDP stuff
+    if(!subscribed)
+    {
+      
+      MsgPacketizer::subscribe(_udpClient, MT_HANDSHAKE,
+          [&](const HandshakeMessage& n) {
+              // update global variable "nested"
+          Serial.println("DEBUG: ---- RX HANDSHAKE MESSAGE DUMP ----");
+          Serial.print("DEBUG: Protocol Version: 0x");
+          Serial.println(n.protocolVersion, HEX);
+          Serial.print("DEBUG: Feature Map: 0x");
+          Serial.println(n.featureMap, HEX);
+          Serial.print("DEBUG: Board Index: ");
+          Serial.println(n.boardIndex);
+          Serial.println("DEBUG: ---- RX END HANDSHAKE MESSAGE DUMP ----");
+          });
+          
+      MsgPacketizer::subscribe(_udpClient, MT_ACKNAK,
+          [&](const AckNakMessage& n) {
+              // update global variable "nested"
+          Serial.println("DEBUG: ---- RX ACKNAK MESSAGE DUMP ----");
+          Serial.print("DEBUG: responseToMessageType: ");
+          Serial.println(n.responseToMessageType, HEX);
+          Serial.print("DEBUG: isAck: ");
+          Serial.println(n.isAck, DEC);
+          Serial.print("DEBUG: errorCode = ");
+          Serial.println(n.errorCode);
+          Serial.println("DEBUG: ---- RX END ACKNAK MESSAGE DUMP ----");
+          });
+        subscribed = 1;
+    }
+    MsgPacketizer::update();
   }
 
   virtual void sendHandshakeMessage()
@@ -124,20 +156,21 @@ public:
     HandshakeMessage hm;
     hm.featureMap = this->_featureMap;
     #ifdef DEBUG
-      Serial.println("DEBUG: ---- HANDSHAKE MESSAGE DUMP ----");
+      Serial.println("DEBUG: ---- TX HANDSHAKE MESSAGE DUMP ----");
       Serial.print("DEBUG: Protocol Version: 0x");
       Serial.println(hm.protocolVersion, HEX);
       Serial.print("DEBUG: Feature Map: 0x");
       Serial.println(hm.featureMap, HEX);
       Serial.print("DEBUG: Board Index: ");
       Serial.println(hm.boardIndex);
-      Serial.println("DEBUG: ---- END HANDSHAKE MESSAGE DUMP ----");
+      Serial.println("DEBUG: ---- TX END HANDSHAKE MESSAGE DUMP ----");
     #endif
     
     //MsgPacketizer::send(this->_client, this->_mi, hm);
     MsgPacketizer::send(_udpClient, _serverIP, _txPort, MT_HANDSHAKE, hm);
   }
 
+  uint8_t subscribed = false;
   EthernetUDP _udpClient;
   const char * _serverIP;
   int _rxPort;

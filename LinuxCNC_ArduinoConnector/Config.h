@@ -1,6 +1,7 @@
 #ifndef CONFIG_H_
 #define CONFIG_H_
 
+#define __AVR__ // To resolve a bug with the headers in fastcrc library utilized by MsgPacketizer
 #define ENABLE_FEATUREMAP
 #define DEBUG                 0
 //#define INPUTS                1                       
@@ -26,6 +27,32 @@
 //#define ENABLE_SERIAL2 TRUE // For future
 
 const uint16_t RX_BUFFER_SIZE = 512; // Serial, TCP and UDP connections utilize this constant for their RX buffers
+
+// The following are otpomizations for low-memory boards such as Arduino Unos.\
+// See https://github.com/hideakitai/MsgPacketizer#memory-management-only-for-no-stl-boards
+// TODO: Board detect & set these dynamically based on detected board
+// max publishing element size in one destination
+#define MSGPACKETIZER_MAX_PUBLISH_ELEMENT_SIZE 5
+// max destinations to publish
+#define MSGPACKETIZER_MAX_PUBLISH_DESTINATION_SIZE 1
+
+// msgpack serialized binary size
+#define MSGPACK_MAX_PACKET_BYTE_SIZE 96
+// max size of MsgPack::arr_t
+#define MSGPACK_MAX_ARRAY_SIZE 3
+// max size of MsgPack::map_t
+#define MSGPACK_MAX_MAP_SIZE 3
+// msgpack objects size in one packet
+#define MSGPACK_MAX_OBJECT_SIZE 16
+
+// max number of decoded packet queues
+#define PACKETIZER_MAX_PACKET_QUEUE_SIZE 1
+// max data bytes in packet
+#define PACKETIZER_MAX_PACKET_BINARY_SIZE 96
+// max number of callback for one stream
+#define PACKETIZER_MAX_CALLBACK_QUEUE_SIZE 3
+// max number of streams
+#define PACKETIZER_MAX_STREAM_MAP_SIZE 1
 
 //################################################### ETHERNET CONNECTION OPTIONS ###################################################
 // Requires an Arduino / Shield that is compatible with the Arduino Ethernet Library

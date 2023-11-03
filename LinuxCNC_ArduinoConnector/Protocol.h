@@ -30,10 +30,10 @@ SOFTWARE.
 enum MessageTypes
 {
   MT_HEARTBEAT      =   0,
-  MT_HANDSHAKE      =   1,
-  MT_COMMAND        =   2,
-  MT_PINSTATUS      =   3,
-  MT_ACK            =   4
+  MT_ACKNAK         =   1,
+  MT_HANDSHAKE      =   2,
+  MT_COMMAND        =   3,
+  MT_PINSTATUS      =   4
 };
 
 struct HandshakeMessage {
@@ -44,6 +44,12 @@ struct HandshakeMessage {
     MSGPACK_DEFINE(protocolVersion, featureMap, boardIndex); 
 };
 
+struct AckNakMessage {
+    uint16_t responseToMessageType;
+    uint8_t isAck;
+    uint8_t errorCode;
+    MSGPACK_DEFINE(responseToMessageType, isAck, errorCode); 
+};
 
 #define MAX_MESSAGE_LENGTH = 0xFF
 /*
