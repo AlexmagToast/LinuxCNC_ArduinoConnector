@@ -61,6 +61,11 @@ Communication Status      = 'E' -read/Write  -Pin State: 0:0
   along with this program; if not, write to the Free Software
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
+/*
+  Library dependencies (use Arduino Library Manager)
+  MsgPacketizer >= V0.5.0 (REQUIRED, including all dependencies)
+  
+*/
 #include "Version.h"
 #include "Config.h"
 
