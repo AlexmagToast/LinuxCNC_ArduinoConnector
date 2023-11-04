@@ -3,25 +3,26 @@
 
 #define __AVR__ // To resolve a bug with the headers in fastcrc library utilized by MsgPacketizer
 #define ENABLE_FEATUREMAP
-#define DEBUG                 0
-//#define INPUTS                1                       
-//#define SINPUTS               2                      
-//#define OUTPUTS               3
-//#define PWMOUTPUTS            4
-//#define AINPUTS               5   
-//#define DALLAS_TEMP_SENSOR    6
-//#define LPOTIS                7
-//#define BINSEL                8
-//#define QUADENC               9
-//#define JOYSTICK              10
-//#define STATUSLED             11
-//#define DLED                  12
-//#define KEYPAD                13
-//#define SERIAL_TO_LINUXCNC    14
+#define DEBUG                       0
+//#define INPUTS                    1                       
+//#define SINPUTS                   2                      
+//#define OUTPUTS                   3
+//#define PWMOUTPUTS                4
+//#define AINPUTS                   5   
+//#define DALLAS_TEMP_SENSOR        6
+//#define LPOTIS                    7
+//#define BINSEL                    8
+//#define QUADENC                   9
+//#define JOYSTICK                  10
+//#define STATUSLED                 11
+//#define DLED                      12
+//#define KEYPAD                    13
+//#define SERIAL_TO_LINUXCNC        14
 #define ETHERNET_UDP_TO_LINUXCNC  15
 //#define ETHERNET_TCP_TO_LINUXCNC 16 // FUTURE
 //define WIFI_TCP_TO_LINUXCNC      17 // FUTURE
 //define WIFI_UDP_TO_LINUXCNC     18 // FUTURE
+#define MEMORY_MONITOR              19 // Requires https://github.com/mpflaga/Arduino-MemoryFree/
 
 //################################################### SERIAL CONNECTION OPTIONS ###################################################
 #define DEFAULT_SERIAL_BAUD_RATE 115200
@@ -71,7 +72,7 @@ const uint16_t SERIAL_RX_TIMEOUT = 3000;
 #include <SPI.h>
 #include <Ethernet.h>
 #define DHCP 0// 1 for DHCP, 0 for static.  DHCP support is highly expiremental and leaving this option disabled (i.e., using a static IP address) is recommended.
-const uint16_t UDP_RX_TIMOUT = 2000;
+const uint16_t UDP_RX_TIMOUT = 5000;
 const int UDP_RX_PORT = 54321;
 const int UDP_TX_PORT = 54321;
 

@@ -78,6 +78,10 @@ Communication Status      = 'E' -read/Write  -Pin State: 0:0
   featureMap fm;
 #endif
 
+#ifdef MEMORY_MONITOR
+#include <MemoryFree.h>
+#include <pgmStrToRAM.h>
+#endif
 
 
 #ifdef ETHERNET_UDP_TO_LINUXCNC
@@ -99,11 +103,6 @@ Communication Status      = 'E' -read/Write  -Pin State: 0:0
 void setup() {
 
 Serial.begin(DEFAULT_SERIAL_BAUD_RATE);
-while (!Serial) {
-
-  ; // wait for serial port to connect. Needed for native USB port only
-
-}
 //Serial.println("Dumping Feature Map to Serial..");
 #ifdef SERIAL_START_DELAY
   delay(SERIAL_START_DELAY);
@@ -112,6 +111,12 @@ while (!Serial) {
 #ifdef ENABLE_FEATUREMAP
   Serial.println("Dumping Feature Map to Serial..");
   fm.DumpFeatureMapToSerial();
+#endif
+#ifdef DEBUG
+#ifdef MEMORY_MONITOR
+  Serial.print(F("DEBUG: FREE RAM: "));
+  Serial.println(freeMemory());
+#endif
 #endif
 //_client.Init();
 //_client.DoWork();  // At least ONE option must be selected in the config for connection to LinuxCNC (UDP/TCP/WIFI/SERIAL) - Otherwise, _client will be undefined and errors will be generated at compile.

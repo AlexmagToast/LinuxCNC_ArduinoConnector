@@ -76,6 +76,9 @@ struct featureMap
     #ifdef WIFI_TCP_TO_LINUXCNC
       bitSet(this->features, WIFI_TCP_TO_LINUXCNC);
     #endif
+    #ifdef MEMORY_MONITOR
+      bitSet(this->features, MEMORY_MONITOR);
+    #endif
   }
 
   /**
@@ -214,20 +217,44 @@ struct featureMap
         Serial.print(" SERIAL_TO_LINUXCNC = ");
         Serial.println(flag);
       #endif
-      #ifdef ETHERNET_TO_LINUXCNC
-        flag = bitRead(this->features, ETHERNET_TO_LINUXCNC);
+      #ifdef ETHERNET_UDP_TO_LINUXCNC
+        flag = bitRead(this->features, ETHERNET_UDP_TO_LINUXCNC);
         Serial.print("[ID");
-        Serial.print(ETHERNET_TO_LINUXCNC);
+        Serial.print(ETHERNET_UDP_TO_LINUXCNC);
         Serial.print("]");
-        Serial.print(" ETHERNET_TO_LINUXCNC = ");
+        Serial.print(" ETHERNET_UDP_TO_LINUXCNC = ");
         Serial.println(flag);
       #endif
-      #ifdef WIFI_TO_LINUXCNC
-        flag = bitRead(this->features, WIFI_TO_LINUXCNC);
+      #ifdef ETHERNET_TCP_TO_LINUXCNC
+        flag = bitRead(this->features, ETHERNET_TCP_TO_LINUXCNC);
         Serial.print("[ID");
-        Serial.print(WIFI_TO_LINUXCNC);
+        Serial.print(ETHERNET_TCP_TO_LINUXCNC);
         Serial.print("]");
-        Serial.print(" WIFI_TO_LINUXCNC = ");
+        Serial.print(" ETHERNET_TCP_TO_LINUXCNC = ");
+        Serial.println(flag);
+      #endif
+      #ifdef WIFI_UDP_TO_LINUXCNC
+        flag = bitRead(this->features, WIFI_UDP_TO_LINUXCNC);
+        Serial.print("[ID");
+        Serial.print(WIFI_UDP_TO_LINUXCNC);
+        Serial.print("]");
+        Serial.print(" WIFI_UDP_TO_LINUXCNC = ");
+        Serial.println(flag);
+      #endif
+      #ifdef WIFI_TCP_TO_LINUXCNC
+        flag = bitRead(this->features, WIFI_TCP_TO_LINUXCNC);
+        Serial.print("[ID");
+        Serial.print(WIFI_TCP_TO_LINUXCNC);
+        Serial.print("]");
+        Serial.print(" WIFI_TCP_TO_LINUXCNC = ");
+        Serial.println(flag);
+      #endif
+      #ifdef MEMORY_MONITOR
+        flag = bitRead(this->features, MEMORY_MONITOR);
+        Serial.print("[ID");
+        Serial.print(MEMORY_MONITOR);
+        Serial.print("]");
+        Serial.print(" MEMORY_MONITOR = ");
         Serial.println(flag);
       #endif
       Serial.println("------------------- End Feature Map Decode Dump ------------------- ");
