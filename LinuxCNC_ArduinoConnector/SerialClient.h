@@ -29,7 +29,7 @@ SOFTWARE.
 
 //#include <ArduinoJson.h>  // include before MsgPacketizer.h
 #include <MsgPacketizer.h>
-#include <String.h>
+#include <string.h>
 #include "Connection.h"
 
 using namespace protocol;

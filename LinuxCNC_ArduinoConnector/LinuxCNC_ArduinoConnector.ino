@@ -68,6 +68,11 @@ Communication Status      = 'E' -read/Write  -Pin State: 0:0
   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
   SOFTWARE.
 */
+/*
+  Library dependencies (use Arduino Library Manager)
+  MsgPacketizer >= V0.5.0 (REQUIRED, including all dependencies)
+  
+*/
 #include "Version.h"
 
 #include "Config.h"
