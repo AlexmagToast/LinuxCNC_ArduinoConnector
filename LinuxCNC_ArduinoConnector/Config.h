@@ -18,8 +18,10 @@
 //#define DLED                  12
 //#define KEYPAD                13
 //#define SERIAL_TO_LINUXCNC    14
-#define ETHERNET_TO_LINUXCNC  15
-//define WIFI_TO_LINUXCNC      16
+#define ETHERNET_UDP_TO_LINUXCNC  15
+//#define ETHERNET_TCP_TO_LINUXCNC 16 // FUTURE
+//define WIFI_TCP_TO_LINUXCNC      17 // FUTURE
+//define WIFI_UDP_TO_LINUXCNC     18 // FUTURE
 
 //################################################### SERIAL CONNECTION OPTIONS ###################################################
 #define DEFAULT_SERIAL_BAUD_RATE 115200
@@ -28,6 +30,7 @@
 
 const uint16_t RX_BUFFER_SIZE = 512; // Serial, TCP and UDP connections utilize this constant for their RX buffers
 
+/*
 // The following are otpomizations for low-memory boards such as Arduino Unos.\
 // See https://github.com/hideakitai/MsgPacketizer#memory-management-only-for-no-stl-boards
 // TODO: Board detect & set these dynamically based on detected board
@@ -53,19 +56,25 @@ const uint16_t RX_BUFFER_SIZE = 512; // Serial, TCP and UDP connections utilize 
 #define PACKETIZER_MAX_CALLBACK_QUEUE_SIZE 3
 // max number of streams
 #define PACKETIZER_MAX_STREAM_MAP_SIZE 1
+*/
 
+const uint8_t BOARD_INDEX = 0; // Each board connecting to the server should have a differnet index number.
+
+#ifdef SERIAL_TO_LINUXCNC
+const uint16_t SERIAL_RX_TIMEOUT = 3000;
+#endif
 //################################################### ETHERNET CONNECTION OPTIONS ###################################################
 // Requires an Arduino / Shield that is compatible with the Arduino Ethernet Library
 // Tested and working models:
 //      - Ethernet Network Shield W5100
-#ifdef ETHERNET_TO_LINUXCNC
+#ifdef ETHERNET_UDP_TO_LINUXCNC
 #include <SPI.h>
 #include <Ethernet.h>
 #define DHCP 0// 1 for DHCP, 0 for static.  DHCP support is highly expiremental and leaving this option disabled (i.e., using a static IP address) is recommended.
-const uint16_t UDP_RX_TIMOUT = 3000;
+const uint16_t UDP_RX_TIMOUT = 2000;
 const int UDP_RX_PORT = 54321;
 const int UDP_TX_PORT = 54321;
-const uint8_t BOARD_INDEX = 0; // Each board connecting to the server should have a differnet index number.
+
 
 // Should you want to have multiple arduiono boards connecting to the same server, remember to change the IP address (if using static IPs) and MAC address of each Arduino to be destinct
 

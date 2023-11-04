@@ -1,3 +1,4 @@
+#pragma once
 #ifndef FEATUREMAP_H_
 #define FEATUREMAP_H_
 
@@ -63,11 +64,17 @@ struct featureMap
     #ifdef SERIAL_TO_LINUXCNC
       bitSet(this->features, SERIAL_TO_LINUXCNC);
     #endif
-    #ifdef ETHERNET_TO_LINUXCNC
-      bitSet(this->features, ETHERNET_TO_LINUXCNC);
+    #ifdef ETHERNET_UDP_TO_LINUXCNC
+      bitSet(this->features, ETHERNET_UDP_TO_LINUXCNC);
     #endif
-    #ifdef WIFI_TO_LINUXCNC
-      bitSet(this->features, WIFI_TO_LINUXCNC);
+    #ifdef ETHERNET_TCP_TO_LINUXCNC
+      bitSet(this->features, ETHERNET_TCP_TO_LINUXCNC);
+    #endif
+    #ifdef WIFI_UDP_TO_LINUXCNC
+      bitSet(this->features, WIFI_UDP_TO_LINUXCNC);
+    #endif
+    #ifdef WIFI_TCP_TO_LINUXCNC
+      bitSet(this->features, WIFI_TCP_TO_LINUXCNC);
     #endif
   }
 

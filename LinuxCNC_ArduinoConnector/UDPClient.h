@@ -23,10 +23,11 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
+#pragma once
 #ifndef UDPCLIENT_H_
 #define UDPCLIENT_H_
 
-#include <ArduinoJson.h>  // include before MsgPacketizer.h
+//#include <ArduinoJson.h>  // include before MsgPacketizer.h
 #include <MsgPacketizer.h>
 #include <String.h>
 #include "EthernetFuncs.h"
@@ -47,10 +48,10 @@ public:
   }
   #endif
   // Virtual interfaces from Connection class
-  virtual void onConnect(){}
-  virtual void onDisconnect(){}
-  virtual void onError(){}
-  uint8_t onInit(){
+  virtual void _onConnect(){}
+  virtual void _onDisconnect(){}
+  virtual void _onError(){}
+  uint8_t _onInit(){
     #ifdef DEBUG
       Serial.println("DEBUG: UDPClient::onInit() called..");
     #endif
@@ -64,7 +65,7 @@ public:
         Serial.println("DEBUG: Initializing Ethernet. DHCP = Enabled");
       #else
         Serial.print("DEBUG: Initializing Ethernet. DHCP = False. Static IP = ");
-        Serial.println(this->IpAddress2String(this->_myIP));
+        Serial.println(this->_IpAddress2String(this->_myIP));
       #endif
     #endif
     #if DHCP == 1
@@ -114,33 +115,44 @@ public:
 
   protected:
 
-  virtual void onDoWork()
+  virtual void _onDoWork()
   {
     
-    // Do UDP stuff
     if(!subscribed)
     {
       
       MsgPacketizer::subscribe(_udpClient, MT_HANDSHAKE,
           [&](const protocol::HandshakeMessage& n) {
-              onHandshakeMessage(n);
+              _onHandshakeMessage(n);
+          });
+      MsgPacketizer::subscribe(_udpClient, MT_HEARTBEAT,
+          [&](const protocol::HeartbeatMessage& n) {
+              _onHeartbeatMessage(n);
           });
         subscribed = 1;
     }
     MsgPacketizer::update();
   }
 
-  virtual void sendHandshakeMessage()
+  virtual void _sendHandshakeMessage()
   { 
     //MsgPacketizer::send(this->_client, this->_mi, hm);
-    MsgPacketizer::send(_udpClient, _serverIP, _txPort, MT_HANDSHAKE, getHandshakeMessage());
+    MsgPacketizer::send(_udpClient, _serverIP, _txPort, MT_HANDSHAKE, _getHandshakeMessage());
   }
 
-  virtual void sendHeartbeatMessage()
+  virtual void _sendHeartbeatMessage()
   { 
     //MsgPacketizer::send(this->_client, this->_mi, hm);
-    MsgPacketizer::send(_udpClient, _serverIP, _txPort, MT_HEARTBEAT, getHeartbeatMessage());
+    MsgPacketizer::send(_udpClient, _serverIP, _txPort, MT_HEARTBEAT, _getHeartbeatMessage());
   }
+  
+  #ifdef DEBUG
+  virtual void _sendDebugMessage(String& message)
+  {
+    MsgPacketizer::send(_udpClient, _serverIP, _txPort, MT_DEBUG, _getDebugMessage(message));
+  }
+  #endif
+  
   uint8_t subscribed = false;
   EthernetUDP _udpClient;
   const char * _serverIP;

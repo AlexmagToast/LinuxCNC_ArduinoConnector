@@ -1,3 +1,4 @@
+#pragma once
 #ifndef ETHERNETFUNCS_H_
 #define ETHERNETFUNCS_H_
   #if DHCP == 1

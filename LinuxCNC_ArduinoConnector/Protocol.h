@@ -35,7 +35,8 @@ namespace protocol
     MT_HEARTBEAT      =   0,
     MT_HANDSHAKE      =   1, 
     MT_COMMAND        =   2,
-    MT_PINSTATUS      =   3
+    MT_PINSTATUS      =   3,
+    MT_DEBUG          =   4
   };
 
   struct HandshakeMessage {
@@ -44,13 +45,20 @@ namespace protocol
       uint64_t featureMap = 0;
       uint8_t boardIndex = BOARD_INDEX;
       MSGPACK_DEFINE(protocolVersion, featureMap, boardIndex); 
-  };
-  
+  }hm;
+
   struct HeartbeatMessage {
       uint8_t boardIndex = BOARD_INDEX;
       MSGPACK_DEFINE(boardIndex); 
-  };
-
+  }hb;
+  
+  #ifdef DEBUG
+  struct DebugMessage {
+      uint8_t boardIndex = BOARD_INDEX;
+      String message;
+      MSGPACK_DEFINE(boardIndex, message); 
+  }dm;
+  #endif
   
   /*
   // save the current data alignment setting to the stack

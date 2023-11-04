@@ -1,5 +1,6 @@
 #ifndef CONNECTION_H_
 #define CONNECTION_H_
+#pragma once
 #include "Protocol.h"
 
 enum ConnectionState
@@ -8,6 +9,7 @@ enum ConnectionState
   CS_CONNECTING,
   CS_CONNECTED,
   CS_DISCONNECTING,
+  CS_CONNECTION_TIMEOUT,
   CS_ERROR
 };
 
@@ -17,34 +19,20 @@ public:
   {
 
   }
-  virtual uint8_t onInit();
-  virtual void onConnect();
-  virtual void onDisconnect();
-  virtual void onError();
-  virtual void onDoWork();
 
-  virtual void sendHandshakeMessage();
-
-  virtual void sendHeartbeatMessage();
-
-  virtual void sendMessage()
+  #ifdef DEBUG
+  virtual void SendDebugMessage(String& message)
   {
-
+    _sendDebugMessage(message);
   }
+  #endif
 
-  uint8_t getHandshakeReceived()
-  {
-    uint8_t r = handshakeReceived;
-    if (handshakeReceived)
-      handshakeReceived = 0;
-    return r;
-  }
 
   void DoWork()
   {
     if( _initialized == false)
     {
-      this->onInit();
+      this->_onInit();
       delay(1000);
       _initialized = true;
     }
@@ -60,12 +48,14 @@ public:
 
     switch(_myState)
     {
+      case CS_CONNECTION_TIMEOUT:
       case CS_DISCONNECTED:
       {
-        this->setState(CS_CONNECTING);
-        this->sendHandshakeMessage();
+        this->_setState(CS_CONNECTING);
+        this->_sendHandshakeMessage();
+        _resendTimer = millis();
+        _receiveTimer = millis(); 
         
-        this->_timeNow = millis();
         /*
         #ifdef DEBUG
           Serial.print("DEBUG: UDP disconnected, retrying connection to ");
@@ -82,25 +72,39 @@ public:
       case CS_CONNECTING:
       {
         //Serial.println(_retryPeriod);
-        if(getHandshakeReceived())
+        if(_getHandshakeReceived())
         {
-          this->setState(CS_CONNECTED);
-          this->_timeNow = millis();
+          this->_setState(CS_CONNECTED);
+          _resendTimer = millis();
+          _receiveTimer = millis();
+          
         }
-        else if(millis() > this->_timeNow + _retryPeriod)
+        else if(millis() > this->_resendTimer + _retryPeriod)
         {
           // TIMED OUT
-          this->setState(CS_ERROR);
+          this->_setState(CS_ERROR);
 
         }
         break;
       }
       case CS_CONNECTED:
       {
-        if ( millis() > this->_timeNow + _heartbeatPeriod )
+        if ( millis() > this->_resendTimer + _retryPeriod )
         {
-          sendHeartbeatMessage();
-          this->_timeNow = millis();
+          _sendHeartbeatMessage();
+          _resendTimer = millis();
+        }
+        if ( _getHeartbeatReceived() ) // Heartbeat received, reset timeout
+        {
+          //String message = "Hello - I am debug from the Arduino!";
+          //SendDebugMessage(message);
+          _receiveTimer = millis();
+        }
+        else if ( millis() > this->_receiveTimer + (_retryPeriod*2) )
+        {
+          this->_setState(CS_CONNECTION_TIMEOUT);
+          //sendHeartbeatMessage();
+          //this->_resendTimer = millis();
         }
         /*
           int packetSize = _udpClient.parsePacket();
@@ -123,19 +127,32 @@ public:
       }
       case CS_ERROR:
       {
-        this->setState(CS_DISCONNECTED);
+        this->_setState(CS_DISCONNECTED);
         //return 0;
       }
     }
-    this->onDoWork();
+    this->_onDoWork();
         // must be called to trigger callback and publish data
     //MsgPacketizer::update();
   }
   
 
 protected:
+  virtual uint8_t _onInit();
+  virtual void _onConnect();
+  virtual void _onDisconnect();
+  virtual void _onError();
+  virtual void _onDoWork();
 
-  void onHandshakeMessage(const protocol::HandshakeMessage& n)
+
+  virtual void _sendHandshakeMessage();
+
+  virtual void _sendHeartbeatMessage();
+  #ifdef DEBUG
+  virtual void _sendDebugMessage(String& message);
+  #endif
+
+  void _onHandshakeMessage(const protocol::HandshakeMessage& n)
   {
       #ifdef DEBUG
       Serial.println("DEBUG: ---- RX HANDSHAKE MESSAGE DUMP ----");
@@ -147,18 +164,29 @@ protected:
       Serial.println(n.boardIndex);
       Serial.println("DEBUG: ---- RX END HANDSHAKE MESSAGE DUMP ----");
       #endif
-      handshakeReceived = 1;
+      _handshakeReceived = 1;
+  }
+
+  void _onHeartbeatMessage(const protocol::HeartbeatMessage& n)
+  {
+      #ifdef DEBUG
+      Serial.println("DEBUG: ---- RX HEARTBEAT MESSAGE DUMP ----");
+      Serial.print("DEBUG: Board Index: ");
+      Serial.println(n.boardIndex);
+      Serial.println("DEBUG: ---- RX END HEARTBEAT MESSAGE DUMP ----");
+      #endif
+      _heartbeatReceived = 1;
   }
   #ifdef DEBUG
 
-  String IpAddress2String(const IPAddress& ipAddress)
+  String _IpAddress2String(const IPAddress& ipAddress)
   {
     return String(ipAddress[0]) + String(".") +\
     String(ipAddress[1]) + String(".") +\
     String(ipAddress[2]) + String(".") +\
     String(ipAddress[3]); 
   }
-  String stateToString(int& state)
+  String _stateToString(int& state)
   {
     switch(state)
     {
@@ -172,61 +200,100 @@ protected:
         return String("CS_DISCONNECTING");
       case CS_ERROR:
         return String("CS_ERROR");
+      case CS_CONNECTION_TIMEOUT:
+        return String("CS_CONNECTION_TIMEOUT");
       default:
         return String("CS_UNKNOWN_STATE");
     }
   }
   #endif
-  void setState(int new_state)
+  void _setState(int new_state)
   {
     #ifdef DEBUG
+      Serial.flush();
       Serial.print("DEBUG: Connection transitioning from current state of [");
-      Serial.print(this->stateToString(this->_myState));
+      Serial.print(this->_stateToString(this->_myState));
       Serial.print("] to [");
-      Serial.print(this->stateToString(new_state));
+      Serial.print(this->_stateToString(new_state));
       Serial.println("]");
+      Serial.flush();
     #endif
     this->_myState = new_state;
   }
 
-  protocol::HandshakeMessage& getHandshakeMessage()
+  protocol::HandshakeMessage& _getHandshakeMessage()
   {
-    _hm.featureMap = this->_featureMap;
+    protocol::hm.featureMap = this->_featureMap;
     #ifdef DEBUG
       Serial.println("DEBUG: ---- TX HANDSHAKE MESSAGE DUMP ----");
       Serial.print("DEBUG: Protocol Version: 0x");
-      Serial.println(_hm.protocolVersion, HEX);
+      Serial.println(protocol::hm.protocolVersion, HEX);
       Serial.print("DEBUG: Feature Map: 0x");
-      Serial.println(_hm.featureMap, HEX);
+      Serial.println(protocol::hm.featureMap, HEX);
       Serial.print("DEBUG: Board Index: ");
-      Serial.println(_hm.boardIndex);
+      Serial.println(protocol::hm.boardIndex);
       Serial.println("DEBUG: ---- TX END HANDSHAKE MESSAGE DUMP ----");
     #endif
-    return _hm;
+    return protocol::hm;
   }
 
-  protocol::HeartbeatMessage& getHeartbeatMessage()
+  protocol::HeartbeatMessage& _getHeartbeatMessage()
   {
     #ifdef DEBUG
       Serial.println("DEBUG: ---- TX HEARTBEAT MESSAGE DUMP ----");
       Serial.print("DEBUG: Board Index: ");
-      Serial.println(_hb.boardIndex);
+      Serial.println(protocol::hb.boardIndex);
       Serial.println("DEBUG: ---- TX END HEARTBEAT MESSAGE DUMP ----");
     #endif
-    return _hb;
+    return protocol::hb;
+  }
+  
+  #ifdef DEBUG
+  protocol::DebugMessage& _getDebugMessage(String& message)
+  {
+    protocol::dm.message = message;
+    // No need to wrap in DEBUG define as the entire method is only compiled in when DEBUG is defined
+    Serial.println("DEBUG: ---- TX DEBUG MESSAGE DUMP ----");
+    Serial.print("DEBUG: Board Index: ");
+    Serial.println(protocol::dm.boardIndex);
+    Serial.print("DEBUG: Message: ");
+    Serial.println(protocol::dm.message);
+    Serial.println("DEBUG: ---- TX END DEBUG MESSAGE DUMP ----");
+    return protocol::dm;
+  }
+  #endif
+  
+
+  uint8_t _getHandshakeReceived()
+  {
+    uint8_t r = _handshakeReceived;
+    if (_handshakeReceived)
+      _handshakeReceived = 0;
+    return r;
+  }
+  uint8_t _getHeartbeatReceived()
+  {
+    uint8_t r = _heartbeatReceived;
+    if (_heartbeatReceived)
+      _heartbeatReceived = 0;
+    return r;
   }
 
   uint16_t _retryPeriod = 0;
-  uint32_t _timeNow = 0;
+  uint32_t _resendTimer = 0;
+  uint32_t _receiveTimer = 0;
   uint8_t _initialized = false;
   uint64_t& _featureMap;
   int _myState = CS_DISCONNECTED;
   char _rxBuffer[RX_BUFFER_SIZE];
-  uint8_t handshakeReceived = 0;
-  uint16_t _heartbeatPeriod = 3000;
+  uint8_t _handshakeReceived = 0;
+  uint8_t _heartbeatReceived = 0;
 
   // Message allocations
-  protocol::HandshakeMessage _hm;
-  protocol::HeartbeatMessage _hb;
+  //protocol::HandshakeMessage _hm;
+  //protocol::HeartbeatMessage _hb;
+  #ifdef DEBUG
+  //protocol::DebugMessage _dm;
+  #endif
 };
 #endif
