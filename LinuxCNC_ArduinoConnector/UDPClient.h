@@ -32,16 +32,16 @@ SOFTWARE.
 #include "EthernetFuncs.h"
 #include "Connection.h"
 
-
+using namespace protocol;
 class UDPClient :virtual public ConnectionBase {
 public:
   #if DHCP == 1
-    UDPClient(byte* macAddress, const char* serverIP, uint64_t& fm, int rxPort=10001, int txPort, uint32_t retryPeriod)
+    UDPClient(byte* macAddress, const char* serverIP, uint64_t& fm, int rxPort=10001, int txPort, uint16_t retryPeriod)
   : ConnectionBase(retryPeriod, fm), _myMAC(macAddress), _serverIP(serverIP), _rxPort(port), _txPort(port), 
   {    
   }
   #else
-    UDPClient(IPAddress& arduinoIP, byte* macAddress, const char* serverIP,  uint64_t& fm, int rxPort, int txPort, uint32_t retryPeriod)
+    UDPClient(IPAddress& arduinoIP, byte* macAddress, const char* serverIP,  uint64_t& fm, int rxPort, int txPort, uint16_t retryPeriod)
   : ConnectionBase(retryPeriod, fm), _myIP(arduinoIP), _myMAC(macAddress), _serverIP(serverIP), _rxPort(rxPort), _txPort(txPort)
   {
   }
@@ -122,29 +122,8 @@ public:
     {
       
       MsgPacketizer::subscribe(_udpClient, MT_HANDSHAKE,
-          [&](const HandshakeMessage& n) {
-              // update global variable "nested"
-          Serial.println("DEBUG: ---- RX HANDSHAKE MESSAGE DUMP ----");
-          Serial.print("DEBUG: Protocol Version: 0x");
-          Serial.println(n.protocolVersion, HEX);
-          Serial.print("DEBUG: Feature Map: 0x");
-          Serial.println(n.featureMap, HEX);
-          Serial.print("DEBUG: Board Index: ");
-          Serial.println(n.boardIndex);
-          Serial.println("DEBUG: ---- RX END HANDSHAKE MESSAGE DUMP ----");
-          });
-          
-      MsgPacketizer::subscribe(_udpClient, MT_ACKNAK,
-          [&](const AckNakMessage& n) {
-              // update global variable "nested"
-          Serial.println("DEBUG: ---- RX ACKNAK MESSAGE DUMP ----");
-          Serial.print("DEBUG: responseToMessageType: ");
-          Serial.println(n.responseToMessageType, HEX);
-          Serial.print("DEBUG: isAck: ");
-          Serial.println(n.isAck, DEC);
-          Serial.print("DEBUG: errorCode = ");
-          Serial.println(n.errorCode);
-          Serial.println("DEBUG: ---- RX END ACKNAK MESSAGE DUMP ----");
+          [&](const protocol::HandshakeMessage& n) {
+              onHandshakeMessage(n);
           });
         subscribed = 1;
     }
@@ -152,24 +131,16 @@ public:
   }
 
   virtual void sendHandshakeMessage()
-  {
-    HandshakeMessage hm;
-    hm.featureMap = this->_featureMap;
-    #ifdef DEBUG
-      Serial.println("DEBUG: ---- TX HANDSHAKE MESSAGE DUMP ----");
-      Serial.print("DEBUG: Protocol Version: 0x");
-      Serial.println(hm.protocolVersion, HEX);
-      Serial.print("DEBUG: Feature Map: 0x");
-      Serial.println(hm.featureMap, HEX);
-      Serial.print("DEBUG: Board Index: ");
-      Serial.println(hm.boardIndex);
-      Serial.println("DEBUG: ---- TX END HANDSHAKE MESSAGE DUMP ----");
-    #endif
-    
+  { 
     //MsgPacketizer::send(this->_client, this->_mi, hm);
-    MsgPacketizer::send(_udpClient, _serverIP, _txPort, MT_HANDSHAKE, hm);
+    MsgPacketizer::send(_udpClient, _serverIP, _txPort, MT_HANDSHAKE, getHandshakeMessage());
   }
 
+  virtual void sendHeartbeatMessage()
+  { 
+    //MsgPacketizer::send(this->_client, this->_mi, hm);
+    MsgPacketizer::send(_udpClient, _serverIP, _txPort, MT_HEARTBEAT, getHeartbeatMessage());
+  }
   uint8_t subscribed = false;
   EthernetUDP _udpClient;
   const char * _serverIP;

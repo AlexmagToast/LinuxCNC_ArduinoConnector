@@ -13,7 +13,7 @@ enum ConnectionState
 
 class ConnectionBase {
 public:
-  ConnectionBase(uint32_t retryPeriod, uint64_t& fm) : _retryPeriod(retryPeriod), _featureMap(fm)
+  ConnectionBase(uint16_t retryPeriod, uint64_t& fm) : _retryPeriod(retryPeriod), _featureMap(fm)
   {
 
   }
@@ -24,6 +24,21 @@ public:
   virtual void onDoWork();
 
   virtual void sendHandshakeMessage();
+
+  virtual void sendHeartbeatMessage();
+
+  virtual void sendMessage()
+  {
+
+  }
+
+  uint8_t getHandshakeReceived()
+  {
+    uint8_t r = handshakeReceived;
+    if (handshakeReceived)
+      handshakeReceived = 0;
+    return r;
+  }
 
   void DoWork()
   {
@@ -67,26 +82,26 @@ public:
       case CS_CONNECTING:
       {
         //Serial.println(_retryPeriod);
-        if(millis() > this->_timeNow + _retryPeriod)
+        if(getHandshakeReceived())
+        {
+          this->setState(CS_CONNECTED);
+          this->_timeNow = millis();
+        }
+        else if(millis() > this->_timeNow + _retryPeriod)
         {
           // TIMED OUT
           this->setState(CS_ERROR);
-          /*
-          if(!this->Connect())
-          {
-           
-            return 1;
-          }
-          else
-          {
-           this->setState(UDP_CONNECTED);
-          }
-          */
+
         }
         break;
       }
       case CS_CONNECTED:
       {
+        if ( millis() > this->_timeNow + _heartbeatPeriod )
+        {
+          sendHeartbeatMessage();
+          this->_timeNow = millis();
+        }
         /*
           int packetSize = _udpClient.parsePacket();
           if (packetSize) {
@@ -119,6 +134,21 @@ public:
   
 
 protected:
+
+  void onHandshakeMessage(const protocol::HandshakeMessage& n)
+  {
+      #ifdef DEBUG
+      Serial.println("DEBUG: ---- RX HANDSHAKE MESSAGE DUMP ----");
+      Serial.print("DEBUG: Protocol Version: 0x");
+      Serial.println(n.protocolVersion, HEX);
+      Serial.print("DEBUG: Feature Map: 0x");
+      Serial.println(n.featureMap, HEX);
+      Serial.print("DEBUG: Board Index: ");
+      Serial.println(n.boardIndex);
+      Serial.println("DEBUG: ---- RX END HANDSHAKE MESSAGE DUMP ----");
+      #endif
+      handshakeReceived = 1;
+  }
   #ifdef DEBUG
 
   String IpAddress2String(const IPAddress& ipAddress)
@@ -159,14 +189,44 @@ protected:
     this->_myState = new_state;
   }
 
-  uint32_t _retryPeriod = 0;
+  protocol::HandshakeMessage& getHandshakeMessage()
+  {
+    _hm.featureMap = this->_featureMap;
+    #ifdef DEBUG
+      Serial.println("DEBUG: ---- TX HANDSHAKE MESSAGE DUMP ----");
+      Serial.print("DEBUG: Protocol Version: 0x");
+      Serial.println(_hm.protocolVersion, HEX);
+      Serial.print("DEBUG: Feature Map: 0x");
+      Serial.println(_hm.featureMap, HEX);
+      Serial.print("DEBUG: Board Index: ");
+      Serial.println(_hm.boardIndex);
+      Serial.println("DEBUG: ---- TX END HANDSHAKE MESSAGE DUMP ----");
+    #endif
+    return _hm;
+  }
+
+  protocol::HeartbeatMessage& getHeartbeatMessage()
+  {
+    #ifdef DEBUG
+      Serial.println("DEBUG: ---- TX HEARTBEAT MESSAGE DUMP ----");
+      Serial.print("DEBUG: Board Index: ");
+      Serial.println(_hb.boardIndex);
+      Serial.println("DEBUG: ---- TX END HEARTBEAT MESSAGE DUMP ----");
+    #endif
+    return _hb;
+  }
+
+  uint16_t _retryPeriod = 0;
   uint32_t _timeNow = 0;
   uint8_t _initialized = false;
   uint64_t& _featureMap;
   int _myState = CS_DISCONNECTED;
   char _rxBuffer[RX_BUFFER_SIZE];
+  uint8_t handshakeReceived = 0;
+  uint16_t _heartbeatPeriod = 3000;
 
   // Message allocations
-  HandshakeMessage _hm;
+  protocol::HandshakeMessage _hm;
+  protocol::HeartbeatMessage _hb;
 };
 #endif
