@@ -17,12 +17,12 @@
 //#define STATUSLED                 11
 //#define DLED                      12
 //#define KEYPAD                    13
-//#define SERIAL_TO_LINUXCNC        14
-#define ETHERNET_UDP_TO_LINUXCNC  15
+#define SERIAL_TO_LINUXCNC        14
+//#define ETHERNET_UDP_TO_LINUXCNC  15
 //#define ETHERNET_TCP_TO_LINUXCNC 16 // FUTURE
 //define WIFI_TCP_TO_LINUXCNC      17 // FUTURE
 //define WIFI_UDP_TO_LINUXCNC     18 // FUTURE
-#define MEMORY_MONITOR              19 // Requires https://github.com/mpflaga/Arduino-MemoryFree/
+//#define MEMORY_MONITOR              19 // Requires https://github.com/mpflaga/Arduino-MemoryFree/
 
 //################################################### SERIAL CONNECTION OPTIONS ###################################################
 #define DEFAULT_SERIAL_BAUD_RATE 115200
@@ -59,7 +59,7 @@ const uint16_t RX_BUFFER_SIZE = 512; // Serial, TCP and UDP connections utilize 
 #define PACKETIZER_MAX_STREAM_MAP_SIZE 1
 */
 
-const uint8_t BOARD_INDEX = 0; // Each board connecting to the server should have a differnet index number.
+const uint8_t BOARD_INDEX = 1; // Each board connecting to the server should have a differnet index number.
 
 #ifdef SERIAL_TO_LINUXCNC
 const uint16_t SERIAL_RX_TIMEOUT = 3000;

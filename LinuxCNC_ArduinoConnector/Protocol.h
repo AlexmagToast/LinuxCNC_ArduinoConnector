@@ -32,18 +32,18 @@ namespace protocol
 {
   enum MessageTypes
   {
-    MT_HEARTBEAT      =   0,
-    MT_HANDSHAKE      =   1, 
-    MT_COMMAND        =   2,
-    MT_PINSTATUS      =   3,
-    MT_DEBUG          =   4
+    MT_HEARTBEAT      =   1,
+    MT_HANDSHAKE      =   2, 
+    MT_COMMAND        =   3,
+    MT_PINSTATUS      =   4,
+    MT_DEBUG          =   5
   };
 
   struct HandshakeMessage {
       uint8_t protocolVersion = PROTOCOL_VERSION;
       //uint16_t messageType = MT_HANDSHAKE;
       uint64_t featureMap = 0;
-      uint8_t boardIndex = BOARD_INDEX;
+      uint8_t boardIndex = 1;
       MSGPACK_DEFINE(protocolVersion, featureMap, boardIndex); 
   }hm;
 
