@@ -224,7 +224,8 @@ void commUpdate(){
       Serial.print("DEBUG: ConnectionState changed from: [");
       Serial.print(_client.stateToString(prior_state));
       Serial.print("] to [");
-      Serial.println(_client.stateToString(_client.GetState()));
+      Serial.print(_client.stateToString(_client.GetState()));
+      Serial.print("]");
     #endif
     if (new_state == CS_DISCONNECTED)
       #ifdef STATUSLED
@@ -246,6 +247,7 @@ void commUpdate(){
         StatLedErr(1000,1000);
       #endif
     }
+    prior_state = new_state;
   }
   if (_client.GetState() != ConnectionState::CS_CONNECTED)
   {
