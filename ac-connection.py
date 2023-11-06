@@ -11,6 +11,7 @@ from queue import Queue
 import time
 import crc8
 import traceback
+import numpy
 
 class ConnectionType(StrEnum):
     SERIAL = 'SERIAL'
@@ -39,12 +40,72 @@ class MessageType(IntEnum):
     MT_DEBUG = 5, 
     UNKNOWN = -1
     
+FeatureTypes = {
+    'DEBUG': 0,
+    'INPUTS':1,
+    'SINPUTS':2,
+    'OUTPUTS':3,
+    'PWMOUTPUTS:':4,
+    'AINPUTS':5,
+    'DALLAS_TEMPERATURE_SENSOR':6,
+    'LPOTIS':7,
+    'BINSEL':8,
+    'QUADENC':9,
+    'JOYSTICK':10,
+    'STATUSLED':11,
+    'DLED':12,
+    'KEYPAD':13,
+    'SERIAL_TO_LINUXCNC':14,
+    'ETHERNET_UDP_TO_LINUXCNC':15,
+    'ETHERNET_TCP_TO_LINUXCNC':16,
+    'WIFI_TCP_TO_LINUXCNC':17,
+    'WIFI_UDP_TO_LINUXCNC':18,
+    'MEMORY_MONITOR':19
+}
+
+
 
 serial_dev = '/dev/ttyACM0' 
 
 arduino = serial.Serial(serial_dev, 115200, timeout=1, xonxoff=False, rtscts=False, dsrdtr=True)
 
 protocol_ver = 1
+
+class FeatureMapDecoder:
+    def __init__(self, b:bytes):
+        self.features = b
+        self.bits = self.unpackbits(b)
+        #self.bits = numpy.unpackbits(numpy.arange(b.astype(numpy.uint64), dtype=numpy.uint64))
+  
+    def unpackbits(self, x):
+        z_as_int64 = numpy.int64(x)
+        xshape = list(z_as_int64.shape)
+        z_as_int64 = z_as_int64.reshape([-1, 1])
+        mask = 2**numpy.arange(64, dtype=z_as_int64.dtype).reshape([1, 64])
+        return (z_as_int64 & mask).astype(bool).astype(int).reshape(xshape + [64])
+
+    def isFeatureEnabledByInt(self, index:int):
+        return self.bits[index] == 1
+    
+    def getIndexOfFeature(self, str:str):
+        if str.upper() not in FeatureTypes.keys():
+            raise Exception(f'DEBUG: Error, key {str} not found in FeatureTypes map.')
+        t = FeatureTypes[str.upper()]
+        return FeatureTypes[str.upper()]
+
+    def isFeatureEnabledByString(self, str:str):
+        return self.bits[self.getIndexOfFeature(str)] == 1 
+    
+    def getFeatureString(self, index:int):
+        return list(FeatureTypes.keys())[list(FeatureTypes.values()).index(index)][0]
+    
+    def getEnabledFeatures(self):
+        ret = {}
+        for k,v in FeatureTypes.items():
+            if self.isFeatureEnabledByInt(v) == True:
+                ret[k] = v
+        return ret
+
 
 class MessageDecoder:
     def __init__(self, b:bytes):
@@ -98,7 +159,6 @@ class MessageEncoder:
 
 
 RX_MAX_QUEUE_SIZE = 10
-rxQueue = Queue(RX_MAX_QUEUE_SIZE)
 
 class ArduinoConn:
     def __init__(self, bi:int, cs:ConnectionState, timeout:int):
@@ -116,6 +176,7 @@ class Connection:
     def __init__(self, myType:ConnectionType):
         self.connectionType = myType
         self.arduinos = [ArduinoConn(bi=0, cs=ConnectionState.DISCONNECTED, timeout=3000)] #hard coded for testing, should be based on config
+        self.rxQueue = Queue(RX_MAX_QUEUE_SIZE)
     
     def onMessageRecv(self, m:MessageDecoder):
         if m.messageType == MessageType.MT_HANDSHAKE:
@@ -125,6 +186,8 @@ class Connection:
                 print(debugstr)
                 raise Exception(debugstr)
             bi = m.payload[2]-1 # board index is always sent over incremeented by one
+            fmd = FeatureMapDecoder(m.payload[1])
+            ef = fmd.getEnabledFeatures()
             self.arduinos[bi].setState(ConnectionState.CONNECTED)
             self.arduinos[bi].lastMessageReceived = time.process_time()
             hsr = MessageEncoder().encodeBytes(mt=MessageType.MT_HANDSHAKE, payload=m.payload)

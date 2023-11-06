@@ -1,7 +1,6 @@
 #ifndef CONFIG_H_
 #define CONFIG_H_
 
-#define __AVR__ // To resolve a bug with the headers in fastcrc library utilized by MsgPacketizer
 #define ENABLE_FEATUREMAP
 #define DEBUG                       0
 //#define INPUTS                    1                       

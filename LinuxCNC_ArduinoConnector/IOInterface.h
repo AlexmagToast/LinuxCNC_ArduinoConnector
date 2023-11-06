@@ -184,7 +184,7 @@ void readEncoders(){
 }
 
 #endif
-
+/*
 void comalive(){
   if(lastcom == 0){ //no connection yet. send E0:0 periodicly and wait for response
     while (lastcom == 0){
@@ -228,7 +228,7 @@ void comalive(){
       #endif 
     }
 }
-
+*/
 
 void reconnect(){
   #ifdef DEBUG
@@ -626,17 +626,18 @@ void commandReceived(char cmd, uint16_t io, uint16_t value){
   }
   #endif
 
-  
+  /*
   if(cmd == 'E'){
     lastcom=millis();
     if(connectionState == 2){
      reconnect(); 
     }
   }
+  */
 
 
   #ifdef DEBUG
-    Serial.print("I Received= ");
+    Serial.print("DEBUG: IO Processor Received= ");
     Serial.print(cmd);
     Serial.print(io);
     Serial.print(":");
@@ -644,7 +645,56 @@ void commandReceived(char cmd, uint16_t io, uint16_t value){
   #endif
 }
 
+// Keeping original command processing logic for now.  Sending
+// commands to/from the arduino in the original string format is beneficial 
+// as this avoids the problem of sending binary MsgPack structures which choke on null/0x00 values over the Serial Port.
+// TODO: Consider refactoring command processor
+void pushCommand(int b){
+  current = b
+  switch(state){
+      case STATE_CMD:
+            cmd = current;
+            state = STATE_IO;
+            bufferIndex = 0;
+          break;
+      case STATE_IO:
+          if(isDigit(current)){
+              inputbuffer[bufferIndex++] = current;
+          }else if(current == ':'){
+              inputbuffer[bufferIndex] = 0;
+              io = atoi(inputbuffer);
+              state = STATE_VALUE;
+              bufferIndex = 0;
+          }
+          else{
+              #ifdef DEBUG
+              Serial.print("DEBUG: Invalid character: ");
+              Serial.println(current);
+              #endif
+          }
+          break;
+      case STATE_VALUE:
+          if(isDigit(current)){
+              inputbuffer[bufferIndex++] = current;
+          }
+          else if(current == '\n'){
+              inputbuffer[bufferIndex] = 0;
+              value = atoi(inputbuffer);
+              commandReceived(cmd, io, value);
+              state = STATE_CMD;
+          }
+          else{
+            #ifdef DEBUG
+            Serial.print("DEBUG: Invalid character: ");
+            Serial.println(current);
+            #endif
+          }
+          break;
+          }
+      }
+}
 
+/*
 void readCommands(){
     #ifdef SERIAL_TO_LINUXCNC
       byte current;
@@ -695,5 +745,6 @@ void readCommands(){
       }
       #endif
 }
+*/
 
 #endif // #define IOINTERFACE_H_

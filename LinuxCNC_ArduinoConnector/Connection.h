@@ -27,6 +27,11 @@ public:
   }
   #endif
 
+  const int& GetState()
+  {
+    return _myState;
+  }
+
 
   void DoWork()
   {
@@ -136,7 +141,49 @@ public:
     //MsgPacketizer::update();
   }
   
+  #ifdef DEBUG
 
+  String IpAddress2String(const IPAddress& ipAddress)
+  {
+    return String(ipAddress[0]) + String(".") +\
+    String(ipAddress[1]) + String(".") +\
+    String(ipAddress[2]) + String(".") +\
+    String(ipAddress[3]); 
+  }
+  String stateToString(int& state)
+  {
+    switch(state)
+    {
+      case CS_DISCONNECTED:
+        return String("CS_DISCONNECTED");
+      case CS_CONNECTING:
+        return String("CS_CONNECTING");
+      case CS_CONNECTED:
+        return String("CS_CONNECTED");
+      case CS_DISCONNECTING:
+        return String("CS_DISCONNECTING");
+      case CS_ERROR:
+        return String("CS_ERROR");
+      case CS_CONNECTION_TIMEOUT:
+        return String("CS_CONNECTION_TIMEOUT");
+      default:
+        return String("CS_UNKNOWN_STATE");
+    }
+  }
+  #endif
+
+  uint8_t CommandReceived()
+  {
+    return _commandReceived;
+  }
+
+  const CommandMessage& GetReceivedCommand()
+  {
+    uint8_t r = _commandReceived;
+    if (_commandReceived)
+      _commandReceived = 0; // Clear flag.  Crude, but works.
+    return _cm;
+  }
 protected:
   virtual uint8_t _onInit();
   virtual void _onConnect();
@@ -177,44 +224,31 @@ protected:
       #endif
       _heartbeatReceived = 1;
   }
-  #ifdef DEBUG
 
-  String _IpAddress2String(const IPAddress& ipAddress)
+  void _onCommandMessage(const protocol::CommandMessage& n)
   {
-    return String(ipAddress[0]) + String(".") +\
-    String(ipAddress[1]) + String(".") +\
-    String(ipAddress[2]) + String(".") +\
-    String(ipAddress[3]); 
+      #ifdef DEBUG
+      Serial.println("DEBUG: ---- RX COMMAND MESSAGE DUMP ----");
+      Serial.print("DEBUG: Command: ");
+      Serial.println(n.cmd);
+      Serial.print("DEBUG: Board Index: ");
+      Serial.println(n.boardIndex);
+      Serial.println("DEBUG: ---- RX END COMMAND MESSAGE DUMP ----");
+      #endif
+      _cm.cmd = n.cmd;
+      _cmd.boardIndex = n.boardIndex;
+      _commandMessagwe
+      _heartbeatReceived = 1;
   }
-  String _stateToString(int& state)
-  {
-    switch(state)
-    {
-      case CS_DISCONNECTED:
-        return String("CS_DISCONNECTED");
-      case CS_CONNECTING:
-        return String("CS_CONNECTING");
-      case CS_CONNECTED:
-        return String("CS_CONNECTED");
-      case CS_DISCONNECTING:
-        return String("CS_DISCONNECTING");
-      case CS_ERROR:
-        return String("CS_ERROR");
-      case CS_CONNECTION_TIMEOUT:
-        return String("CS_CONNECTION_TIMEOUT");
-      default:
-        return String("CS_UNKNOWN_STATE");
-    }
-  }
-  #endif
+
   void _setState(int new_state)
   {
     #ifdef DEBUG
       Serial.flush();
       Serial.print("DEBUG: Connection transitioning from current state of [");
-      Serial.print(this->_stateToString(this->_myState));
+      Serial.print(this->stateToString(this->_myState));
       Serial.print("] to [");
-      Serial.print(this->_stateToString(new_state));
+      Serial.print(this->stateToString(new_state));
       Serial.println("]");
       Serial.flush();
     #endif
@@ -248,6 +282,19 @@ protected:
     return protocol::hb;
   }
   
+  protocol::PinStatusMessage& _getPinStatusMessage()
+  {
+    #ifdef DEBUG
+      Serial.println("DEBUG: ---- TX PINSTATUS MESSAGE DUMP ----");
+      Serial.print("DEBUG: STATUS: ");
+      Serial.println(protocol::pm.status);      
+      Serial.print("DEBUG: Board Index: ");
+      Serial.println(protocol::pm.boardIndex);
+      Serial.println("DEBUG: ---- TX END PINSTATUS MESSAGE DUMP ----");
+    #endif
+    return protocol::pm;
+  }
+
   #ifdef DEBUG
   protocol::DebugMessage& _getDebugMessage(String& message)
   {
@@ -286,14 +333,14 @@ protected:
   uint64_t& _featureMap;
   int _myState = CS_DISCONNECTED;
   char _rxBuffer[RX_BUFFER_SIZE];
+
+  // Flip-flops used to signal the presence of received message types
   uint8_t _handshakeReceived = 0;
   uint8_t _heartbeatReceived = 0;
+  uint8_t _commandReceived = 0;
 
-  // Message allocations
-  //protocol::HandshakeMessage _hm;
-  //protocol::HeartbeatMessage _hb;
-  #ifdef DEBUG
-  //protocol::DebugMessage _dm;
-  #endif
+  // Allocate message to use in the primary IO loop when commands are received.
+  CommandMessage _cm;
+
 };
 #endif

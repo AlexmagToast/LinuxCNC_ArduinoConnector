@@ -210,6 +210,57 @@ for(int col = 0; col < numCols; col++) {
   //comalive();
 }
 
+int prior_state = -1; //#ConnectionState::CS_DISCONNECTED;
+void commUpdate(){
+  new_state = _client.GetState()
+  if( prior_state != _client.GetState() )
+  {
+    #ifdef DEBUG
+      Serial.print("DEBUG: ConnectionState changed from: [");
+      Serial.print(_client.stateToString(prior_state));
+      Serial.print("] to [");
+      Serialln.print(_client.stateToString(_client.GetState()));
+    #endif
+    if (new_state == CS_DISCONNECTED)
+      #ifdef STATUSLED
+        StatLedErr(500,200);
+      #endif
+      #ifdef STATUSLED
+        if(DLEDSTATUSLED == 1){
+          #ifdef DLED
+            controlDLED(StatLedPin, 1);
+          #endif
+        }
+        else{
+          digitalWrite(StatLedPin, HIGH);
+        }
+      #endif 
+    if (new_state == CS_CONNECTED)
+    {
+      #ifdef STATUSLED
+        StatLedErr(1000,1000);
+      #endif
+    }
+  }
+  if (_client.GetState() != ConnectionState::CS_CONNECTED)
+  {
+    // Todo: Figure out what to do when not connected
+  }
+  else
+  {
+    if( _client.CommandReceived() == true )
+    {
+      CommandMessage& cm = _client.GetCommand();
+      for(auto b : cm.cmd)
+      {
+        pushCommand(b)
+      }
+    }
+    //readCommands();
+  }
+
+
+}
 
 void loop() {
   /*

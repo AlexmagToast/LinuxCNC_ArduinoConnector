@@ -72,6 +72,10 @@ public:
           [&](const protocol::HeartbeatMessage& n) {
               _onHeartbeatMessage(n);
           });
+      MsgPacketizer::subscribe(Serial, MT_COMMAND,
+          [&](const protocol::CommandMessage& n) {
+              _onCommandMessage(n);
+          });
         subscribed = 1;
     }
     MsgPacketizer::update();
@@ -90,7 +94,12 @@ public:
     MsgPacketizer::send(Serial, MT_HEARTBEAT, _getHeartbeatMessage());
     Serial.flush();
   }
-  
+  virtual void _sendPinStatusMessage()
+  { 
+    //MsgPacketizer::send(this->_client, this->_mi, hm);
+    MsgPacketizer::send(Serial, MT_PINSTATUS, _getPinStatusMessage());
+    Serial.flush();
+  }
   #ifdef DEBUG
   virtual void _sendDebugMessage(String& message)
   {

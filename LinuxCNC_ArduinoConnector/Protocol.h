@@ -52,7 +52,19 @@ namespace protocol
       uint8_t boardIndex = BOARD_INDEX;
       MSGPACK_DEFINE(boardIndex); 
   }hb;
+
+  struct CommandMessage {
+      String cmd;
+      uint8_t boardIndex = BOARD_INDEX;
+      MSGPACK_DEFINE(cmd, boardIndex); 
+  }cm;
   
+  struct PinStatusMessage {
+      String status;
+      uint8_t boardIndex = BOARD_INDEX;
+      MSGPACK_DEFINE(status, boardIndex); 
+  }pm;
+
   #ifdef DEBUG
   struct DebugMessage {
       uint8_t boardIndex = BOARD_INDEX;
