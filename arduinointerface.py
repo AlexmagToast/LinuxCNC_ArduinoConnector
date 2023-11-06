@@ -251,6 +251,7 @@ class SerialConnetion(Connection):
         self.buffer = bytes()
         self.shutdown = False
         arduino.timeout = 3000
+        self.daemon = None
         
     def isSerialConnection(self):
         return True
@@ -258,9 +259,13 @@ class SerialConnetion(Connection):
     def startRxTask(self):
         # create and start the daemon thread
         #print('Starting background proceed watch task...')
-        daemon = Thread(target=self.rxTask, daemon=True, name='Arduino RX')
-        daemon.start()
-
+        self.daemon = Thread(target=self.rxTask, daemon=False, name='Arduino RX')
+        self.daemon.start()
+        
+    def stopRxTask(self):
+        self.shutdown = True
+        self.daemon.join()
+        
     def sendMessage(self, b: bytes):
         #return super().sendMessage()
         arduino.write(b)
@@ -276,7 +281,7 @@ class SerialConnetion(Connection):
                     self.buffer = bytes()
                 elif data == b'\n':
                     self.buffer += bytearray(data)
-                   # print(bytes(self.buffer).decode('utf8', errors='ignore'))
+                    print(bytes(self.buffer).decode('utf8', errors='ignore'))
                     self.buffer = bytes()
                 else:
                     self.buffer += bytearray(data)

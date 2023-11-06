@@ -2,7 +2,7 @@
 from numpy import block
 from arduinointerface import ConnectionType
 from arduinointerface import SerialConnetion
-import serial, time, hal
+import serial, time, hal, atexit, os
 #	LinuxCNC_ArduinoConnector
 #	By Alexander Richter, info@theartoftinkering.com 2022
 
@@ -363,9 +363,16 @@ sc = SerialConnetion(ConnectionType.SERIAL)
 sc.startRxTask()
     
 while True:
-	item = sc.rxQueue.get(block=True)
-	print(item)
-    
+	try:
+		item = sc.rxQueue.get(block=True)
+		print(item)
+	except KeyboardInterrupt:
+		sc.stopRxTask()
+		sc = None
+		raise SystemExit
+
+
+
 '''
 
 while True:
