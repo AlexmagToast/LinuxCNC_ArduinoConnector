@@ -203,6 +203,24 @@ class Connection:
             self.arduinos[bi].lastMessageReceived = time.process_time()
             hb = MessageEncoder().encodeBytes(mt=MessageType.MT_HEARTBEAT, payload=m.payload)
             self.sendMessage(bytes(hb))
+        if m.messageType == MessageType.MT_PINSTATUS:
+            print(f'DEGUG: onMessageRecv() - Recvied MT_PINSTATUS, Values = {m.payload}')
+            bi = m.payload[0]-1 # board index is always sent over incremeented by one
+            if self.arduinos[bi].connectionState != ConnectionState.CONNECTED:
+                debugstr = f'DEGUG: Error. Received message from arduino ({m.payload[2]-1}) prior to completing handhsake. Ignoring.'
+                print(debugstr)
+                return
+            #self.arduinos[bi].setState(ConnectionState.CONNECTED)
+            self.arduinos[bi].lastMessageReceived = time.process_time()
+            try:
+                self.rxQueue.put(m, timeout=5)
+            except Queue.Empty:
+                print("DEBUG: Error. Timed out waiting to gain access to RxQueue!")
+            except Queue.Full:
+                print("Error. RxQueue is full!")
+            #return None 
+            #hb = MessageEncoder().encodeBytes(mt=MessageType.MT_HEARTBEAT, payload=m.payload)
+            #self.sendMessage(bytes(hb))
             
     def sendMessage(self, b:bytes):
         pass
@@ -266,12 +284,12 @@ class SerialConnetion(Connection):
                 just_the_string = traceback.format_exc()
                 print(just_the_string)
 		
-def main():
-    sc = SerialConnetion(ConnectionType.SERIAL)
-    sc.startRxTask()
-    while(True):
-        time.sleep(1)
+#def main():
+#    sc = SerialConnetion(ConnectionType.SERIAL)
+#    sc.startRxTask()
+#    while(True):
+#        time.sleep(1)
 
 
-if __name__ == '__main__':
-    sys.exit(main()) 
+#if __name__ == '__main__':
+#    sys.exit(main()) 

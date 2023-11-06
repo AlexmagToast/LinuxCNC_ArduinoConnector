@@ -1,4 +1,7 @@
 #!/usr/bin/python3.9
+from numpy import block
+from arduinointerface import ConnectionType
+from arduinointerface import SerialConnetion
 import serial, time, hal
 #	LinuxCNC_ArduinoConnector
 #	By Alexander Richter, info@theartoftinkering.com 2022
@@ -355,7 +358,15 @@ def managageOutputs():
 				if (Debug):print ("Sending:{}".format(command.encode()))
 				oldMledStates[mled] = State
 				time.sleep(0.01)
-
+    
+sc = SerialConnetion(ConnectionType.SERIAL)
+sc.startRxTask()
+    
+while True:
+	item = sc.rxQueue.get(block=True)
+	print(item)
+    
+'''
 
 while True:
 	try:
@@ -498,3 +509,5 @@ while True:
 	
 	time.sleep(0.01)	
 	
+'''
+
