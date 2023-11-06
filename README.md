@@ -68,9 +68,9 @@ Just return ```E0:0``` to it. You can now communicate with the Arduino. Further 
   #!/usr/bin/python3.9 in the first line of arduino.py to #!/usr/bin/python2.7.
 5. also check if the Serial adress is correct for your Arduino. I found it easyest to run  
   ```sudo   dmesg | grep tty``` in Terminal while plugging and unplugging the arduino a couple of times and whatch which entry is changing. 
-6. make arduino.py executable with chmod +x, delete the suffix .py and copy
+6. make arduino-connector.py executable with chmod +x, delete the suffix .py and copy
 it to /usr/bin  
-    ```sudo chmod +x arduino.py  ```  
+    ```sudo chmod +x arduino-connector.py  ```  
     ```sudo cp arduino-connector.py /usr/bin/arduino-connector  ```  
 
 7. add this entry to the end of your hal file: ```loadusr arduino-connector```  
@@ -261,7 +261,8 @@ Data is always only send once, everytime it changes.
 
 | Signal                  | Header        |direction     |Values        |
 | -------------           | ------------- |------------- |------------- |
-| Inputs & Toggle Inputs  | I             | write only   |0,1           |
+| Inputs                  | I             | write only   |0,1           |
+| Toggle Inputs           | S             | write only   |0,1           |
 | Outputs                 | O             | read only    |0,1           |
 | PWM Outputs             | P             | read only    |0-255         |
 | Digital LED Outputs     | D             | read only    |0,1           |
