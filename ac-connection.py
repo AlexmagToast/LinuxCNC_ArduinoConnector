@@ -5,7 +5,7 @@ from xdrlib import Unpacker
 import msgpack
 from io import BytesIO
 from strenum import StrEnum
-from enum import Enum
+from enum import IntEnum
 from threading import Thread
 from queue import Queue
 import time
@@ -31,7 +31,7 @@ class ConnectionState(StrEnum):
     def __str__(self) -> str:
        return self.value
        
-class MessageType(Enum):
+class MessageType(IntEnum):
     MT_HEARTBEAT = 1, 
     MT_HANDSHAKE = 2, 
     MT_COMMAND = 3, 
@@ -43,6 +43,8 @@ class MessageType(Enum):
 serial_dev = '/dev/ttyACM0' 
 
 arduino = serial.Serial(serial_dev, 115200, timeout=1, xonxoff=False, rtscts=False, dsrdtr=True)
+
+protocol_ver = 1
 
 class MessageDecoder:
     def __init__(self, b:bytes):
@@ -100,10 +102,13 @@ rxQueue = Queue(RX_MAX_QUEUE_SIZE)
 
 class ArduinoConn:
     def __init__(self, bi:int, cs:ConnectionState, timeout:int):
-        self.boardIndex = boardIndex
+        self.boardIndex = bi
         self.connectionState = cs
         self.timeout = timeout
         self.lastMessageReceived = time.process_time()
+    def setState(self, newState:ConnectionState):
+        print(f'DEBUG: Board Index: {self.boardIndex}, changing state from {self.connectionState} to {newState}')
+        self.connectionState = newState
 
 
 class Connection:
@@ -111,12 +116,43 @@ class Connection:
     def __init__(self, myType:ConnectionType):
         self.connectionType = myType
         self.arduinos = [ArduinoConn(bi=0, cs=ConnectionState.DISCONNECTED, timeout=3000)] #hard coded for testing, should be based on config
-        
+    
+    def onMessageRecv(self, m:MessageDecoder):
+        if m.messageType == MessageType.MT_HANDSHAKE:
+            print(f'DEGUG: onMessageRecv() - Recvied MT_HANDSHAKE, Values = {m.payload}')
+            if m.payload[0] != protocol_ver:
+                debugstr = f'DEGUG: Error. Protocol version mismatched. Expected {protocol_ver}, got {m.payload[0]}'
+                print(debugstr)
+                raise Exception(debugstr)
+            bi = m.payload[2]-1 # board index is always sent over incremeented by one
+            self.arduinos[bi].setState(ConnectionState.CONNECTED)
+            self.arduinos[bi].lastMessageReceived = time.process_time()
+            hsr = MessageEncoder().encodeBytes(mt=MessageType.MT_HANDSHAKE, payload=m.payload)
+            self.sendMessage(bytes(hsr))
+        if m.messageType == MessageType.MT_HEARTBEAT:
+            print(f'DEGUG: onMessageRecv() - Recvied MT_HEARTBEAT, Values = {m.payload}')
+            bi = m.payload[0]-1 # board index is always sent over incremeented by one
+            #self.arduinos[bi].setState(ConnectionState.CONNECTED)
+            self.arduinos[bi].lastMessageReceived = time.process_time()
+            hb = MessageEncoder().encodeBytes(mt=MessageType.MT_HEARTBEAT, payload=m.payload)
+            self.sendMessage(bytes(hb))
+            
+    def sendMessage(self, b:bytes):
+        pass
+
     def update_state(self):
         for arduino in self.arduinos:
-            if arduino.connectionState == ConnectionState.CONNECTED:
-                if time.process_time() - arduino.lastMessageReceived >= arduino.timeout:
-                    arduino.connectionState = ConnectionState.DISCONNECTED
+            if arduino.connectionState == ConnectionState.DISCONNECTED:
+                #self.lastMessageReceived = time.process_time()
+                arduino.setState(ConnectionState.CONNECTING)
+            elif arduino.connectionState == ConnectionState.CONNECTING:
+                pass
+                #if time.process_time() - arduino.lastMessageReceived >= arduino.timeout:
+                #    arduino.setState(ConnectionState.CONNECTING)
+            elif arduino.connectionState == ConnectionState.CONNECTED:
+                pass
+                #if time.process_time() - arduino.lastMessageReceived >= arduino.timeout:
+                #    arduino.setState(ConnectionState.DISCONNECTED)
 
 
         # at startup, the arduino map will be empty until a connection is made
@@ -140,14 +176,18 @@ class SerialConnetion(Connection):
         daemon = Thread(target=self.rxTask, daemon=True, name='Arduino RX')
         daemon.start()
 
+    def sendMessage(self, b: bytes):
+        #return super().sendMessage()
+        arduino.write(b)
     def rxTask(self):
         while(self.shutdown == False):
             try:
                 data = arduino.read()
                 if data == b'\x00':
-                    print(bytes(self.buffer))
+                    #print(bytes(self.buffer))
                     md = MessageDecoder(bytes(self.buffer)[1:])
-                    arduino.write(bytes(self.buffer))
+                    self.onMessageRecv(m=md)
+                    #arduino.write(bytes(self.buffer))
                     self.buffer = bytes()
                 elif data == b'\n':
                     self.buffer += bytearray(data)
@@ -160,8 +200,6 @@ class SerialConnetion(Connection):
                 print(just_the_string)
 		
 def main():
-    #mt = MessageType.MT_COMMAND
-    #print(mt)
     sc = SerialConnetion(ConnectionType.SERIAL)
     sc.startRxTask()
     while(True):
