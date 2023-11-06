@@ -132,6 +132,10 @@ class Connection:
         if m.messageType == MessageType.MT_HEARTBEAT:
             print(f'DEGUG: onMessageRecv() - Recvied MT_HEARTBEAT, Values = {m.payload}')
             bi = m.payload[0]-1 # board index is always sent over incremeented by one
+            if self.arduinos[bi].connectionState != ConnectionState.CONNECTED:
+                debugstr = f'DEGUG: Error. Received message from arduino ({m.payload[2]-1}) prior to completing handhsake. Ignoring.'
+                print(debugstr)
+                return
             #self.arduinos[bi].setState(ConnectionState.CONNECTED)
             self.arduinos[bi].lastMessageReceived = time.process_time()
             hb = MessageEncoder().encodeBytes(mt=MessageType.MT_HEARTBEAT, payload=m.payload)
@@ -191,7 +195,7 @@ class SerialConnetion(Connection):
                     self.buffer = bytes()
                 elif data == b'\n':
                     self.buffer += bytearray(data)
-                    print(bytes(self.buffer).decode('utf8', errors='ignore'))
+                   # print(bytes(self.buffer).decode('utf8', errors='ignore'))
                     self.buffer = bytes()
                 else:
                     self.buffer += bytearray(data)
@@ -207,4 +211,4 @@ def main():
 
 
 if __name__ == '__main__':
-    sys.exit(main())  # next section explains the use of sys.exit
+    sys.exit(main()) 
