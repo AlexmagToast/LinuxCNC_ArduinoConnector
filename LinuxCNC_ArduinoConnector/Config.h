@@ -2,41 +2,80 @@
 #define CONFIG_H_
 
 #define ENABLE_FEATUREMAP
-#define DEBUG                 0
-//#define INPUTS                1                       
-//#define SINPUTS               2                      
-//#define OUTPUTS               3
-//#define PWMOUTPUTS            4
-//#define AINPUTS               5   
-//#define DALLAS_TEMP_SENSOR    6
-//#define LPOTIS                7
-//#define BINSEL                8
-//#define QUADENC               9
-//#define JOYSTICK              10
-//#define STATUSLED             11
-//#define DLED                  12
-//#define KEYPAD                13
-//#define SERIAL_TO_LINUXCNC    14
-#define ETHERNET_TO_LINUXCNC  15
-//define WIFI_TO_LINUXCNC      16
+#define DEBUG                       0
+//#define INPUTS                    1                       
+//#define SINPUTS                   2                      
+//#define OUTPUTS                   3
+//#define PWMOUTPUTS                4
+//#define AINPUTS                   5   
+//#define DALLAS_TEMP_SENSOR        6
+//#define LPOTIS                    7
+//#define BINSEL                    8
+//#define QUADENC                   9
+//#define JOYSTICK                  10
+//#define STATUSLED                 11
+//#define DLED                      12
+//#define KEYPAD                    13
+#define SERIAL_TO_LINUXCNC        14
+//#define ETHERNET_UDP_TO_LINUXCNC  15
+//#define ETHERNET_TCP_TO_LINUXCNC 16 // FUTURE
+//define WIFI_TCP_TO_LINUXCNC      17 // FUTURE
+//define WIFI_UDP_TO_LINUXCNC     18 // FUTURE
+//#define MEMORY_MONITOR              19 // Requires https://github.com/mpflaga/Arduino-MemoryFree/
 
 //################################################### SERIAL CONNECTION OPTIONS ###################################################
 #define DEFAULT_SERIAL_BAUD_RATE 115200
 #define SERIAL_START_DELAY 3000 // To avoid initial serial output failing to arrive during debugging.
 //#define ENABLE_SERIAL2 TRUE // For future
 
+const uint16_t RX_BUFFER_SIZE = 512; // Serial, TCP and UDP connections utilize this constant for their RX buffers
+
+/*
+// The following are otpomizations for low-memory boards such as Arduino Unos.\
+// See https://github.com/hideakitai/MsgPacketizer#memory-management-only-for-no-stl-boards
+// TODO: Board detect & set these dynamically based on detected board
+// max publishing element size in one destination
+#define MSGPACKETIZER_MAX_PUBLISH_ELEMENT_SIZE 5
+// max destinations to publish
+#define MSGPACKETIZER_MAX_PUBLISH_DESTINATION_SIZE 1
+
+// msgpack serialized binary size
+#define MSGPACK_MAX_PACKET_BYTE_SIZE 96
+// max size of MsgPack::arr_t
+#define MSGPACK_MAX_ARRAY_SIZE 3
+// max size of MsgPack::map_t
+#define MSGPACK_MAX_MAP_SIZE 3
+// msgpack objects size in one packet
+#define MSGPACK_MAX_OBJECT_SIZE 16
+
+// max number of decoded packet queues
+#define PACKETIZER_MAX_PACKET_QUEUE_SIZE 1
+// max data bytes in packet
+#define PACKETIZER_MAX_PACKET_BINARY_SIZE 96
+// max number of callback for one stream
+#define PACKETIZER_MAX_CALLBACK_QUEUE_SIZE 3
+// max number of streams
+#define PACKETIZER_MAX_STREAM_MAP_SIZE 1
+*/
+
+const uint8_t BOARD_INDEX = 1; // Each board connecting to the server should have a differnet index number.
+
+#ifdef SERIAL_TO_LINUXCNC
+const uint16_t SERIAL_RX_TIMEOUT = 3000;
+#endif
 //################################################### ETHERNET CONNECTION OPTIONS ###################################################
 // Requires an Arduino / Shield that is compatible with the Arduino Ethernet Library
 // Tested and working models:
 //      - Ethernet Network Shield W5100
-#ifdef ETHERNET_TO_LINUXCNC
+#ifdef ETHERNET_UDP_TO_LINUXCNC
 #include <SPI.h>
 #include <Ethernet.h>
-//#include "TCPClient.h"
 #define DHCP 0// 1 for DHCP, 0 for static.  DHCP support is highly expiremental and leaving this option disabled (i.e., using a static IP address) is recommended.
-#define TCP_RECONNECT_RETRY 1000 // Delay before attemtping reconnect to server
-#define TCP_CONNECTION_TIMEOUT 100 // Arduino default is 1000 ms.  This value represents the timeout duration for .connect() and .stop()
-#define BOARD_INDEX 0 // Each board connecting to the server should have a differnet index number.
+const uint16_t UDP_RX_TIMOUT = 5000;
+const int UDP_RX_PORT = 54321;
+const int UDP_TX_PORT = 54321;
+
+
 // Should you want to have multiple arduiono boards connecting to the same server, remember to change the IP address (if using static IPs) and MAC address of each Arduino to be destinct
 
 // Enter a MAC address and IP address for your controller below.
@@ -45,6 +84,13 @@ byte ARDUINO_MAC[] = {
   0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED
 };
 
+#if DHCP == 0
+  IPAddress ARDUINO_IP(192, 168, 1, 88);
+#endif
+
+  //IPAddress SERVER_IP(192, 168, 1, 2);
+  const char* SERVER_IP = "192.168.1.2";
+
 // 10 = Most Boards
 // 5 = MKR ETH Shield
 // 0 = Teensy 2.0
@@ -52,22 +98,9 @@ byte ARDUINO_MAC[] = {
 // 15 = ESP8266 with Adafruit Featherwing Ethernet
 // 33 =  ESP32 with Adafruit Featherwing Ethernet
 #define ETHERNET_INIT_PIN 10 // Most Arduino shields
-#if DHCP == 0
-  IPAddress ARDUINO_IP(192, 168, 1, 88);
-#endif
 
-// Enter the IP address of the linuxcnc server you're connecting to:
-IPAddress SERVER_IP(192, 168, 1, 2);
-IPAddress NET_DNS(192, 168, 1, 1); // Use 8.8.8.8 for Google DNS
-#define SERVER_PORT 10002
-#endif
 
-// Enable USE_ETHERNET_SHIELD_DELAY to force a delay set by the JANKY_ETHERNET_SHIELD_DELAY value. This is a work around to resolve a hardware issue with certain Ethernet Shields which prevent soft resets (e.g., when a connection retry is necessary).  
-#define USE_ETHERNET_SHIELD_DELAY
-#ifdef USE_ETHERNET_SHIELD_DELAY
-  #define JANKY_ETHERNET_SHIELD_DELAY 5000
 #endif
-
 //###################################################IO's###################################################
 
                  
