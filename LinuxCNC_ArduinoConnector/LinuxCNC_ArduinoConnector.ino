@@ -225,7 +225,7 @@ void commUpdate(){
       Serial.print(_client.stateToString(prior_state));
       Serial.print("] to [");
       Serial.print(_client.stateToString(_client.GetState()));
-      Serial.print("]");
+      Serial.println("]");
     #endif
     if (new_state == CS_DISCONNECTED)
       #ifdef STATUSLED
