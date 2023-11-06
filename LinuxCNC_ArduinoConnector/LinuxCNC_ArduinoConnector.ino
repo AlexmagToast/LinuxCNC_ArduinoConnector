@@ -308,8 +308,9 @@ void loop() {
 #ifdef MULTIPLEXLEDS
   multiplexLeds();// cycle through the 2D LED Matrix}
 #endif
-  if( statusMessageReady == true )
+  if( statusMessageReady == 1 )
   {
     _client.SendPinStatusMessage(statusMessage);
+    statusMessageReady = 0;
   }
 }
