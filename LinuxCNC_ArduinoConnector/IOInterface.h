@@ -94,6 +94,9 @@ char cmd = 0;
 uint16_t io = 0;
 uint16_t value = 0;
 
+String statusMessage;
+uint8_t statusMessageReady = 0;
+
 
 #ifdef JOYSTICK
 
@@ -293,14 +296,20 @@ void reconnect(){
    
 }
 
-
 void sendData(char sig, int pin, int state){
-  #ifdef SERIAL_TO_LINUXCNC
-      Serial.print(sig);
-      Serial.print(pin);
-      Serial.print(":");
-      Serial.println(state);
-  #endif
+  statusMessage = String(sig);
+  statusMessage += String(pin);
+  statusMessage += ":";
+  statusMessage += String(state);
+  
+  statusMessageReady = 1;
+  //_client.SendPinStatusMessage(sig, pin, state);
+  //#ifdef SERIAL_TO_LINUXCNC
+  //    Serial.print(sig);
+  //    Serial.print(pin);
+  //    Serial.print(":");
+  //    Serial.println(state);
+  //#endif
 }
 
 void flushSerial(){
@@ -650,48 +659,55 @@ void commandReceived(char cmd, uint16_t io, uint16_t value){
 // as this avoids the problem of sending binary MsgPack structures which choke on null/0x00 values over the Serial Port.
 // TODO: Consider refactoring command processor
 void pushCommand(int b){
-  current = b
-  switch(state){
+  byte current = b;
+    switch(state)
+    {
       case STATE_CMD:
-            cmd = current;
-            state = STATE_IO;
-            bufferIndex = 0;
-          break;
-      case STATE_IO:
-          if(isDigit(current)){
-              inputbuffer[bufferIndex++] = current;
-          }else if(current == ':'){
-              inputbuffer[bufferIndex] = 0;
-              io = atoi(inputbuffer);
-              state = STATE_VALUE;
-              bufferIndex = 0;
-          }
-          else{
-              #ifdef DEBUG
-              Serial.print("DEBUG: Invalid character: ");
-              Serial.println(current);
-              #endif
-          }
-          break;
-      case STATE_VALUE:
-          if(isDigit(current)){
-              inputbuffer[bufferIndex++] = current;
-          }
-          else if(current == '\n'){
-              inputbuffer[bufferIndex] = 0;
-              value = atoi(inputbuffer);
-              commandReceived(cmd, io, value);
-              state = STATE_CMD;
-          }
-          else{
-            #ifdef DEBUG
-            Serial.print("DEBUG: Invalid character: ");
-            Serial.println(current);
-            #endif
-          }
-          break;
-          }
+      {
+        cmd = current;
+        state = STATE_IO;
+        bufferIndex = 0;
+        break;
       }
+      case STATE_IO:
+      {
+        if(isDigit(current)){
+            inputbuffer[bufferIndex++] = current;
+        }else if(current == ':'){
+            inputbuffer[bufferIndex] = 0;
+            io = atoi(inputbuffer);
+            state = STATE_VALUE;
+            bufferIndex = 0;
+        }
+        else
+        {
+          #ifdef DEBUG
+          Serial.print("DEBUG: Invalid character: ");
+          Serial.println(current);
+          #endif
+        }
+        break;
+      }
+      case STATE_VALUE:
+      {
+        if(isDigit(current)){
+            inputbuffer[bufferIndex++] = current;
+        }
+        else if(current == '\n'){
+            inputbuffer[bufferIndex] = 0;
+            value = atoi(inputbuffer);
+            commandReceived(cmd, io, value);
+            state = STATE_CMD;
+        }
+        else{
+          #ifdef DEBUG
+          Serial.print("DEBUG: Invalid character: ");
+          Serial.println(current);
+          #endif
+        }
+        break;
+      }
+  }
 }
 
 /*

@@ -27,11 +27,23 @@ public:
   }
   #endif
 
-  const int& GetState()
+  int& GetState()
   {
     return _myState;
   }
 
+  virtual void SendPinStatusMessage(String status)//char sig, int pin, int state)
+  {
+    /*
+    String status = String(sig);
+    status += String(pin);
+    status += ":";
+    status += String(state);
+    protocol::pm.status = status;
+    */
+    protocol::pm.status = status;
+    _sendPinStatusMessage();
+  }
 
   void DoWork()
   {
@@ -177,13 +189,14 @@ public:
     return _commandReceived;
   }
 
-  const CommandMessage& GetReceivedCommand()
+  const protocol::CommandMessage& GetReceivedCommand()
   {
     uint8_t r = _commandReceived;
     if (_commandReceived)
       _commandReceived = 0; // Clear flag.  Crude, but works.
-    return _cm;
+    return protocol::cm;
   }
+
 protected:
   virtual uint8_t _onInit();
   virtual void _onConnect();
@@ -195,6 +208,8 @@ protected:
   virtual void _sendHandshakeMessage();
 
   virtual void _sendHeartbeatMessage();
+
+  virtual void _sendPinStatusMessage();
   #ifdef DEBUG
   virtual void _sendDebugMessage(String& message);
   #endif
@@ -235,9 +250,8 @@ protected:
       Serial.println(n.boardIndex);
       Serial.println("DEBUG: ---- RX END COMMAND MESSAGE DUMP ----");
       #endif
-      _cm.cmd = n.cmd;
-      _cmd.boardIndex = n.boardIndex;
-      _commandMessagwe
+      protocol::cm.cmd = n.cmd;
+      protocol::cm.boardIndex = n.boardIndex;
       _heartbeatReceived = 1;
   }
 
@@ -338,9 +352,6 @@ protected:
   uint8_t _handshakeReceived = 0;
   uint8_t _heartbeatReceived = 0;
   uint8_t _commandReceived = 0;
-
-  // Allocate message to use in the primary IO loop when commands are received.
-  CommandMessage _cm;
 
 };
 #endif

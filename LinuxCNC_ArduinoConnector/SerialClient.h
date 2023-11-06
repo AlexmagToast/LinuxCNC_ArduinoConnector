@@ -51,10 +51,6 @@ public:
     return 1;
   }
 
-  //void onConnect();
-  //void onDisconnect();
-  //void onError();
-
 
 
   protected:
@@ -100,6 +96,8 @@ public:
     MsgPacketizer::send(Serial, MT_PINSTATUS, _getPinStatusMessage());
     Serial.flush();
   }
+
+  
   #ifdef DEBUG
   virtual void _sendDebugMessage(String& message)
   {

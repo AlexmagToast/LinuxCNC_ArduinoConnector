@@ -212,14 +212,14 @@ for(int col = 0; col < numCols; col++) {
 
 int prior_state = -1; //#ConnectionState::CS_DISCONNECTED;
 void commUpdate(){
-  new_state = _client.GetState()
-  if( prior_state != _client.GetState() )
+  const int new_state = _client.GetState();
+  if( prior_state != new_state )
   {
     #ifdef DEBUG
       Serial.print("DEBUG: ConnectionState changed from: [");
       Serial.print(_client.stateToString(prior_state));
       Serial.print("] to [");
-      Serialln.print(_client.stateToString(_client.GetState()));
+      Serial.println(_client.stateToString(_client.GetState()));
     #endif
     if (new_state == CS_DISCONNECTED)
       #ifdef STATUSLED
@@ -250,10 +250,10 @@ void commUpdate(){
   {
     if( _client.CommandReceived() == true )
     {
-      CommandMessage& cm = _client.GetCommand();
+      auto cm = _client.GetReceivedCommand();
       for(auto b : cm.cmd)
       {
-        pushCommand(b)
+        pushCommand(b);
       }
     }
     //readCommands();
@@ -263,20 +263,9 @@ void commUpdate(){
 }
 
 void loop() {
-  /*
-    if (_eth.connect(SERVER_IP, SERVER_PORT)) {
-      Serial.println("Connected!!!!!");
-   
-    } else {
-      Serial.println("ERRRRROR!!!!!");
-    
-    }
-  */
-//  readCommands(); //receive and execute Commands 
-//  comalive(); //if nothing is received for 10 sec. blink warning LED 
+  commUpdate();
 
-
- _client.DoWork(); // At least ONE option must be selected in the config for connection to LinuxCNC (UDP/TCP/WIFI/SERIAL) - Otherwise, _client will be undefined and errors will be generated at compile.
+  _client.DoWork(); // At least ONE option must be selected in the config for connection to LinuxCNC (UDP/TCP/WIFI/SERIAL) - Otherwise, _client will be undefined and errors will be generated at compile.
 
 
 #ifdef INPUTS
@@ -312,4 +301,8 @@ void loop() {
 #ifdef MULTIPLEXLEDS
   multiplexLeds();// cycle through the 2D LED Matrix}
 #endif
+  if( statusMessageReady == true )
+  {
+    _client.SendPinStatusMessage(statusMessage);
+  }
 }
