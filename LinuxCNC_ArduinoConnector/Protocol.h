@@ -40,6 +40,7 @@ namespace protocol
   };
 
   struct HandshakeMessage {
+      //String header = "MT";
       uint8_t protocolVersion = PROTOCOL_VERSION;
       //uint16_t messageType = MT_HANDSHAKE;
       uint64_t featureMap = 0;

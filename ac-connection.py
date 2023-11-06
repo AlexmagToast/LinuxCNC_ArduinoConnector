@@ -9,6 +9,8 @@ from enum import Enum
 from threading import Thread
 from queue import Queue
 import time
+import crc8
+import traceback
 
 class ConnectionType(StrEnum):
     SERIAL = 'SERIAL'
@@ -42,64 +44,85 @@ serial_dev = '/dev/ttyACM0'
 
 arduino = serial.Serial(serial_dev, 115200, timeout=1, xonxoff=False, rtscts=False, dsrdtr=True)
 
-class HandshakeMessage:
-    # Constructor
+class MessageDecoder:
     def __init__(self, b:bytes):
-        self.messageType = MessageType.MT_HANDSHAKE
         self.parseBytes(b)
-        self.hasError = False
 
+    def validateCRC(self, data:bytes, crc:bytes):
+        hash = crc8.crc8()
+        hash.update(data)
+        if hash.digest() == crc:
+            return True
+        else:
+            return False
+        
     def parseBytes(self, b:bytes):
-        try:
-            b = b[:-1]
-            b = b[2:]
-            buf = BytesIO(b)
-            unpacker = msgpack.Unpacker(buf, raw=False)
-            l = list(unpacker)
-            self.protocolVersion = l[0]
-            self.featureMap = l[1]
-            self.boardIndex = (l[2]).to_bytes(1)
-            print('')
-            '''
-                for unpacked in unpacker:
-                if type(unpacked) == list:
-                    i = 0
-                    for v in unpacked:
-                        #if type(v) == type(int):
-                        u = v# (1 << 32)) 
-                        print(f'Index [{i}], Unpacked Value: {u}, Type={type(v)}')
-                        i += 1
+        #try:
+        self.messageType = b[0]
+        data_bytes = b[:-1][1:]
+        self.crc = b[-1:]
+        if self.validateCRC( data=data_bytes, crc=self.crc) == False:
+            raise Exception(f"Error. CRC validation failed for received message. Bytes = {b}")
+        buf = BytesIO(data_bytes)
+        self.payload = msgpack.unpackb(data_bytes, raw=False) 
 
-                else:
-                    print(f'Unpacked Value: {unpacked}, Type={type(unpacked)}') 
-            '''
-    
-            
-        except Exception as ex:
-            raise ex
+            #me = MessageEncoder().encodeBytes(mt = MessageType.MT_HANDSHAKE.value[0], payload= self.payload)   
 
-    def __init__(self, b:bytes):
-        self.parseBytes(b)
-        #self.messageType = myType
+        #except Exception as error:
+        #    just_the_string = traceback.format_exc()
+        #    print(just_the_string)
+        #    raise error
+
+class MessageEncoder:
+    #def __init__(self):
+        #self.encodeBytes()
+
+    def getCRC(self, data:bytes) -> bytes:
+        hash = crc8.crc8()
+        hash.update(data)
+        return hash.digest()
+        
+    def encodeBytes(self, mt:MessageType, payload:list) -> bytes:
+        #try:
+        mt_enc = msgpack.packb(mt)
+        data_enc = msgpack.packb(payload)  
+        len_enc = msgpack.packb( len(mt_enc) + len(data_enc) + 2 )
+        crc_enc = self.getCRC(data=data_enc)
+        eot_enc = b'\x00'
+        return len_enc + mt_enc + data_enc + crc_enc + eot_enc    
+        #except Exception as ex:
+        #    print(f'ERROR: {str(ex)}')
+        #    raise ex
+
+
+RX_MAX_QUEUE_SIZE = 10
+rxQueue = Queue(RX_MAX_QUEUE_SIZE)
+
+class ArduinoConn:
+    def __init__(self, bi:int, cs:ConnectionState, timeout:int):
+        self.boardIndex = boardIndex
+        self.connectionState = cs
+        self.timeout = timeout
+        self.lastMessageReceived = time.process_time()
+
+
 class Connection:
     # Constructor
     def __init__(self, myType:ConnectionType):
         self.connectionType = myType
+        self.arduinos = [ArduinoConn(bi=0, cs=ConnectionState.DISCONNECTED, timeout=3000)] #hard coded for testing, should be based on config
+        
+    def update_state(self):
+        for arduino in self.arduinos:
+            if arduino.connectionState == ConnectionState.CONNECTED:
+                if time.process_time() - arduino.lastMessageReceived >= arduino.timeout:
+                    arduino.connectionState = ConnectionState.DISCONNECTED
 
-    #def background_task_connection_processor(self):
-    #    while True:
-    #        print('fun')
-    #        sleep(5)
-            #sleep_val = do_ids_module_check_work(ds=ds, share_drive_location=share_drive_ids_module_reports)
-            
-    #def launch_connection_processor(self):
-        # create and start the daemon thread
-        #print('Starting background proceed watch task...')
-    #    daemon = Thread(target=self.background_task_connection_processor, daemon=True, name='Arduino Connection')
-    #    daemon.start()
+
+        # at startup, the arduino map will be empty until a connection is made
+  
  
-RX_MAX_QUEUE_SIZE = 10
-rxQueue = Queue(RX_MAX_QUEUE_SIZE)
+
 
 class SerialConnetion(Connection):
     def __init__(self, myType:ConnectionType):
@@ -121,38 +144,21 @@ class SerialConnetion(Connection):
         while(self.shutdown == False):
             try:
                 data = arduino.read()
-                self.buffer += bytearray(data)
-                print(data)
                 if data == b'\x00':
                     print(bytes(self.buffer))
-                    #buf = BytesIO(bytes(buffer))
-                    
-                    if int(self.buffer[1]) == MessageType.MT_HANDSHAKE.value[0]:
-                        m = HandshakeMessage(bytes(self.buffer))
-                    #p
-                    
-                    '''
-                    unpacker = msgpack.Unpacker(buf, raw=False)
-                    for unpacked in unpacker:
-                        if type(unpacked) == list:
-                            print(f'Unpacked List:')
-                            i = 0
-                            for v in unpacked:
-                                print(f'Index [{i}], Unpacked Value: {v}, Type={type(v)}')
-                                i += 1
-                        else:
-                            print(f'Unpacked Value: {unpacked}, Type={type(unpacked)}')
-                    '''
+                    md = MessageDecoder(bytes(self.buffer)[1:])
                     arduino.write(bytes(self.buffer))
                     self.buffer = bytes()
                 elif data == b'\n':
+                    self.buffer += bytearray(data)
                     print(bytes(self.buffer).decode('utf8', errors='ignore'))
                     self.buffer = bytes()
-            except Exception as ex:
-                print(str(ex))
+                else:
+                    self.buffer += bytearray(data)
+            except Exception as error:
+                just_the_string = traceback.format_exc()
+                print(just_the_string)
 		
-
-
 def main():
     #mt = MessageType.MT_COMMAND
     #print(mt)

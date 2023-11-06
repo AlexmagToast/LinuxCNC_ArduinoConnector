@@ -53,6 +53,9 @@ import serial, time, hal
 c = hal.component("arduino") 	#name that we will cal pins from in hal
 connection = '/dev/ttyACM0' 	#this is the port your Arduino is connected to. You can check with ""sudo dmesg | grep tty"" in Terminal
 
+# Map of board index IDs and a human-readable alias
+# This map gets used by the connection manager to track the connection state of each mapped arduino
+arduinoMap = { 1:'myArduinoUno'}
 
 # Set how many Inputs you have programmed in Arduino and which pins are Inputs, Set Inputs = 0 to disable
 Inputs = 2 
