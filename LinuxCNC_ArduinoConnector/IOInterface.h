@@ -1,10 +1,11 @@
 #pragma once
 #ifndef IOINTERFACE_H_
 #define IOINTEFFACE_H_
-
+#include "Connection.h"
 void readCommands();
 void comalive();
 void flushSerial();
+void readTmpInputs(ConnectionBase* client);
 
 //Variables for Saving States
 #ifdef INPUTS
@@ -100,7 +101,7 @@ uint8_t statusMessageReady = 0;
 
 #ifdef JOYSTICK
 
-void readJoySticks() {
+void readJoySticks(ConnectionBase * client) {
   for (int i = 0; i < JoySticks*2; i++) {
     unsigned long currentTime = millis(); // Get the current time
 
@@ -129,7 +130,7 @@ void readJoySticks() {
 
       // Check if the counter value has changed
       if (counter[i] != prevCounter[i]) {
-        sendData('R',JoyStickPins[i],counter[i]);
+        client->SendPinStatusMessage('R',JoyStickPins[i],counter[i]);
         // Update the previous counter value with the current counter value
         prevCounter[i] = counter[i];
       }
@@ -139,7 +140,7 @@ void readJoySticks() {
 #endif
 
 #ifdef QUADENC
-void readEncoders(){
+void readEncoders(ClientBase* client){
     if(QuadEncs>=1){
       #if QUADENCS >= 1
         EncCount[0] = Encoder0.read()/QuadEncMp[0];
@@ -169,17 +170,17 @@ void readEncoders(){
     for(int i=0; i<QuadEncs;i++){
       if(QuadEncSig[i]==2){
         if(OldEncCount[i] != EncCount[i]){
-          sendData('R',i,EncCount[i]);//send Counter
+          client->SendPinStatusMessage('R',i,EncCount[i]);//send Counter
           OldEncCount[i] = EncCount[i];
         }
       }  
       if(QuadEncSig[i]==1){
         if(OldEncCount[i] < EncCount[i]){
-        sendData('R',i,1); //send Increase by 1 Signal
+        client->SendPinStatusMessage('R',i,1); //send Increase by 1 Signal
         OldEncCount[i] = EncCount[i];
         }
         if(OldEncCount[i] > EncCount[i]){
-        sendData('R',i,0); //send Increase by 1 Signal
+        client->SendPinStatusMessage('R',i,0); //send Increase by 1 Signal
         OldEncCount[i] = EncCount[i];
         }
       }
@@ -233,84 +234,7 @@ void comalive(){
 }
 */
 
-void reconnect(){
-  #ifdef DEBUG
-    Serial.println("reconnected");
-  #endif
-  #ifdef DEBUG
-    Serial.println("resending Data");
-  #endif
-    
-  #ifdef INPUTS
-    for (int x = 0; x < Inputs; x++){
-      InState[x]= -1;
-    }
-  #endif
-  #ifdef SINPUTS
-    for (int x = 0; x < sInputs; x++){
-      soldInState[x]= -1;
-      togglesinputs[x] = 0;
-    }
-  #endif
-  #ifdef AINPUTS
-    for (int x = 0; x < AInputs; x++){
-      oldAinput[x] = -1;
-    }
-  #endif
-  #ifdef LPOTIS
-    for (int x = 0; x < LPotis; x++){
-      oldLpoti[x] = -1;
-    }
-  #endif
-  #ifdef BINSEL
-    oldAbsEncState = -1;
-  #endif
-  
-  
-  #ifdef INPUTS
-    readInputs(); //read Inputs & send data
-  #endif
-  
-  #ifdef DALLAS_TEMP_SENSOR
-    readTmpInputs(); //read Inputs & send data
-  #endif
 
-  #ifdef SINPUTS
-    readsInputs(); //read Inputs & send data
-  #endif
-  #ifdef AINPUTS
-    readAInputs();  //read Analog Inputs & send data
-  #endif
-  #ifdef LPOTIS
-    readLPoti(); //read LPotis & send data
-  #endif
-  #ifdef BINSEL
-    readAbsKnob(); //read ABS Encoder & send data
-  #endif
-  #ifdef MULTIPLEXLEDS
-    multiplexLeds(); //Flash LEDS.
-  #endif
-
-  connectionState = 1;
-
-   
-}
-
-void sendData(char sig, int pin, int state){
-  statusMessage = String(sig);
-  statusMessage += String(pin);
-  statusMessage += ":";
-  statusMessage += String(state);
-  
-  statusMessageReady = 1;
-  //_client.SendPinStatusMessage(sig, pin, state);
-  //#ifdef SERIAL_TO_LINUXCNC
-  //    Serial.print(sig);
-  //    Serial.print(pin);
-  //    Serial.print(":");
-  //    Serial.println(state);
-  //#endif
-}
 
 void flushSerial(){
   while (Serial.available() > 0) {
@@ -399,14 +323,14 @@ void controlDLED(int Pin, int Stat){
 #endif
 
 #ifdef LPOTIS
-int readLPoti(){
+int readLPoti(ClientBase* client){
     for(int i= 0;i<LPotis; i++){
       int var = analogRead(LPotiPins[i][0])+margin;
       int pos = 1024/(LPotiPins[i][1]-1);
       var = var/pos;
       if(oldLpoti[i]!= var){
         oldLpoti[i] = var;
-        sendData('L', LPotiPins[i][0],oldLpoti[i]);
+        client->SendPinStatusMessage('L', LPotiPins[i][0],oldLpoti[i]);
       }
     }
 }
@@ -414,7 +338,7 @@ int readLPoti(){
 
 
 #ifdef AINPUTS
-int readAInputs(){
+int readAInputs(ConnectionBase* client){
    
    for(int i= 0;i<AInputs; i++){
       unsigned long var = 0;
@@ -424,18 +348,19 @@ int readAInputs(){
       var = var / smooth;
       if(oldAinput[i]!= var){
         oldAinput[i] = var;
-        sendData('A',AInPinmap[i],oldAinput[i]);
+        client->SendPinStatusMessage('A',AInPinmap[i],oldAinput[i]);
       }
     }
 }
 #endif
 #ifdef INPUTS
-void readInputs(){
+void readInputs(ConnectionBase* client){
     for(int i= 0;i<Inputs; i++){
-      int State = digitalRead(InPinmap[i]);
+      auto State = digitalRead(InPinmap[i]);
+      
       if(InState[i]!= State && millis()- lastInputDebounce[i] > debounceDelay){
         InState[i] = State;
-        sendData('I',InPinmap[i],InState[i]);
+        client->SendPinStatusMessage('I',InPinmap[i], 1);//InState[i]);
       
       lastInputDebounce[i] = millis();
       }
@@ -443,7 +368,7 @@ void readInputs(){
 }
 #endif
 #ifdef DALLAS_TEMP_SENSOR
-void readTmpInputs(){
+void readTmpInputs(ConnectionBase* client){
     for(int i= 0;i<TmpSensors; i++){
       DallasTemperature * sensor = TmpSensorControlMap[i];
       sensor->requestTemperatures(); 
@@ -455,16 +380,16 @@ void readTmpInputs(){
         inTmpSensorState[i] = v;
         
         #if TEMP_OUTPUT_C == 1
-          sendData('O',TmpSensorMap[i],inTmpSensorState[i]);
+          client->SendPinStatusMessage('T',TmpSensorMap[i],inTmpSensorState[i]);
         #else
-          sendData('O',TmpSensorMap[i],v_f);
+          client->SendPinStatusMessage('T',TmpSensorMap[i],v_f);
         #endif
       }
     }
 }
 #endif
 #ifdef SINPUTS
-void readsInputs(){
+void readsInputs(ClientBase* client){
   for(int i= 0;i<sInputs; i++){
     sInState[i] = digitalRead(sInPinmap[i]);
     if (sInState[i] != soldInState[i] && millis()- lastsInputDebounce[i] > debounceDelay){
@@ -475,10 +400,10 @@ void readsInputs(){
         togglesinputs[i] = !togglesinputs[i];  // Toggle the LED state
       
         if (togglesinputs[i]) {
-          sendData('I',sInPinmap[i],togglesinputs[i]);  // Turn the LED on
+          client->SendPinStatusMessage('I',sInPinmap[i],togglesinputs[i]);  // Turn the LED on
         } 
         else {
-          sendData('I',sInPinmap[i],togglesinputs[i]);   // Turn the LED off
+          client->SendPinStatusMessage('I',sInPinmap[i],togglesinputs[i]);   // Turn the LED off
         }
       }
       soldInState[i] = sInState[i];
@@ -516,7 +441,7 @@ int readAbsKnob(){
 #endif
 
 #ifdef KEYPAD
-void readKeypad(){
+void readKeypad(ConnectionBase* client){
   //detect if Button is Pressed
   for (int col = 0; col < numCols; col++) {
     pinMode(colPins[col], OUTPUT);
@@ -526,14 +451,14 @@ void readKeypad(){
       pinMode(rowPins[row], INPUT_PULLUP);
       if (digitalRead(rowPins[row]) == LOW && lastKey != keys[row][col]) {
         // A button has been pressed
-        sendData('M',keys[row][col],1);
+        client->SendPinStatusMessage('M',keys[row][col],1);
         lastKey = keys[row][col];
         row = numRows;
 
       }
       if (digitalRead(rowPins[row]) == HIGH && lastKey == keys[row][col]) {
         // The Last Button has been unpressed
-        sendData('M',keys[row][col],0);
+        client->SendPinStatusMessage('M',keys[row][col],0);
         lastKey = -1; //reset Key pressed
         row = numRows;
       }

@@ -94,7 +94,10 @@ public:
   { 
     //MsgPacketizer::send(this->_client, this->_mi, hm);
     MsgPacketizer::send(Serial, MT_PINSTATUS, _getPinStatusMessage());
+    //Serial.print(byte(0x00));
+    //Serial.write(byte(0xff));
     Serial.flush();
+    delay(1000);
   }
 
   

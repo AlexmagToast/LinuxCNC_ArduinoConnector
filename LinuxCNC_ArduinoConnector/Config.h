@@ -2,8 +2,8 @@
 #define CONFIG_H_
 
 #define ENABLE_FEATUREMAP
-#define DEBUG                       0
-//#define INPUTS                    1                       
+//#define DEBUG                     0
+#define INPUTS                    1                       
 //#define SINPUTS                   2                      
 //#define OUTPUTS                   3
 //#define PWMOUTPUTS                4
@@ -58,10 +58,10 @@ const uint16_t RX_BUFFER_SIZE = 512; // Serial, TCP and UDP connections utilize 
 #define PACKETIZER_MAX_STREAM_MAP_SIZE 1
 */
 
-const uint8_t BOARD_INDEX = 1; // Each board connecting to the server should have a differnet index number.
+const uint8_t BOARD_INDEX = 0; // Each board connecting to the server should have a differnet index number.
 
 #ifdef SERIAL_TO_LINUXCNC
-const uint16_t SERIAL_RX_TIMEOUT = 3000;
+const uint16_t SERIAL_RX_TIMEOUT = 1000;
 #endif
 //################################################### ETHERNET CONNECTION OPTIONS ###################################################
 // Requires an Arduino / Shield that is compatible with the Arduino Ethernet Library
@@ -71,7 +71,7 @@ const uint16_t SERIAL_RX_TIMEOUT = 3000;
 #include <SPI.h>
 #include <Ethernet.h>
 #define DHCP 0// 1 for DHCP, 0 for static.  DHCP support is highly expiremental and leaving this option disabled (i.e., using a static IP address) is recommended.
-const uint16_t UDP_RX_TIMOUT = 5000;
+const uint16_t UDP_RX_TIMOUT = 259;
 const int UDP_RX_PORT = 54321;
 const int UDP_TX_PORT = 54321;
 
@@ -105,8 +105,8 @@ byte ARDUINO_MAC[] = {
 
                  
 #ifdef INPUTS //Use Arduino IO's as Inputs. Define how many Inputs you want in total and then which Pins you want to be Inputs.
-  const int Inputs = 2;               //number of inputs using internal Pullup resistor. (short to ground to trigger)
-  int InPinmap[] = {8,9};
+  const int Inputs = 1;               //number of inputs using internal Pullup resistor. (short to ground to trigger)
+  int InPinmap[] = {3};
 #endif
 
                                        //Use Arduino IO's as Toggle Inputs, which means Inputs (Buttons for example) keep HIGH State after Release and Send LOW only after beeing Pressed again. 

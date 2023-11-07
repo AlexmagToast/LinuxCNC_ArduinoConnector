@@ -8,6 +8,7 @@ enum ConnectionState
   CS_DISCONNECTED = 0,
   CS_CONNECTING,
   CS_CONNECTED,
+  CS_RECONNECTED,
   CS_DISCONNECTING,
   CS_CONNECTION_TIMEOUT,
   CS_ERROR
@@ -32,16 +33,13 @@ public:
     return _myState;
   }
 
-  virtual void SendPinStatusMessage(String status)//char sig, int pin, int state)
+  virtual void SendPinStatusMessage(char sig, int pin, int state)
   {
-    /*
     String status = String(sig);
     status += String(pin);
     status += ":";
     status += String(state);
-    protocol::pm.status = status;
-    */
-    protocol::pm.status = status;
+    protocol::pm.status = "I3:0";
     _sendPinStatusMessage();
   }
 
@@ -72,7 +70,9 @@ public:
         this->_sendHandshakeMessage();
         _resendTimer = millis();
         _receiveTimer = millis(); 
-        
+        _handshakeReceived = 0;
+        _heartbeatReceived = 0;
+        _commandReceived = 0;
         /*
         #ifdef DEBUG
           Serial.print("DEBUG: UDP disconnected, retrying connection to ");
@@ -104,8 +104,17 @@ public:
         }
         break;
       }
+      case CS_RECONNECTED:
+         this->_setState(CS_CONNECTED);
+         break;
       case CS_CONNECTED:
       {
+        if(_getHandshakeReceived())
+        {
+          this->_setState(CS_RECONNECTED);
+          _resendTimer = millis();
+          _receiveTimer = millis();
+        }
         if ( millis() > this->_resendTimer + _retryPeriod )
         {
           _sendHeartbeatMessage();
@@ -172,6 +181,8 @@ public:
         return String("CS_CONNECTING");
       case CS_CONNECTED:
         return String("CS_CONNECTED");
+      case CS_RECONNECTED:
+        return String("CS_RECONNECTED");
       case CS_DISCONNECTING:
         return String("CS_DISCONNECTING");
       case CS_ERROR:

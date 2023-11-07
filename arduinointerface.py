@@ -65,7 +65,8 @@ FeatureTypes = {
 
 
 
-serial_dev = '/dev/ttyACM0' 
+#serial_dev = '/dev/ttyACM0' 
+serial_dev = '/dev/tty.usbmodemF412FA68D6802'
 
 arduino = serial.Serial(serial_dev, 115200, timeout=1, xonxoff=False, rtscts=False, dsrdtr=True)
 
@@ -114,6 +115,7 @@ class MessageDecoder:
     def validateCRC(self, data:bytes, crc:bytes):
         hash = crc8.crc8()
         hash.update(data)
+        d = hash.digest()
         if hash.digest() == crc:
             return True
         else:
@@ -167,8 +169,9 @@ class ArduinoConn:
         self.timeout = timeout
         self.lastMessageReceived = time.process_time()
     def setState(self, newState:ConnectionState):
-        print(f'DEBUG: Board Index: {self.boardIndex}, changing state from {self.connectionState} to {newState}')
-        self.connectionState = newState
+        if newState != self.connectionState:
+            print(f'DEBUG: Board Index: {self.boardIndex}, changing state from {self.connectionState} to {newState}')
+            self.connectionState = newState
 
 
 class Connection:
@@ -180,23 +183,25 @@ class Connection:
     
     def onMessageRecv(self, m:MessageDecoder):
         if m.messageType == MessageType.MT_HANDSHAKE:
-            print(f'DEGUG: onMessageRecv() - Recvied MT_HANDSHAKE, Values = {m.payload}')
+            print(f'DEBUG: onMessageRecv() - Recvied MT_HANDSHAKE, Values = {m.payload}')
             if m.payload[0] != protocol_ver:
-                debugstr = f'DEGUG: Error. Protocol version mismatched. Expected {protocol_ver}, got {m.payload[0]}'
+                debugstr = f'DEBUG: Error. Protocol version mismatched. Expected {protocol_ver}, got {m.payload[0]}'
                 print(debugstr)
                 raise Exception(debugstr)
             bi = m.payload[2]-1 # board index is always sent over incremeented by one
             fmd = FeatureMapDecoder(m.payload[1])
-            ef = fmd.getEnabledFeatures()
+            #ef = fmd.getEnabledFeatures()
+
             self.arduinos[bi].setState(ConnectionState.CONNECTED)
             self.arduinos[bi].lastMessageReceived = time.process_time()
             hsr = MessageEncoder().encodeBytes(mt=MessageType.MT_HANDSHAKE, payload=m.payload)
             self.sendMessage(bytes(hsr))
+            
         if m.messageType == MessageType.MT_HEARTBEAT:
-            print(f'DEGUG: onMessageRecv() - Recvied MT_HEARTBEAT, Values = {m.payload}')
+            #print(f'DEBUG: onMessageRecv() - Recvied MT_HEARTBEAT, Values = {m.payload}')
             bi = m.payload[0]-1 # board index is always sent over incremeented by one
             if self.arduinos[bi].connectionState != ConnectionState.CONNECTED:
-                debugstr = f'DEGUG: Error. Received message from arduino ({m.payload[2]-1}) prior to completing handhsake. Ignoring.'
+                debugstr = f'DEBUG: Error. Received message from arduino ({m.payload[0]-1}) prior to completing handshake. Ignoring.'
                 print(debugstr)
                 return
             #self.arduinos[bi].setState(ConnectionState.CONNECTED)
@@ -204,10 +209,10 @@ class Connection:
             hb = MessageEncoder().encodeBytes(mt=MessageType.MT_HEARTBEAT, payload=m.payload)
             self.sendMessage(bytes(hb))
         if m.messageType == MessageType.MT_PINSTATUS:
-            print(f'DEGUG: onMessageRecv() - Recvied MT_PINSTATUS, Values = {m.payload}')
-            bi = m.payload[0]-1 # board index is always sent over incremeented by one
+            print(f'DEBUG: onMessageRecv() - Recvied MT_PINSTATUS, Values = {m.payload}')
+            bi = m.payload[1]-1 # board index is always sent over incremeented by one
             if self.arduinos[bi].connectionState != ConnectionState.CONNECTED:
-                debugstr = f'DEGUG: Error. Received message from arduino ({m.payload[2]-1}) prior to completing handhsake. Ignoring.'
+                debugstr = f'DEBUG: Error. Received message from arduino ({m.payload[1]-1}) prior to completing handshake. Ignoring.'
                 print(debugstr)
                 return
             #self.arduinos[bi].setState(ConnectionState.CONNECTED)
@@ -275,13 +280,17 @@ class SerialConnetion(Connection):
                 data = arduino.read()
                 if data == b'\x00':
                     #print(bytes(self.buffer))
-                    md = MessageDecoder(bytes(self.buffer)[1:])
-                    self.onMessageRecv(m=md)
+                    try:
+                        md = MessageDecoder(bytes(self.buffer)[1:])
+                        self.onMessageRecv(m=md)
+                    except Exception as ex:
+                        print(f'DEBUG: {str(ex)}')
+                
                     #arduino.write(bytes(self.buffer))
                     self.buffer = bytes()
                 elif data == b'\n':
                     self.buffer += bytearray(data)
-                    print(bytes(self.buffer).decode('utf8', errors='ignore'))
+                    #print(bytes(self.buffer).decode('utf8', errors='ignore'))
                     self.buffer = bytes()
                 else:
                     self.buffer += bytearray(data)

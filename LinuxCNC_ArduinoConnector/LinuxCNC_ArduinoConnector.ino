@@ -243,6 +243,7 @@ void commUpdate(){
       #endif 
     if (new_state == CS_CONNECTED)
     {
+      do_io(1); // send pin status data on reconnect, force update
       #ifdef STATUSLED
         StatLedErr(1000,1000);
       #endif
@@ -255,31 +256,97 @@ void commUpdate(){
   }
   else
   {
+    do_io(1); // Do IO reads without forcing full update
     if( _client.CommandReceived() == true )
     {
       auto cm = _client.GetReceivedCommand();
       for(auto b : cm.cmd)
       {
-        pushCommand(b);
+        pushCommand(b); // Call the original logic for processing received command strings
       }
     }
+
     //readCommands();
   }
 
 
 }
 
+void do_io(uint8_t forceUpdate){
+  //#ifdef DEBUG
+  //  Serial.println("DEBUG: resending data following reconnect..");
+  //#endif
+    
+  #ifdef INPUTS
+    if(forceUpdate == 1) {
+      for (int x = 0; x < Inputs; x++){
+        lastInputDebounce[x] = 0;
+        InState[x]= -1;
+      }
+    }
+    readInputs(&_client); //read Inputs & send data
+  #endif
+  
+  #ifdef DALLAS_TEMP_SENSOR
+    if(forceUpdate) {
+      for(int i= 0;i<TmpSensors; i++){
+        inTmpSensorState[i] = -1;
+      }
+    }
+    readTmpInputs(&_client); //read Inputs & send data
+  #endif
+
+  #ifdef SINPUTS
+    if(forceUpdate) {
+      for (int x = 0; x < sInputs; x++){
+        soldInState[x]= -1;
+        togglesinputs[x] = 0;
+      }
+    }
+    readsInputs(&_client)); //read Inputs & send data
+  #endif
+  #ifdef AINPUTS
+    if(forceUpdate) {
+      for (int x = 0; x < AInputs; x++){
+        oldAinput[x] = -1;
+      }
+    }
+    readAInputs(&_client));  //read Analog Inputs & send data
+  #endif
+  #ifdef LPOTIS
+    if(forceUpdate) {
+      for (int x = 0; x < LPotis; x++){
+        oldLpoti[x] = -1;
+      }
+    }
+    readLPoti(&_client)); //read LPotis & send data
+  #endif
+  #ifdef BINSEL
+    if(forceUpdate) {
+      oldAbsEncState = -1;
+    }
+    readAbsKnob(&_client)); //read ABS Encoder & send data
+  #endif
+  #ifdef MULTIPLEXLEDS
+    multiplexLeds(); //Flash LEDS.
+  #endif
+
+  //connectionState = 1;
+
+   
+}
+
 void loop() {
-  commUpdate();
+ 
 
   _client.DoWork(); // At least ONE option must be selected in the config for connection to LinuxCNC (UDP/TCP/WIFI/SERIAL) - Otherwise, _client will be undefined and errors will be generated at compile.
-
-
+  commUpdate();
+/*
 #ifdef INPUTS
   readInputs(); //read Inputs & send data
 #endif
 #ifdef DALLAS_TEMP_SENSOR
-  readTmpInputs();
+  readTmpInputs(&_client);
 #endif
 #ifdef SINPUTS
   readsInputs(); //read Inputs & send data
@@ -308,9 +375,8 @@ void loop() {
 #ifdef MULTIPLEXLEDS
   multiplexLeds();// cycle through the 2D LED Matrix}
 #endif
-  if( statusMessageReady == 1 )
-  {
-    _client.SendPinStatusMessage(statusMessage);
-    statusMessageReady = 0;
-  }
+*/
+
 }
+
+

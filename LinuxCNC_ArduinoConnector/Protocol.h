@@ -44,30 +44,30 @@ namespace protocol
       uint8_t protocolVersion = PROTOCOL_VERSION;
       //uint16_t messageType = MT_HANDSHAKE;
       uint64_t featureMap = 0;
-      uint8_t boardIndex = 1;
+      uint8_t boardIndex = BOARD_INDEX+1;
       MSGPACK_DEFINE(protocolVersion, featureMap, boardIndex); 
   }hm;
 
   struct HeartbeatMessage {
-      uint8_t boardIndex = BOARD_INDEX;
+      uint8_t boardIndex = BOARD_INDEX+1;
       MSGPACK_DEFINE(boardIndex); 
   }hb;
 
   struct CommandMessage {
       String cmd;
-      uint8_t boardIndex = BOARD_INDEX;
+      uint8_t boardIndex = BOARD_INDEX+1;
       MSGPACK_DEFINE(cmd, boardIndex); 
   }cm;
   
   struct PinStatusMessage {
       String status;
-      uint8_t boardIndex = BOARD_INDEX;
+      uint8_t boardIndex = BOARD_INDEX+1;
       MSGPACK_DEFINE(status, boardIndex); 
   }pm;
 
   #ifdef DEBUG
   struct DebugMessage {
-      uint8_t boardIndex = BOARD_INDEX;
+      uint8_t boardIndex = BOARD_INDEX+1;
       String message;
       MSGPACK_DEFINE(boardIndex, message); 
   }dm;
