@@ -1,3 +1,4 @@
+from multiprocessing import Value
 import sys
 import serial
 #import socket
@@ -42,31 +43,32 @@ class MessageType(IntEnum):
     
 FeatureTypes = {
     'DEBUG': 0,
-    'INPUTS':1,
-    'SINPUTS':2,
-    'OUTPUTS':3,
-    'PWMOUTPUTS:':4,
-    'AINPUTS':5,
-    'DALLAS_TEMPERATURE_SENSOR':6,
-    'LPOTIS':7,
-    'BINSEL':8,
-    'QUADENC':9,
-    'JOYSTICK':10,
-    'STATUSLED':11,
-    'DLED':12,
-    'KEYPAD':13,
-    'SERIAL_TO_LINUXCNC':14,
-    'ETHERNET_UDP_TO_LINUXCNC':15,
-    'ETHERNET_TCP_TO_LINUXCNC':16,
-    'WIFI_TCP_TO_LINUXCNC':17,
-    'WIFI_UDP_TO_LINUXCNC':18,
-    'MEMORY_MONITOR':19
+    'DEBUG_PROTOCOL_VERBOSE': 1,
+    'INPUTS':2,
+    'SINPUTS':3,
+    'OUTPUTS':4,
+    'PWMOUTPUTS:':5,
+    'AINPUTS':6,
+    'DALLAS_TEMPERATURE_SENSOR':7,
+    'LPOTIS':8,
+    'BINSEL':9,
+    'QUADENC':10,
+    'JOYSTICK':11,
+    'STATUSLED':12,
+    'DLED':13,
+    'KEYPAD':14,
+    'SERIAL_TO_LINUXCNC':15,
+    'ETHERNET_UDP_TO_LINUXCNC':16,
+    'ETHERNET_TCP_TO_LINUXCNC':17,
+    'WIFI_TCP_TO_LINUXCNC':18,
+    'WIFI_UDP_TO_LINUXCNC':19,
+    'MEMORY_MONITOR':20
 }
 
 debug_comm = True
 
-#serial_dev = '/dev/ttyACM0' 
-serial_dev = '/dev/tty.usbmodemF412FA68D6802'
+serial_dev = '/dev/ttyACM0' 
+#serial_dev = '/dev/tty.usbmodemF412FA68D6802'
 
 arduino = serial.Serial(serial_dev, 115200, timeout=1.0, xonxoff=False, rtscts=False, dsrdtr=True)
 
@@ -176,22 +178,36 @@ class Connection:
     # Constructor
     def __init__(self, myType:ConnectionType):
         self.connectionType = myType
-        self.arduinos = [ArduinoConn(bi=0, cs=ConnectionState.DISCONNECTED, timeout=3)] #hard coded for testing, should be based on config
+        self.arduinos = [ArduinoConn(bi=0, cs=ConnectionState.DISCONNECTED, timeout=10)] #TODO: Fix this. hard coded for testing, should be based on config
         self.rxQueue = Queue(RX_MAX_QUEUE_SIZE)
     
     def onMessageRecv(self, m:MessageDecoder):
         if m.messageType == MessageType.MT_HANDSHAKE:
             if debug_comm:print(f'PYDEBUG onMessageRecv() - Received MT_HANDSHAKE, Values = {m.payload}')
+            '''
+                struct HandshakeMessage {
+                uint8_t protocolVersion = PROTOCOL_VERSION;
+                uint64_t featureMap = 0;
+                uiint32_t timeOut = 0;
+                uint8_t boardIndex = BOARD_INDEX+1;
+                MSGPACK_DEFINE(protocolVersion, featureMap, boardIndex); 
+            }hm;
+            '''
+            # FUTURE TODO: Make a MT_HANDSHAKE decoder class rather than the following hard codes..
             if m.payload[0] != protocol_ver:
                 debugstr = f'PYDEBUG Error. Protocol version mismatched. Expected {protocol_ver}, got {m.payload[0]}'
                 if debug_comm:print(debugstr)
                 raise Exception(debugstr)
-            bi = m.payload[2]-1 # board index is always sent over incremeented by one
             fmd = FeatureMapDecoder(m.payload[1])
-            #ef = fmd.getEnabledFeatures()
+            if debug_comm:
+                ef = fmd.getEnabledFeatures()
+                print(f'PYDEBUG: Enabled Features : {ef}')
+            to = m.payload[2] #timeout value
+            bi = m.payload[3]-1 # board index is always sent over incremeented by one
             
             self.arduinos[bi].setState(ConnectionState.CONNECTED)
             self.arduinos[bi].lastMessageReceived = time.time()
+            self.arduinos[bi].timeout = to / 1000 # always delivered in ms, convert to seconds
             hsr = MessageEncoder().encodeBytes(mt=MessageType.MT_HANDSHAKE, payload=m.payload)
             self.sendMessage(bytes(hsr))
             
@@ -241,7 +257,7 @@ class Connection:
                     arduino.setState(ConnectionState.DISCONNECTED)
 
     def getState(self, index:int):
-        return arduino[index].connectionState()
+        return self.arduinos[index].connectionState
   
  
 
@@ -270,9 +286,10 @@ class SerialConnetion(Connection):
     def sendMessage(self, b: bytes):
         #return super().sendMessage()
         arduino.write(b)
+        arduino.flush()
     
     def sendCommand(self, m:str):
-        cm = MessageEncoder().encodeBytes(mt=MessageType.MT_COMMAND, payload=m)
+        cm = MessageEncoder().encodeBytes(mt=MessageType.MT_COMMAND, payload=[m, 1])
         self.sendMessage(bytes(cm))
         
     def rxTask(self):

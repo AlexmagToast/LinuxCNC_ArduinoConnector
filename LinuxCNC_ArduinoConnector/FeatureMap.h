@@ -22,6 +22,9 @@ struct featureMap
     #ifdef DEBUG
       bitSet(this->features, DEBUG);
     #endif
+    #ifdef DEBUG
+      bitSet(this->features, DEBUG_PROTOCOL_VERBOSE);
+    #endif
     #ifdef INPUTS
       bitSet(this->features, INPUTS);
     #endif
@@ -105,6 +108,14 @@ struct featureMap
       Serial.print("]");
       Serial.print(" DEBUG = ");
       Serial.println(flag);
+      #ifdef DEBUG_PROTOCOL_VERBOSE
+        flag = bitRead(this->features, DEBUG_PROTOCOL_VERBOSE);
+        Serial.print("[ID0");
+        Serial.print(DEBUG_PROTOCOL_VERBOSE);
+        Serial.print("]");
+        Serial.print(" INPUTS = ");
+        Serial.println(flag);
+      #endif
       #ifdef INPUTS
         flag = bitRead(this->features, INPUTS);
         Serial.print("[ID0");
@@ -171,7 +182,7 @@ struct featureMap
       #endif
       #ifdef QUADENC
         flag = bitRead(this->features, QUADENC);
-        Serial.print("[ID0");
+        Serial.print("[ID");
         Serial.print(QUADENC);
         Serial.print("]");
         Serial.print(" QUADENC = ");

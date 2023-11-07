@@ -1,9 +1,14 @@
 #!/usr/bin/python3.9
+from asyncio import QueueEmpty
 import traceback
 from numpy import block
-from arduinointerface import ConnectionType
+from arduinointerface import ConnectionState, ConnectionType
 from arduinointerface import SerialConnetion
-import serial, time, hal, atexit, os
+from queue import Empty, Queue
+import serial, time, hal
+# ADDITIONAL PYTHON LIBRARIES TO SUPPORT NEW PROTOCOL STACK:
+# strenum
+# crc8
 #	LinuxCNC_ArduinoConnector
 #	By Alexander Richter, info@theartoftinkering.com 2022
 
@@ -56,23 +61,23 @@ import serial, time, hal, atexit, os
 
 c = hal.component("arduino") 	#name that we will cal pins from in hal
 connection = '/dev/ttyACM0' 	#this is the port your Arduino is connected to. You can check with ""sudo dmesg | grep tty"" in Terminal
-sc = SerialConnetion(ConnectionType.SERIAL, )
+sc = SerialConnetion(ConnectionType.SERIAL)
 # Map of board index IDs and a human-readable alias
 # This map gets used by the connection manager to track the connection state of each mapped arduino
 arduinoMap = { 1:'myArduinoUno'}
 
 # Set how many Inputs you have programmed in Arduino and which pins are Inputs, Set Inputs = 0 to disable
-Inputs = 2 
+Inputs = 0
 InPinmap = [8,9] #Which Pins are Inputs?
 
 # Set how many Toggled ("sticky") Inputs you have programmed in Arduino and which pins are Toggled Inputs , Set SInputs = 0 to disable
-SInputs = 1
+SInputs = 0
 sInPinmap = [10] #Which Pins are SInputs?
 
 
 # Set how many Outputs you have programmed in Arduino and which pins are Outputs, Set Outputs = 0 to disable
-Outputs = 2				#9 Outputs, Set Outputs = 0 to disable
-OutPinmap = [11,12]	#Which Pins are Outputs?
+Outputs = 1				#9 Outputs, Set Outputs = 0 to disable
+OutPinmap = [4]	#Which Pins are Outputs?
 
 # Set how many PWM Outputs you have programmed in Arduino and which pins are PWM Outputs, you can set as many as your Arduino has PWM pins. List the connected pins below.
 PwmOutputs = 0			#number of PwmOutputs, Set PwmOutputs = 0 to disable 
@@ -182,7 +187,7 @@ LedGndPins = 3
 
 
 
-Debug = 0		#only works when this script is run from halrun in Terminal. "halrun","loadusr arduino" now Debug info will be displayed.
+Debug = 1		#only works when this script is run from halrun in Terminal. "halrun","loadusr arduino" now Debug info will be displayed.
 
 ########  End of Config!  ########
 
@@ -322,8 +327,8 @@ def managageOutputs():
 			Sig = 'P'
 			Pin = int(PwmOutPinmap[port])
 			command = "{}{}:{}\n".format(Sig,Pin,State)
-			sc.sendCommand(command.encode())
-			if (Debug):print ("Sending:{}".format(command.encode()))
+			sc.sendCommand(command)#command.encode())
+			if (Debug):print ("PYDEBUG: Sending:{}".format(command.encode()))
 			oldPwmOutStates[port]= State
 			time.sleep(0.01)
 
@@ -333,8 +338,8 @@ def managageOutputs():
 			Sig = 'O'
 			Pin = int(OutPinmap[port])
 			command = "{}{}:{}\n".format(Sig,Pin,State)
-			sc.sendCommand(command.encode())
-			if (Debug):print ("Sending:{}".format(command.encode()))
+			sc.sendCommand(command)#command.encode())
+			if (Debug):print ("PYDEBUG: ending:{}".format(command.encode()))
 			olddOutStates[port]= State
 			time.sleep(0.01)
 		
@@ -344,8 +349,8 @@ def managageOutputs():
 			Sig = 'D'
 			Pin = dled
 			command = "{}{}:{}\n".format(Sig,Pin,State)
-			sc.sendCommand(command.encode())
-			if (Debug):print ("Sending:{}".format(command.encode()))
+			sc.sendCommand(command)#command.encode())
+			if (Debug):print ("PYDEBUG: Sending:{}".format(command.encode()))
 			oldDLEDStates[dled] = State
 			time.sleep(0.01)
 	if MultiplexLED > 0:
@@ -355,8 +360,8 @@ def managageOutputs():
 				Sig = 'M'
 				Pin = mled
 				command = "{}{}:{}\n".format(Sig,Pin,State)
-				sc.sendCommand(command.encode())
-				if (Debug):print ("Sending:{}".format(command.encode()))
+				sc.sendCommand(command)#command.encode())
+				if (Debug):print ("PYDEBUG: Sending:{}".format(command.encode()))
 				oldMledStates[mled] = State
 				time.sleep(0.01)
     
@@ -371,9 +376,9 @@ def processCommand(data: str):
 				io = 0
 			else:
 				io = extract_nbr(data[0])
-			value = extract_nbr(data[1])
+			value = data[0].split(':')[-1].strip()#extract_nbr(data[0])
 			#if value<0: value = 0
-			if (Debug):print ("No Command!:{}.".format(cmd))
+			if (Debug):print ("Incoming Command!:{}.".format(cmd))
 
 			if cmd == "I":
 				if value == 1:
@@ -465,20 +470,28 @@ def processCommand(data: str):
 					if QuadEncSig[io]== 2:
 								c["counter.{}".format(io)] = value
 	except Exception as ex:
-		if Debug:print(f'PYDEBUG: Error : {str(ex)}')
+		just_the_string = traceback.format_exc()
+		if Debug:print(just_the_string)
     
 
 sc.startRxTask()
     
 while True:
 	try:
-		cmd = sc.rxQueue.get(block=True)
-		processCommand(cmd.payload)
+		try:
+
+			if sc.getState(0) == ConnectionState.CONNECTED:
+				managageOutputs()
+			cmd = sc.rxQueue.get(block=False, timeout=100)
+			if cmd != None:
+				processCommand(cmd.payload)
+		except Empty:
+			time.sleep(.1)
 	except KeyboardInterrupt:
 		sc.stopRxTask()
 		sc = None
 		raise SystemExit
-	except Exception:
+	except Exception as ex:
 		just_the_string = traceback.format_exc()
 		if Debug:print(just_the_string)
 

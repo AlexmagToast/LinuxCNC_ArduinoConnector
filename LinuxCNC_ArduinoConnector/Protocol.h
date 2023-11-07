@@ -44,8 +44,9 @@ namespace protocol
       uint8_t protocolVersion = PROTOCOL_VERSION;
       //uint16_t messageType = MT_HANDSHAKE;
       uint64_t featureMap = 0;
+      uint32_t timeout = 0;
       uint8_t boardIndex = BOARD_INDEX+1;
-      MSGPACK_DEFINE(protocolVersion, featureMap, boardIndex); 
+      MSGPACK_DEFINE(protocolVersion, featureMap, timeout, boardIndex); 
   }hm;
 
   struct HeartbeatMessage {

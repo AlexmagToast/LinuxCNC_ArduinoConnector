@@ -3,7 +3,6 @@
 #pragma once
 #include "Protocol.h"
 
-//#define DEBUG_PROTOCOL
 
 enum ConnectionState
 {
@@ -246,7 +245,7 @@ protected:
 
   void _onHandshakeMessage(const protocol::HandshakeMessage& n)
   {
-      #ifdef DEBUG_PROTOCOL
+      #ifdef DEBUG_PROTOCOL_VERBOSE
       Serial.println("ARDUINO DEBUG: ---- RX HANDSHAKE MESSAGE DUMP ----");
       Serial.print("ARDUINO DEBUG: Protocol Version: 0x");
       Serial.println(n.protocolVersion, HEX);
@@ -261,7 +260,7 @@ protected:
 
   void _onHeartbeatMessage(const protocol::HeartbeatMessage& n)
   {
-      #ifdef DEBUG_PROTOCOL
+      #ifdef DEBUG_PROTOCOL_VERBOSE
       Serial.println("ARDUINO DEBUG: ---- RX HEARTBEAT MESSAGE DUMP ----");
       Serial.print("ARDUINO DEBUG: Board Index: ");
       Serial.println(n.boardIndex);
@@ -272,7 +271,7 @@ protected:
 
   void _onCommandMessage(const protocol::CommandMessage& n)
   {
-      #ifdef DEBUG_PROTOCOL
+      #ifdef DEBUG_PROTOCOL_VERBOSE
       Serial.println("ARDUINO DEBUG: ---- RX COMMAND MESSAGE DUMP ----");
       Serial.print("ARDUINO DEBUG: Command: ");
       Serial.println(n.cmd);
@@ -281,8 +280,8 @@ protected:
       Serial.println("ARDUINO DEBUG: ---- RX END COMMAND MESSAGE DUMP ----");
       #endif
       protocol::cm.cmd = n.cmd;
-      protocol::cm.boardIndex = n.boardIndex;
-      _heartbeatReceived = 1;
+      protocol::cm.boardIndex = n.boardIndex-1;
+      _commandReceived = 1;
   }
 
   void _setState(int new_state)
@@ -302,12 +301,15 @@ protected:
   protocol::HandshakeMessage& _getHandshakeMessage()
   {
     protocol::hm.featureMap = this->_featureMap;
-    #ifdef DEBUG_PROTOCOL
+    protocol::hm.timeout = _retryPeriod * 2;
+    #ifdef DEBUG_PROTOCOL_VERBOSE
       Serial.println("ARDUINO DEBUG: ---- TX HANDSHAKE MESSAGE DUMP ----");
       Serial.print("ARDUINO DEBUG: Protocol Version: 0x");
       Serial.println(protocol::hm.protocolVersion, HEX);
       Serial.print("ARDUINO DEBUG: Feature Map: 0x");
       Serial.println(protocol::hm.featureMap, HEX);
+      Serial.print("ARDUINO DEBUG: Timeout: ");
+      Serial.println(protocol::hm.timeout);
       Serial.print("ARDUINO DEBUG: Board Index: ");
       Serial.println(protocol::hm.boardIndex);
       Serial.println("ARDUINO DEBUG: ---- TX END HANDSHAKE MESSAGE DUMP ----");
@@ -317,7 +319,7 @@ protected:
 
   protocol::HeartbeatMessage& _getHeartbeatMessage()
   {
-    #ifdef DEBUG_PROTOCOL
+    #ifdef DEBUG_PROTOCOL_VERBOSE
       Serial.println("ARDUINO DEBUG: ---- TX HEARTBEAT MESSAGE DUMP ----");
       Serial.print("ARDUINO DEBUG: Board Index: ");
       Serial.println(protocol::hb.boardIndex);
@@ -328,7 +330,7 @@ protected:
   
   protocol::PinStatusMessage& _getPinStatusMessage()
   {
-    #ifdef DEBUG_PROTOCOL
+    #ifdef DEBUG_PROTOCOL_VERBOSE
       Serial.println("ARDUINO DEBUG: ---- TX PINSTATUS MESSAGE DUMP ----");
       Serial.print("ARDUINO DEBUG: STATUS: ");
       Serial.println(protocol::pm.status);      

@@ -3,25 +3,27 @@
 
 #define ENABLE_FEATUREMAP
 #define DEBUG                     0
-#define INPUTS                    1                       
-//#define SINPUTS                   2                      
-//#define OUTPUTS                   3
-//#define PWMOUTPUTS                4
-//#define AINPUTS                   5   
-#define DALLAS_TEMP_SENSOR        6
-//#define LPOTIS                    7
-//#define BINSEL                    8
-//#define QUADENC                   9
-//#define JOYSTICK                  10
-//#define STATUSLED                 11
-//#define DLED                      12
-//#define KEYPAD                    13
-#define SERIAL_TO_LINUXCNC        14
-//#define ETHERNET_UDP_TO_LINUXCNC  15
-//#define ETHERNET_TCP_TO_LINUXCNC 16 // FUTURE
-//define WIFI_TCP_TO_LINUXCNC      17 // FUTURE
-//define WIFI_UDP_TO_LINUXCNC     18 // FUTURE
-//#define MEMORY_MONITOR              19 // Requires https://github.com/mpflaga/Arduino-MemoryFree/
+#define DEBUG_PROTOCOL_VERBOSE    1
+//s#define INPUTS                    2                       
+//#define SINPUTS                   3                      
+#define OUTPUTS                   4
+//#define PWMOUTPUTS                5
+//#define AINPUTS                   6   
+//#define DALLAS_TEMP_SENSOR        7
+//#define LPOTIS                    8
+//#define BINSEL                    9
+//#define QUADENC                   10
+//#define JOYSTICK                  11
+//#define STATUSLED                 12
+//#define DLED                      13
+//#define KEYPAD                    14
+#define SERIAL_TO_LINUXCNC        15
+#define PROTOCOl_DEBUG_VERBOSE    16
+//#define ETHERNET_UDP_TO_LINUXCNC  17
+//#define ETHERNET_TCP_TO_LINUXCNC 18 // FUTURE
+//define WIFI_TCP_TO_LINUXCNC      19 // FUTURE
+//define WIFI_UDP_TO_LINUXCNC     20 // FUTURE
+//#define MEMORY_MONITOR              21 // Requires https://github.com/mpflaga/Arduino-MemoryFree/
 
 //################################################### SERIAL CONNECTION OPTIONS ###################################################
 #define DEFAULT_SERIAL_BAUD_RATE 115200
@@ -61,7 +63,10 @@ const uint16_t RX_BUFFER_SIZE = 512; // Serial, TCP and UDP connections utilize 
 const uint8_t BOARD_INDEX = 0; // Each board connecting to the server should have a differnet index number.
 
 #ifdef SERIAL_TO_LINUXCNC
-const uint16_t SERIAL_RX_TIMEOUT = 5000;
+const uint16_t SERIAL_RX_TIMEOUT = 5000; // This value is used by the Serial-version of the 
+// Connection object as the amount of time beween retries of messages such as MT_HANDSHAKE
+// and 2*SERIAL_RX_TIMEOUT as the connection timeout period. 
+// MINIMUM RECOMMENDED TIMEOUT = 1000.  Highly recommended that the timeout be set to 1000ms or greater.
 #endif
 //################################################### ETHERNET CONNECTION OPTIONS ###################################################
 // Requires an Arduino / Shield that is compatible with the Arduino Ethernet Library
@@ -105,8 +110,8 @@ byte ARDUINO_MAC[] = {
 
                  
 #ifdef INPUTS //Use Arduino IO's as Inputs. Define how many Inputs you want in total and then which Pins you want to be Inputs.
-  const int Inputs = 1;               //number of inputs using internal Pullup resistor. (short to ground to trigger)
-  int InPinmap[] = {3};
+  const int Inputs = 2;               //number of inputs using internal Pullup resistor. (short to ground to trigger)
+  int InPinmap[] = {2, 3};
 #endif
 
                                        //Use Arduino IO's as Toggle Inputs, which means Inputs (Buttons for example) keep HIGH State after Release and Send LOW only after beeing Pressed again. 
@@ -119,7 +124,7 @@ byte ARDUINO_MAC[] = {
                     //Use Arduino IO's as Outputs. Define how many Outputs you want in total and then which Pins you want to be Outputs.
 #ifdef OUTPUTS
   const int Outputs = 1;              //number of outputs
-  int OutPinmap[] = {3};
+  int OutPinmap[] = {4};
 #endif
 
                     //Use Arduino PWM Capable IO's as PWM Outputs. Define how many  PWM Outputs you want in total and then which Pins you want to be  PWM Outputs.
@@ -145,9 +150,9 @@ byte ARDUINO_MAC[] = {
   #include <OneWire.h>
   #include <DallasTemperature.h>
 
-  const int TmpSensors = 1;  // The Dallas-compatible sesnsors can share a pin and be indexed by an int value when reading.
+  const int TmpSensors = 2;  // The Dallas-compatible sesnsors can share a pin and be indexed by an int value when reading.
   // This version is expecting 1 sensor per pin. Future todo: add multi sensors per-pin support
-  int TmpSensorMap[] = {2};
+  int TmpSensorMap[] = {2,3};
   DallasTemperature * TmpSensorControlMap[TmpSensors];
   #define TEMP_OUTPUT_C 1 // 1 to output in C, any other value to output in F
 #endif

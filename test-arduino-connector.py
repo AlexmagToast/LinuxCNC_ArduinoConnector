@@ -4,8 +4,8 @@ from arduinointerface import ConnectionType
 from arduinointerface import SerialConnetion
 import serial, time, os
 
-#connection = '/dev/ttyACM0' 	#this is the port your Arduino is connected to. You can check with ""sudo dmesg | grep tty"" in Terminal
-connection = '/dev/tty.usbmodemF412FA68D6802'
+connection = '/dev/ttyACM0' 	#this is the port your Arduino is connected to. You can check with ""sudo dmesg | grep tty"" in Terminal
+#connection = '/dev/tty.usbmodemF412FA68D6802'
 # Map of board index IDs and a human-readable alias
 # This map gets used by the connection manager to track the connection state of each mapped arduino
 arduinoMap = { 1:'myArduinoUno'}
