@@ -68,9 +68,9 @@ FeatureTypes = {
 debug_comm = True
 
 #serial_dev = '/dev/ttyACM0' 
-serial_dev = '/dev/tty.usbmodemF412FA68D6802'
+#serial_dev = '/dev/tty.usbmodemF412FA68D6802'
 
-arduino = serial.Serial(serial_dev, 115200, timeout=1.0, xonxoff=False, rtscts=False, dsrdtr=True)
+#arduino = None #serial.Serial(serial_dev, 115200, timeout=1, xonxoff=False, rtscts=False, dsrdtr=True)
 
 protocol_ver = 1
 
@@ -263,12 +263,14 @@ class Connection:
 
 
 class SerialConnetion(Connection):
-    def __init__(self, myType:ConnectionType):
+    def __init__(self, myType:ConnectionType, dev:str):
         super().__init__(myType)
         self.buffer = bytes()
         self.shutdown = False
-        arduino.timeout = 1
+        
         self.daemon = None
+        self.arduino = serial.Serial(dev, 115200, timeout=1, xonxoff=False, rtscts=False, dsrdtr=True)
+        self.arduino.timeout = 1
         
     def isSerialConnection(self):
         return True
@@ -285,18 +287,18 @@ class SerialConnetion(Connection):
         
     def sendMessage(self, b: bytes):
         #return super().sendMessage()
-        arduino.write(b)
-        arduino.flush()
+        self.arduino.write(b)
+        self.arduino.flush()
     
     def sendCommand(self, m:str):
         cm = MessageEncoder().encodeBytes(mt=MessageType.MT_COMMAND, payload=[m, 1])
         self.sendMessage(bytes(cm))
         
     def rxTask(self):
-        arduino.timeout = 1
+        
         while(self.shutdown == False):
             try:
-                data = arduino.read()
+                data = self.arduino.read()
                 if data == b'\x00':
                     #print(bytes(self.buffer))
                     #strb = ''

@@ -7,7 +7,7 @@ from arduinointerface import SerialConnetion
 import serial, time, os
 
 #connection = '/dev/ttyACM0' 	#this is the port your Arduino is connected to. You can check with ""sudo dmesg | grep tty"" in Terminal
-connection = '/dev/tty.usbmodemF412FA68D6802'
+#connection = '/dev/tty.usbmodemF412FA68D6802'
 # Map of board index IDs and a human-readable alias
 # This map gets used by the connection manager to track the connection state of each mapped arduino
 arduinoMap = { 1:'myArduinoUno'}
@@ -163,7 +163,7 @@ min_update_interval = 100
 
 
 #setup Serial connection
-arduino = serial.Serial(connection, 115200, timeout=1, xonxoff=False, rtscts=False, dsrdtr=True)
+#arduino = serial.Serial(connection, 115200, timeout=1, xonxoff=False, rtscts=False, dsrdtr=True)
 ######## GlobalVariables ########
 
 event = time.time()
@@ -240,26 +240,26 @@ def managageOutputs():
 				oldMledStates[mled] = State
 				time.sleep(0.01)
     
-sc = SerialConnetion(ConnectionType.SERIAL)
+sc = SerialConnetion(ConnectionType.SERIAL, dev='/dev/tty.usbmodemF412FA68D6802')
 sc.startRxTask()
     
 while True:
 	try:
 		try:
-			if sc.getState(0) == ConnectionState.CONNECTED:
-				command = "{}{}:{}\n".format('O', '4', '0')
-				sc.sendCommand(command)
+			#if sc.getState(0) == ConnectionState.CONNECTED:
+			#	command = "{}{}:{}\n".format('O', '4', '0')
+			#	sc.sendCommand(command)
 			cmd = sc.rxQueue.get(block=False, timeout=100)
 
 			#if cmd != None:
 			#	processCommand(cmd.payload)
 		except Empty:
 			time.sleep(.1)
-			if sc.getState(0) == ConnectionState.CONNECTED:
-				time.sleep(.1)
-				command = "{}{}:{}\n".format('O', '4', '1')
-				sc.sendCommand(command)
-				time.sleep(.1)
+			#if sc.getState(0) == ConnectionState.CONNECTED:
+			#	time.sleep(.1)
+			#	command = "{}{}:{}\n".format('O', '4', '1')
+			#	sc.sendCommand(command)
+			#	time.sleep(.1)
 	except KeyboardInterrupt:
 		sc.stopRxTask()
 		sc = None
