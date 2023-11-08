@@ -381,6 +381,7 @@ def processCommand(data: str):
 			if (Debug):print ("Incoming Command!:{}.".format(cmd))
 
 			if cmd == "I":
+				value = int(value)
 				if value == 1:
 					if c["din.{}-invert".format(io)] == 0:
 						c["din.{}".format(io)] = 1
@@ -401,10 +402,12 @@ def processCommand(data: str):
 
 
 			elif cmd == "A":
+				value = int(value)
 				c["ain.{}".format(io)] = value
 				if (Debug):print("ain.{}:{}".format(io,value))
 
 			elif cmd == "L":
+				value = int(value)
 				for Poti in range(LPoti):
 					if LPotiLatches[Poti][0] == io and SetLPotiValue[Poti] == 0:
 						for Pin in range(LPotiLatches[Poti][1]):
@@ -420,6 +423,7 @@ def processCommand(data: str):
 						if(Debug):print("lpoti.{}.{} = 0".format("out",LPotiValues[Poti][value]))
 
 			elif cmd == "K":
+				value = int(value)
 				if SetBinSelKnobValue[0] == 0:
 					for port in range(BinSelKnobPos):
 						if port == value:
@@ -432,24 +436,26 @@ def processCommand(data: str):
 					c["binselknob.{}.{}" .format(0,"out")] = BinSelKnobvalues[0][value]
 
 			elif cmd == "M":
-					if value == 1:
-						if Destination[io] == 1 and LinuxKeyboardInput == 1:
-							subprocess.call(["xdotool", "key", Chars[io]])
-						if(Debug):print("Emulating Keypress{}".format(Chars[io]))
-						if Destination[io] == 2 and LinuxKeyboardInput == 1:
-							subprocess.call(["xdotool", "type", Chars[io]])
-						if(Debug):print("Emulating Keypress{}".format(Chars[io]))
-							
-						else:
-							c["keypad.{}".format(Chars[io])] = 1
-						if(Debug):print("keypad{}:{}".format(Chars[io],1))
+				value = int(value)
+				if value == 1:
+					if Destination[io] == 1 and LinuxKeyboardInput == 1:
+						subprocess.call(["xdotool", "key", Chars[io]])
+					if(Debug):print("Emulating Keypress{}".format(Chars[io]))
+					if Destination[io] == 2 and LinuxKeyboardInput == 1:
+						subprocess.call(["xdotool", "type", Chars[io]])
+					if(Debug):print("Emulating Keypress{}".format(Chars[io]))
+						
+					else:
+						c["keypad.{}".format(Chars[io])] = 1
+					if(Debug):print("keypad{}:{}".format(Chars[io],1))
 
-					if value == 0 & Destination[io] == 0:
-						c["keypad.{}".format(Chars[io])] = 0
-						if(Debug):print("keypad{}:{}".format(Chars[io],0))
+				if value == 0 & Destination[io] == 0:
+					c["keypad.{}".format(Chars[io])] = 0
+					if(Debug):print("keypad{}:{}".format(Chars[io],0))
 
 						
 			elif cmd == "R":
+				value = int(value)
 				if JoySticks > 0:
 					for pins in range(JoySticks*2):
 						if (io == JoyStickPins[pins]):
