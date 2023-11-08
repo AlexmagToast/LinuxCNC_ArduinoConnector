@@ -18,12 +18,11 @@
 //#define DLED                      13
 //#define KEYPAD                    14
 #define SERIAL_TO_LINUXCNC        15
-#define PROTOCOl_DEBUG_VERBOSE    16
-//#define ETHERNET_UDP_TO_LINUXCNC  17
-//#define ETHERNET_TCP_TO_LINUXCNC 18 // FUTURE
-//define WIFI_TCP_TO_LINUXCNC      19 // FUTURE
-//define WIFI_UDP_TO_LINUXCNC     20 // FUTURE
-//#define MEMORY_MONITOR              21 // Requires https://github.com/mpflaga/Arduino-MemoryFree/
+//#define ETHERNET_UDP_TO_LINUXCNC  16
+//#define ETHERNET_TCP_TO_LINUXCNC 17 // FUTURE
+//define WIFI_TCP_TO_LINUXCNC      18 // FUTURE
+//define WIFI_UDP_TO_LINUXCNC     19 // FUTURE
+//#define MEMORY_MONITOR              20 // Requires https://github.com/mpflaga/Arduino-MemoryFree/
 
 //################################################### SERIAL CONNECTION OPTIONS ###################################################
 #define DEFAULT_SERIAL_BAUD_RATE 115200
@@ -63,10 +62,7 @@ const uint16_t RX_BUFFER_SIZE = 512; // Serial, TCP and UDP connections utilize 
 const uint8_t BOARD_INDEX = 0; // Each board connecting to the server should have a differnet index number.
 
 #ifdef SERIAL_TO_LINUXCNC
-const uint16_t SERIAL_RX_TIMEOUT = 5000; // This value is used by the Serial-version of the 
-// Connection object as the amount of time beween retries of messages such as MT_HANDSHAKE
-// and 2*SERIAL_RX_TIMEOUT as the connection timeout period. 
-// MINIMUM RECOMMENDED TIMEOUT = 1000.  Highly recommended that the timeout be set to 1000ms or greater.
+const uint16_t SERIAL_RX_TIMEOUT = 1000; // This value is used by the Serial-version of the Connection object as the amount of time beween retries of messages such as MT_HANDSHAKE and 2*SERIAL_RX_TIMEOUT as the connection timeout period. MINIMUM RECOMMENDED TIMEOUT = 1000.  Highly recommended that the timeout be set to 1000ms or greater.
 #endif
 //################################################### ETHERNET CONNECTION OPTIONS ###################################################
 // Requires an Arduino / Shield that is compatible with the Arduino Ethernet Library

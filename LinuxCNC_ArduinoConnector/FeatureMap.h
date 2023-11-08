@@ -22,7 +22,7 @@ struct featureMap
     #ifdef DEBUG
       bitSet(this->features, DEBUG);
     #endif
-    #ifdef DEBUG
+    #ifdef DEBUG_PROTOCOL_VERBOSE
       bitSet(this->features, DEBUG_PROTOCOL_VERBOSE);
     #endif
     #ifdef INPUTS
