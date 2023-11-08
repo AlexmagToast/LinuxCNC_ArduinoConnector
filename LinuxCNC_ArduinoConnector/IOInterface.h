@@ -372,17 +372,17 @@ void readTmpInputs(ConnectionBase* client){
     for(int i= 0;i<TmpSensors; i++){
       DallasTemperature * sensor = TmpSensorControlMap[i];
       sensor->requestTemperatures(); 
-      int v = sensor->getTempCByIndex(0); // Future Todo: Add in support for multiple sensors per pin.
+      double v = sensor->getTempCByIndex(0); // Future Todo: Add in support for multiple sensors per pin.
       // The sensor is returning a double. Future Todo: Enable an option that ouputs the double value if desired
-      int v_f = (v * 9/5) + 32; // Perform conversion to Farenheit if output in F is toggled on below
+      double v_f = (v * 9/5) + 32; // Perform conversion to Farenheit if output in F is toggled on below
       
       if(inTmpSensorState[i]!= v){
         inTmpSensorState[i] = v;
         
         #if TEMP_OUTPUT_C == 1
-          client->SendPinStatusMessage('T',TmpSensorMap[i],inTmpSensorState[i]);
+          client->SendPinStatusMessage('T',TmpSensorMap[i],inTmpSensorState[i], 2);
         #else
-          client->SendPinStatusMessage('T',TmpSensorMap[i],v_f);
+          client->SendPinStatusMessage('T',TmpSensorMap[i],v_f, 2);
         #endif
       }
     }

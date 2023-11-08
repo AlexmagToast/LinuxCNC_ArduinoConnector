@@ -46,6 +46,18 @@ public:
     _sendPinStatusMessage();
   }
 
+  virtual void SendPinStatusMessage(char sig, int pin, double state, int decimals)
+  {
+    String status = String(sig);
+    status += String(pin);
+    status += ":";
+    status += String(state, decimals);
+    protocol::pm.status = status;
+    protocol::pm.status += " ";
+    _sendPinStatusMessage();
+  }
+
+
   void DoWork()
   {
     if( _initialized == false)

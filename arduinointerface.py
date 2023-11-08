@@ -63,12 +63,12 @@ FeatureTypes = {
     'MEMORY_MONITOR':19
 }
 
-
+debug_comm = True
 
 #serial_dev = '/dev/ttyACM0' 
 serial_dev = '/dev/tty.usbmodemF412FA68D6802'
 
-arduino = serial.Serial(serial_dev, 115200, timeout=1, xonxoff=False, rtscts=False, dsrdtr=True)
+arduino = serial.Serial(serial_dev, 115200, timeout=1.0, xonxoff=False, rtscts=False, dsrdtr=True)
 
 protocol_ver = 1
 
@@ -127,12 +127,6 @@ class MessageDecoder:
         data_bytes = b[2:]
         data_bytes = data_bytes[:-1]
         self.crc = b[-1:]
-        
-        #strb = ''
-        #for b1 in bytes(b):
-        #    strb += f'[{hex(b1)}]'
-        #print(strb)
-        
         #strc = ''
         #print('Data_Bytes=')
         #for b1 in bytes(data_bytes):
@@ -141,36 +135,8 @@ class MessageDecoder:
         #test = msgpack.unpackb(b'\x92\xA4\x49\x33\x3A\x30\x01', use_list=False, raw=False)
         if self.validateCRC( data=data_bytes, crc=self.crc) == False:
             raise Exception(f"Error. CRC validation failed for received message. Bytes = {b}")
-        #buf = BytesIO(data_bytes)
-        #unpacker = msgpack.Unpacker(buf, raw=True)
-        #for unpacked in unpacker:
-        #    print(f'RX: {unpacked}, Type={type(unpacked)}')
-       
-
         
         self.payload = msgpack.unpackb(data_bytes, use_list=True, raw=False)
-        #unpacker = Unpacker(data=bytes)
-        
-        #unpacker.feed(data=data_bytes)
-        '''
-        09:43:56.932 -> msgpack test start
-        09:43:56.932 -> [0x92] 
-        09:43:56.932 -> [0xA4] 
-        09:43:56.932 -> [0x49] 
-        09:43:56.932 -> [0x33] 
-        09:43:56.932 -> [0x3A] 
-        09:43:56.932 -> [0x30] 
-        09:43:56.932 -> [0x1] 
-        09:43:56.932 -> msgpack test success
-        '''
-        #print('')
-
-            #me = MessageEncoder().encodeBytes(mt = MessageType.MT_HANDSHAKE.value[0], payload= self.payload)   
-
-        #except Exception as error:
-        #    just_the_string = traceback.format_exc()
-        #    print(just_the_string)
-        #    raise error
 
 class MessageEncoder:
     #def __init__(self):
@@ -189,9 +155,7 @@ class MessageEncoder:
         crc_enc = self.getCRC(data=data_enc)
         eot_enc = b'\x00'
         return len_enc + mt_enc + data_enc + crc_enc + eot_enc    
-        #except Exception as ex:
-        #    print(f'ERROR: {str(ex)}')
-        #    raise ex
+
 
 
 RX_MAX_QUEUE_SIZE = 10
@@ -204,7 +168,7 @@ class ArduinoConn:
         self.lastMessageReceived = time.process_time()
     def setState(self, newState:ConnectionState):
         if newState != self.connectionState:
-            print(f'PYDEBUG Board Index: {self.boardIndex}, changing state from {self.connectionState} to {newState}')
+            if debug_comm:print(f'PYDEBUG Board Index: {self.boardIndex}, changing state from {self.connectionState} to {newState}')
             self.connectionState = newState
 
 
@@ -212,51 +176,49 @@ class Connection:
     # Constructor
     def __init__(self, myType:ConnectionType):
         self.connectionType = myType
-        self.arduinos = [ArduinoConn(bi=0, cs=ConnectionState.DISCONNECTED, timeout=3000)] #hard coded for testing, should be based on config
+        self.arduinos = [ArduinoConn(bi=0, cs=ConnectionState.DISCONNECTED, timeout=3)] #hard coded for testing, should be based on config
         self.rxQueue = Queue(RX_MAX_QUEUE_SIZE)
     
     def onMessageRecv(self, m:MessageDecoder):
         if m.messageType == MessageType.MT_HANDSHAKE:
-            print(f'PYDEBUG onMessageRecv() - Recvied MT_HANDSHAKE, Values = {m.payload}')
+            if debug_comm:print(f'PYDEBUG onMessageRecv() - Received MT_HANDSHAKE, Values = {m.payload}')
             if m.payload[0] != protocol_ver:
                 debugstr = f'PYDEBUG Error. Protocol version mismatched. Expected {protocol_ver}, got {m.payload[0]}'
-                print(debugstr)
+                if debug_comm:print(debugstr)
                 raise Exception(debugstr)
             bi = m.payload[2]-1 # board index is always sent over incremeented by one
             fmd = FeatureMapDecoder(m.payload[1])
             #ef = fmd.getEnabledFeatures()
-
+            
             self.arduinos[bi].setState(ConnectionState.CONNECTED)
-            self.arduinos[bi].lastMessageReceived = time.process_time()
+            self.arduinos[bi].lastMessageReceived = time.time()
             hsr = MessageEncoder().encodeBytes(mt=MessageType.MT_HANDSHAKE, payload=m.payload)
             self.sendMessage(bytes(hsr))
             
         if m.messageType == MessageType.MT_HEARTBEAT:
-            print(f'PYDEBUG onMessageRecv() - Recvied MT_HEARTBEAT, Values = {m.payload}')
+            if debug_comm:print(f'PYDEBUG onMessageRecv() - Received MT_HEARTBEAT, Values = {m.payload}')
             bi = m.payload[0]-1 # board index is always sent over incremeented by one
             if self.arduinos[bi].connectionState != ConnectionState.CONNECTED:
                 debugstr = f'PYDEBUG Error. Received message from arduino ({m.payload[0]-1}) prior to completing handshake. Ignoring.'
-                print(debugstr)
+                if debug_comm:print(debugstr)
                 return
-            #self.arduinos[bi].setState(ConnectionState.CONNECTED)
-            self.arduinos[bi].lastMessageReceived = time.process_time()
+            self.arduinos[bi].lastMessageReceived = time.time()
             hb = MessageEncoder().encodeBytes(mt=MessageType.MT_HEARTBEAT, payload=m.payload)
             self.sendMessage(bytes(hb))
         if m.messageType == MessageType.MT_PINSTATUS:
-            print(f'PYDEBUG onMessageRecv() - Recvied MT_PINSTATUS, Values = {m.payload}')
+            if debug_comm:print(f'PYDEBUG onMessageRecv() - Received MT_PINSTATUS, Values = {m.payload}')
             bi = m.payload[1]-1 # board index is always sent over incremeented by one
             if self.arduinos[bi].connectionState != ConnectionState.CONNECTED:
                 debugstr = f'PYDEBUG Error. Received message from arduino ({m.payload[1]-1}) prior to completing handshake. Ignoring.'
-                print(debugstr)
+                if debug_comm:print(debugstr)
                 return
-            #self.arduinos[bi].setState(ConnectionState.CONNECTED)
-            self.arduinos[bi].lastMessageReceived = time.process_time()
+            self.arduinos[bi].lastMessageReceived = time.time()
             try:
                 self.rxQueue.put(m, timeout=5)
             except Queue.Empty:
-                print("PYDEBUG Error. Timed out waiting to gain access to RxQueue!")
+                if debug_comm:print("PYDEBUG Error. Timed out waiting to gain access to RxQueue!")
             except Queue.Full:
-                print("Error. RxQueue is full!")
+                if debug_comm:print("Error. RxQueue is full!")
             #return None 
             #hb = MessageEncoder().encodeBytes(mt=MessageType.MT_HEARTBEAT, payload=m.payload)
             #self.sendMessage(bytes(hb))
@@ -264,7 +226,7 @@ class Connection:
     def sendMessage(self, b:bytes):
         pass
 
-    def update_state(self):
+    def updateState(self):
         for arduino in self.arduinos:
             if arduino.connectionState == ConnectionState.DISCONNECTED:
                 #self.lastMessageReceived = time.process_time()
@@ -274,12 +236,12 @@ class Connection:
                 #if time.process_time() - arduino.lastMessageReceived >= arduino.timeout:
                 #    arduino.setState(ConnectionState.CONNECTING)
             elif arduino.connectionState == ConnectionState.CONNECTED:
-                pass
-                #if time.process_time() - arduino.lastMessageReceived >= arduino.timeout:
-                #    arduino.setState(ConnectionState.DISCONNECTED)
+                #d = time.time() - arduino.lastMessageReceived
+                if (time.time() - arduino.lastMessageReceived) >= arduino.timeout:
+                    arduino.setState(ConnectionState.DISCONNECTED)
 
-
-        # at startup, the arduino map will be empty until a connection is made
+    def getState(self, index:int):
+        return arduino[index].connectionState()
   
  
 
@@ -289,7 +251,7 @@ class SerialConnetion(Connection):
         super().__init__(myType)
         self.buffer = bytes()
         self.shutdown = False
-        arduino.timeout = 3000
+        arduino.timeout = 1
         self.daemon = None
         
     def isSerialConnection(self):
@@ -308,7 +270,13 @@ class SerialConnetion(Connection):
     def sendMessage(self, b: bytes):
         #return super().sendMessage()
         arduino.write(b)
+    
+    def sendCommand(self, m:str):
+        cm = MessageEncoder().encodeBytes(mt=MessageType.MT_COMMAND, payload=m)
+        self.sendMessage(bytes(cm))
+        
     def rxTask(self):
+        arduino.timeout = 1
         while(self.shutdown == False):
             try:
                 data = arduino.read()
@@ -333,6 +301,7 @@ class SerialConnetion(Connection):
                     self.buffer = bytes()
                 else:
                     self.buffer += bytearray(data)
+                self.updateState()
             except Exception as error:
                 just_the_string = traceback.format_exc()
                 print(just_the_string)
