@@ -124,7 +124,7 @@ Serial.begin(DEFAULT_SERIAL_BAUD_RATE);
 #endif
 #ifdef DEBUG
 #ifdef MEMORY_MONITOR
-  Serial.print(F("DEBUG: FREE RAM: "));
+  Serial.print(F("ARDUINO DEBUG: FREE RAM: "));
   Serial.println(freeMemory());
 #endif
 #endif
@@ -221,13 +221,14 @@ void commUpdate(){
   if( prior_state != new_state )
   {
     #ifdef DEBUG
-      Serial.print("DEBUG: ConnectionState changed from: [");
+      Serial.print("ARDUINO DEBUG: _Client ConnectionState changed from: [");
       Serial.print(_client.stateToString(prior_state));
       Serial.print("] to [");
       Serial.print(_client.stateToString(_client.GetState()));
       Serial.println("]");
     #endif
     if (new_state == CS_DISCONNECTED)
+    {
       #ifdef STATUSLED
         StatLedErr(500,200);
       #endif
@@ -241,9 +242,14 @@ void commUpdate(){
           digitalWrite(StatLedPin, HIGH);
         }
       #endif 
+    }
     if (new_state == CS_CONNECTED)
     {
+      #ifdef DEBUG
+        Serial.println("ARDUINO DEBUG: RECONNECTED - SENDING PIN STATES..");
+      #endif
       do_io(1); // send pin status data on reconnect, force update
+
       #ifdef STATUSLED
         StatLedErr(1000,1000);
       #endif
@@ -256,7 +262,7 @@ void commUpdate(){
   }
   else
   {
-    do_io(1); // Do IO reads without forcing full update
+    do_io(0); // Do IO reads without forcing full update
     if( _client.CommandReceived() == true )
     {
       auto cm = _client.GetReceivedCommand();
@@ -274,7 +280,7 @@ void commUpdate(){
 
 void do_io(uint8_t forceUpdate){
   //#ifdef DEBUG
-  //  Serial.println("DEBUG: resending data following reconnect..");
+  //  Serial.println("ARDUINO DEBUG: resending data following reconnect..");
   //#endif
     
   #ifdef INPUTS

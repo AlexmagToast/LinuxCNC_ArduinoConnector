@@ -53,7 +53,7 @@ public:
   virtual void _onError(){}
   uint8_t _onInit(){
     #ifdef DEBUG
-      Serial.println("DEBUG: UDPClient::onInit() called..");
+      Serial.println("ARDUINO DEBUG: UDPClient::onInit() called..");
     #endif
     // disable SD card if one in the slot
     //pinMode(4,OUTPUT);
@@ -62,16 +62,16 @@ public:
     delay(1000);
     #ifdef DEBUG
       #if DHCP == 1
-        Serial.println("DEBUG: Initializing Ethernet. DHCP = Enabled");
+        Serial.println("ARDUINO DEBUG: Initializing Ethernet. DHCP = Enabled");
       #else
-        Serial.print("DEBUG: Initializing Ethernet. DHCP = False. Static IP = ");
+        Serial.print("ARDUINO DEBUG: Initializing Ethernet. DHCP = False. Static IP = ");
         Serial.println(this->_IpAddress2String(this->_myIP));
       #endif
     #endif
     #if DHCP == 1
       if (Ethernet.begin(this->_myMAC) == 0) {
         #ifdef DEBUG
-          Serial.print("DEBUG: Failed to configure Ethernet using DHCP");
+          Serial.print("ARDUINO DEBUG: Failed to configure Ethernet using DHCP");
         #endif
       }
       #else
@@ -81,7 +81,7 @@ public:
 
     if (Ethernet.hardwareStatus() == EthernetNoHardware) {
       #ifdef DEBUG
-          Serial.println("DEBUG: Ethernet shield was not found.  Sorry, can't run without hardware. :(");
+          Serial.println("ARDUINO DEBUG: Ethernet shield was not found.  Sorry, can't run without hardware. :(");
       #endif
       // no point in carrying on, so do nothing forevermore:
       while (true) {
@@ -90,19 +90,19 @@ public:
 
     } else if (Ethernet.linkStatus() == LinkOFF) {
       #ifdef DEBUG
-          Serial.println("DEBUG: Ethernet cable is not connected.");
+          Serial.println("ARDUINO DEBUG: Ethernet cable is not connected.");
       #endif
     }
 
     #ifdef DEBUG
-      Serial.print("DEBUG: My IP address: ");
+      Serial.print("ARDUINO DEBUG: My IP address: ");
       Serial.println(Ethernet.localIP());
     #endif
       // start UDP
     this->_udpClient.begin(_rxPort);
 
     #ifdef DEBUG
-      Serial.println("DEBUG: UDPClient::_init() completed");
+      Serial.println("ARDUINO DEBUG: UDPClient::_init() completed");
     #endif
     return 1;
   }

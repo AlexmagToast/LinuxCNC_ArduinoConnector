@@ -96,8 +96,8 @@ public:
     MsgPacketizer::send(Serial, MT_PINSTATUS, _getPinStatusMessage());
     //Serial.print(byte(0x00));
     //Serial.write(byte(0xff));
-    Serial.flush();
-    delay(1000);
+    //erial.flush();
+    //delay(1000);
   }
 
   

@@ -55,7 +55,7 @@ namespace protocol
 
   struct CommandMessage {
       String cmd;
-      uint8_t boardIndex = BOARD_INDEX+1;
+      int boardIndex = BOARD_INDEX;
       MSGPACK_DEFINE(cmd, boardIndex); 
   }cm;
   

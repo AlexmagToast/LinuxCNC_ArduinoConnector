@@ -93,7 +93,7 @@ struct featureMap
 
   void DumpFeatureMapToSerial()
   {
-    Serial.print("DEBUG: Feature Map = 0x");
+    Serial.print("ARDUINO DEBUG: Feature Map = 0x");
     Serial.println(this->features, HEX);
     int flag = 0;
     #ifdef DEBUG

@@ -2,13 +2,13 @@
 #define CONFIG_H_
 
 #define ENABLE_FEATUREMAP
-//#define DEBUG                     0
+#define DEBUG                     0
 #define INPUTS                    1                       
 //#define SINPUTS                   2                      
 //#define OUTPUTS                   3
 //#define PWMOUTPUTS                4
 //#define AINPUTS                   5   
-//#define DALLAS_TEMP_SENSOR        6
+#define DALLAS_TEMP_SENSOR        6
 //#define LPOTIS                    7
 //#define BINSEL                    8
 //#define QUADENC                   9
@@ -61,7 +61,7 @@ const uint16_t RX_BUFFER_SIZE = 512; // Serial, TCP and UDP connections utilize 
 const uint8_t BOARD_INDEX = 0; // Each board connecting to the server should have a differnet index number.
 
 #ifdef SERIAL_TO_LINUXCNC
-const uint16_t SERIAL_RX_TIMEOUT = 1000;
+const uint16_t SERIAL_RX_TIMEOUT = 5000;
 #endif
 //################################################### ETHERNET CONNECTION OPTIONS ###################################################
 // Requires an Arduino / Shield that is compatible with the Arduino Ethernet Library

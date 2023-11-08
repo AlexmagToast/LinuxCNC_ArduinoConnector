@@ -360,7 +360,7 @@ void readInputs(ConnectionBase* client){
       
       if(InState[i]!= State && millis()- lastInputDebounce[i] > debounceDelay){
         InState[i] = State;
-        client->SendPinStatusMessage('I',InPinmap[i], 1);//InState[i]);
+        client->SendPinStatusMessage('I',InPinmap[i],InState[i]);
       
       lastInputDebounce[i] = millis();
       }
@@ -571,7 +571,7 @@ void commandReceived(char cmd, uint16_t io, uint16_t value){
 
 
   #ifdef DEBUG
-    Serial.print("DEBUG: IO Processor Received= ");
+    Serial.print("ARDUINO DEBUG: IO Processor Received= ");
     Serial.print(cmd);
     Serial.print(io);
     Serial.print(":");
@@ -607,7 +607,7 @@ void pushCommand(int b){
         else
         {
           #ifdef DEBUG
-          Serial.print("DEBUG: Invalid character: ");
+          Serial.print("ARDUINO DEBUG: Invalid character: ");
           Serial.println(current);
           #endif
         }
@@ -626,7 +626,7 @@ void pushCommand(int b){
         }
         else{
           #ifdef DEBUG
-          Serial.print("DEBUG: Invalid character: ");
+          Serial.print("ARDUINO DEBUG: Invalid character: ");
           Serial.println(current);
           #endif
         }

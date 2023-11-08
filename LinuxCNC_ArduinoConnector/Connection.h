@@ -3,6 +3,8 @@
 #pragma once
 #include "Protocol.h"
 
+//#define DEBUG_PROTOCOL
+
 enum ConnectionState
 {
   CS_DISCONNECTED = 0,
@@ -39,7 +41,8 @@ public:
     status += String(pin);
     status += ":";
     status += String(state);
-    protocol::pm.status = "I3:0";
+    protocol::pm.status = status;
+    protocol::pm.status += ":";
     _sendPinStatusMessage();
   }
 
@@ -48,7 +51,7 @@ public:
     if( _initialized == false)
     {
       this->_onInit();
-      delay(1000);
+      //delay(1000);
       _initialized = true;
     }
 
@@ -75,7 +78,7 @@ public:
         _commandReceived = 0;
         /*
         #ifdef DEBUG
-          Serial.print("DEBUG: UDP disconnected, retrying connection to ");
+          Serial.print("ARDUINO DEBUG: UDP disconnected, retrying connection to ");
           Serial.print(this->IpAddress2String(this->_serverIP));
           Serial.print(":");
           Serial.print(this->_txPort);
@@ -94,19 +97,20 @@ public:
           this->_setState(CS_CONNECTED);
           _resendTimer = millis();
           _receiveTimer = millis();
-          
+          return;
         }
         else if(millis() > this->_resendTimer + _retryPeriod)
         {
           // TIMED OUT
           this->_setState(CS_ERROR);
-
+          return;
         }
         break;
       }
       case CS_RECONNECTED:
          this->_setState(CS_CONNECTED);
-         break;
+         return;
+         //break;
       case CS_CONNECTED:
       {
         if(_getHandshakeReceived())
@@ -114,13 +118,14 @@ public:
           this->_setState(CS_RECONNECTED);
           _resendTimer = millis();
           _receiveTimer = millis();
+          return;
         }
-        if ( millis() > this->_resendTimer + _retryPeriod )
+        else if ( millis() > this->_resendTimer + _retryPeriod )
         {
           _sendHeartbeatMessage();
           _resendTimer = millis();
         }
-        if ( _getHeartbeatReceived() ) // Heartbeat received, reset timeout
+        else if ( _getHeartbeatReceived() ) // Heartbeat received, reset timeout
         {
           //String message = "Hello - I am debug from the Arduino!";
           //SendDebugMessage(message);
@@ -129,6 +134,7 @@ public:
         else if ( millis() > this->_receiveTimer + (_retryPeriod*2) )
         {
           this->_setState(CS_CONNECTION_TIMEOUT);
+          return;
           //sendHeartbeatMessage();
           //this->_resendTimer = millis();
         }
@@ -154,6 +160,7 @@ public:
       case CS_ERROR:
       {
         this->_setState(CS_DISCONNECTED);
+        return;
         //return 0;
       }
     }
@@ -227,39 +234,39 @@ protected:
 
   void _onHandshakeMessage(const protocol::HandshakeMessage& n)
   {
-      #ifdef DEBUG
-      Serial.println("DEBUG: ---- RX HANDSHAKE MESSAGE DUMP ----");
-      Serial.print("DEBUG: Protocol Version: 0x");
+      #ifdef DEBUG_PROTOCOL
+      Serial.println("ARDUINO DEBUG: ---- RX HANDSHAKE MESSAGE DUMP ----");
+      Serial.print("ARDUINO DEBUG: Protocol Version: 0x");
       Serial.println(n.protocolVersion, HEX);
-      Serial.print("DEBUG: Feature Map: 0x");
+      Serial.print("ARDUINO DEBUG: Feature Map: 0x");
       Serial.println(n.featureMap, HEX);
-      Serial.print("DEBUG: Board Index: ");
+      Serial.print("ARDUINO DEBUG: Board Index: ");
       Serial.println(n.boardIndex);
-      Serial.println("DEBUG: ---- RX END HANDSHAKE MESSAGE DUMP ----");
+      Serial.println("ARDUINO DEBUG: ---- RX END HANDSHAKE MESSAGE DUMP ----");
       #endif
       _handshakeReceived = 1;
   }
 
   void _onHeartbeatMessage(const protocol::HeartbeatMessage& n)
   {
-      #ifdef DEBUG
-      Serial.println("DEBUG: ---- RX HEARTBEAT MESSAGE DUMP ----");
-      Serial.print("DEBUG: Board Index: ");
+      #ifdef DEBUG_PROTOCOL
+      Serial.println("ARDUINO DEBUG: ---- RX HEARTBEAT MESSAGE DUMP ----");
+      Serial.print("ARDUINO DEBUG: Board Index: ");
       Serial.println(n.boardIndex);
-      Serial.println("DEBUG: ---- RX END HEARTBEAT MESSAGE DUMP ----");
+      Serial.println("ARDUINO DEBUG: ---- RX END HEARTBEAT MESSAGE DUMP ----");
       #endif
       _heartbeatReceived = 1;
   }
 
   void _onCommandMessage(const protocol::CommandMessage& n)
   {
-      #ifdef DEBUG
-      Serial.println("DEBUG: ---- RX COMMAND MESSAGE DUMP ----");
-      Serial.print("DEBUG: Command: ");
+      #ifdef DEBUG_PROTOCOL
+      Serial.println("ARDUINO DEBUG: ---- RX COMMAND MESSAGE DUMP ----");
+      Serial.print("ARDUINO DEBUG: Command: ");
       Serial.println(n.cmd);
-      Serial.print("DEBUG: Board Index: ");
+      Serial.print("ARDUINO DEBUG: Board Index: ");
       Serial.println(n.boardIndex);
-      Serial.println("DEBUG: ---- RX END COMMAND MESSAGE DUMP ----");
+      Serial.println("ARDUINO DEBUG: ---- RX END COMMAND MESSAGE DUMP ----");
       #endif
       protocol::cm.cmd = n.cmd;
       protocol::cm.boardIndex = n.boardIndex;
@@ -270,7 +277,7 @@ protected:
   {
     #ifdef DEBUG
       Serial.flush();
-      Serial.print("DEBUG: Connection transitioning from current state of [");
+      Serial.print("ARDUINO DEBUG: Connection transitioning from current state of [");
       Serial.print(this->stateToString(this->_myState));
       Serial.print("] to [");
       Serial.print(this->stateToString(new_state));
@@ -283,39 +290,39 @@ protected:
   protocol::HandshakeMessage& _getHandshakeMessage()
   {
     protocol::hm.featureMap = this->_featureMap;
-    #ifdef DEBUG
-      Serial.println("DEBUG: ---- TX HANDSHAKE MESSAGE DUMP ----");
-      Serial.print("DEBUG: Protocol Version: 0x");
+    #ifdef DEBUG_PROTOCOL
+      Serial.println("ARDUINO DEBUG: ---- TX HANDSHAKE MESSAGE DUMP ----");
+      Serial.print("ARDUINO DEBUG: Protocol Version: 0x");
       Serial.println(protocol::hm.protocolVersion, HEX);
-      Serial.print("DEBUG: Feature Map: 0x");
+      Serial.print("ARDUINO DEBUG: Feature Map: 0x");
       Serial.println(protocol::hm.featureMap, HEX);
-      Serial.print("DEBUG: Board Index: ");
+      Serial.print("ARDUINO DEBUG: Board Index: ");
       Serial.println(protocol::hm.boardIndex);
-      Serial.println("DEBUG: ---- TX END HANDSHAKE MESSAGE DUMP ----");
+      Serial.println("ARDUINO DEBUG: ---- TX END HANDSHAKE MESSAGE DUMP ----");
     #endif
     return protocol::hm;
   }
 
   protocol::HeartbeatMessage& _getHeartbeatMessage()
   {
-    #ifdef DEBUG
-      Serial.println("DEBUG: ---- TX HEARTBEAT MESSAGE DUMP ----");
-      Serial.print("DEBUG: Board Index: ");
+    #ifdef DEBUG_PROTOCOL
+      Serial.println("ARDUINO DEBUG: ---- TX HEARTBEAT MESSAGE DUMP ----");
+      Serial.print("ARDUINO DEBUG: Board Index: ");
       Serial.println(protocol::hb.boardIndex);
-      Serial.println("DEBUG: ---- TX END HEARTBEAT MESSAGE DUMP ----");
+      Serial.println("ARDUINO DEBUG: ---- TX END HEARTBEAT MESSAGE DUMP ----");
     #endif
     return protocol::hb;
   }
   
   protocol::PinStatusMessage& _getPinStatusMessage()
   {
-    #ifdef DEBUG
-      Serial.println("DEBUG: ---- TX PINSTATUS MESSAGE DUMP ----");
-      Serial.print("DEBUG: STATUS: ");
+    #ifdef DEBUG_PROTOCOL
+      Serial.println("ARDUINO DEBUG: ---- TX PINSTATUS MESSAGE DUMP ----");
+      Serial.print("ARDUINO DEBUG: STATUS: ");
       Serial.println(protocol::pm.status);      
-      Serial.print("DEBUG: Board Index: ");
+      Serial.print("ARDUINO DEBUG: Board Index: ");
       Serial.println(protocol::pm.boardIndex);
-      Serial.println("DEBUG: ---- TX END PINSTATUS MESSAGE DUMP ----");
+      Serial.println("ARDUINO DEBUG: ---- TX END PINSTATUS MESSAGE DUMP ----");
     #endif
     return protocol::pm;
   }
@@ -325,12 +332,12 @@ protected:
   {
     protocol::dm.message = message;
     // No need to wrap in DEBUG define as the entire method is only compiled in when DEBUG is defined
-    Serial.println("DEBUG: ---- TX DEBUG MESSAGE DUMP ----");
-    Serial.print("DEBUG: Board Index: ");
+    Serial.println("ARDUINO DEBUG: ---- TX DEBUG MESSAGE DUMP ----");
+    Serial.print("ARDUINO DEBUG: Board Index: ");
     Serial.println(protocol::dm.boardIndex);
-    Serial.print("DEBUG: Message: ");
+    Serial.print("ARDUINO DEBUG: Message: ");
     Serial.println(protocol::dm.message);
-    Serial.println("DEBUG: ---- TX END DEBUG MESSAGE DUMP ----");
+    Serial.println("ARDUINO DEBUG: ---- TX END DEBUG MESSAGE DUMP ----");
     return protocol::dm;
   }
   #endif

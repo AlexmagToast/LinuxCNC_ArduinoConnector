@@ -90,7 +90,7 @@ class FeatureMapDecoder:
     
     def getIndexOfFeature(self, str:str):
         if str.upper() not in FeatureTypes.keys():
-            raise Exception(f'DEBUG: Error, key {str} not found in FeatureTypes map.')
+            raise Exception(f'PYDEBUG Error, key {str} not found in FeatureTypes map.')
         t = FeatureTypes[str.upper()]
         return FeatureTypes[str.upper()]
 
@@ -123,13 +123,47 @@ class MessageDecoder:
         
     def parseBytes(self, b:bytes):
         #try:
-        self.messageType = b[0]
-        data_bytes = b[:-1][1:]
+        self.messageType = b[1]
+        data_bytes = b[2:]
+        data_bytes = data_bytes[:-1]
         self.crc = b[-1:]
+        
+        #strb = ''
+        #for b1 in bytes(b):
+        #    strb += f'[{hex(b1)}]'
+        #print(strb)
+        
+        #strc = ''
+        #print('Data_Bytes=')
+        #for b1 in bytes(data_bytes):
+        #    strc += f'[{hex(b1)}]'
+        #print(strc)
+        #test = msgpack.unpackb(b'\x92\xA4\x49\x33\x3A\x30\x01', use_list=False, raw=False)
         if self.validateCRC( data=data_bytes, crc=self.crc) == False:
             raise Exception(f"Error. CRC validation failed for received message. Bytes = {b}")
-        buf = BytesIO(data_bytes)
-        self.payload = msgpack.unpackb(data_bytes, raw=False) 
+        #buf = BytesIO(data_bytes)
+        #unpacker = msgpack.Unpacker(buf, raw=True)
+        #for unpacked in unpacker:
+        #    print(f'RX: {unpacked}, Type={type(unpacked)}')
+       
+
+        
+        self.payload = msgpack.unpackb(data_bytes, use_list=True, raw=False)
+        #unpacker = Unpacker(data=bytes)
+        
+        #unpacker.feed(data=data_bytes)
+        '''
+        09:43:56.932 -> msgpack test start
+        09:43:56.932 -> [0x92] 
+        09:43:56.932 -> [0xA4] 
+        09:43:56.932 -> [0x49] 
+        09:43:56.932 -> [0x33] 
+        09:43:56.932 -> [0x3A] 
+        09:43:56.932 -> [0x30] 
+        09:43:56.932 -> [0x1] 
+        09:43:56.932 -> msgpack test success
+        '''
+        #print('')
 
             #me = MessageEncoder().encodeBytes(mt = MessageType.MT_HANDSHAKE.value[0], payload= self.payload)   
 
@@ -170,7 +204,7 @@ class ArduinoConn:
         self.lastMessageReceived = time.process_time()
     def setState(self, newState:ConnectionState):
         if newState != self.connectionState:
-            print(f'DEBUG: Board Index: {self.boardIndex}, changing state from {self.connectionState} to {newState}')
+            print(f'PYDEBUG Board Index: {self.boardIndex}, changing state from {self.connectionState} to {newState}')
             self.connectionState = newState
 
 
@@ -183,9 +217,9 @@ class Connection:
     
     def onMessageRecv(self, m:MessageDecoder):
         if m.messageType == MessageType.MT_HANDSHAKE:
-            print(f'DEBUG: onMessageRecv() - Recvied MT_HANDSHAKE, Values = {m.payload}')
+            print(f'PYDEBUG onMessageRecv() - Recvied MT_HANDSHAKE, Values = {m.payload}')
             if m.payload[0] != protocol_ver:
-                debugstr = f'DEBUG: Error. Protocol version mismatched. Expected {protocol_ver}, got {m.payload[0]}'
+                debugstr = f'PYDEBUG Error. Protocol version mismatched. Expected {protocol_ver}, got {m.payload[0]}'
                 print(debugstr)
                 raise Exception(debugstr)
             bi = m.payload[2]-1 # board index is always sent over incremeented by one
@@ -198,10 +232,10 @@ class Connection:
             self.sendMessage(bytes(hsr))
             
         if m.messageType == MessageType.MT_HEARTBEAT:
-            #print(f'DEBUG: onMessageRecv() - Recvied MT_HEARTBEAT, Values = {m.payload}')
+            print(f'PYDEBUG onMessageRecv() - Recvied MT_HEARTBEAT, Values = {m.payload}')
             bi = m.payload[0]-1 # board index is always sent over incremeented by one
             if self.arduinos[bi].connectionState != ConnectionState.CONNECTED:
-                debugstr = f'DEBUG: Error. Received message from arduino ({m.payload[0]-1}) prior to completing handshake. Ignoring.'
+                debugstr = f'PYDEBUG Error. Received message from arduino ({m.payload[0]-1}) prior to completing handshake. Ignoring.'
                 print(debugstr)
                 return
             #self.arduinos[bi].setState(ConnectionState.CONNECTED)
@@ -209,10 +243,10 @@ class Connection:
             hb = MessageEncoder().encodeBytes(mt=MessageType.MT_HEARTBEAT, payload=m.payload)
             self.sendMessage(bytes(hb))
         if m.messageType == MessageType.MT_PINSTATUS:
-            print(f'DEBUG: onMessageRecv() - Recvied MT_PINSTATUS, Values = {m.payload}')
+            print(f'PYDEBUG onMessageRecv() - Recvied MT_PINSTATUS, Values = {m.payload}')
             bi = m.payload[1]-1 # board index is always sent over incremeented by one
             if self.arduinos[bi].connectionState != ConnectionState.CONNECTED:
-                debugstr = f'DEBUG: Error. Received message from arduino ({m.payload[1]-1}) prior to completing handshake. Ignoring.'
+                debugstr = f'PYDEBUG Error. Received message from arduino ({m.payload[1]-1}) prior to completing handshake. Ignoring.'
                 print(debugstr)
                 return
             #self.arduinos[bi].setState(ConnectionState.CONNECTED)
@@ -220,7 +254,7 @@ class Connection:
             try:
                 self.rxQueue.put(m, timeout=5)
             except Queue.Empty:
-                print("DEBUG: Error. Timed out waiting to gain access to RxQueue!")
+                print("PYDEBUG Error. Timed out waiting to gain access to RxQueue!")
             except Queue.Full:
                 print("Error. RxQueue is full!")
             #return None 
@@ -280,17 +314,22 @@ class SerialConnetion(Connection):
                 data = arduino.read()
                 if data == b'\x00':
                     #print(bytes(self.buffer))
+                    #strb = ''
+                    #print('Bytes from wire: ')
+                    #for b in bytes(self.buffer):
+                    #    strb += f'[{hex(b)}]'
+                    #print(strb)
                     try:
-                        md = MessageDecoder(bytes(self.buffer)[1:])
+                        md = MessageDecoder(bytes(self.buffer))
                         self.onMessageRecv(m=md)
                     except Exception as ex:
-                        print(f'DEBUG: {str(ex)}')
+                        print(f'PYDEBUG {str(ex)}')
                 
                     #arduino.write(bytes(self.buffer))
                     self.buffer = bytes()
                 elif data == b'\n':
                     self.buffer += bytearray(data)
-                    #print(bytes(self.buffer).decode('utf8', errors='ignore'))
+                    print(bytes(self.buffer).decode('utf8', errors='ignore'))
                     self.buffer = bytes()
                 else:
                     self.buffer += bytearray(data)
