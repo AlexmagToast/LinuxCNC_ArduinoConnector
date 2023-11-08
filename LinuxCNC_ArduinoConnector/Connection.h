@@ -131,7 +131,7 @@ public:
           _receiveTimer = millis();
           return;
         }
-        else if ( millis() > this->_resendTimer + _retryPeriod )
+        else if ( millis() > this->_resendTimer + (_retryPeriod/2) )
         {
           _sendHeartbeatMessage();
           _resendTimer = millis();
