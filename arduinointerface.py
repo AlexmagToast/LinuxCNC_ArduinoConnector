@@ -67,8 +67,8 @@ FeatureTypes = {
 
 debug_comm = True
 
-serial_dev = '/dev/ttyACM0' 
-#serial_dev = '/dev/tty.usbmodemF412FA68D6802'
+#serial_dev = '/dev/ttyACM0' 
+serial_dev = '/dev/tty.usbmodemF412FA68D6802'
 
 arduino = serial.Serial(serial_dev, 115200, timeout=1.0, xonxoff=False, rtscts=False, dsrdtr=True)
 
