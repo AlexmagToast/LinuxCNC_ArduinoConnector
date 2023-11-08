@@ -42,7 +42,7 @@ public:
     status += ":";
     status += String(state);
     protocol::pm.status = status;
-    protocol::pm.status += ":";
+    protocol::pm.status += " ";
     _sendPinStatusMessage();
   }
 
