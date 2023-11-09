@@ -15,7 +15,7 @@ fi
 pip3 install .
 sudo chmod +x arduino-connector.py
 sudo cp arduino-connector.py /usr/bin/arduino-connector
-echo To test: execute hal_run and then loadusr arduino-connector
+echo To test: execute 'hal_run' and then 'loadusr arduino-connector'
 #set +x #echo off
 
 # Commands that you don't want running as root would be invoked
