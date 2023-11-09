@@ -66,6 +66,10 @@ sc = SerialConnetion(ConnectionType.SERIAL, dev = '/dev/ttyACM0')
 # FUTURE (not yet implemented): This map gets used by the connection manager to track the connection state of each mapped arduino
 arduinoMap = { 0:'myArduinoUno'}
 
+# Set how many Analog Inputs you have programmed in Arduino and which pins are Analog Inputs, you can set as many as your Arduino has Analog pins. List the connected pins below.
+DallasTempSensors = 2				#number of Dalllas-Compatible Temperature Sensors, Set DallasTempSensors = 0 to disable 
+InDallasTempSensors = [2, 3]			#Which pins are mapped to the temperature sensors?
+
 # Set how many Inputs you have programmed in Arduino and which pins are Inputs, Set Inputs = 0 to disable
 Inputs = 0
 InPinmap = [8,9] #Which Pins are Inputs?
@@ -187,7 +191,7 @@ LedGndPins = 3
 
 
 
-Debug = 1		#only works when this script is run from halrun in Terminal. "halrun","loadusr arduino" now Debug info will be displayed.
+Debug = 1		#only works when this script is run from halrun in Terminal. "halrun","loadusr arduino-connector" now Debug info will be displayed.
 
 ########  End of Config!  ########
 
@@ -198,6 +202,7 @@ olddOutStates= [0]*Outputs
 oldPwmOutStates=[0]*PwmOutputs
 oldDLEDStates=[0]*DLEDcount
 oldMledStates = [0]*LedVccPins*LedGndPins
+oldDallasStates = [0]*DallasTempSensors
 
 if LinuxKeyboardInput:
 	import subprocess
@@ -219,6 +224,10 @@ min_update_interval = 100
 for port in range(Inputs):
 	c.newpin("din.{}".format(InPinmap[port]), hal.HAL_BIT, hal.HAL_OUT)
 	c.newparam("din.{}-invert".format(InPinmap[port]), hal.HAL_BIT, hal.HAL_RW)
+
+for sensor in range(DallasTempSensors):
+	c.newpin("tin.{}".format(InDallasTempSensors[sensor]), hal.HAL_FLOAT, hal.HAL_IN)
+	oldDallasStates[sensor] = 0.0
 
 # setup Output halpins
 for port in range(Outputs):
@@ -297,19 +306,6 @@ event = time.time()
 
 ######## Functions ########
 
-def keepAlive(event):
-	return event + timeout < time.time()
-
-def readinput(input_str):
-	for i in range(50):
-
-		if input_str:
-			string = input_str.decode()  # convert the byte string to a unicode string
-			print (string)
-			num = int(string) # convert the unicode string to an int
-	return num
-
-
 def extract_nbr(input_str):
 	if input_str is None or input_str == '':
 		return 0
@@ -369,16 +365,17 @@ def processCommand(data: str):
 	try:
 		cmd = data[0][0]
 		if cmd == "":
-			if (Debug):print ("No Command!:{}".format(cmd))
+			if (Debug):print ("PYDEBUG No Command!:{}".format(cmd))
 		
 		else:
 			if not data[0][1]:
 				io = 0
 			else:
-				io = extract_nbr(data[0])
+				io = data[0][1]#.split(':')[1] #extract_nbr(data[0])
 			value = data[0].split(':')[-1].strip()#extract_nbr(data[0])
+			
 			#if value<0: value = 0
-			if (Debug):print ("Incoming Command!:{}.".format(cmd))
+			if (Debug):print (f"PYDEBUG: Incoming Command: {data}")
 
 			if cmd == "I":
 				value = int(value)
@@ -389,16 +386,10 @@ def processCommand(data: str):
 					else: 
 						c["din.{}".format(io)] = 0
 						if(Debug):print("din{}:{}".format(io,0))
-					
-					
-				if value == 0:
-					if c["din.{}-invert".format(io)] == 0:
-						c["din.{}".format(io)] = 0
-						if(Debug):print("din{}:{}".format(io,0))
-					else: 
-						c["din.{}".format(io)] = 1
-						if(Debug):print("din{}:{}".format(io,1))
-				else:pass
+		
+			if cmd == "T":
+				value = float(value)
+				c[f"tin.{io}"] = value
 
 
 			elif cmd == "A":
