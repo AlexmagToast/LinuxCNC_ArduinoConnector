@@ -2,9 +2,10 @@
 from queue import Empty
 import traceback
 from numpy import block
-from arduinointerface import ConnectionState, ConnectionType
-from arduinointerface import SerialConnetion
+
 import serial, time, os
+
+from linuxcnc_arduinoconnector.ArduinoConnector import ConnectionType, SerialConnetion
 
 #connection = '/dev/ttyACM0' 	#this is the port your Arduino is connected to. You can check with ""sudo dmesg | grep tty"" in Terminal
 #connection = '/dev/tty.usbmodemF412FA68D6802'

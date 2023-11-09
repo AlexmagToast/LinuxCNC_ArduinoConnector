@@ -1,14 +1,14 @@
-#!/usr/bin/python3.9
+#!/usr/bin/python3.11
 from asyncio import QueueEmpty
 import traceback
 from numpy import block
-from ArduinoConnector import ConnectionState, ConnectionType
-from ArduinoConnector import SerialConnetion
+from linuxcnc_arduinoconnector.ArduinoConnector import ConnectionType, SerialConnetion, ConnectionState
 from queue import Empty, Queue
 import serial, time, hal
 # ADDITIONAL PYTHON LIBRARIES TO SUPPORT NEW PROTOCOL STACK:
 # strenum
 # crc8
+# may need to execute export PYTHON_KEYRING_BACKEND=keyring.backends.null.Keyring if installing on Debian using poetry
 #	LinuxCNC_ArduinoConnector
 #	By Alexander Richter, info@theartoftinkering.com 2022
 
@@ -494,8 +494,8 @@ while True:
 		except Empty:
 			time.sleep(.1)
 	except KeyboardInterrupt:
-		sc.stopRxTask()
-		sc = None
+		#sc.stopRxTask()
+		#sc = None
 		raise SystemExit
 	except Exception as ex:
 		just_the_string = traceback.format_exc()
