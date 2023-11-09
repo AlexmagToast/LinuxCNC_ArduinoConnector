@@ -325,12 +325,3 @@ class SerialConnetion(Connection):
                 just_the_string = traceback.format_exc()
                 print(just_the_string)
 		
-#def main():
-#    sc = SerialConnetion(ConnectionType.SERIAL)
-#    sc.startRxTask()
-#    while(True):
-#        time.sleep(1)
-
-
-#if __name__ == '__main__':
-#    sys.exit(main()) 

@@ -2,8 +2,8 @@
 from asyncio import QueueEmpty
 import traceback
 from numpy import block
-from arduinointerface import ConnectionState, ConnectionType
-from arduinointerface import SerialConnetion
+from ArduinoConnector import ConnectionState, ConnectionType
+from ArduinoConnector import SerialConnetion
 from queue import Empty, Queue
 import serial, time, hal
 # ADDITIONAL PYTHON LIBRARIES TO SUPPORT NEW PROTOCOL STACK:
