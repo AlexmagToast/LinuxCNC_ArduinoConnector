@@ -58,14 +58,15 @@ import serial, time, hal
 #	along with this program; if not, write to the Free Software
 #	Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-
-c = hal.component("arduino") 	#name that we will cal pins from in hal
-#connection = '/dev/ttyACM0' 	#this is the port your Arduino is connected to. You can check with ""sudo dmesg | grep tty"" in Terminal
+c = hal.component("arduino")
 sc = SerialConnetion(ConnectionType.SERIAL, dev = '/dev/ttyACM0')
 # Map of board index IDs and a human-readable alias
 # FUTURE (not yet implemented): This map gets used by the connection manager to track the connection state of each mapped arduino
 arduinoMap = { 0:'myArduinoUno'}
-
+connectionPin = "connected"
+errorCount = 0
+errorCountPin = "error_count"
+errorCountResetPin = "error_count_reset"
 # Set how many Analog Inputs you have programmed in Arduino and which pins are Analog Inputs, you can set as many as your Arduino has Analog pins. List the connected pins below.
 DallasTempSensors = 2				#number of Dalllas-Compatible Temperature Sensors, Set DallasTempSensors = 0 to disable 
 InDallasTempSensors = [2, 3]			#Which pins are mapped to the temperature sensors?
@@ -219,6 +220,10 @@ InPinmap += sInPinmap
 counter_last_update = {}
 min_update_interval = 100
 ######## SetUp of HalPins ########
+#setup connection pin
+c.newpin(f'{connectionPin}.0', hal.HAL_BIT, hal.HAL_IN)
+c.newpin(f'{errorCountPin}.0', hal.HAL_U32, hal.HAL_IN)
+c.newpin(f'{errorCountResetPin}.0', hal.HAL_BIT, hal.HAL_IN)
 
 # setup Input halpins
 for port in range(Inputs):
@@ -317,6 +322,7 @@ def extract_nbr(input_str):
 	return int(out_number)
 
 def managageOutputs():
+	global errorCount
 	for port in range(PwmOutputs):
 		State = int(c["pwmout.{}".format(PwmOutPinmap[port])])
 		if oldPwmOutStates[port] != State: 	#check if states have changed
@@ -360,8 +366,29 @@ def managageOutputs():
 				if (Debug):print ("PYDEBUG: Sending:{}".format(command.encode()))
 				oldMledStates[mled] = State
 				time.sleep(0.01)
+
+def updateConnectionPin(connected:bool):
+	global errorCount
+	try:
+		if connected == True :	
+			c[f"{connectionPin}.0"] = 1
+		else:
+			c[f"{connectionPin}.0"] = 0
+		c[f"{errorCountPin}.0"] = errorCount
+		s = int(c[f'{errorCountResetPin}.0']) #pwmout.{}".format(PwmOutPinmap[port])])
+		if s == 0: 
+			errorCount = 0
+			c[f'{errorCountResetPin}.0'] = 1
+		
+
+	except Exception as ex:
+		errorCount += 1
+		just_the_string = traceback.format_exc()
+		if Debug:print(just_the_string)
     
+
 def processCommand(data: str):
+	global errorCount
 	try:
 		cmd = data[0][0]
 		if cmd == "":
@@ -467,6 +494,7 @@ def processCommand(data: str):
 					if QuadEncSig[io]== 2:
 								c["counter.{}".format(io)] = value
 	except Exception as ex:
+		errorCount += 1
 		just_the_string = traceback.format_exc()
 		if Debug:print(just_the_string)
     
@@ -476,9 +504,11 @@ sc.startRxTask()
 while True:
 	try:
 		try:
-
 			if sc.getState(0) == ConnectionState.CONNECTED:
+				updateConnectionPin(True)
 				managageOutputs()
+			else:
+				updateConnectionPin(False)
 			cmd = sc.rxQueue.get(block=False, timeout=100)
 			if cmd != None:
 				processCommand(cmd.payload)
@@ -489,6 +519,7 @@ while True:
 		#sc = None
 		raise SystemExit
 	except Exception as ex:
+		errorCount += 1
 		just_the_string = traceback.format_exc()
 		if Debug:print(just_the_string)
 
