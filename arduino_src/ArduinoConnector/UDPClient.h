@@ -173,6 +173,7 @@ public:
       Serial.println(crc, HEX);
       Serial.println("END PACKER DUMP");
     #endif
+    // The following code is to work around an existing encoding bug with MsgPacketizer, see issue https://github.com/hideakitai/MsgPacketizer/issues/15
     _udpClient.beginPacket(_serverIP, _txPort);
     _udpClient.write((byte)size);
     _udpClient.write((byte)t);
