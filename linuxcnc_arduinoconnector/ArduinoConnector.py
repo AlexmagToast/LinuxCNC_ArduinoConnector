@@ -291,6 +291,7 @@ class UDPConnection(Connection):
         self.daemon.join()
         
     def sendMessage(self, b: bytes):
+        self.sock.sendto(b, (self.fromip, self.fromport))
         #return super().sendMessage()
         #self.arduino.write(b)
         #self.arduino.flush()
@@ -315,6 +316,8 @@ class UDPConnection(Connection):
                 
                 try:
                     md = MessageDecoder(bytes(self.buffer[:-1]))
+                    self.fromip = add[0] # TODO: Allow for multiple arduino's to communicate via UDP. Hardcoding is for lazy weasels!
+                    self.fromport = add[1]
                     self.onMessageRecv(m=md)
                 except Exception as ex:
                     print(f'PYDEBUG {str(ex)}')
