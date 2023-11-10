@@ -3,6 +3,8 @@
 #pragma once
 #include "Protocol.h"
 
+#include "CRC8.h"
+#include "CRC.h"
 
 enum ConnectionState
 {
@@ -14,13 +16,15 @@ enum ConnectionState
   CS_CONNECTION_TIMEOUT,
   CS_ERROR
 };
-
+CRC8 _crc;
 class ConnectionBase {
 public:
   ConnectionBase(uint16_t retryPeriod, uint64_t& fm) : _retryPeriod(retryPeriod), _featureMap(fm)
   {
 
   }
+
+  virtual ~ConnectionBase(){}
 
   #ifdef DEBUG
   virtual void SendDebugMessage(String& message)
@@ -302,7 +306,7 @@ protected:
   {
     protocol::hm.featureMap = this->_featureMap;
     protocol::hm.timeout = _retryPeriod * 2;
-    #ifdef DEBUG_PROTOCOL_VERBOSE
+    #ifdef DEBUG_PROTOCOL_VERBOSE   
       Serial.println("ARDUINO DEBUG: ---- TX HANDSHAKE MESSAGE DUMP ----");
       Serial.print("ARDUINO DEBUG: Protocol Version: 0x");
       Serial.println(protocol::hm.protocolVersion, HEX);
@@ -376,7 +380,7 @@ protected:
   uint32_t _resendTimer = 0;
   uint32_t _receiveTimer = 0;
   uint8_t _initialized = false;
-  uint64_t& _featureMap;
+  uint64_t _featureMap = 1;
   int _myState = CS_DISCONNECTED;
   char _rxBuffer[RX_BUFFER_SIZE];
 
@@ -384,6 +388,8 @@ protected:
   uint8_t _handshakeReceived = 0;
   uint8_t _heartbeatReceived = 0;
   uint8_t _commandReceived = 0;
+
+ 
 
 };
 #endif

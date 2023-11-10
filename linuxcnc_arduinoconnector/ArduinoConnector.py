@@ -13,6 +13,7 @@ import time
 import crc8
 import traceback
 import numpy
+import socket
 
 class ConnectionType(StrEnum):
     SERIAL = 'SERIAL'
@@ -180,7 +181,11 @@ class Connection:
         self.connectionType = myType
         self.arduinos = [ArduinoConn(bi=0, cs=ConnectionState.DISCONNECTED, timeout=10)] #TODO: Fix this. hard coded for testing, should be based on config
         self.rxQueue = Queue(RX_MAX_QUEUE_SIZE)
-    
+
+    def sendCommand(self, m:str):
+        cm = MessageEncoder().encodeBytes(mt=MessageType.MT_COMMAND, payload=[m, 1])
+        self.sendMessage(bytes(cm))
+
     def onMessageRecv(self, m:MessageDecoder):
         if m.messageType == MessageType.MT_HANDSHAKE:
             if debug_comm:print(f'PYDEBUG onMessageRecv() - Received MT_HANDSHAKE, Values = {m.payload}')
@@ -261,9 +266,68 @@ class Connection:
   
  
 
+class UDPConnection(Connection):
+    def __init__(self,  listenip:str, listenport:int, maxpacketsize=512, myType = ConnectionType.UDP):
+        super().__init__(myType)
+        self.buffer = bytes()
+        self.shutdown = False
+        self.maxPacketSize = maxpacketsize
+        self.daemon = None
+        self.listenip = listenip
+        self.listenport = listenport
+        self.sock = socket.socket(socket.AF_INET, # Internet
+                     socket.SOCK_DGRAM) # UDP
+        self.sock.bind((listenip, listenport))
+        self.sock.settimeout(.5)
+    
+    def startRxTask(self):
+        # create and start the daemon thread
+        #print('Starting background proceed watch task...')
+        self.daemon = Thread(target=self.rxTask, daemon=False, name='Arduino RX')
+        self.daemon.start()
+        
+    def stopRxTask(self):
+        self.shutdown = True
+        self.daemon.join()
+        
+    def sendMessage(self, b: bytes):
+        #return super().sendMessage()
+        #self.arduino.write(b)
+        #self.arduino.flush()
+        pass
 
+        
+    def rxTask(self):
+        while(self.shutdown == False):
+            try:
+                self.buffer, add = self.sock.recvfrom(self.maxPacketSize)
+                output = ''
+                for b in self.buffer:
+                    output += f'[{hex(b)}] '
+                print(output)
+                #(b'\x05\x02\x94\x01\xce\x02\x01\x07\x11\xcd\x13\x88\x01m\x00', [], 0, ('192.168.1.88', 54321))
+                #b"\x0c\x02\x94\x01\xcd\x80\x11\xcd'\x10\x01#"
+                #sz = self.buffer[0]
+                #payload = self.buffer[:-1]
+                #b = self.buffer[sz:]
+	            #print("Echoing data back to " + str(client_address))
+                #sent = sock.sendto(payload, client_address)
+                
+                try:
+                    md = MessageDecoder(bytes(self.buffer[:-1]))
+                    self.onMessageRecv(m=md)
+                except Exception as ex:
+                    print(f'PYDEBUG {str(ex)}')
+                
+                self.updateState()
+            except TimeoutError:
+                pass
+            except Exception as error:
+                just_the_string = traceback.format_exc()
+                print(just_the_string)
+		
 class SerialConnetion(Connection):
-    def __init__(self, myType:ConnectionType, dev:str):
+    def __init__(self, dev:str, myType = ConnectionType.SERIAL):
         super().__init__(myType)
         self.buffer = bytes()
         self.shutdown = False
@@ -272,9 +336,6 @@ class SerialConnetion(Connection):
         self.arduino = serial.Serial(dev, 115200, timeout=1, xonxoff=False, rtscts=False, dsrdtr=True)
         self.arduino.timeout = 1
         
-    def isSerialConnection(self):
-        return True
-    
     def startRxTask(self):
         # create and start the daemon thread
         #print('Starting background proceed watch task...')

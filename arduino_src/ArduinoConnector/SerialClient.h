@@ -33,7 +33,7 @@ SOFTWARE.
 #include "Connection.h"
 
 using namespace protocol;
-class SerialClient :virtual public ConnectionBase {
+class SerialClient : public ConnectionBase {
 public:
     // Future TODO: Support selection of a different Serial interface other than just the default 'Serial'
     SerialClient(uint16_t retryPeriod, uint64_t& fm)
@@ -41,6 +41,10 @@ public:
   {
 
   }
+
+  ~SerialClient(){}
+
+
 
   // Virtual interfaces from Connection class
   virtual void _onConnect(){}
@@ -92,12 +96,7 @@ public:
   }
   virtual void _sendPinStatusMessage()
   { 
-    //MsgPacketizer::send(this->_client, this->_mi, hm);
     MsgPacketizer::send(Serial, MT_PINSTATUS, _getPinStatusMessage());
-    //Serial.print(byte(0x00));
-    //Serial.write(byte(0xff));
-    //erial.flush();
-    //delay(1000);
   }
 
   

@@ -3,10 +3,10 @@
 
 #define ENABLE_FEATUREMAP
 #define DEBUG                     0
-//#define DEBUG_PROTOCOL_VERBOSE    1
+#define DEBUG_PROTOCOL_VERBOSE    1
 //s#define INPUTS                    2                       
 //#define SINPUTS                   3                      
-#define OUTPUTS                   4
+//#define OUTPUTS                   4
 //#define PWMOUTPUTS                5
 //#define AINPUTS                   6   
 //#define DALLAS_TEMP_SENSOR        7
@@ -17,8 +17,8 @@
 //#define STATUSLED                 12
 //#define DLED                      13
 //#define KEYPAD                    14
-#define SERIAL_TO_LINUXCNC        15
-//#define ETHERNET_UDP_TO_LINUXCNC  16
+//#define SERIAL_TO_LINUXCNC        15 // Only select ONE option for the connection type
+#define ETHERNET_UDP_TO_LINUXCNC  16
 //#define ETHERNET_TCP_TO_LINUXCNC 17 // FUTURE
 //define WIFI_TCP_TO_LINUXCNC      18 // FUTURE
 //define WIFI_UDP_TO_LINUXCNC     19 // FUTURE
@@ -31,33 +31,7 @@
 
 const uint16_t RX_BUFFER_SIZE = 512; // Serial, TCP and UDP connections utilize this constant for their RX buffers
 
-/*
-// The following are otpomizations for low-memory boards such as Arduino Unos.\
-// See https://github.com/hideakitai/MsgPacketizer#memory-management-only-for-no-stl-boards
-// TODO: Board detect & set these dynamically based on detected board
-// max publishing element size in one destination
-#define MSGPACKETIZER_MAX_PUBLISH_ELEMENT_SIZE 5
-// max destinations to publish
-#define MSGPACKETIZER_MAX_PUBLISH_DESTINATION_SIZE 1
 
-// msgpack serialized binary size
-#define MSGPACK_MAX_PACKET_BYTE_SIZE 96
-// max size of MsgPack::arr_t
-#define MSGPACK_MAX_ARRAY_SIZE 3
-// max size of MsgPack::map_t
-#define MSGPACK_MAX_MAP_SIZE 3
-// msgpack objects size in one packet
-#define MSGPACK_MAX_OBJECT_SIZE 16
-
-// max number of decoded packet queues
-#define PACKETIZER_MAX_PACKET_QUEUE_SIZE 1
-// max data bytes in packet
-#define PACKETIZER_MAX_PACKET_BINARY_SIZE 96
-// max number of callback for one stream
-#define PACKETIZER_MAX_CALLBACK_QUEUE_SIZE 3
-// max number of streams
-#define PACKETIZER_MAX_STREAM_MAP_SIZE 1
-*/
 
 const uint8_t BOARD_INDEX = 0; // Each board connecting to the server should have a differnet index number.
 
@@ -72,7 +46,7 @@ const uint16_t SERIAL_RX_TIMEOUT = 5000; // This value is used by the Serial-ver
 #include <SPI.h>
 #include <Ethernet.h>
 #define DHCP 0// 1 for DHCP, 0 for static.  DHCP support is highly expiremental and leaving this option disabled (i.e., using a static IP address) is recommended.
-const uint16_t UDP_RX_TIMOUT = 259;
+const uint16_t UDP_RX_TIMOUT = 2500;
 const int UDP_RX_PORT = 54321;
 const int UDP_TX_PORT = 54321;
 

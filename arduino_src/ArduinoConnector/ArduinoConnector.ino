@@ -118,6 +118,11 @@ Serial.begin(DEFAULT_SERIAL_BAUD_RATE);
   delay(SERIAL_START_DELAY);
 #endif
 
+#ifdef NUM_DIGITAL_PINS
+  Serial.print("Number of digital pins:");
+  Serial.println(NUM_DIGITAL_PINS);
+#endif
+
 #ifdef ENABLE_FEATUREMAP
   Serial.println("Dumping Feature Map to Serial..");
   fm.DumpFeatureMapToSerial();

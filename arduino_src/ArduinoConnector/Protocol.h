@@ -24,10 +24,39 @@ SOFTWARE.
 #pragma once
 #ifndef PROTOCOL_H_
 #define PROTOCOL_H_
-// #define MSGPACKETIZER_DEBUGLOG_ENABLE
+// The following are otpomizations for low-memory boards such as Arduino Unos.\
+// See https://github.com/hideakitai/MsgPacketizer#memory-management-only-for-no-stl-boards
+// TODO: Board detect & set these dynamically based on detected board
+// max publishing element size in one destination
+#define MSGPACKETIZER_MAX_PUBLISH_ELEMENT_SIZE 5
+// max destinations to publish
+#define MSGPACKETIZER_MAX_PUBLISH_DESTINATION_SIZE 1
+
+// msgpack serialized binary size
+#define MSGPACK_MAX_PACKET_BYTE_SIZE 96
+// max size of MsgPack::arr_t
+#define MSGPACK_MAX_ARRAY_SIZE 5
+// max size of MsgPack::map_t
+#define MSGPACK_MAX_MAP_SIZE 5
+// msgpack objects size in one packet
+#define MSGPACK_MAX_OBJECT_SIZE 64
+
+// max number of decoded packet queues
+#define PACKETIZER_MAX_PACKET_QUEUE_SIZE 1
+// max data bytes in packet
+#define PACKETIZER_MAX_PACKET_BINARY_SIZE 96
+// max number of callback for one stream
+#define PACKETIZER_MAX_CALLBACK_QUEUE_SIZE 3
+// max number of streams
+#define PACKETIZER_MAX_STREAM_MAP_SIZE 1
+
+#define MSGPACKETIZER_DEBUGLOG_ENABLE
+//#define MSGPACKETIZER_ENABLE_STREAM
+//#define MSGPACKETIZER_ENABLE_ETHER
+#define MSGPACK_MAX_OBJECT_SIZE 64
 #include <MsgPacketizer.h>
 #define PROTOCOL_VERSION 1 // Server and client must agree on version during handshake
-
+MsgPack::Packer _packer;
 namespace protocol
 {
   enum MessageTypes
@@ -40,11 +69,9 @@ namespace protocol
   };
 
   struct HandshakeMessage {
-      //String header = "MT";
       uint8_t protocolVersion = PROTOCOL_VERSION;
-      //uint16_t messageType = MT_HANDSHAKE;
-      uint64_t featureMap = 0;
-      uint32_t timeout = 0;
+      uint64_t featureMap = 0x1001;
+      uint32_t timeout = 5000;
       uint8_t boardIndex = BOARD_INDEX+1;
       MSGPACK_DEFINE(protocolVersion, featureMap, timeout, boardIndex); 
   }hm;

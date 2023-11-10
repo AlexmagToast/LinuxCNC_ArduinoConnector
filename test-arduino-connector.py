@@ -5,7 +5,7 @@ from numpy import block
 
 import serial, time, os
 
-from linuxcnc_arduinoconnector.ArduinoConnector import ConnectionType, SerialConnetion
+from linuxcnc_arduinoconnector.ArduinoConnector import ConnectionType, SerialConnetion, UDPConnection
 
 #connection = '/dev/ttyACM0' 	#this is the port your Arduino is connected to. You can check with ""sudo dmesg | grep tty"" in Terminal
 #connection = '/dev/tty.usbmodemF412FA68D6802'
@@ -241,7 +241,8 @@ def managageOutputs():
 				oldMledStates[mled] = State
 				time.sleep(0.01)
     
-sc = SerialConnetion(ConnectionType.SERIAL, dev='/dev/tty.usbmodemF412FA68D6802')
+#sc = SerialConnetion(myType=ConnectionType.SERIAL, dev='/dev/tty.usbmodem11201')
+sc = UDPConnection(myType=ConnectionType.UDP, listenip='', listenport=54321)
 sc.startRxTask()
     
 while True:

@@ -59,13 +59,13 @@ public:
     //pinMode(4,OUTPUT);
     //digitalWrite(4,HIGH);
     Ethernet.init(ETHERNET_INIT_PIN);
-    delay(1000);
+    //delay(1000);
     #ifdef DEBUG
       #if DHCP == 1
         Serial.println("ARDUINO DEBUG: Initializing Ethernet. DHCP = Enabled");
       #else
         Serial.print("ARDUINO DEBUG: Initializing Ethernet. DHCP = False. Static IP = ");
-        Serial.println(this->_IpAddress2String(this->_myIP));
+        Serial.println(this->IpAddress2String(this->_myIP));
       #endif
     #endif
     #if DHCP == 1
@@ -129,6 +129,10 @@ public:
           [&](const protocol::HeartbeatMessage& n) {
               _onHeartbeatMessage(n);
           });
+      MsgPacketizer::subscribe(_udpClient, MT_COMMAND,
+          [&](const protocol::CommandMessage& n) {
+              _onCommandMessage(n);
+          });
         subscribed = 1;
     }
     MsgPacketizer::update();
@@ -137,7 +141,58 @@ public:
   virtual void _sendHandshakeMessage()
   { 
     //MsgPacketizer::send(this->_client, this->_mi, hm);
-    MsgPacketizer::send(_udpClient, _serverIP, _txPort, MT_HANDSHAKE, _getHandshakeMessage());
+    
+    _getHandshakeMessage();
+    //_packer.serialize(protocol::hm);
+    //const auto& packet = MsgPacketizer::encode(MT_HANDSHAKE, protocol::hm.protocolVersion, protocol::hm.featureMap, protocol::hm.timeout, protocol::hm.boardIndex);
+    MsgPack::Packer packer;
+    packer.serialize(protocol::hm);
+    uint8_t size = packer.size();
+    _crc.add((uint8_t*)packer.data(), size);
+    uint8_t crc = _crc.calc();
+    uint8_t t = MT_HANDSHAKE;
+    _crc.restart();
+
+    //MsgPack::Unpacker unpacker;
+    //    unpacker.feed(packer.data(), packer.size());
+    
+    #ifdef DEBUG_PROTOCOL_VERBOSE
+      Serial.print("START PACKER DUMP FOR MT_HANDSHAKE");
+      Serial.print("SIZE: 0x");
+      Serial.println(size, HEX);
+      Serial.print("TYPE: 0x");
+      Serial.println(t, HEX);
+      for( int x = 0; x < packer.size(); x++ )
+      {
+        Serial.print("[0x");
+        Serial.print(packer.data()[x], HEX);
+        Serial.print("]");
+
+      }
+      Serial.print("CRC: ");
+      Serial.println(crc, HEX);
+      Serial.println("END PACKER DUMP");
+    #endif
+    _udpClient.beginPacket(_serverIP, _txPort);
+    _udpClient.write((byte)size);
+    _udpClient.write((byte)t);
+    _udpClient.write((unsigned char*)packer.data(), packer.size());
+    _udpClient.write((byte)crc);
+    _udpClient.write((byte)0x0);
+    _udpClient.endPacket();
+    /*
+    Serial.print("START PACKER DUMP");
+    for( int x = 0; x < packer.size(); x++ )
+    {
+      Serial.print("[0x");
+      Serial.print(packer.data()[x], HEX);
+      Serial.print("]");
+    }
+    Serial.println("END PACKER DUMP");
+    */
+
+
+    //#MsgPacketizer::send(_udpClient, _serverIP, _txPort, MT_HANDSHAKE, _packer);    
   }
 
   virtual void _sendHeartbeatMessage()
@@ -151,6 +206,12 @@ public:
   {
     MsgPacketizer::send(_udpClient, _serverIP, _txPort, MT_DEBUG, _getDebugMessage(message));
   }
+  
+  virtual void _sendPinStatusMessage()
+  { 
+    MsgPacketizer::send(Serial, MT_PINSTATUS, _getPinStatusMessage());
+  }
+
   #endif
   
   uint8_t subscribed = false;
@@ -158,6 +219,7 @@ public:
   const char * _serverIP;
   int _rxPort;
   int _txPort;
+  
 
   byte * _myMAC;
   #if DHCP == 0
