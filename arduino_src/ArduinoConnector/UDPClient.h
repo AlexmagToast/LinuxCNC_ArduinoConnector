@@ -140,6 +140,11 @@ public:
 
   virtual void _sendHandshakeMessage()
   { 
+    size_t packetsize = _getHandshakeMessagePacked(_txBuffer);
+    _udpClient.beginPacket(_serverIP, _txPort);
+    _udpClient.write((uint8_t*)_txBuffer, packetsize);
+    _udpClient.endPacket();
+/*
     //MsgPacketizer::send(this->_client, this->_mi, hm);
     
     _getHandshakeMessage();
@@ -181,6 +186,7 @@ public:
     _udpClient.write((byte)crc);
     _udpClient.write((byte)0x0);
     _udpClient.endPacket();
+    */
     /*
     Serial.print("START PACKER DUMP");
     for( int x = 0; x < packer.size(); x++ )

@@ -241,8 +241,8 @@ def managageOutputs():
 				oldMledStates[mled] = State
 				time.sleep(0.01)
     
-#sc = SerialConnetion(myType=ConnectionType.SERIAL, dev='/dev/tty.usbmodem11201')
-sc = UDPConnection(myType=ConnectionType.UDP, listenip='', listenport=54321)
+sc = SerialConnetion(myType=ConnectionType.SERIAL, dev='/dev/tty.usbmodem11201')
+#sc = UDPConnection(myType=ConnectionType.UDP, listenip='', listenport=54321)
 sc.startRxTask()
     
 while True:
