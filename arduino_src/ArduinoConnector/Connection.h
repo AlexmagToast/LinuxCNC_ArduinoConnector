@@ -69,7 +69,7 @@ public:
       //delay(1000);
       _initialized = true;
     }
-
+    /* TODO: Move this code out to appropriate connection-deriving classes.
     #if DHCP == 1
       if(millis() > this->_dhcpMaintTimer + _retryPeriod)
       {
@@ -77,7 +77,7 @@ public:
         this->_dhcpMaintTimer = millis();
       }
     #endif
-    
+    */
 
     switch(_myState)
     {
@@ -321,6 +321,75 @@ protected:
     return protocol::hm;
   }
 
+  size_t _packetizeMessage(MsgPack::Packer& packer, uint8_t type, byte* outBuffer)
+  {
+    uint8_t psize = packer.size();
+    _crc.add((uint8_t*)packer.data(), psize);
+    uint8_t crc = _crc.calc();
+    _crc.restart();
+    uint8_t t = type;
+    uint8_t eot = 0x00;
+
+    
+    memcpy(outBuffer, (void*)&psize, sizeof(byte));
+    memcpy(((byte*)outBuffer)+1, (void*)&t, sizeof(byte));
+    memcpy(((byte*)outBuffer)+2, (void*)packer.data(), psize);
+    memcpy(((byte*)outBuffer)+2+psize, (void*)&crc, sizeof(byte));
+    memcpy(((byte*)outBuffer)+2+psize+1, (void*)&eot, sizeof(byte));
+
+    return 4 + psize;
+  }
+
+  size_t _getHandshakeMessagePacked(byte* outBuffer)
+  {
+    MsgPack::Packer packer;
+    protocol::hm.featureMap = this->_featureMap;
+    protocol::hm.timeout = _retryPeriod * 2;
+    packer.serialize(protocol::hm);
+    uint8_t size = packer.size();
+    size_t packetsize = _packetizeMessage(packer, protocol::MT_HANDSHAKE, outBuffer);
+    #ifdef DEBUG_PROTOCOL_VERBOSE
+      Serial.print("DEBUG: ---------START TX DUMP FOR MT_HANDSHAKE PAYLOAD: ");
+      for( int x = 0; x < packer.size(); x++ )
+      {
+        Serial.print("[0x");
+        Serial.print(packer.data()[x], HEX);
+        Serial.print("]");
+      }     
+      Serial.println(" --------END TX DUMP FOR MT_HANDSHAKE");
+    #endif
+
+    #ifdef DEBUG_PROTOCOL_VERBOSE
+      Serial.print("DEBUG: START TX DUMP FOR MT_HANDSHAKE");
+      for( int x = 0; x < packetsize; x++ )
+      {
+        Serial.print("[0x");
+        Serial.print(outBuffer[x], HEX);
+        Serial.print("]");
+      }     
+      Serial.println("END TX DUMP FOR MT_HANDSHAKE");
+    #endif
+    return packetsize;
+  }
+  size_t _getHeartbeatMessagePacked(byte* outBuffer)
+  {
+    MsgPack::Packer packer;
+    packer.serialize(protocol::hb);
+    uint8_t size = packer.size();
+    size_t packetsize = _packetizeMessage(packer, protocol::MT_HEARTBEAT, outBuffer);
+
+    #ifdef DEBUG_PROTOCOL_VERBOSE
+      Serial.print("DEBUG: START TX DUMP FOR MT_HEARTBEAT");
+      for( int x = 0; x < packetsize; x++ )
+      {
+        Serial.print("[0x");
+        Serial.print(_txBuffer[x], HEX);
+        Serial.print("]");
+      }     
+      Serial.println("END TX DUMP FOR MT_HEARTBEAT");
+    #endif
+    return packetsize;
+  }
   protocol::HeartbeatMessage& _getHeartbeatMessage()
   {
     #ifdef DEBUG_PROTOCOL_VERBOSE
@@ -331,7 +400,25 @@ protected:
     #endif
     return protocol::hb;
   }
-  
+  size_t _getPinStatusMessagePacked(byte* outBuffer)
+  {
+    MsgPack::Packer packer;
+    packer.serialize(protocol::pm);
+    uint8_t size = packer.size();
+    size_t packetsize = _packetizeMessage(packer, protocol::MT_PINSTATUS, outBuffer);
+
+    #ifdef DEBUG_PROTOCOL_VERBOSE
+      Serial.print("DEBUG: START TX DUMP FOR MT_PINSTATUS");
+      for( int x = 0; x < packetsize; x++ )
+      {
+        Serial.print("[0x");
+        Serial.print(_txBuffer[x], HEX);
+        Serial.print("]");
+      }     
+      Serial.println("END TX DUMP FOR MT_PINSTATUS");
+    #endif
+    return packetsize;
+  }
   protocol::PinStatusMessage& _getPinStatusMessage()
   {
     #ifdef DEBUG_PROTOCOL_VERBOSE
@@ -346,6 +433,26 @@ protected:
   }
 
   #ifdef DEBUG
+  size_t _getDebugMessagePacked(byte* outBuffer, String& message)
+  {
+    MsgPack::Packer packer;
+    protocol::dm.message = message;
+    packer.serialize(protocol::dm);
+    uint8_t size = packer.size();
+    size_t packetsize = _packetizeMessage(packer, protocol::MT_DEBUG, outBuffer);
+
+    #ifdef DEBUG_PROTOCOL_VERBOSE
+      Serial.print("DEBUG: START TX DUMP FOR MT_DEBUGMESSAGE");
+      for( int x = 0; x < packetsize; x++ )
+      {
+        Serial.print("[0x");
+        Serial.print(_txBuffer[x], HEX);
+        Serial.print("]");
+      }     
+      Serial.println("END TX DUMP FOR MT_DEBUGMESSAGE");
+    #endif
+    return packetsize;
+  }
   protocol::DebugMessage& _getDebugMessage(String& message)
   {
     protocol::dm.message = message;
@@ -376,14 +483,15 @@ protected:
     return r;
   }
 
+  
   uint16_t _retryPeriod = 0;
   uint32_t _resendTimer = 0;
   uint32_t _receiveTimer = 0;
   uint8_t _initialized = false;
-  uint64_t _featureMap = 1;
+  uint32_t _featureMap = 1;
   int _myState = CS_DISCONNECTED;
   char _rxBuffer[RX_BUFFER_SIZE];
-
+  byte _txBuffer[RX_BUFFER_SIZE];
   // Flip-flops used to signal the presence of received message types
   uint8_t _handshakeReceived = 0;
   uint8_t _heartbeatReceived = 0;

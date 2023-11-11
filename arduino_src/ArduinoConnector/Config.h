@@ -20,9 +20,10 @@
 //#define SERIAL_TO_LINUXCNC        15 // Only select ONE option for the connection type
 #define ETHERNET_UDP_TO_LINUXCNC  16
 //#define ETHERNET_TCP_TO_LINUXCNC 17 // FUTURE
-//define WIFI_TCP_TO_LINUXCNC      18 // FUTURE
-//define WIFI_UDP_TO_LINUXCNC     19 // FUTURE
-//#define MEMORY_MONITOR              20 // Requires https://github.com/mpflaga/Arduino-MemoryFree/
+//#define WIFI_TCP_TO_LINUXCNC      18 // FUTURE
+#define WIFI_UDP_TO_LINUXCNC     19 // FUTURE
+//#define WIFI_UDP_ASYNC_TO_LINUXCNC 20
+//#define MEMORY_MONITOR              21 // Requires https://github.com/mpflaga/Arduino-MemoryFree/
 
 //################################################### SERIAL CONNECTION OPTIONS ###################################################
 #define DEFAULT_SERIAL_BAUD_RATE 115200
@@ -45,6 +46,9 @@ const uint16_t SERIAL_RX_TIMEOUT = 5000; // This value is used by the Serial-ver
 #ifdef ETHERNET_UDP_TO_LINUXCNC
 #include <SPI.h>
 #include <Ethernet.h>
+#endif
+
+#if defined(ETHERNET_UDP_TO_LINUXCNC) || defined(WIFI_UDP_ASYNC_TO_LINUXCNC)
 #define DHCP 0// 1 for DHCP, 0 for static.  DHCP support is highly expiremental and leaving this option disabled (i.e., using a static IP address) is recommended.
 const uint16_t UDP_RX_TIMOUT = 2500;
 const int UDP_RX_PORT = 54321;
@@ -58,6 +62,10 @@ const int UDP_TX_PORT = 54321;
 byte ARDUINO_MAC[] = {
   0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED
 };
+
+#if defined(WIFI_UDP_ASYNC_TO_LINUXCNC)
+  #define DHCP 1 // Future TODO: Enable static IP over Wifi
+#endif
 
 #if DHCP == 0
   IPAddress ARDUINO_IP(192, 168, 1, 88);

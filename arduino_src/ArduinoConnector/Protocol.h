@@ -35,9 +35,9 @@ SOFTWARE.
 // msgpack serialized binary size
 #define MSGPACK_MAX_PACKET_BYTE_SIZE 96
 // max size of MsgPack::arr_t
-#define MSGPACK_MAX_ARRAY_SIZE 5
+#define MSGPACK_MAX_ARRAY_SIZE 7
 // max size of MsgPack::map_t
-#define MSGPACK_MAX_MAP_SIZE 5
+#define MSGPACK_MAX_MAP_SIZE 7
 // msgpack objects size in one packet
 #define MSGPACK_MAX_OBJECT_SIZE 64
 
@@ -70,8 +70,8 @@ namespace protocol
 
   struct HandshakeMessage {
       uint8_t protocolVersion = PROTOCOL_VERSION;
-      uint64_t featureMap = 0x1001;
-      uint32_t timeout = 5000;
+      uint32_t featureMap = 0x1;//00003;
+      uint32_t timeout = 1;
       uint8_t boardIndex = BOARD_INDEX+1;
       MSGPACK_DEFINE(protocolVersion, featureMap, timeout, boardIndex); 
   }hm;

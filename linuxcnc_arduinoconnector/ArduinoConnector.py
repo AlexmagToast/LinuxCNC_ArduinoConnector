@@ -63,7 +63,8 @@ FeatureTypes = {
     'ETHERNET_TCP_TO_LINUXCNC':17,
     'WIFI_TCP_TO_LINUXCNC':18,
     'WIFI_UDP_TO_LINUXCNC':19,
-    'MEMORY_MONITOR':20
+    'WIFI_UDP_ASYNC_TO_LINUXCNC':20,
+    'MEMORY_MONITOR':21
 }
 
 debug_comm = True
@@ -203,6 +204,8 @@ class Connection:
                 debugstr = f'PYDEBUG Error. Protocol version mismatched. Expected {protocol_ver}, got {m.payload[0]}'
                 if debug_comm:print(debugstr)
                 raise Exception(debugstr)
+            
+            
             fmd = FeatureMapDecoder(m.payload[1])
             if debug_comm:
                 ef = fmd.getEnabledFeatures()
@@ -278,7 +281,7 @@ class UDPConnection(Connection):
         self.sock = socket.socket(socket.AF_INET, # Internet
                      socket.SOCK_DGRAM) # UDP
         self.sock.bind((listenip, listenport))
-        self.sock.settimeout(.5)
+        self.sock.settimeout(1)
     
     def startRxTask(self):
         # create and start the daemon thread

@@ -104,6 +104,17 @@ Communication Status      = 'E' -read/Write  -Pin State: 0:0
   
 #endif
 
+#ifdef WIFI_UDP_ASYNC_TO_LINUXCNC
+  #include "UDPClientAsync.h"
+  #if DHCP == 1
+    UDPClientAsync _client(ARDUINO_MAC, SERVER_IP, fm.features, UDP_RX_PORT, UDP_TX_PORT, UDP_RX_TIMOUT);
+  #endif
+  //#else
+  //  UDPClientAsync _client(ARDUINO_IP, ARDUINO_MAC, SERVER_IP,  fm.features, UDP_RX_PORT, UDP_TX_PORT, UDP_RX_TIMOUT);
+  //#endif
+  
+#endif
+
 #ifdef SERIAL_TO_LINUXCNC
   #include "SerialClient.h"
   SerialClient _client(SERIAL_RX_TIMEOUT, fm.features);

@@ -34,11 +34,11 @@ SOFTWARE.
 #include "Connection.h"
 
 using namespace protocol;
-class UDPClient :virtual public ConnectionBase {
+class UDPClient : public ConnectionBase {
 public:
   #if DHCP == 1
-    UDPClient(byte* macAddress, const char* serverIP, uint64_t& fm, int rxPort=10001, int txPort, uint16_t retryPeriod)
-  : ConnectionBase(retryPeriod, fm), _myMAC(macAddress), _serverIP(serverIP), _rxPort(port), _txPort(port), 
+    UDPClient(byte* macAddress, const char* serverIP, uint64_t& fm, int rxPort, int txPort, uint16_t retryPeriod)
+  : ConnectionBase(retryPeriod, fm), _myMAC(macAddress), _serverIP(serverIP), _rxPort(rxPort), _txPort(txPort), 
   {    
   }
   #else

@@ -79,6 +79,9 @@ struct featureMap
     #ifdef WIFI_TCP_TO_LINUXCNC
       bitSet(this->features, WIFI_TCP_TO_LINUXCNC);
     #endif
+    #ifdef WIFI_UDP_ASYNC_TO_LINUXCNC
+      bitSet(this->features, WIFI_UDP_ASYNC_TO_LINUXCNC);
+    #endif
     #ifdef MEMORY_MONITOR
       bitSet(this->features, MEMORY_MONITOR);
     #endif
@@ -258,6 +261,14 @@ struct featureMap
         Serial.print(WIFI_TCP_TO_LINUXCNC);
         Serial.print("]");
         Serial.print(" WIFI_TCP_TO_LINUXCNC = ");
+        Serial.println(flag);
+      #endif
+      #ifdef WIFI_UDP_ASYNC_TO_LINUXCNC
+        flag = bitRead(this->features, WIFI_UDP_ASYNC_TO_LINUXCNC);
+        Serial.print("[ID");
+        Serial.print(WIFI_UDP_ASYNC_TO_LINUXCNC);
+        Serial.print("]");
+        Serial.print(" WIFI_UDP_ASYNC_TO_LINUXCNC = ");
         Serial.println(flag);
       #endif
       #ifdef MEMORY_MONITOR
