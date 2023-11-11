@@ -343,7 +343,7 @@ protected:
   size_t _getHandshakeMessagePacked(byte* outBuffer)
   {
     MsgPack::Packer packer;
-    protocol::hm.featureMap = this->_featureMap;
+    protocol::hm.featureMap = 0x1001;//this->_featureMap;
     protocol::hm.timeout = _retryPeriod * 2;
     packer.serialize(protocol::hm);
     uint8_t size = packer.size();

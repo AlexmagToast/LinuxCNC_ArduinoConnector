@@ -38,12 +38,12 @@ using namespace protocol;
 class UDPClientAsync : public ConnectionBase {
 public:
   #if DHCP == 1
-    UDPClientAsync(byte* macAddress, const char* serverIP, uint32_t& fm, int rxPort, int txPort, uint16_t retryPeriod)
+    UDPClientAsync(byte* macAddress, const char* serverIP, uint64_t& fm, int rxPort, int txPort, uint16_t retryPeriod)
   : ConnectionBase(retryPeriod, fm), _myMAC(macAddress), _serverIP(serverIP), _rxPort(rxPort), _txPort(txPort) 
   {    
   }
   #else
-    UDPClientAsync(IPAddress& arduinoIP, byte* macAddress, const char* serverIP,  uint32_t& fm, int rxPort, int txPort, uint16_t retryPeriod)
+    UDPClientAsync(IPAddress& arduinoIP, byte* macAddress, const char* serverIP,  uint64_t& fm, int rxPort, int txPort, uint16_t retryPeriod)
   : ConnectionBase(retryPeriod, fm), _myIP(arduinoIP), _myMAC(macAddress), _serverIP(serverIP), _rxPort(rxPort), _txPort(txPort)
   {
   }
@@ -73,7 +73,7 @@ public:
         
         _udpClient.onPacket([](AsyncUDPPacket packet) 
         {
-          /*
+          
             Serial.print("UDP Packet Type: ");
             Serial.print(packet.isBroadcast()?"Broadcast":packet.isMulticast()?"Multicast":"Unicast");
             Serial.print(", From: ");
@@ -87,12 +87,20 @@ public:
             Serial.print(", Length: ");
             Serial.print(packet.length());
             Serial.print(", Data: ");
-            Serial.write(packet.data(), packet.length());
-            Serial.println();
+            //Serial.write(packet.data(), packet.length());
+            //Serial.println();
+            for( int x = 0; x < packet.length(); x++ )
+            {
+              Serial.print("[0x");
+              Serial.print(packet.data()[x], HEX);
+              Serial.print("]");
+            }
+            Serial.println("");
             //reply to the client
             
-            packet.printf("Got %u bytes of data", packet.length());
-            */
+            Serial.print("Received byte total: ");
+            Serial.println( packet.length() );
+            
             MsgPacketizer::feed(packet.data(), packet.length());
         });
     }
@@ -142,10 +150,10 @@ public:
 
   virtual void _sendHandshakeMessage()
   {
-    byte b[RX_BUFFER_SIZE];
-    size_t packetsize = _getHandshakeMessagePacked(b);
+    //byte b[RX_BUFFER_SIZE];
+    size_t packetsize = _getHandshakeMessagePacked(_txBuffer);
   
-    _udpClient.writeTo((uint8_t*)b, packetsize, destip, _txPort);
+    _udpClient.writeTo((uint8_t*)_txBuffer, packetsize, destip, _txPort);
     /*
     _getHandshakeMessage();
     MsgPack::Packer packer;
@@ -188,9 +196,9 @@ public:
 
   virtual void _sendHeartbeatMessage()
   { 
-    size_t packetsize = _getHeartbeatMessagePacked(_txBuffer);
+   // size_t packetsize = _getHeartbeatMessagePacked(_txBuffer);
   
-    _udpClient.writeTo((uint8_t*)_txBuffer, packetsize, destip, _txPort);
+    //_udpClient.writeTo((uint8_t*)_txBuffer, packetsize, destip, _txPort);
     //_getHeatbeatMessage();
     //MsgPacketizer::send(this->_client, this->_mi, hm);
     //MsgPacketizer::send(_udpClient, _serverIP, _txPort, MT_HEARTBEAT, _getHeartbeatMessage());
@@ -209,15 +217,15 @@ public:
   virtual void _sendPinStatusMessage()
   { 
 
-    size_t packetsize = _getPinStatusMessagePacked(_txBuffer);
+    //size_t packetsize = _getPinStatusMessagePacked(_txBuffer);
   
-    _udpClient.writeTo((uint8_t*)_txBuffer, packetsize, destip, _txPort);
+    //_udpClient.writeTo((uint8_t*)_txBuffer, packetsize, destip, _txPort);
     //MsgPacketizer::send(Serial, MT_PINSTATUS, _getPinStatusMessage());
   }
 
   #endif
   
-  uint8_t subscribed = 0;
+  uint8_t subscribed = false;
   AsyncUDP _udpClient;
   const char * _serverIP;
   int _rxPort;

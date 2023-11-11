@@ -18,11 +18,11 @@
 //#define DLED                      13
 //#define KEYPAD                    14
 //#define SERIAL_TO_LINUXCNC        15 // Only select ONE option for the connection type
-#define ETHERNET_UDP_TO_LINUXCNC  16
+//#define ETHERNET_UDP_TO_LINUXCNC  16
 //#define ETHERNET_TCP_TO_LINUXCNC 17 // FUTURE
 //#define WIFI_TCP_TO_LINUXCNC      18 // FUTURE
-#define WIFI_UDP_TO_LINUXCNC     19 // FUTURE
-//#define WIFI_UDP_ASYNC_TO_LINUXCNC 20
+//#define WIFI_UDP_TO_LINUXCNC     19 // FUTURE
+#define WIFI_UDP_ASYNC_TO_LINUXCNC 20
 //#define MEMORY_MONITOR              21 // Requires https://github.com/mpflaga/Arduino-MemoryFree/
 
 //################################################### SERIAL CONNECTION OPTIONS ###################################################
