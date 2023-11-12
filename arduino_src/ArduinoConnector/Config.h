@@ -37,7 +37,7 @@ const uint16_t RX_BUFFER_SIZE = 512; // Serial, TCP and UDP connections utilize 
 
 
 
-const uint8_t BOARD_INDEX = 0; // Each board connecting to the server should have a differnet index number.
+const uint8_t BOARD_INDEX = 0; // Each board connecting to the server should have a different index number.
 
 #ifdef SERIAL_TO_LINUXCNC
 const uint16_t SERIAL_RX_TIMEOUT = 5000; // This value is used by the Serial-version of the Connection object as the amount of time beween retries of messages such as MT_HANDSHAKE and 2*SERIAL_RX_TIMEOUT as the connection timeout period. MINIMUM RECOMMENDED TIMEOUT = 1000.  Highly recommended that the timeout be set to 1000ms or greater.
