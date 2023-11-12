@@ -15,7 +15,7 @@
  */
 struct featureMap
 {
-  uint32_t features;
+  uint64_t features;
   uint16_t connectionFeatures;
   featureMap()
   {
@@ -243,7 +243,6 @@ struct featureMap
 
       Serial.print("ARDUINO DEBUG: Connection Feature Map = 0x");
       Serial.println(this->connectionFeatures, HEX);
-      int flag = 0;
       #ifdef SERIAL_TO_LINUXCNC
         flag = bitRead(this->connectionFeatures, SERIAL_TO_LINUXCNC);
         Serial.print("[ID");
