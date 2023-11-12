@@ -1,10 +1,10 @@
 #ifndef CONFIG_H_
 #define CONFIG_H_
 
-#define ENABLE_FEATUREMAP
+// Arduiono IO Feature Options // Uncomment to enable. Do not edit assigned index values.
 #define DEBUG                     0
 #define DEBUG_PROTOCOL_VERBOSE    1
-//s#define INPUTS                    2                       
+//s#define INPUTS                   2                       
 //#define SINPUTS                   3                      
 //#define OUTPUTS                   4
 //#define PWMOUTPUTS                5
@@ -17,15 +17,18 @@
 //#define STATUSLED                 12
 //#define DLED                      13
 //#define KEYPAD                    14
-#define SERIAL_TO_LINUXCNC        15 // Only select ONE option for the connection type
-//#define ETHERNET_UDP_TO_LINUXCNC  16
-//#define ETHERNET_TCP_TO_LINUXCNC 17 // FUTURE
-//#define WIFI_TCP_TO_LINUXCNC      18 // FUTURE
-//#define WIFI_UDP_TO_LINUXCNC     19 // FUTURE
-//#define WIFI_UDP_ASYNC_TO_LINUXCNC 20
-//#define MEMORY_MONITOR              21 // Requires https://github.com/mpflaga/Arduino-MemoryFree/
+//#define MEMORY_MONITOR            15 // Requires https://github.com/mpflaga/Arduino-MemoryFree/
 
-//################################################### SERIAL CONNECTION OPTIONS ###################################################
+// Connction-Related Options // Uncomment to enable. CHOSE ONLY ONE! Do not edit assigned index values.
+// Regardless of enabled option, debug/trace will be output via Serial.
+//#define SERIAL_TO_LINUXCNC          1 
+#define ETHERNET_UDP_TO_LINUXCNC      2
+//#define ETHERNET_TCP_TO_LINUXCNC    3 // FUTURE
+//#define WIFI_TCP_TO_LINUXCNC        4 // FUTURE
+//#define WIFI_UDP_TO_LINUXCNC        5 // FUTURE
+//#define WIFI_UDP_ASYNC_TO_LINUXCNC  6
+
+//##### SERIAL CONNECTION OPTIONS ######
 #define DEFAULT_SERIAL_BAUD_RATE 115200
 #define SERIAL_START_DELAY 3000 // To avoid initial serial output failing to arrive during debugging.
 //#define ENABLE_SERIAL2 TRUE // For future
@@ -39,7 +42,18 @@ const uint8_t BOARD_INDEX = 0; // Each board connecting to the server should hav
 #ifdef SERIAL_TO_LINUXCNC
 const uint16_t SERIAL_RX_TIMEOUT = 5000; // This value is used by the Serial-version of the Connection object as the amount of time beween retries of messages such as MT_HANDSHAKE and 2*SERIAL_RX_TIMEOUT as the connection timeout period. MINIMUM RECOMMENDED TIMEOUT = 1000.  Highly recommended that the timeout be set to 1000ms or greater.
 #endif
-//################################################### ETHERNET CONNECTION OPTIONS ###################################################
+
+
+#if defined(DEBUG_PROTOCOL_VERBOSE) 
+#define ARDUINOTRACE_ENABLE 1// Enable all traces
+#include <ArduinoTrace.h>
+#else
+#define ARDUINOTRACE_ENABLE 0//Disable all traces
+#include <ArduinoTrace.h>
+#endif
+
+
+//################# ETHERNET CONNECTION OPTIONS #############################
 // Requires an Arduino / Shield that is compatible with the Arduino Ethernet Library
 // Tested and working models:
 //      - Ethernet Network Shield W5100

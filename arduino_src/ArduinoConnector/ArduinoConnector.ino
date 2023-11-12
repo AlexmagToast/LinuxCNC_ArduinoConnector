@@ -73,20 +73,13 @@ Communication Status      = 'E' -read/Write  -Pin State: 0:0
   MsgPacketizer >= V0.5.0 (REQUIRED, including all dependencies)
   
 */
-/*
-  Library dependencies (use Arduino Library Manager)
-  MsgPacketizer >= V0.5.0 (REQUIRED, including all dependencies)
-  
-*/
-#include "Version.h"
 
+#include "Version.h"
 #include "Config.h"
 #include "IOInterface.h"
+#include "FeatureMap.h"
+featureMap fm;
 
-#ifdef ENABLE_FEATUREMAP
-  #include "FeatureMap.h"
-  featureMap fm;
-#endif
 
 #ifdef MEMORY_MONITOR
 #include <MemoryFree.h>
