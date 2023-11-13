@@ -2,7 +2,7 @@
 from asyncio import QueueEmpty
 import traceback
 from numpy import block
-from linuxcnc_arduinoconnector.ArduinoConnector import ConnectionType, SerialConnetion, ConnectionState, hallookup
+from linuxcnc_arduinoconnector.ArduinoConnector import ConnectionType, SerialConnetion, ConnectionState, UDPConnection, hallookup
 from queue import Empty, Queue
 import serial, time, hal
 # ADDITIONAL PYTHON LIBRARIES TO SUPPORT NEW PROTOCOL STACK:
@@ -60,7 +60,8 @@ import serial, time, hal
 
 componentName = "arduino"
 c = hal.component(componentName)
-sc = SerialConnetion(myType= ConnectionType.SERIAL, dev = '/dev/ttyACM0')
+#sc = SerialConnetion(myType= ConnectionType.SERIAL, dev = '/dev/ttyACM0')
+sc = UDPConnection(myType=ConnectionType.UDP, listenip='', listenport=54321)
 
 hlookup = hallookup() # stores pin/params and provides formatting functions for same
 
@@ -89,7 +90,7 @@ sInPinmap = [10] #Which Pins are SInputs?
 
 
 # Set how many Outputs you have programmed in Arduino and which pins are Outputs, Set Outputs = 0 to disable
-Outputs = 0				#9 Outputs, Set Outputs = 0 to disable
+Outputs = 1				#9 Outputs, Set Outputs = 0 to disable
 OutPinmap = [4]	#Which Pins are Outputs?
 
 # Set how many PWM Outputs you have programmed in Arduino and which pins are PWM Outputs, you can set as many as your Arduino has PWM pins. List the connected pins below.
@@ -261,7 +262,7 @@ for sensor in range(DallasTempSensors):
 dout_prefix = 'dout'
 for port in range(Outputs):
 	p = hlookup.addPin(pinSuffix=dout_prefix, pinIndex=OutPinmap[port], pinType=hal.HAL_BIT, pinDirection=hal.HAL_IN, pinDirectionString="in")
-	c.newpin(p.getName(), hal.HAL_FLOAT, hal.HAL_IN)
+	c.newpin(p.getName(), hal.HAL_BIT, hal.HAL_IN)
 	#c.newpin("dout.{}".format(OutPinmap[port]), hal.HAL_BIT, hal.HAL_IN)
 	olddOutStates[port] = 0
 
@@ -414,7 +415,7 @@ def managageOutputs():
 			Pin = int(OutPinmap[port])
 			command = "{}{}:{}\n".format(Sig,Pin,State)
 			sc.sendCommand(command)#command.encode())
-			if (Debug):print ("PYDEBUG: ending:{}".format(command.encode()))
+			if (Debug):print ("PYDEBUG: sending:{}".format(command.encode()))
 			olddOutStates[port]= State
 			time.sleep(0.01)
 		
