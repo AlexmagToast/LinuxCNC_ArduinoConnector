@@ -648,6 +648,7 @@ while True:
 				managageOutputs()
 			else:
 				updateConnectionPin(False)
+				
 			cmd = sc.rxQueue.get(block=False, timeout=100)
 			if cmd != None:
 				processCommand(cmd.payload)
