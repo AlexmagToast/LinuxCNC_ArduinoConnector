@@ -22,7 +22,7 @@ pinIndexPlaceholder = 'pin_index'
 
 pinNameFormatv1 = f'{pinNamePlaceholder}.{pinIndexPlaceholder}' # v1 format, e.g., din.0
 pinNameFormatv2 = f'{arduinoIndexPlaceholder}.{pinNamePlaceholder}-{pinIndexPlaceholder}-{pinDirectionPlaceholder}' # v2 pin format, e.g., arduiono.0.pin-01-out
-selectedPinFormat = pinNameFormatv2
+selectedPinFormat = pinNameFormatv1
 
 class ConnectionType(StrEnum):
     SERIAL = 'SERIAL'
@@ -259,7 +259,7 @@ class ArduinoConn:
         self.boardIndex = bi
         self.connectionState = cs
         self.timeout = timeout
-        self.lastMessageReceived = time.process_time()
+        self.lastMessageReceived = time.time()
     def setState(self, newState:ConnectionState):
         if newState != self.connectionState:
             if debug_comm:print(f'PYDEBUG Board Index: {self.boardIndex}, changing state from {self.connectionState} to {newState}')
@@ -350,7 +350,7 @@ class Connection:
                 #if time.process_time() - arduino.lastMessageReceived >= arduino.timeout:
                 #    arduino.setState(ConnectionState.CONNECTING)
             elif arduino.connectionState == ConnectionState.CONNECTED:
-                #d = time.time() - arduino.lastMessageReceived
+                d = time.time() - arduino.lastMessageReceived
                 if (time.time() - arduino.lastMessageReceived) >= arduino.timeout:
                     arduino.setState(ConnectionState.DISCONNECTED)
 
@@ -398,7 +398,7 @@ class UDPConnection(Connection):
                 output = ''
                 for b in self.buffer:
                     output += f'[{hex(b)}] '
-                print(output)
+                #print(output)
                 #(b'\x05\x02\x94\x01\xce\x02\x01\x07\x11\xcd\x13\x88\x01m\x00', [], 0, ('192.168.1.88', 54321))
                 #b"\x0c\x02\x94\x01\xcd\x80\x11\xcd'\x10\x01#"
                 #sz = self.buffer[0]
@@ -417,6 +417,7 @@ class UDPConnection(Connection):
                 
                 self.updateState()
             except TimeoutError:
+                self.updateState()
                 pass
             except Exception as error:
                 just_the_string = traceback.format_exc()
