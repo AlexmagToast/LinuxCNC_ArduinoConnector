@@ -22,7 +22,7 @@ pinIndexPlaceholder = 'pin_index'
 
 pinNameFormatv1 = f'{pinNamePlaceholder}.{pinIndexPlaceholder}' # v1 format, e.g., din.0
 pinNameFormatv2 = f'{arduinoIndexPlaceholder}.{pinNamePlaceholder}-{pinIndexPlaceholder}-{pinDirectionPlaceholder}' # v2 pin format, e.g., arduiono.0.pin-01-out
-selectedPinFormat = pinNameFormatv2
+selectedPinFormat = pinNameFormatv1
 
 class ConnectionType(StrEnum):
     SERIAL = 'SERIAL'

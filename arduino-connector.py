@@ -120,7 +120,7 @@ LPotiValues = [[40, 50,60,70,80,90,100,110,120],
 
 # Set if you have an binary encoded Selector Switch and how many positions it has (only one supported, as i don't think they are very common and propably nobody uses these anyway)
 # Set BinSelKnob = 0 to disable
-BinSelKnob = 0 	#1 enable
+BinSelKnob = 0 	#1 enable+++++++++++6
 BinSelKnobPos = 32
 
 #Do you want the Binary Encoded Selector Switches to control override Settings in LinuxCNC? This function lets you define values for each Position. 
