@@ -3,13 +3,13 @@
 
 // Arduiono IO Feature Options // Uncomment to enable. Do not edit assigned index values.
 #define DEBUG                     0
-#define DEBUG_PROTOCOL_VERBOSE    1
+//#define DEBUG_PROTOCOL_VERBOSE    1
 //s#define INPUTS                   2                       
 //#define SINPUTS                   3                      
-//#define OUTPUTS                   4
+#define OUTPUTS                   4
 //#define PWMOUTPUTS                5
 //#define AINPUTS                   6   
-//#define DALLAS_TEMP_SENSOR        7
+#define DALLAS_TEMP_SENSOR        7
 //#define LPOTIS                    8
 //#define BINSEL                    9
 //#define QUADENC                   10

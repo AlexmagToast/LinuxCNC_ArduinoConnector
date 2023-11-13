@@ -2,7 +2,7 @@
 from asyncio import QueueEmpty
 import traceback
 from numpy import block
-from linuxcnc_arduinoconnector.ArduinoConnector import ConnectionType, SerialConnetion, ConnectionState
+from linuxcnc_arduinoconnector.ArduinoConnector import ConnectionType, SerialConnetion, ConnectionState, hallookup
 from queue import Empty, Queue
 import serial, time, hal
 # ADDITIONAL PYTHON LIBRARIES TO SUPPORT NEW PROTOCOL STACK:
@@ -58,12 +58,20 @@ import serial, time, hal
 #	along with this program; if not, write to the Free Software
 #	Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-c = hal.component("arduino")
-sc = SerialConnetion(ConnectionType.SERIAL, dev = '/dev/ttyACM0')
+componentName = "arduino"
+c = hal.component(componentName)
+sc = SerialConnetion(myType= ConnectionType.SERIAL, dev = '/dev/ttyACM0')
+
+hlookup = hallookup() # stores pin/params and provides formatting functions for same
+
 # Map of board index IDs and a human-readable alias
 # FUTURE (not yet implemented): This map gets used by the connection manager to track the connection state of each mapped arduino
 arduinoMap = { 0:'myArduinoUno'}
+
+
 connectionPin = "connected"
+
+#basePinFormat = 
 errorCount = 0
 errorCountPin = "error_count"
 errorCountResetPin = "error_count_reset"
@@ -81,7 +89,7 @@ sInPinmap = [10] #Which Pins are SInputs?
 
 
 # Set how many Outputs you have programmed in Arduino and which pins are Outputs, Set Outputs = 0 to disable
-Outputs = 1				#9 Outputs, Set Outputs = 0 to disable
+Outputs = 0				#9 Outputs, Set Outputs = 0 to disable
 OutPinmap = [4]	#Which Pins are Outputs?
 
 # Set how many PWM Outputs you have programmed in Arduino and which pins are PWM Outputs, you can set as many as your Arduino has PWM pins. List the connected pins below.
@@ -89,7 +97,7 @@ PwmOutputs = 0			#number of PwmOutputs, Set PwmOutputs = 0 to disable
 PwmOutPinmap = [11,12]	#PwmPutput connected to Pin 11 & 12
 
 # Set how many Analog Inputs you have programmed in Arduino and which pins are Analog Inputs, you can set as many as your Arduino has Analog pins. List the connected pins below.
-AInputs = 0				#number of AInputs, Set AInputs = 0 to disable 
+AInputs = 0			#number of AInputs, Set AInputs = 0 to disable 
 AInPinmap = [1]			#Potentiometer connected to Pin 1 (A0)
 
 
@@ -221,83 +229,140 @@ counter_last_update = {}
 min_update_interval = 100
 ######## SetUp of HalPins ########
 #setup connection pin
-c.newpin(f'{connectionPin}.0', hal.HAL_BIT, hal.HAL_IN)
-c.newpin(f'{errorCountPin}.0', hal.HAL_U32, hal.HAL_IN)
-c.newpin(f'{errorCountResetPin}.0', hal.HAL_BIT, hal.HAL_IN)
+p = hlookup.addPin(pinSuffix=connectionPin, pinIndex=0, pinType=hal.HAL_BIT, pinDirection=hal.HAL_IN, pinDirectionString="in")
+c.newpin(p.getName(), hal.HAL_BIT, hal.HAL_IN)
+#pa = hlookup.addParam(p, paramAlias='invert')
+
+p = hlookup.addPin(pinSuffix=errorCountPin, pinIndex=0, pinType=hal.HAL_U32, pinDirection=hal.HAL_IN, pinDirectionString="in")
+c.newpin(p.getName(), hal.HAL_U32, hal.HAL_IN)
+p = hlookup.addPin(pinSuffix=errorCountResetPin, pinIndex=0, pinType=hal.HAL_BIT, pinDirection=hal.HAL_IN, pinDirectionString="in")
+c.newpin(p.getName(), hal.HAL_BIT, hal.HAL_IN)
+
 
 # setup Input halpins
+dinput_pin_prefix = 'din'
 for port in range(Inputs):
-	c.newpin("din.{}".format(InPinmap[port]), hal.HAL_BIT, hal.HAL_OUT)
-	c.newparam("din.{}-invert".format(InPinmap[port]), hal.HAL_BIT, hal.HAL_RW)
+	p = hlookup.addPin(pinSuffix=dinput_pin_prefix, pinIndex=InPinmap[port], pinType=hal.HAL_BIT, pinDirection=hal.HAL_OUT, pinDirectionString="out")
+	c.newpin(p.getName(), hal.HAL_BIT, hal.HAL_OUT)
+	pa = hlookup.addParam(p, paramAlias='invert')
+	c.newparam(pa.getName(), hal.HAL_BIT, hal.HAL_RW)
 
+	#c.newpin("din.{}".format(InPinmap[port]), hal.HAL_BIT, hal.HAL_OUT)
+	#c.newparam("din.{}-invert".format(InPinmap[port]), hal.HAL_BIT, hal.HAL_RW)
+
+dallas_sensor_prefix = 'tin'
 for sensor in range(DallasTempSensors):
-	c.newpin("tin.{}".format(InDallasTempSensors[sensor]), hal.HAL_FLOAT, hal.HAL_IN)
+	p = hlookup.addPin(pinSuffix=dallas_sensor_prefix, pinIndex=InDallasTempSensors[sensor], pinType=hal.HAL_FLOAT, pinDirection=hal.HAL_IN, pinDirectionString="in")
+	c.newpin(p.getName(), hal.HAL_FLOAT, hal.HAL_IN)
+	#c.newpin("tin.{}".format(InDallasTempSensors[sensor]), hal.HAL_FLOAT, hal.HAL_IN)
 	oldDallasStates[sensor] = 0.0
 
 # setup Output halpins
+dout_prefix = 'dout'
 for port in range(Outputs):
-	c.newpin("dout.{}".format(OutPinmap[port]), hal.HAL_BIT, hal.HAL_IN)
+	p = hlookup.addPin(pinSuffix=dout_prefix, pinIndex=OutPinmap[port], pinType=hal.HAL_BIT, pinDirection=hal.HAL_IN, pinDirectionString="in")
+	c.newpin(p.getName(), hal.HAL_FLOAT, hal.HAL_IN)
+	#c.newpin("dout.{}".format(OutPinmap[port]), hal.HAL_BIT, hal.HAL_IN)
 	olddOutStates[port] = 0
 
 # setup Pwm Output halpins
+pwm_output_prefix = 'pwmout'
 for port in range(PwmOutputs):
-	c.newpin("pwmout.{}".format(PwmOutPinmap[port]), hal.HAL_FLOAT, hal.HAL_IN)
+	p = hlookup.addPin(pinSuffix=pwm_output_prefix, pinIndex=PwmOutPinmap[port], pinType=hal.HAL_FLOAT, pinDirection=hal.HAL_IN, pinDirectionString="in")
+	c.newpin(p.getName(), hal.HAL_FLOAT, hal.HAL_IN)
+	#c.newpin("pwmout.{}".format(PwmOutPinmap[port]), hal.HAL_FLOAT, hal.HAL_IN)
 	oldPwmOutStates[port] = 255
+
 # setup Analog Input halpins
+ainputs_pin_prefix = 'ain'
 for port in range(AInputs):
-	c.newpin("ain.{}".format(AInPinmap[port]), hal.HAL_FLOAT, hal.HAL_OUT)
+	p = hlookup.addPin(pinSuffix=ainputs_pin_prefix, pinIndex=AInPinmap[port], pinType=hal.HAL_FLOAT, pinDirection=hal.HAL_OUT, pinDirectionString="out")
+	c.newpin(p.getName(), hal.HAL_FLOAT, hal.HAL_OUT)
+	#c.newpin("ain.{}".format(AInPinmap[port]), hal.HAL_FLOAT, hal.HAL_OUT)
+
 # setup Latching Poti halpins
+poti_pin_prefix = 'LPoti'
 for Poti in range(LPoti):
 	if SetLPotiValue[Poti] == 0:
 		for Pin in range(LPotiLatches[Poti][1]):
-			c.newpin("LPoti.{}.{}" .format(LPotiLatches[Poti][0],Pin), hal.HAL_BIT, hal.HAL_OUT)
+			p = hlookup.addPin(pinSuffix=f'{poti_pin_prefix}.{LPotiLatches[Poti][port]}', pinIndex=Pin, pinType=hal.HAL_BIT, pinDirection=hal.HAL_OUT, pinDirectionString="out")
+			c.newpin(p.getName(), hal.HAL_BIT, hal.HAL_OUT)
+			#c.newpin("LPoti.{}.{}" .format(LPotiLatches[Poti][0],Pin), hal.HAL_BIT, hal.HAL_OUT)
 	if SetLPotiValue[Poti] == 1:
-		c.newpin("LPoti.{}.{}" .format(LPotiLatches[Poti][0],"out"), hal.HAL_S32, hal.HAL_OUT)
+		#p = hlookup.addPin(pinSuffix=f'{ainputs_pin_prefix}.{LPotiLatches[Poti][port]}', pinIndex=Pin, pinType=hal.HAL_S32, pinDirection=hal.HAL_OUT, pinDirectionString="out")
+		p = hlookup.addPin(pinSuffix=poti_pin_prefix, pinIndex=LPotiLatches[Poti][port], pinType=hal.HAL_S32, pinDirection=hal.HAL_OUT, pinDirectionString="out")
+		c.newpin(p.getName(), hal.HAL_S32, hal.HAL_OUT)
+		#c.newpin("LPoti.{}.{}" .format(LPotiLatches[Poti][0],"out"), hal.HAL_S32, hal.HAL_OUT)
 	if SetLPotiValue[Poti] == 2:
-		c.newpin("LPoti.{}.{}" .format(LPotiLatches[Poti][0],"out"), hal.HAL_FLOAT, hal.HAL_OUT)
+		#p = hlookup.addPin(pinSuffix=f'{ainputs_pin_prefix}.{LPotiLatches[Poti][port]}', pinIndex=Pin, pinType=hal.HAL_FLOAT, pinDirection=hal.HAL_OUT, pinDirectionString="out")
+		p = hlookup.addPin(pinSuffix=poti_pin_prefix, pinIndex=LPotiLatches[Poti][0], pinType=hal.HAL_S32, pinDirection=hal.HAL_OUT, pinDirectionString="out")
+		c.newpin(p.getName(), hal.HAL_FLOAT, hal.HAL_OUT)
+		#c.newpin("LPoti.{}.{}" .format(LPotiLatches[Poti][0],"out"), hal.HAL_FLOAT, hal.HAL_OUT)
 
 # setup Absolute Encoder Knob halpins
+binsel_prefix = 'binselknob'
 if BinSelKnob:
 	if SetBinSelKnobValue[0] == 0:
 		for port in range(BinSelKnobPos):
-			c.newpin("binselknob.0.{}".format(port), hal.HAL_BIT, hal.HAL_OUT)
+			p = hlookup.addPin(pinSuffix=f'{binsel_prefix}.0', pinIndex=port, pinType=hal.HAL_BIT, pinDirection=hal.HAL_OUT, pinDirectionString="out")
+			c.newpin(p.getName(), hal.HAL_BIT, hal.HAL_OUT)
+			#c.newpin("binselknob.0.{}".format(port), hal.HAL_BIT, hal.HAL_OUT)
 	else :
-		c.newpin("binselknob.{}.{}" .format("0","out"), hal.HAL_S32, hal.HAL_OUT)
+		p = hlookup.addPin(pinSuffix=f'{binsel_prefix}.0', pinIndex=port, pinType=hal.HAL_S32, pinDirection=hal.HAL_OUT, pinDirectionString="out")
+		c.newpin(p.getName(), hal.HAL_S32, hal.HAL_OUT)
+		#c.newpin("binselknob.{}.{}" .format("0","out"), hal.HAL_S32, hal.HAL_OUT)
 
 
 # setup Digital LED halpins
+dled_prefex = 'dled'
 if DLEDcount > 0:
 	for port in range(DLEDcount):
-		c.newpin("dled.{}".format(port), hal.HAL_BIT, hal.HAL_IN)
+		p = hlookup.addPin(pinSuffix=dled_prefex, pinIndex=port, pinType=hal.HAL_BIT, pinDirection=hal.HAL_IN, pinDirectionString="in")
+		c.newpin(p.getName(), hal.HAL_BIT, hal.HAL_IN)
+		#c.newpin("dled.{}".format(port), hal.HAL_BIT, hal.HAL_IN)
 		oldDLEDStates[port] = 0
 
 # setup MatrixKeyboard halpins
+keypad_prefix = 'keypad'
 if Keypad > 0:
-  for port in range(Columns*Rows):
-    if Destination[port] == 0 & LinuxKeyboardInput:
-      c.newpin("keypad.{}".format(Chars[port]), hal.HAL_BIT, hal.HAL_OUT)
+	for port in range(Columns*Rows):
+		if Destination[port] == 0 & LinuxKeyboardInput:
+			p = hlookup.addPin(pinSuffix=keypad_prefix, pinIndex=Chars[port], pinType=hal.HAL_BIT, pinDirection=hal.HAL_OUT, pinDirectionString="out")
+			c.newpin(p.getName(), hal.HAL_BIT, hal.HAL_OUT)
+			#c.newpin("keypad.{}".format(Chars[port]), hal.HAL_BIT, hal.HAL_OUT)
       
 # setup MultiplexLED halpins
+multiplexled_prefix = 'mled'
 if MultiplexLED > 0:
-  for port in range(LedVccPins*LedGndPins):
-      c.newpin("mled.{}".format(port), hal.HAL_BIT, hal.HAL_IN)
+	for port in range(LedVccPins*LedGndPins):
+		p = hlookup.addPin(pinSuffix=multiplexled_prefix, pinIndex=port, pinType=hal.HAL_BIT, pinDirection=hal.HAL_IN, pinDirectionString="in")
+		c.newpin(p.getName(), hal.HAL_BIT, hal.HAL_IN)
+     # c.newpin("mled.{}".format(port), hal.HAL_BIT, hal.HAL_IN)
 
 
 #setup JoyStick Pins
+joystick_prefiex = 'counter'
 if JoySticks > 0:
 	for port in range(JoySticks*2):
-		c.newpin("counter.{}".format(JoyStickPins[port]), hal.HAL_S32, hal.HAL_OUT)
+		p = hlookup.addPin(pinSuffix=joystick_prefiex, pinIndex=port, pinType=hal.HAL_S32, pinDirection=hal.HAL_OUT, pinDirectionString="out")
+		c.newpin(p.getName(), hal.HAL_S32, hal.HAL_OUT)
+		#c.newpin("counter.{}".format(JoyStickPins[port]), hal.HAL_S32, hal.HAL_OUT)
 
-
+quadencs_prefix = 'counter'
 if QuadEncs > 0:
 	for port in range(QuadEncs):
 		if QuadEncSig[port] == 1:
-			c.newpin("counterup.{}".format(port), hal.HAL_BIT, hal.HAL_OUT)
-			c.newpin("counterdown.{}".format(port), hal.HAL_BIT, hal.HAL_OUT)
-		if QuadEncSig[port] == 2:
-			c.newpin("counter.{}".format(port), hal.HAL_S32, hal.HAL_OUT)
-		
+			p = hlookup.addPin(pinSuffix=f'{quadencs_prefix}up', pinIndex=port, pinType=hal.HAL_S32, pinDirection=hal.HAL_OUT, pinDirectionString="out")
+			c.newpin(p.getName(), hal.HAL_S32, hal.HAL_OUT)
+			#c.newpin("counterup.{}".format(port), hal.HAL_BIT, hal.HAL_OUT)
+			p = hlookup.addPin(pinSuffix=f'{quadencs_prefix}down', pinIndex=port, pinType=hal.HAL_S32, pinDirection=hal.HAL_OUT, pinDirectionString="out")
+			c.newpin(p.getName(), hal.HAL_S32, hal.HAL_OUT)
+			#c.newpin("counterdown.{}".format(port), hal.HAL_BIT, hal.HAL_OUT)
 
+		if QuadEncSig[port] == 2:
+			p = hlookup.addPin(pinSuffix=f'{quadencs_prefix}', pinIndex=port, pinType=hal.HAL_S32, pinDirection=hal.HAL_OUT, pinDirectionString="out")
+			c.newpin(p.getName(), hal.HAL_S32, hal.HAL_OUT)
+			#c.newpin("counter.{}".format(port), hal.HAL_S32, hal.HAL_OUT)
 
 c.ready()
 
@@ -311,6 +376,9 @@ event = time.time()
 
 ######## Functions ########
 
+
+
+	
 def extract_nbr(input_str):
 	if input_str is None or input_str == '':
 		return 0
@@ -324,7 +392,10 @@ def extract_nbr(input_str):
 def managageOutputs():
 	global errorCount
 	for port in range(PwmOutputs):
-		State = int(c["pwmout.{}".format(PwmOutPinmap[port])])
+		p = hlookup.getPin(pinSuffix=pwm_output_prefix, pinIndex=PwmOutPinmap[port])
+		State = int(c[p.getName()])
+		#State = int(c["pwmout.{}".format(PwmOutPinmap[port])])
+		
 		if oldPwmOutStates[port] != State: 	#check if states have changed
 			Sig = 'P'
 			Pin = int(PwmOutPinmap[port])
@@ -335,7 +406,9 @@ def managageOutputs():
 			time.sleep(0.01)
 
 	for port in range(Outputs):
-		State = int(c["dout.{}".format(OutPinmap[port])])
+		p = hlookup.getPin(pinSuffix=dout_prefix, pinIndex=OutPinmap[port])
+		State = int(c[p.getName()])
+		#State = int(c["dout.{}".format(OutPinmap[port])])
 		if olddOutStates[port] != State:	#check if states have changed
 			Sig = 'O'
 			Pin = int(OutPinmap[port])
@@ -346,7 +419,9 @@ def managageOutputs():
 			time.sleep(0.01)
 		
 	for dled in range(DLEDcount):
-		State = int(c["dled.{}".format(dled)])
+		p = hlookup.getPin(pinSuffix=dled_prefex, pinIndex=dled)
+		State = int(c[p.getName()])
+		#State = int(c["dled.{}".format(dled)])
 		if oldDLEDStates[dled] != State: #check if states have changed
 			Sig = 'D'
 			Pin = dled
@@ -357,7 +432,9 @@ def managageOutputs():
 			time.sleep(0.01)
 	if MultiplexLED > 0:
 		for mled in range(LedVccPins*LedGndPins):
-			State = int(c["mled.{}".format(mled)])
+			#State = int(c["mled.{}".format(mled)])
+			p = hlookup.getPin(pinSuffix=dled_prefex, pinIndex=dled)
+			State = int(c["dled.{}".format(dled)])
 			if oldMledStates[mled] != State: #check if states have changed
 				Sig = 'M'
 				Pin = mled
@@ -370,15 +447,24 @@ def managageOutputs():
 def updateConnectionPin(connected:bool):
 	global errorCount
 	try:
-		if connected == True :	
-			c[f"{connectionPin}.0"] = 1
+		p = hlookup.getPin(pinSuffix=connectionPin, pinIndex=0)
+		if connected == True :
+			c[p.getName()] = 1
+			#c[f"{connectionPin}.0"] = 1
 		else:
-			c[f"{connectionPin}.0"] = 0
-		c[f"{errorCountPin}.0"] = errorCount
-		s = int(c[f'{errorCountResetPin}.0']) #pwmout.{}".format(PwmOutPinmap[port])])
+			#c[f"{connectionPin}.0"] = 0
+			c[p.getName()] = 0
+			
+		p = hlookup.getPin(pinSuffix=errorCountPin, pinIndex=0)
+		c[p.getName()] = errorCount
+		#c[f"{errorCountPin}.0"] = errorCount
+		p = hlookup.getPin(pinSuffix=errorCountResetPin, pinIndex=0)
+		#s = int(c[f'{errorCountResetPin}.0'])
+		s = int(c[p.getName()])
 		if s == 0: 
 			errorCount = 0
-			c[f'{errorCountResetPin}.0'] = 1
+			#c[f'{errorCountResetPin}.0'] = 1
+			c[p.getName()] = 1
 		
 
 	except Exception as ex:
@@ -407,22 +493,41 @@ def processCommand(data: str):
 			if cmd == "I":
 				value = int(value)
 				if value == 1:
+					p1 = hlookup.getPin(pinSuffix=dinput_pin_prefix, pinIndex=io)
+					v1 = c[p1.getName()]
+					p2 = hlookup.getParam(pinSuffix=dinput_pin_prefix, pinIndex=io)
+					v2 = c[p2.getName()]
+					if v2 == 0:
+						c[p1.getName()] = 1
+						if(Debug):print(f"{p1.getName()}:1")
+					else:
+						c[p1.getName()] = 0
+						if(Debug):print(f"{p1.getName()}:0")
+					'''
 					if c["din.{}-invert".format(io)] == 0:
 						c["din.{}".format(io)] = 1
 						if(Debug):print("din{}:{}".format(io,1))
 					else: 
 						c["din.{}".format(io)] = 0
 						if(Debug):print("din{}:{}".format(io,0))
+					'''
+
 		
 			if cmd == "T":
+				p = hlookup.getPin(pinSuffix=dallas_sensor_prefix, pinIndex=io)
+				#v = c[p1.getName()]
 				value = float(value)
-				c[f"tin.{io}"] = value
+				#c[f"tin.{io}"] = value
+				c[p.getName()] = value
 
 
 			elif cmd == "A":
 				value = int(value)
-				c["ain.{}".format(io)] = value
-				if (Debug):print("ain.{}:{}".format(io,value))
+				p = hlookup.getPin(pinSuffix=ainputs_pin_prefix, pinIndex=io)
+				c[p.getName()] = value
+				if(Debug):print(f"{p.getName()}:{value}")
+				#c["ain.{}".format(io)] = value
+				#if (Debug):print("ain.{}:{}".format(io,value))
 
 			elif cmd == "L":
 				value = int(value)
@@ -430,28 +535,47 @@ def processCommand(data: str):
 					if LPotiLatches[Poti][0] == io and SetLPotiValue[Poti] == 0:
 						for Pin in range(LPotiLatches[Poti][1]):
 							if Pin == value:
-								c["lpoti.{}.{}" .format(io,Pin)] = 1
-								if(Debug):print("lpoti.{}.{} =1".format(io,Pin))
+								p = hlookup.getPin(pinSuffix=f'{poti_pin_prefix}.{io}', pinIndex=Pin)
+								c[p.getName()] = 1
+								if(Debug):print(f"{p.getName()}=1")
+								#["lpoti.{}.{}" .format(io,Pin)] = 1
+								#if(Debug):print("lpoti.{}.{} =1".format(io,Pin))
 							else:
-								c["lpoti.{}.{}" .format(io,Pin)] = 0
-								if(Debug):print("lpoti.{}.{} =0".format(io,Pin))
+								p = hlookup.getPin(pinSuffix=f'{poti_pin_prefix}.{io}', pinIndex=Pin)
+								c[p.getName()] = 0
+								if(Debug):print(f"{p.getName()}=0")
+								#c["lpoti.{}.{}" .format(io,Pin)] = 0
+								#if(Debug):print("lpoti.{}.{} =0".format(io,Pin))
 					
 					if LPotiLatches[Poti][0] == io and SetLPotiValue[Poti] >= 1:
-						c["lpoti.{}.{}" .format(io,"out")] = LPotiValues[Poti][value]
-						if(Debug):print("lpoti.{}.{} = 0".format("out",LPotiValues[Poti][value]))
+						p = hlookup.getPin(pinSuffix=poti_pin_prefix, pinIndex=io)
+						c[p.getName()] = LPotiValues[Poti][value]
+						if(Debug):print(f"{p.getName()}:{LPotiValues[Poti][value]}")
+						#c["lpoti.{}.{}" .format(io,"out")] = LPotiValues[Poti][value]
+						#if(Debug):print("lpoti.{}.{} = 0".format("out",LPotiValues[Poti][value]))
 
 			elif cmd == "K":
 				value = int(value)
 				if SetBinSelKnobValue[0] == 0:
 					for port in range(BinSelKnobPos):
 						if port == value:
-							c["binselknob.{}".format(port)] = 1
-							if(Debug):print("binselknob.{}:{}".format(port,1))
+							p = hlookup.getPin(pinSuffix=binsel_prefix, pinIndex=port)
+							c[p.getName()] = 1
+							if(Debug):print(f"{p.getName()}:1")
+							#c["binselknob.{}".format(port)] = 1
+							#if(Debug):print("binselknob.{}:{}".format(port,1))
 						else:
-							c["binselknob.{}".format(port)] = 0
-							if(Debug):print("binselknob.{}:{}".format(port,0))
+							p = hlookup.getPin(pinSuffix=binsel_prefix, pinIndex=port)
+							c[p.getName()] = 0
+							if(Debug):print(f"{p.getName()}:0")
+							#c["binselknob.{}".format(port)] = 0
+							#if(Debug):print("binselknob.{}:{}".format(port,0))
 				else: 
-					c["binselknob.{}.{}" .format(0,"out")] = BinSelKnobvalues[0][value]
+					p = hlookup.getPin(pinSuffix=binsel_prefix, pinIndex=0)
+					c[p.getName()] = BinSelKnobvalues[0][value]
+					if(Debug):print(f'{p.getName()}:{BinSelKnobvalues[0][value]}')
+					#if(Debug):print(f"{p.getName()}:1")
+					#c["binselknob.{}.{}" .format(0,"out")] = BinSelKnobvalues[0][value]
 
 			elif cmd == "M":
 				value = int(value)
@@ -464,10 +588,14 @@ def processCommand(data: str):
 					if(Debug):print("Emulating Keypress{}".format(Chars[io]))
 						
 					else:
-						c["keypad.{}".format(Chars[io])] = 1
+						p = hlookup.getPin(pinSuffix=keypad_prefix, pinIndex=io)
+						c[p.getName()] = 1
+						#c["keypad.{}".format(Chars[io])] = 1
 					if(Debug):print("keypad{}:{}".format(Chars[io],1))
 
 				if value == 0 & Destination[io] == 0:
+					p = hlookup.getPin(pinSuffix=keypad_prefix, pinIndex=io)
+					c[p.getName()] = 0
 					c["keypad.{}".format(Chars[io])] = 0
 					if(Debug):print("keypad{}:{}".format(Chars[io],0))
 
@@ -477,22 +605,32 @@ def processCommand(data: str):
 				if JoySticks > 0:
 					for pins in range(JoySticks*2):
 						if (io == JoyStickPins[pins]):
-							c["counter.{}".format(io)] = value
+							p = hlookup.getPin(pinSuffix=joystick_prefiex, pinIndex=io)
+							c[p.getName()] = value
+							#c["counter.{}".format(io)] = value
 					if (Debug):print("counter.{}:{}".format(io,value))
 				if QuadEncs > 0:
 					if QuadEncSig[io]== 1:
 						if value == 0:
-							c["counterdown.{}".format(io)] = 1
+							p = hlookup.getPin(pinSuffix=f'{joystick_prefiex}down', pinIndex=io)
+							c[p.getName()] = 1
+							#c["counterdown.{}".format(io)] = 1
 							time.sleep(0.001)
-							c["counterdown.{}".format(io)] = 0
+							c[p.getName()] = 0
+							#c["counterdown.{}".format(io)] = 0
 							time.sleep(0.001)
 						if value == 1:
-							c["counterup.{}".format(io)] = 1
+							p = hlookup.getPin(pinSuffix=f'{joystick_prefiex}up', pinIndex=io)
+							c[p.getName()] = 1
+							#c["counterup.{}".format(io)] = 1
 							time.sleep(0.001)
-							c["counterup.{}".format(io)] = 0
+							c[p.getName()] = 0
+							#c["counterup.{}".format(io)] = 0
 							time.sleep(0.001)
 					if QuadEncSig[io]== 2:
-								c["counter.{}".format(io)] = value
+						p = hlookup.getPin(pinSuffix=joystick_prefiex, pinIndex=io)
+						c[p.getName()] = value
+						#c["counter.{}".format(io)] = value
 	except Exception as ex:
 		errorCount += 1
 		just_the_string = traceback.format_exc()

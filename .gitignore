@@ -1,4 +1,5 @@
 .vscode
 .vscode/arduino.json
 **/[Ss]ecret.h
+**/*.pyc
 

@@ -15,13 +15,22 @@ import traceback
 import numpy
 import socket
 
+arduinoIndexPlaceholder = 'arduino_index'
+pinNamePlaceholder = 'pin_name'
+pinDirectionPlaceholder = 'pin_direction'
+pinIndexPlaceholder = 'pin_index'
+
+pinNameFormatv1 = f'{pinNamePlaceholder}.{pinIndexPlaceholder}' # v1 format, e.g., din.0
+pinNameFormatv2 = f'{arduinoIndexPlaceholder}.{pinNamePlaceholder}-{pinIndexPlaceholder}-{pinDirectionPlaceholder}' # v2 pin format, e.g., arduiono.0.pin-01-out
+selectedPinFormat = pinNameFormatv2
+
 class ConnectionType(StrEnum):
     SERIAL = 'SERIAL'
     UDP = 'UDP'
     TCP = 'TCP'
     NONE = 'UNKNOWN'
     def __str__(self) -> str:
-       return self.value
+        return self.value
 
 class ConnectionState(StrEnum):
     DISCONNECTED = 'DISCONNECTED'
@@ -32,7 +41,7 @@ class ConnectionState(StrEnum):
     ERROR = 'ERROR'
     NONE = 'UNKNOWN'
     def __str__(self) -> str:
-       return self.value
+        return self.value
        
 class MessageType(IntEnum):
     MT_HEARTBEAT = 1, 
@@ -41,7 +50,7 @@ class MessageType(IntEnum):
     MT_PINSTATUS = 4, 
     MT_DEBUG = 5, 
     UNKNOWN = -1
-    
+
 FeatureTypes = {
     'DEBUG': 0,
     'DEBUG_PROTOCOL_VERBOSE': 1,
@@ -77,6 +86,85 @@ debug_comm = True
 #arduino = None #serial.Serial(serial_dev, 115200, timeout=1, xonxoff=False, rtscts=False, dsrdtr=True)
 
 protocol_ver = 1
+
+class pinref():
+    def __init__(self, pinSuffix:str, pinIndex:int, pinType, pinDirection, pinDirectionString="", arduinoIndex=0):
+        self.pinSuffix = pinSuffix
+        self.pinIndex =  pinIndex
+        self.pinType = pinType
+        self.pinDirection = pinDirection
+        self.pinDirectionString = pinDirectionString
+        self.arduinoIndex = arduinoIndex
+        self.generatePinName()
+
+    def generatePinName(self):
+        tmp = selectedPinFormat # make a copy of the currently-selected pin name format
+        tmp = tmp.replace(pinNamePlaceholder, self.pinSuffix)
+        tmp = tmp.replace(pinIndexPlaceholder, str(self.pinIndex))
+        tmp = tmp.replace(arduinoIndexPlaceholder, str(self.arduinoIndex))
+        tmp = tmp.replace(pinDirectionPlaceholder, self.pinDirectionString)
+        self.pinName = tmp
+	
+    def getName(self):
+        return self.pinName
+	
+class paramref():
+    def __init__(self, pinSuffix:str, pinIndex:int, pinType, paramAlias, pinDirection, pinDirectionString='', arduinoIndex=0):
+        self.pinSuffix = pinSuffix
+        self.pinIndex =  pinIndex
+        self.pinType = pinType
+        self.pinDirection = pinDirection
+        self.pinDirectionString = pinDirectionString
+        self.arduinoIndex = arduinoIndex
+        self.paramAlias = paramAlias
+        self.generateParamName()
+          
+    def __init__(self, pinRef:pinref, paramAlias:str):
+        self.pinSuffix = pinRef.pinSuffix
+        self.pinIndex =  pinRef.pinIndex
+        self.pinType = pinRef.pinType
+        self.pinDirection = pinRef.pinDirection
+        self.pinDirectionString = pinRef.pinDirectionString
+        self.arduinoIndex = pinRef.arduinoIndex
+        self.paramAlias = paramAlias
+        self.generateParamName()
+
+    def generateParamName(self):
+        tmp = selectedPinFormat # make a copy of the currently-selected pin name format
+        tmp = tmp.replace(pinNamePlaceholder, self.pinSuffix)
+        tmp = tmp.replace(pinIndexPlaceholder, str(self.pinIndex))
+        tmp = tmp.replace(arduinoIndexPlaceholder, str(self.arduinoIndex))
+        tmp = tmp.replace(pinDirectionPlaceholder, self.pinDirectionString)
+        tmp = tmp + f'-{self.paramAlias}'
+        self.paramName = tmp
+
+    def getName(self):
+        return self.paramName
+
+class hallookup():
+	def __init__(self):
+		self.pins = {}
+		self.params = {}
+	def addPin(self, pinSuffix:str, pinIndex:int, pinType:str, pinDirection, pinDirectionString='', arduionIndex=0):
+		p = pinref(pinSuffix=pinSuffix, pinIndex=pinIndex, pinType=pinType, pinDirection=pinDirection, pinDirectionString=pinDirectionString, arduinoIndex=arduionIndex)
+		self.pins[f'{str(arduionIndex)}.{pinSuffix}.{str(pinIndex)}'] = p
+		return p
+	
+	def addParam(self, pinSuffix:str, pinIndex:int, pinType:str, paramAlias:str, pinDirection, pinDirectionString='', arduionIndex=0):
+		p = paramref(pinSuffix=pinSuffix, pinIndex=pinIndex, pinType=pinType, paramAlias=paramAlias, pinDirection=pinDirection, pinDirectionstring=pinDirectionString, arduinoIndex=arduionIndex)
+		self.params[f'{str(arduionIndex)}.{pinSuffix}.{str(pinIndex)}'] = p
+		return p
+		
+	def addParam(self, pinRef:pinref, paramAlias:str):
+		p = paramref(pinRef=pinRef, paramAlias=paramAlias)
+		self.params[f'{str(pinRef.arduinoIndex)}.{pinRef.pinSuffix}.{str(pinRef.pinIndex)}'] = p
+		return p
+	
+	def getParam(self, pinSuffix:str, pinIndex:int, arduinoIndex=0):
+		return self.params[f'{str(arduinoIndex)}.{pinSuffix}.{str(pinIndex)}']
+	
+	def getPin(self, pinSuffix:str, pinIndex:int, arduinoIndex=0):
+		return self.pins[f'{str(arduinoIndex)}.{pinSuffix}.{str(pinIndex)}']
 
 class FeatureMapDecoder:
     def __init__(self, b:bytes):
