@@ -217,6 +217,7 @@ public:
     _udpClient.endPacket();
     //MsgPacketizer::send(_udpClient, _serverIP, _txPort, MT_DEBUG, _getDebugMessage(message));
   }
+  #endif
   
   virtual void _sendPinStatusMessage()
   { 
@@ -227,7 +228,7 @@ public:
    // MsgPacketizer::send(Serial, MT_PINSTATUS, _getPinStatusMessage());
   }
 
-  #endif
+  
   
   uint8_t subscribed = false;
   EthernetUDP _udpClient;

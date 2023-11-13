@@ -188,8 +188,10 @@ Serial.begin(DEFAULT_SERIAL_BAUD_RATE);
     OneWire * oneWire = new OneWire(TmpSensorMap[o]);
 
     // Pass our oneWire reference to Dallas Temperature sensor 
-    DallasTemperature * sensors = new DallasTemperature(oneWire);
-    TmpSensorControlMap[o] = sensors;
+    DallasTemperature * sensor = new DallasTemperature(oneWire);
+    sensor->setWaitForConversion(false);
+    sensor->requestTemperatures(); // Do initial request
+    TmpSensorControlMap[o] = sensor;
     }
 #endif
 
