@@ -127,10 +127,16 @@ Serial.begin(DEFAULT_SERIAL_BAUD_RATE);
   Serial.println(NUM_DIGITAL_PINS);
 #endif
 
-#ifdef ENABLE_FEATUREMAP
+//#ifdef ENABLE_FEATUREMAP
   Serial.println("Dumping Feature Map to Serial..");
   fm.DumpFeatureMapToSerial();
+//#endif
+
+#ifdef RAPIDCHANGE_ATC
+  #include "RapidChangeATC.h"
+  setup_rapidchange();
 #endif
+
 #ifdef DEBUG
 #ifdef MEMORY_MONITOR
   Serial.print(F("ARDUINO DEBUG: FREE RAM: "));
@@ -293,7 +299,9 @@ void do_io(uint8_t forceUpdate){
   //#ifdef DEBUG
   //  Serial.println("ARDUINO DEBUG: resending data following reconnect..");
   //#endif
-    
+  #ifdef RAPIDCHANGE_ATC
+    do_rapidchange_work();
+  #endif
   #ifdef INPUTS
     if(forceUpdate == 1) {
       for (int x = 0; x < Inputs; x++){

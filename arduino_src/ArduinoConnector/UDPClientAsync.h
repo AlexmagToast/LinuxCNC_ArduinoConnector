@@ -69,11 +69,13 @@ public:
     
     if(_udpClient.listen(_txPort)) 
     {
+        #ifdef DEBUG_PROTOCOL_VERBOSE
         Serial.println("UDP connected");
-        
+        #endif
         _udpClient.onPacket([](AsyncUDPPacket packet) 
         {
-          
+        
+            #ifdef DEBUG_PROTOCOL_VERBOSE
             Serial.print("UDP Packet Type: ");
             Serial.print(packet.isBroadcast()?"Broadcast":packet.isMulticast()?"Multicast":"Unicast");
             Serial.print(", From: ");
@@ -96,12 +98,12 @@ public:
               Serial.print("]");
             }
             Serial.println("");
-            //reply to the client
-            
             Serial.print("Received byte total: ");
             Serial.println( packet.length() );
+            #endif
             
             MsgPacketizer::feed(packet.data(), packet.length());
+            //MsgPacketizer::update();
         });
     }
   
@@ -110,7 +112,7 @@ public:
     #ifdef DEBUG
       Serial.println("ARDUINO DEBUG: UDPClient::_init() completed");
     #endif
-    subscribed = 1;
+    
     return 1;
 
     
@@ -129,17 +131,15 @@ public:
     
     if(!subscribed)
     {
-      // Tricking MsgPacketizer into decoding received UDP packets
-      // from async UDP.
-      MsgPacketizer::subscribe(Serial, MT_HANDSHAKE,
+      MsgPacketizer::subscribe_manual((uint8_t)MT_HANDSHAKE,
           [&](const protocol::HandshakeMessage& n) {
               _onHandshakeMessage(n);
           });
-      MsgPacketizer::subscribe(Serial, MT_HEARTBEAT,
+      MsgPacketizer::subscribe_manual((uint8_t)MT_HEARTBEAT,
           [&](const protocol::HeartbeatMessage& n) {
               _onHeartbeatMessage(n);
           });
-      MsgPacketizer::subscribe(Serial, MT_COMMAND,
+      MsgPacketizer::subscribe_manual((uint8_t)MT_COMMAND,
           [&](const protocol::CommandMessage& n) {
               _onCommandMessage(n);
           });
@@ -196,6 +196,9 @@ public:
 
   virtual void _sendHeartbeatMessage()
   { 
+    size_t packetsize = _getHeartbeatMessagePacked(_txBuffer);
+  
+    _udpClient.writeTo((uint8_t*)_txBuffer, packetsize, destip, _txPort);
    // size_t packetsize = _getHeartbeatMessagePacked(_txBuffer);
   
     //_udpClient.writeTo((uint8_t*)_txBuffer, packetsize, destip, _txPort);
@@ -217,9 +220,9 @@ public:
   virtual void _sendPinStatusMessage()
   { 
 
-    //size_t packetsize = _getPinStatusMessagePacked(_txBuffer);
+    size_t packetsize = _getPinStatusMessagePacked(_txBuffer);
   
-    //_udpClient.writeTo((uint8_t*)_txBuffer, packetsize, destip, _txPort);
+    _udpClient.writeTo((uint8_t*)_txBuffer, packetsize, destip, _txPort);
     //MsgPacketizer::send(Serial, MT_PINSTATUS, _getPinStatusMessage());
   }
 

@@ -68,7 +68,9 @@ struct featureMap
     #ifdef MEMORY_MONITOR
       bitSet(this->features, MEMORY_MONITOR);
     #endif
-
+    #ifdef RAPIDCHANGE_ATC
+      bitSet(this->features, RAPIDCHANGE_ATC);
+    #endif
     #ifdef SERIAL_TO_LINUXCNC
       bitSet(this->connectionFeatures, SERIAL_TO_LINUXCNC);
     #endif
@@ -237,6 +239,14 @@ struct featureMap
         Serial.print(MEMORY_MONITOR);
         Serial.print("]");
         Serial.print(" MEMORY_MONITOR = ");
+        Serial.println(flag);
+      #endif
+      #ifdef RAPIDCHANGE_ATC
+        flag = bitRead(this->features, RAPIDCHANGE_ATC);
+        Serial.print("[ID");
+        Serial.print(RAPIDCHANGE_ATC);
+        Serial.print("]");
+        Serial.print(" RAPIDCHANGE_ATC = ");
         Serial.println(flag);
       #endif
       Serial.println("------------------- End Feature Map Decode Dump ------------------- ");

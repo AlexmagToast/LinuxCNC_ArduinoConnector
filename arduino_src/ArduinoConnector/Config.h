@@ -6,10 +6,10 @@
 //#define DEBUG_PROTOCOL_VERBOSE    1
 //#define INPUTS                   2                       
 //#define SINPUTS                   3                      
-//#define OUTPUTS                   4
+#define OUTPUTS                   4
 //#define PWMOUTPUTS                5
 //#define AINPUTS                   6   
-//#define DALLAS_TEMP_SENSOR        7
+#define DALLAS_TEMP_SENSOR        7
 //#define LPOTIS                    8
 //#define BINSEL                    9
 //#define QUADENC                   10
@@ -18,6 +18,7 @@
 //#define DLED                      13
 //#define KEYPAD                    14
 //#define MEMORY_MONITOR            15 // Requires https://github.com/mpflaga/Arduino-MemoryFree/
+//define RAPIDCHANGE_ATC            16
 
 // Connction-Related Options // Uncomment to enable. CHOSE ONLY ONE! Do not edit assigned index values.
 // Regardless of enabled option, debug/trace will be output via Serial.
@@ -146,12 +147,22 @@ byte ARDUINO_MAC[] = {
   // This version is expecting 1 sensor per pin. Future todo: add multi sensors per-pin support
   int TmpSensorMap[] = {2,3};
   DallasTemperature * TmpSensorControlMap[TmpSensors];
-  #define TEMP_OUTPUT_C 1 // 1 to output in C, any other value to output in F
+  #define TEMP_OUTPUT_C 0 // 1 to output in C, any other value to output in F
 #endif
 
 
-
-
+/*
+  RapidChange ATC Support
+  https://rapidchangeatc.com/docs/wiring-diagram/#microcontroller-wiring-diagram
+  Automatic tool changer that utilizes standard spindles.
+  DIRECTION_PIN and STEP_PIN are for stepper connections
+  ACTION_PIN is the pin the RapidChange ATC script utilizes to trigger UP/DOWN of cover.
+*/
+#ifdef RAPIDCHANGE_ATC
+  #define DIRECTION_PIN     0
+  #define STEP_PIN          1
+  #define ACTION_PIN        2
+#endif
                        
 /*This is a special mode of AInputs. My machine had originally Selector Knobs with many Pins on the backside to select different Speed Settings.
 I turned them into a "Potentiometer" by connecting all Pins with 10K Resistors in series. Then i applied GND to the first and 5V to the last Pin.
