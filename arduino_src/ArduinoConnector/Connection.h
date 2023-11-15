@@ -320,7 +320,7 @@ protected:
     #endif
     return protocol::hm;
   }
-
+/*
   size_t _packetizeMessage(MsgPack::Packer& packer, uint8_t type, byte* outBuffer)
   {
     uint8_t psize = packer.size();
@@ -339,11 +339,12 @@ protected:
 
     return 4 + psize;
   }
-
+  */
+  /*
   size_t _getHandshakeMessagePacked(byte* outBuffer)
   {
     MsgPack::Packer packer;
-    protocol::hm.featureMap = 0x1001;//this->_featureMap;
+    protocol::hm.featureMap = 0x100003;//this->_featureMap;
     protocol::hm.timeout = _retryPeriod * 2;
     packer.serialize(protocol::hm);
     uint8_t size = packer.size();
@@ -371,6 +372,8 @@ protected:
     #endif
     return packetsize;
   }
+  */
+  /*
   size_t _getHeartbeatMessagePacked(byte* outBuffer)
   {
     MsgPack::Packer packer;
@@ -390,6 +393,7 @@ protected:
     #endif
     return packetsize;
   }
+  */
   protocol::HeartbeatMessage& _getHeartbeatMessage()
   {
     #ifdef DEBUG_PROTOCOL_VERBOSE
@@ -400,6 +404,7 @@ protected:
     #endif
     return protocol::hb;
   }
+  /*
   size_t _getPinStatusMessagePacked(byte* outBuffer)
   {
     MsgPack::Packer packer;
@@ -419,6 +424,7 @@ protected:
     #endif
     return packetsize;
   }
+  */
   protocol::PinStatusMessage& _getPinStatusMessage()
   {
     #ifdef DEBUG_PROTOCOL_VERBOSE
@@ -433,6 +439,7 @@ protected:
   }
 
   #ifdef DEBUG
+  /*
   size_t _getDebugMessagePacked(byte* outBuffer, String& message)
   {
     MsgPack::Packer packer;
@@ -453,6 +460,7 @@ protected:
     #endif
     return packetsize;
   }
+  */
   protocol::DebugMessage& _getDebugMessage(String& message)
   {
     protocol::dm.message = message;
@@ -488,7 +496,7 @@ protected:
   uint32_t _resendTimer = 0;
   uint32_t _receiveTimer = 0;
   uint8_t _initialized = false;
-  uint32_t _featureMap = 1;
+  uint64_t _featureMap = 1;
   int _myState = CS_DISCONNECTED;
   char _rxBuffer[RX_BUFFER_SIZE];
   byte _txBuffer[RX_BUFFER_SIZE];

@@ -70,7 +70,7 @@ namespace protocol
 
   struct HandshakeMessage {
       uint8_t protocolVersion = PROTOCOL_VERSION;
-      uint32_t featureMap = 0x1;//00003;
+      uint64_t featureMap = 0x1;//00003;
       uint32_t timeout = 1;
       uint8_t boardIndex = BOARD_INDEX+1;
       MSGPACK_DEFINE(protocolVersion, featureMap, timeout, boardIndex); 
