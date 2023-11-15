@@ -1,4 +1,5 @@
 from multiprocessing import Value
+from re import T
 import sys
 import serial
 #import socket
@@ -219,21 +220,44 @@ class MessageDecoder:
     def parseBytes(self, b:bytes):
         #try:
         self.messageType = b[1]
-        data_bytes = b[2:]
-        data_bytes = data_bytes[:-1]
-        self.crc = b[-1:]
+        #data_bytes = b[2:]
+        data_bytes = b#[:-1]
         
-        data_bytes_decode = cobs.decode(data_bytes)
+        #self.crc = b[-1:]
+        start_byte = b[0]
+        
+        header_byte = b[0] + 3
+        
+        while True:
+            if data_bytes[header_byte] == 0:
+                break
+            else:
+                header_byte = data_bytes[header_byte]
+                data_bytes[header_byte] = 0
+        
+        
+        #data_bytes = b[2:]
+        #data_bytes = b[:-1]       
+        data_bytes = b[2:]
+        data_bytes = data_bytes[:-3]
+        self.crc = b[-2]
+        #int index = 0
+        #for b in data_bytes:
+            
+        
+        #eot = 0
+        #combined  = start_byte.to_bytes(1, byteorder='big') + data_bytes + eot.to_bytes(1, byteorder='big')
+        #data_bytes_decode = cobs.decode(combined)
         #strc = ''
         #print('Data_Bytes=')
         #for b1 in bytes(data_bytes):
         #    strc += f'[{hex(b1)}]'
         #print(strc)
         #test = msgpack.unpackb(b'\x92\xA4\x49\x33\x3A\x30\x01', use_list=False, raw=False)
-        if self.validateCRC( data=data_bytes_decode, crc=self.crc) == False:
+        if self.validateCRC( data=data_bytes, crc=self.crc) == False:
             raise Exception(f"Error. CRC validation failed for received message. Bytes = {b}")
         
-        self.payload = msgpack.unpackb(data_bytes_decode, use_list=True, raw=False)
+        self.payload = msgpack.unpackb(data_bytes, use_list=True, raw=False)
 
 class MessageEncoder:
     #def __init__(self):
@@ -401,7 +425,7 @@ class UDPConnection(Connection):
                 output = ''
                 for b in self.buffer:
                     output += f'[{hex(b)}] '
-                #print(output)
+                print(output)
                 #(b'\x05\x02\x94\x01\xce\x02\x01\x07\x11\xcd\x13\x88\x01m\x00', [], 0, ('192.168.1.88', 54321))
                 #b"\x0c\x02\x94\x01\xcd\x80\x11\xcd'\x10\x01#"
                 #sz = self.buffer[0]
@@ -411,7 +435,7 @@ class UDPConnection(Connection):
                 #sent = sock.sendto(payload, client_address)
                 
                 try:
-                    md = MessageDecoder(bytes(self.buffer[:-1]))
+                    md = MessageDecoder(bytes(self.buffer))
                     self.fromip = add[0] # TODO: Allow for multiple arduino's to communicate via UDP. Hardcoding is for lazy weasels!
                     self.fromport = add[1]
                     self.onMessageRecv(m=md)
