@@ -14,6 +14,7 @@ import crc8
 import traceback
 import numpy
 import socket
+from cobs import cobs
 
 arduinoIndexPlaceholder = 'arduino_index'
 pinNamePlaceholder = 'pin_name'
@@ -221,16 +222,18 @@ class MessageDecoder:
         data_bytes = b[2:]
         data_bytes = data_bytes[:-1]
         self.crc = b[-1:]
+        
+        data_bytes_decode = cobs.decode(data_bytes)
         #strc = ''
         #print('Data_Bytes=')
         #for b1 in bytes(data_bytes):
         #    strc += f'[{hex(b1)}]'
         #print(strc)
         #test = msgpack.unpackb(b'\x92\xA4\x49\x33\x3A\x30\x01', use_list=False, raw=False)
-        if self.validateCRC( data=data_bytes, crc=self.crc) == False:
+        if self.validateCRC( data=data_bytes_decode, crc=self.crc) == False:
             raise Exception(f"Error. CRC validation failed for received message. Bytes = {b}")
         
-        self.payload = msgpack.unpackb(data_bytes, use_list=True, raw=False)
+        self.payload = msgpack.unpackb(data_bytes_decode, use_list=True, raw=False)
 
 class MessageEncoder:
     #def __init__(self):
@@ -459,11 +462,11 @@ class SerialConnetion(Connection):
                 data = self.arduino.read()
                 if data == b'\x00':
                     #print(bytes(self.buffer))
-                    #strb = ''
+                    strb = ''
                     #print('Bytes from wire: ')
-                    #for b in bytes(self.buffer):
-                    #    strb += f'[{hex(b)}]'
-                    #print(strb)
+                    for b in bytes(self.buffer):
+                        strb += f'[{hex(b)}]'
+                    print(strb)
                     try:
                         md = MessageDecoder(bytes(self.buffer))
                         self.onMessageRecv(m=md)
