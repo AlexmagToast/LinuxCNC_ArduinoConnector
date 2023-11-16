@@ -1,11 +1,7 @@
 from multiprocessing import Value
 from re import T
-import sys
 import serial
-#import socket
-from xdrlib import Unpacker
 import msgpack
-from io import BytesIO
 from strenum import StrEnum
 from enum import IntEnum
 from threading import Thread
@@ -15,7 +11,6 @@ import crc8
 import traceback
 import numpy
 import socket
-import struct
 from cobs import cobs
 
 arduinoIndexPlaceholder = 'arduino_index'
