@@ -225,7 +225,7 @@ public:
     //_udpClient.beginPacket(_serverIP, _txPort);
    // _udpClient.write((uint8_t*)_txBuffer, packetsize);
     //_udpClient.endPacket();
-    MsgPacketizer::send(_udpClient, MT_PINSTATUS, _getPinStatusMessage());
+    MsgPacketizer::send(_udpClient, _serverIP, _txPort, MT_PINSTATUS, _getPinStatusMessage());
   }
 
   
