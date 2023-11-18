@@ -207,7 +207,7 @@ class MessageDecoder:
     def validateCRC(self, data:bytes, crc:bytes):
         hash = crc8.crc8()
         hash.update(data)
-        #d = hash.digest()#.to_bytes(1, 'big')
+        d = hash.digest()#.to_bytes(1, 'big')
         if hash.digest() == crc:#.to_bytes(1,'big'):
             return True
         else:

@@ -90,8 +90,8 @@ sInPinmap = [10] #Which Pins are SInputs?
 
 
 # Set how many Outputs you have programmed in Arduino and which pins are Outputs, Set Outputs = 0 to disable
-Outputs = 1				#9 Outputs, Set Outputs = 0 to disable
-OutPinmap = [4]	#Which Pins are Outputs?
+Outputs = 9				#9 Outputs, Set Outputs = 0 to disable
+OutPinmap = [4,5,6,7,8,9,10,11,12]	#Which Pins are Outputs?
 
 # Set how many PWM Outputs you have programmed in Arduino and which pins are PWM Outputs, you can set as many as your Arduino has PWM pins. List the connected pins below.
 PwmOutputs = 0			#number of PwmOutputs, Set PwmOutputs = 0 to disable 
@@ -390,14 +390,14 @@ def extract_nbr(input_str):
 			out_number += ele
 	return int(out_number)
 
-def managageOutputs():
+def managageOutputs(force=False):
 	global errorCount
 	for port in range(PwmOutputs):
 		p = hlookup.getPin(pinSuffix=pwm_output_prefix, pinIndex=PwmOutPinmap[port])
 		State = int(c[p.getName()])
 		#State = int(c["pwmout.{}".format(PwmOutPinmap[port])])
 		
-		if oldPwmOutStates[port] != State: 	#check if states have changed
+		if oldPwmOutStates[port] != State or force == True: 	#check if states have changed
 			Sig = 'P'
 			Pin = int(PwmOutPinmap[port])
 			command = "{}{}:{}\n".format(Sig,Pin,State)
@@ -410,7 +410,7 @@ def managageOutputs():
 		p = hlookup.getPin(pinSuffix=dout_prefix, pinIndex=OutPinmap[port])
 		State = int(c[p.getName()])
 		#State = int(c["dout.{}".format(OutPinmap[port])])
-		if olddOutStates[port] != State:	#check if states have changed
+		if olddOutStates[port] != State or force == True:	#check if states have changed
 			Sig = 'O'
 			Pin = int(OutPinmap[port])
 			command = "{}{}:{}\n".format(Sig,Pin,State)
@@ -423,7 +423,7 @@ def managageOutputs():
 		p = hlookup.getPin(pinSuffix=dled_prefex, pinIndex=dled)
 		State = int(c[p.getName()])
 		#State = int(c["dled.{}".format(dled)])
-		if oldDLEDStates[dled] != State: #check if states have changed
+		if oldDLEDStates[dled] != State or force == True: #check if states have changed
 			Sig = 'D'
 			Pin = dled
 			command = "{}{}:{}\n".format(Sig,Pin,State)
@@ -436,7 +436,7 @@ def managageOutputs():
 			#State = int(c["mled.{}".format(mled)])
 			p = hlookup.getPin(pinSuffix=dled_prefex, pinIndex=dled)
 			State = int(c["dled.{}".format(dled)])
-			if oldMledStates[mled] != State: #check if states have changed
+			if oldMledStates[mled] != State or force == True: #check if states have changed
 				Sig = 'M'
 				Pin = mled
 				command = "{}{}:{}\n".format(Sig,Pin,State)
@@ -639,15 +639,20 @@ def processCommand(data: str):
     
 
 sc.startRxTask()
-    
+sendOutputs = False # This flag is used to re-send output pin states upon reconnect to the arduino
 while True:
 	try:
 		try:
 			if sc.getState(0) == ConnectionState.CONNECTED:
 				updateConnectionPin(True)
-				managageOutputs()
+				if sendOutputs == True:
+					managageOutputs(force=True)
+					sendOutputs = False
+				else:
+					managageOutputs()
 			else:
 				updateConnectionPin(False)
+				sendOutputs = True
 				
 			cmd = sc.rxQueue.get(block=False, timeout=100)
 			if cmd != None:
