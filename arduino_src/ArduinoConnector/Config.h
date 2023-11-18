@@ -18,7 +18,9 @@
 //#define DLED                      13
 //#define KEYPAD                    14
 //#define MEMORY_MONITOR            15 // Requires https://github.com/mpflaga/Arduino-MemoryFree/
-//define RAPIDCHANGE_ATC            16
+//#define RAPIDCHANGE_ATC           16
+#define STARTUP_OUTPINS_STATE      17 // Set output pin states at startup, see OutPinInitialState map below
+#define DISCONNECT_OUTPINS_STATE   18 // Set output pin states on disconnect from LinuxCNC, see OutPinOnDisconnectState map below.
 
 // Connction-Related Options // Uncomment to enable. CHOSE ONLY ONE! Do not edit assigned index values.
 // Regardless of enabled option, debug/trace will be output via Serial.
@@ -118,8 +120,12 @@ byte ARDUINO_MAC[] = {
 #ifdef OUTPUTS
   const int Outputs = 9;              //number of outputs
   int OutPinmap[] = {4,5,6,7,8,9,10,11,12};
-  int OutPinInitialState[] = {1,1,1,1,1,1,1,1,1}; // Map to set initial pin states
-  int OutPinOnDisconnectState[] = {-1,-1,-1,-1,-1,-1,-1,-1,-1}; // Map to set pin states on reconnect. -1 is no change
+  #ifdef STARTUP_OUTPINS_STATE
+    int OutPinInitialState[] = {1,1,1,1,1,1,1,1,1}; // Map to set initial pin states
+  #endif
+  #ifdef DISCONNECT_OUTPINS_STATE
+    int OutPinOnDisconnectState[] = {-1,-1,-1,-1,-1,-1,-1,-1,-1}; // Map to set pin states on reconnect. -1 is no change
+  #endif
 #endif
 
                     //Use Arduino PWM Capable IO's as PWM Outputs. Define how many  PWM Outputs you want in total and then which Pins you want to be  PWM Outputs.

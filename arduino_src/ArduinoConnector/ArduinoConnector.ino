@@ -176,8 +176,12 @@ Serial.begin(DEFAULT_SERIAL_BAUD_RATE);
 #ifdef OUTPUTS
   for(int o= 0; o<Outputs;o++){
     pinMode(OutPinmap[o], OUTPUT);
-    writeOutputs(OutPinmap[o], OutPinInitialState[OutPinmap[o]]);
-    oldOutState[o] = OutPinInitialState[OutPinmap[o]];
+    #if defined(STARTUP_OUTPINS_STATE)
+      writeOutputs(OutPinmap[o], OutPinInitialState[OutPinmap[o]]);
+      oldOutState[o] = OutPinInitialState[OutPinmap[o]];
+    #else
+      oldOutState[o] = 0;
+    #endif
     }
 #endif
 
@@ -249,7 +253,7 @@ void commUpdate(){
     #endif
     if (new_state == CS_DISCONNECTED)
     {
-      #ifdef OUTPUTS
+      #if defined(OUTPUTS) and defined(DISCONNECT_OUTPINS_STATE)
         for(int o= 0; o<Outputs;o++){
           if ( OutPinInitialState[OutPinmap[o]] != -1 ) // Optional state change based on disconnected state
           {

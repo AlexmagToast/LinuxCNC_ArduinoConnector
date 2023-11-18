@@ -5,7 +5,7 @@ import msgpack
 import crc8
 
 #connection = '/dev/ttyACM0'
-connection = '/dev/cu.usbmodem101'
+connection = '/dev/cu.usbmodem3485187ABE842'
 arduino = serial.Serial(connection, 115200, timeout=1, xonxoff=False, rtscts=False, dsrdtr=True)
 
 recv_buffer = bytes()
@@ -38,7 +38,7 @@ while True:
                 payload = msgpack.unpackb(data_bytes, use_list=True, raw=False)
                 print(f'Decode success! Unpacked data: {payload}')
             else:
-                print(f"Error. CRC validation failed for received message!")
+                print(f"Error. CRC validation failed for received message! Computed CRC = {hash.digest()}")
             recv_buffer = bytes() # reset the receive buffer for the next frame
         elif data == b'\n': # Debug Serial.println received
             recv_buffer += bytearray(data)

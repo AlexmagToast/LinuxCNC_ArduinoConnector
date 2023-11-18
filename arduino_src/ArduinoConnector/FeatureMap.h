@@ -71,6 +71,14 @@ struct featureMap
     #ifdef RAPIDCHANGE_ATC
       bitSet(this->features, RAPIDCHANGE_ATC);
     #endif
+
+    #ifdef STARTUP_OUTPINS_STATE
+      bitSet(this->features, STARTUP_OUTPINS_STATE);
+    #endif
+    #ifdef DISCONNECT_OUTPINS_STATE
+      bitSet(this->features, DISCONNECT_OUTPINS_STATE);
+    #endif
+
     #ifdef SERIAL_TO_LINUXCNC
       bitSet(this->connectionFeatures, SERIAL_TO_LINUXCNC);
     #endif
@@ -247,6 +255,22 @@ struct featureMap
         Serial.print(RAPIDCHANGE_ATC);
         Serial.print("]");
         Serial.print(" RAPIDCHANGE_ATC = ");
+        Serial.println(flag);
+      #endif
+      #ifdef STARTUP_OUTPINS_STATE
+        flag = bitRead(this->features, STARTUP_OUTPINS_STATE);
+        Serial.print("[ID");
+        Serial.print(STARTUP_OUTPINS_STATE);
+        Serial.print("]");
+        Serial.print(" STARTUP_OUTPINS_STATE = ");
+        Serial.println(flag);
+      #endif
+      #ifdef DISCONNECT_OUTPINS_STATE
+        flag = bitRead(this->features, DISCONNECT_OUTPINS_STATE);
+        Serial.print("[ID");
+        Serial.print(DISCONNECT_OUTPINS_STATE);
+        Serial.print("]");
+        Serial.print(" DISCONNECT_OUTPINS_STATE = ");
         Serial.println(flag);
       #endif
       Serial.println("------------------- End Feature Map Decode Dump ------------------- ");
