@@ -65,9 +65,16 @@ public:
   {
     if( _initialized == false)
     {
-      this->_onInit();
-      //delay(1000);
-      _initialized = true;
+      if ( this->_onInit() )
+      {
+        _initialized = true;
+        
+      }
+      else
+      {
+        delay(1000);
+        return;
+      }
     }
     /* TODO: Move this code out to appropriate connection-deriving classes.
     #if DHCP == 1
@@ -299,7 +306,16 @@ protected:
       Serial.println("]");
       Serial.flush();
     #endif
+
     this->_myState = new_state;
+    if (new_state == CS_DISCONNECTED)
+    {
+      _onDisconnect();
+    }
+    else if (new_state == CS_CONNECTED)
+    {
+      _onConnect();
+    }
   }
 
   protocol::HandshakeMessage& _getHandshakeMessage()

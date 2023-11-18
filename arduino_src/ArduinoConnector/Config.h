@@ -3,7 +3,7 @@
 
 // Arduiono IO Feature Options // Uncomment to enable. Do not edit assigned index values.
 #define DEBUG                     0
-//#define DEBUG_PROTOCOL_VERBOSE    1
+#define DEBUG_PROTOCOL_VERBOSE    1
 //#define INPUTS                   2                       
 //#define SINPUTS                   3                      
 #define OUTPUTS                   4
@@ -23,11 +23,11 @@
 // Connction-Related Options // Uncomment to enable. CHOSE ONLY ONE! Do not edit assigned index values.
 // Regardless of enabled option, debug/trace will be output via Serial.
 //#define SERIAL_TO_LINUXCNC          1 
-#define ETHERNET_UDP_TO_LINUXCNC      2
+//#define ETHERNET_UDP_TO_LINUXCNC      2
 //#define ETHERNET_TCP_TO_LINUXCNC    3 // FUTURE
 //#define WIFI_TCP_TO_LINUXCNC        4 // FUTURE
 //#define WIFI_UDP_TO_LINUXCNC        5 // FUTURE
-//#define WIFI_UDP_ASYNC_TO_LINUXCNC  6 // FUTURE, REQUIRES Arduino Nano ESP32 or Equivalent 
+#define WIFI_UDP_ASYNC_TO_LINUXCNC  6 // FUTURE, REQUIRES Arduino Nano ESP32 or Equivalent 
 
 //##### SERIAL CONNECTION OPTIONS ######
 #define DEFAULT_SERIAL_BAUD_RATE 115200
@@ -83,11 +83,11 @@ byte ARDUINO_MAC[] = {
 #endif
 
 #if DHCP == 0
-  IPAddress ARDUINO_IP(192, 168, 1, 88);
+  IPAddress ARDUINO_IP(192, 168, 1, 111);
 #endif
 
   //IPAddress SERVER_IP(192, 168, 1, 2);
-  const char* SERVER_IP = "192.168.1.49";
+  const char* SERVER_IP = "10.0.0.24";
 
 // 10 = Most Boards
 // 5 = MKR ETH Shield
@@ -116,8 +116,10 @@ byte ARDUINO_MAC[] = {
 
                     //Use Arduino IO's as Outputs. Define how many Outputs you want in total and then which Pins you want to be Outputs.
 #ifdef OUTPUTS
-  const int Outputs = 1;              //number of outputs
-  int OutPinmap[] = {4};
+  const int Outputs = 9;              //number of outputs
+  int OutPinmap[] = {4,5,6,7,8,9,10,11,12};
+  int OutPinInitialState[] = {1,1,1,1,1,1,1,1,1}; // Map to set initial pin states
+  int OutPinOnDisconnectState[] = {-1,-1,-1,-1,-1,-1,-1,-1,-1}; // Map to set pin states on reconnect. -1 is no change
 #endif
 
                     //Use Arduino PWM Capable IO's as PWM Outputs. Define how many  PWM Outputs you want in total and then which Pins you want to be  PWM Outputs.
