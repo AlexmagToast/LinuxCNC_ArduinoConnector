@@ -16,6 +16,7 @@
 struct featureMap
 {
   uint64_t features;
+  uint16_t connectionFeatures;
   featureMap()
   {
     features = 0;
@@ -64,27 +65,39 @@ struct featureMap
     #ifdef KEYPAD
       bitSet(this->features, KEYPAD);
     #endif
-    #ifdef SERIAL_TO_LINUXCNC
-      bitSet(this->features, SERIAL_TO_LINUXCNC);
-    #endif
-    #ifdef ETHERNET_UDP_TO_LINUXCNC
-      bitSet(this->features, ETHERNET_UDP_TO_LINUXCNC);
-    #endif
-    #ifdef ETHERNET_TCP_TO_LINUXCNC
-      bitSet(this->features, ETHERNET_TCP_TO_LINUXCNC);
-    #endif
-    #ifdef WIFI_UDP_TO_LINUXCNC
-      bitSet(this->features, WIFI_UDP_TO_LINUXCNC);
-    #endif
-    #ifdef WIFI_TCP_TO_LINUXCNC
-      bitSet(this->features, WIFI_TCP_TO_LINUXCNC);
-    #endif
-    #ifdef WIFI_UDP_ASYNC_TO_LINUXCNC
-      bitSet(this->features, WIFI_UDP_ASYNC_TO_LINUXCNC);
-    #endif
     #ifdef MEMORY_MONITOR
       bitSet(this->features, MEMORY_MONITOR);
     #endif
+    #ifdef RAPIDCHANGE_ATC
+      bitSet(this->features, RAPIDCHANGE_ATC);
+    #endif
+
+    #ifdef STARTUP_OUTPINS_STATE
+      bitSet(this->features, STARTUP_OUTPINS_STATE);
+    #endif
+    #ifdef DISCONNECT_OUTPINS_STATE
+      bitSet(this->features, DISCONNECT_OUTPINS_STATE);
+    #endif
+
+    #ifdef SERIAL_TO_LINUXCNC
+      bitSet(this->connectionFeatures, SERIAL_TO_LINUXCNC);
+    #endif
+    #ifdef ETHERNET_UDP_TO_LINUXCNC
+      bitSet(this->connectionFeatures, ETHERNET_UDP_TO_LINUXCNC);
+    #endif
+    #ifdef ETHERNET_TCP_TO_LINUXCNC
+      bitSet(this->connectionFeatures, ETHERNET_TCP_TO_LINUXCNC);
+    #endif
+    #ifdef WIFI_UDP_TO_LINUXCNC
+      bitSet(this->connectionFeatures, WIFI_UDP_TO_LINUXCNC);
+    #endif
+    #ifdef WIFI_TCP_TO_LINUXCNC
+      bitSet(this->connectionFeatures, WIFI_TCP_TO_LINUXCNC);
+    #endif
+    #ifdef WIFI_UDP_ASYNC_TO_LINUXCNC
+      bitSet(this->connectionFeatures, WIFI_UDP_ASYNC_TO_LINUXCNC);
+    #endif
+
   }
 
   /**
@@ -95,6 +108,11 @@ struct featureMap
   int GetFeatureStatus(int f)
   {
     return bitRead(features, f);
+  }
+
+  int GetConnectionFeatureStatus(int f)
+  {
+    return bitRead(connectionFeatures, f);
   }
 
   void DumpFeatureMapToSerial()
@@ -223,54 +241,6 @@ struct featureMap
         Serial.print(" KEYPAD = ");
         Serial.println(flag);
       #endif
-      #ifdef SERIAL_TO_LINUXCNC
-        flag = bitRead(this->features, SERIAL_TO_LINUXCNC);
-        Serial.print("[ID");
-        Serial.print(SERIAL_TO_LINUXCNC);
-        Serial.print("]");
-        Serial.print(" SERIAL_TO_LINUXCNC = ");
-        Serial.println(flag);
-      #endif
-      #ifdef ETHERNET_UDP_TO_LINUXCNC
-        flag = bitRead(this->features, ETHERNET_UDP_TO_LINUXCNC);
-        Serial.print("[ID");
-        Serial.print(ETHERNET_UDP_TO_LINUXCNC);
-        Serial.print("]");
-        Serial.print(" ETHERNET_UDP_TO_LINUXCNC = ");
-        Serial.println(flag);
-      #endif
-      #ifdef ETHERNET_TCP_TO_LINUXCNC
-        flag = bitRead(this->features, ETHERNET_TCP_TO_LINUXCNC);
-        Serial.print("[ID");
-        Serial.print(ETHERNET_TCP_TO_LINUXCNC);
-        Serial.print("]");
-        Serial.print(" ETHERNET_TCP_TO_LINUXCNC = ");
-        Serial.println(flag);
-      #endif
-      #ifdef WIFI_UDP_TO_LINUXCNC
-        flag = bitRead(this->features, WIFI_UDP_TO_LINUXCNC);
-        Serial.print("[ID");
-        Serial.print(WIFI_UDP_TO_LINUXCNC);
-        Serial.print("]");
-        Serial.print(" WIFI_UDP_TO_LINUXCNC = ");
-        Serial.println(flag);
-      #endif
-      #ifdef WIFI_TCP_TO_LINUXCNC
-        flag = bitRead(this->features, WIFI_TCP_TO_LINUXCNC);
-        Serial.print("[ID");
-        Serial.print(WIFI_TCP_TO_LINUXCNC);
-        Serial.print("]");
-        Serial.print(" WIFI_TCP_TO_LINUXCNC = ");
-        Serial.println(flag);
-      #endif
-      #ifdef WIFI_UDP_ASYNC_TO_LINUXCNC
-        flag = bitRead(this->features, WIFI_UDP_ASYNC_TO_LINUXCNC);
-        Serial.print("[ID");
-        Serial.print(WIFI_UDP_ASYNC_TO_LINUXCNC);
-        Serial.print("]");
-        Serial.print(" WIFI_UDP_ASYNC_TO_LINUXCNC = ");
-        Serial.println(flag);
-      #endif
       #ifdef MEMORY_MONITOR
         flag = bitRead(this->features, MEMORY_MONITOR);
         Serial.print("[ID");
@@ -279,7 +249,83 @@ struct featureMap
         Serial.print(" MEMORY_MONITOR = ");
         Serial.println(flag);
       #endif
+      #ifdef RAPIDCHANGE_ATC
+        flag = bitRead(this->features, RAPIDCHANGE_ATC);
+        Serial.print("[ID");
+        Serial.print(RAPIDCHANGE_ATC);
+        Serial.print("]");
+        Serial.print(" RAPIDCHANGE_ATC = ");
+        Serial.println(flag);
+      #endif
+      #ifdef STARTUP_OUTPINS_STATE
+        flag = bitRead(this->features, STARTUP_OUTPINS_STATE);
+        Serial.print("[ID");
+        Serial.print(STARTUP_OUTPINS_STATE);
+        Serial.print("]");
+        Serial.print(" STARTUP_OUTPINS_STATE = ");
+        Serial.println(flag);
+      #endif
+      #ifdef DISCONNECT_OUTPINS_STATE
+        flag = bitRead(this->features, DISCONNECT_OUTPINS_STATE);
+        Serial.print("[ID");
+        Serial.print(DISCONNECT_OUTPINS_STATE);
+        Serial.print("]");
+        Serial.print(" DISCONNECT_OUTPINS_STATE = ");
+        Serial.println(flag);
+      #endif
       Serial.println("------------------- End Feature Map Decode Dump ------------------- ");
+
+      Serial.print("ARDUINO DEBUG: Connection Feature Map = 0x");
+      Serial.println(this->connectionFeatures, HEX);
+      #ifdef SERIAL_TO_LINUXCNC
+        flag = bitRead(this->connectionFeatures, SERIAL_TO_LINUXCNC);
+        Serial.print("[ID");
+        Serial.print(SERIAL_TO_LINUXCNC);
+        Serial.print("]");
+        Serial.print(" SERIAL_TO_LINUXCNC = ");
+        Serial.println(flag);
+      #endif
+      #ifdef ETHERNET_UDP_TO_LINUXCNC
+        flag = bitRead(this->connectionFeatures, ETHERNET_UDP_TO_LINUXCNC);
+        Serial.print("[ID");
+        Serial.print(ETHERNET_UDP_TO_LINUXCNC);
+        Serial.print("]");
+        Serial.print(" ETHERNET_UDP_TO_LINUXCNC = ");
+        Serial.println(flag);
+      #endif
+      #ifdef ETHERNET_TCP_TO_LINUXCNC
+        flag = bitRead(this->connectionFeatures, ETHERNET_TCP_TO_LINUXCNC);
+        Serial.print("[ID");
+        Serial.print(ETHERNET_TCP_TO_LINUXCNC);
+        Serial.print("]");
+        Serial.print(" ETHERNET_TCP_TO_LINUXCNC = ");
+        Serial.println(flag);
+      #endif
+      #ifdef WIFI_UDP_TO_LINUXCNC
+        flag = bitRead(this->connectionFeatures, WIFI_UDP_TO_LINUXCNC);
+        Serial.print("[ID");
+        Serial.print(WIFI_UDP_TO_LINUXCNC);
+        Serial.print("]");
+        Serial.print(" WIFI_UDP_TO_LINUXCNC = ");
+        Serial.println(flag);
+      #endif
+      #ifdef WIFI_TCP_TO_LINUXCNC
+        flag = bitRead(this->connectionFeatures, WIFI_TCP_TO_LINUXCNC);
+        Serial.print("[ID");
+        Serial.print(WIFI_TCP_TO_LINUXCNC);
+        Serial.print("]");
+        Serial.print(" WIFI_TCP_TO_LINUXCNC = ");
+        Serial.println(flag);
+      #endif
+      #ifdef WIFI_UDP_ASYNC_TO_LINUXCNC
+        flag = bitRead(this->connectionFeatures, WIFI_UDP_ASYNC_TO_LINUXCNC);
+        Serial.print("[ID");
+        Serial.print(WIFI_UDP_ASYNC_TO_LINUXCNC);
+        Serial.print("]");
+        Serial.print(" WIFI_UDP_ASYNC_TO_LINUXCNC = ");
+        Serial.println(flag);
+      #endif
+      Serial.println("------------------- End Connection Feature Map Decode Dump ------------------- ");
     #endif
   }
 };

@@ -50,30 +50,46 @@ public:
   #endif
   // Virtual interfaces from Connection class
   virtual void _onConnect(){}
-  virtual void _onDisconnect(){}
+  virtual void _onDisconnect(){
+    if (WiFi.status() != WL_CONNECTED)
+      _initialized = false; // reset wifi connection
+  }
   virtual void _onError(){}
   uint8_t _onInit(){
     #ifdef DEBUG
       Serial.println("ARDUINO DEBUG: UDPClientAsync::onInit() called..");
     #endif
     WiFi.mode(WIFI_STA);
+    WiFi.disconnect();
+    delay(2000);
     WiFi.begin(ssid, password);
-    if (WiFi.waitForConnectResult() != WL_CONNECTED) {
-        Serial.println("DEBUG: WiFi Failed");
-        while(1) {
-            delay(1000);
-        }
+    Serial.print("ARDUINO DEBUG: Connecting to WiFi, SSID: ");
+    Serial.print(ssid);
+    int retryCount = 10; // 10 seconds of retry before resetting the connection
+    while (WiFi.status() != WL_CONNECTED) {
+      if (retryCount-- == 0)
+      {
+        Serial.print("ARDUINO DEBUG: Wifi connection timeout. Restarting connection.. ");
+        return 0;
+      }
+      Serial.print('.');
+      delay(1000);
     }
-    
+    #ifdef DEBUG
+    Serial.print("ARDUINO DEBUG: Wifi assigned IP address: ");
+    Serial.println(WiFi.localIP());
+    #endif
     destip.fromString(_serverIP);
-    
+    //delay(5000);
     if(_udpClient.listen(_txPort)) 
     {
+        #ifdef DEBUG_PROTOCOL_VERBOSE
         Serial.println("UDP connected");
-        
+        #endif
         _udpClient.onPacket([](AsyncUDPPacket packet) 
         {
-          
+        
+            #ifdef DEBUG_PROTOCOL_VERBOSE
             Serial.print("UDP Packet Type: ");
             Serial.print(packet.isBroadcast()?"Broadcast":packet.isMulticast()?"Multicast":"Unicast");
             Serial.print(", From: ");
@@ -96,12 +112,12 @@ public:
               Serial.print("]");
             }
             Serial.println("");
-            //reply to the client
-            
             Serial.print("Received byte total: ");
             Serial.println( packet.length() );
+            #endif
             
             MsgPacketizer::feed(packet.data(), packet.length());
+            //MsgPacketizer::update();
         });
     }
   
@@ -110,7 +126,7 @@ public:
     #ifdef DEBUG
       Serial.println("ARDUINO DEBUG: UDPClient::_init() completed");
     #endif
-    subscribed = 1;
+    
     return 1;
 
     
@@ -129,17 +145,15 @@ public:
     
     if(!subscribed)
     {
-      // Tricking MsgPacketizer into decoding received UDP packets
-      // from async UDP.
-      MsgPacketizer::subscribe(Serial, MT_HANDSHAKE,
+      MsgPacketizer::subscribe_manual((uint8_t)MT_HANDSHAKE,
           [&](const protocol::HandshakeMessage& n) {
               _onHandshakeMessage(n);
           });
-      MsgPacketizer::subscribe(Serial, MT_HEARTBEAT,
+      MsgPacketizer::subscribe_manual((uint8_t)MT_HEARTBEAT,
           [&](const protocol::HeartbeatMessage& n) {
               _onHeartbeatMessage(n);
           });
-      MsgPacketizer::subscribe(Serial, MT_COMMAND,
+      MsgPacketizer::subscribe_manual((uint8_t)MT_COMMAND,
           [&](const protocol::CommandMessage& n) {
               _onCommandMessage(n);
           });
@@ -150,10 +164,13 @@ public:
 
   virtual void _sendHandshakeMessage()
   {
+    const auto& packet = MsgPacketizer::encode(MT_HANDSHAKE, _getHandshakeMessage());
+    _udpClient.writeTo((uint8_t*)packet.data.data(), packet.data.size(), destip, _txPort);
+    //MsgPacketizer::send(_udpClient, _serverIP, _txPort, MT_HANDSHAKE, _getHandshakeMessage());
     //byte b[RX_BUFFER_SIZE];
-    size_t packetsize = _getHandshakeMessagePacked(_txBuffer);
+    //size_t packetsize = _getHandshakeMessagePacked(_txBuffer);
   
-    _udpClient.writeTo((uint8_t*)_txBuffer, packetsize, destip, _txPort);
+    
     /*
     _getHandshakeMessage();
     MsgPack::Packer packer;
@@ -196,6 +213,11 @@ public:
 
   virtual void _sendHeartbeatMessage()
   { 
+    const auto& packet = MsgPacketizer::encode(MT_HEARTBEAT, _getHeartbeatMessage());
+    _udpClient.writeTo((uint8_t*)packet.data.data(), packet.data.size(), destip, _txPort);
+    //size_t packetsize = _getHeartbeatMessagePacked(_txBuffer);
+  
+    //_udpClient.writeTo((uint8_t*)_txBuffer, packetsize, destip, _txPort);
    // size_t packetsize = _getHeartbeatMessagePacked(_txBuffer);
   
     //_udpClient.writeTo((uint8_t*)_txBuffer, packetsize, destip, _txPort);
@@ -207,16 +229,18 @@ public:
   #ifdef DEBUG
   virtual void _sendDebugMessage(String& message)
   {
-
-    size_t packetsize = _getDebugMessagePacked(_txBuffer, message);
+    const auto& packet = MsgPacketizer::encode(MT_DEBUG, _getDebugMessage(message));
+    _udpClient.writeTo((uint8_t*)packet.data.data(), packet.data.size(), destip, _txPort);
+    //size_t packetsize = _getDebugMessagePacked(_txBuffer, message);
   
-    _udpClient.writeTo((uint8_t*)_txBuffer, packetsize, destip, _txPort);
-    //MsgPacketizer::send(_udpClient, _serverIP, _txPort, MT_DEBUG, //_getDebugMessage(message));
+    //_udpClient.writeTo((uint8_t*)_txBuffer, packetsize, destip, _txPort);
+   // MsgPacketizer::send(_udpClient, _serverIP, _txPort, MT_DEBUG, _getDebugMessage(message));
   }
   
   virtual void _sendPinStatusMessage()
   { 
-
+    const auto& packet = MsgPacketizer::encode(MT_PINSTATUS, _getPinStatusMessage());
+    _udpClient.writeTo((uint8_t*)packet.data.data(), packet.data.size(), destip, _txPort);
     //size_t packetsize = _getPinStatusMessagePacked(_txBuffer);
   
     //_udpClient.writeTo((uint8_t*)_txBuffer, packetsize, destip, _txPort);

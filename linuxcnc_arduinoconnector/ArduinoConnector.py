@@ -1,10 +1,7 @@
 from multiprocessing import Value
-import sys
+from re import T
 import serial
-#import socket
-from xdrlib import Unpacker
 import msgpack
-from io import BytesIO
 from strenum import StrEnum
 from enum import IntEnum
 from threading import Thread
@@ -14,6 +11,16 @@ import crc8
 import traceback
 import numpy
 import socket
+from cobs import cobs
+
+arduinoIndexPlaceholder = 'arduino_index'
+pinNamePlaceholder = 'pin_name'
+pinDirectionPlaceholder = 'pin_direction'
+pinIndexPlaceholder = 'pin_index'
+
+pinNameFormatv1 = f'{pinNamePlaceholder}.{pinIndexPlaceholder}' # v1 format, e.g., din.0
+pinNameFormatv2 = f'{arduinoIndexPlaceholder}.{pinNamePlaceholder}-{pinIndexPlaceholder}-{pinDirectionPlaceholder}' # v2 pin format, e.g., arduiono.0.pin-01-out
+selectedPinFormat = pinNameFormatv1
 
 class ConnectionType(StrEnum):
     SERIAL = 'SERIAL'
@@ -21,7 +28,7 @@ class ConnectionType(StrEnum):
     TCP = 'TCP'
     NONE = 'UNKNOWN'
     def __str__(self) -> str:
-       return self.value
+        return self.value
 
 class ConnectionState(StrEnum):
     DISCONNECTED = 'DISCONNECTED'
@@ -32,7 +39,7 @@ class ConnectionState(StrEnum):
     ERROR = 'ERROR'
     NONE = 'UNKNOWN'
     def __str__(self) -> str:
-       return self.value
+        return self.value
        
 class MessageType(IntEnum):
     MT_HEARTBEAT = 1, 
@@ -41,7 +48,7 @@ class MessageType(IntEnum):
     MT_PINSTATUS = 4, 
     MT_DEBUG = 5, 
     UNKNOWN = -1
-    
+
 FeatureTypes = {
     'DEBUG': 0,
     'DEBUG_PROTOCOL_VERBOSE': 1,
@@ -58,13 +65,15 @@ FeatureTypes = {
     'STATUSLED':12,
     'DLED':13,
     'KEYPAD':14,
-    'SERIAL_TO_LINUXCNC':15,
-    'ETHERNET_UDP_TO_LINUXCNC':16,
-    'ETHERNET_TCP_TO_LINUXCNC':17,
-    'WIFI_TCP_TO_LINUXCNC':18,
-    'WIFI_UDP_TO_LINUXCNC':19,
-    'WIFI_UDP_ASYNC_TO_LINUXCNC':20,
-    'MEMORY_MONITOR':21
+    'MEMORY_MONITOR':15
+}
+ConnectionFeatureTypes = {
+    'SERIAL_TO_LINUXCNC':1,
+    'ETHERNET_UDP_TO_LINUXCNC':2,
+    'ETHERNET_TCP_TO_LINUXCNC':3,
+    'WIFI_TCP_TO_LINUXCNC':4,
+    'WIFI_UDP_TO_LINUXCNC':5,
+    'WIFI_UDP_ASYNC_TO_LINUXCNC':6
 }
 
 debug_comm = True
@@ -76,6 +85,85 @@ debug_comm = True
 
 protocol_ver = 1
 
+class pinref():
+    def __init__(self, pinSuffix:str, pinIndex:int, pinType, pinDirection, pinDirectionString="", arduinoIndex=0):
+        self.pinSuffix = pinSuffix
+        self.pinIndex =  pinIndex
+        self.pinType = pinType
+        self.pinDirection = pinDirection
+        self.pinDirectionString = pinDirectionString
+        self.arduinoIndex = arduinoIndex
+        self.generatePinName()
+
+    def generatePinName(self):
+        tmp = selectedPinFormat # make a copy of the currently-selected pin name format
+        tmp = tmp.replace(pinNamePlaceholder, self.pinSuffix)
+        tmp = tmp.replace(pinIndexPlaceholder, str(self.pinIndex))
+        tmp = tmp.replace(arduinoIndexPlaceholder, str(self.arduinoIndex))
+        tmp = tmp.replace(pinDirectionPlaceholder, self.pinDirectionString)
+        self.pinName = tmp
+	
+    def getName(self):
+        return self.pinName
+	
+class paramref():
+    def __init__(self, pinSuffix:str, pinIndex:int, pinType, paramAlias, pinDirection, pinDirectionString='', arduinoIndex=0):
+        self.pinSuffix = pinSuffix
+        self.pinIndex =  pinIndex
+        self.pinType = pinType
+        self.pinDirection = pinDirection
+        self.pinDirectionString = pinDirectionString
+        self.arduinoIndex = arduinoIndex
+        self.paramAlias = paramAlias
+        self.generateParamName()
+          
+    def __init__(self, pinRef:pinref, paramAlias:str):
+        self.pinSuffix = pinRef.pinSuffix
+        self.pinIndex =  pinRef.pinIndex
+        self.pinType = pinRef.pinType
+        self.pinDirection = pinRef.pinDirection
+        self.pinDirectionString = pinRef.pinDirectionString
+        self.arduinoIndex = pinRef.arduinoIndex
+        self.paramAlias = paramAlias
+        self.generateParamName()
+
+    def generateParamName(self):
+        tmp = selectedPinFormat # make a copy of the currently-selected pin name format
+        tmp = tmp.replace(pinNamePlaceholder, self.pinSuffix)
+        tmp = tmp.replace(pinIndexPlaceholder, str(self.pinIndex))
+        tmp = tmp.replace(arduinoIndexPlaceholder, str(self.arduinoIndex))
+        tmp = tmp.replace(pinDirectionPlaceholder, self.pinDirectionString)
+        tmp = tmp + f'-{self.paramAlias}'
+        self.paramName = tmp
+
+    def getName(self):
+        return self.paramName
+
+class hallookup():
+	def __init__(self):
+		self.pins = {}
+		self.params = {}
+	def addPin(self, pinSuffix:str, pinIndex:int, pinType:str, pinDirection, pinDirectionString='', arduionIndex=0):
+		p = pinref(pinSuffix=pinSuffix, pinIndex=pinIndex, pinType=pinType, pinDirection=pinDirection, pinDirectionString=pinDirectionString, arduinoIndex=arduionIndex)
+		self.pins[f'{str(arduionIndex)}.{pinSuffix}.{str(pinIndex)}'] = p
+		return p
+	
+	def addParam(self, pinSuffix:str, pinIndex:int, pinType:str, paramAlias:str, pinDirection, pinDirectionString='', arduionIndex=0):
+		p = paramref(pinSuffix=pinSuffix, pinIndex=pinIndex, pinType=pinType, paramAlias=paramAlias, pinDirection=pinDirection, pinDirectionstring=pinDirectionString, arduinoIndex=arduionIndex)
+		self.params[f'{str(arduionIndex)}.{pinSuffix}.{str(pinIndex)}'] = p
+		return p
+		
+	def addParam(self, pinRef:pinref, paramAlias:str):
+		p = paramref(pinRef=pinRef, paramAlias=paramAlias)
+		self.params[f'{str(pinRef.arduinoIndex)}.{pinRef.pinSuffix}.{str(pinRef.pinIndex)}'] = p
+		return p
+	
+	def getParam(self, pinSuffix:str, pinIndex:int, arduinoIndex=0):
+		return self.params[f'{str(arduinoIndex)}.{pinSuffix}.{str(pinIndex)}']
+	
+	def getPin(self, pinSuffix:str, pinIndex:int, arduinoIndex=0):
+		return self.pins[f'{str(arduinoIndex)}.{pinSuffix}.{str(pinIndex)}']
+
 class FeatureMapDecoder:
     def __init__(self, b:bytes):
         self.features = b
@@ -83,11 +171,11 @@ class FeatureMapDecoder:
         #self.bits = numpy.unpackbits(numpy.arange(b.astype(numpy.uint64), dtype=numpy.uint64))
   
     def unpackbits(self, x):
-        z_as_int64 = numpy.int64(x)
-        xshape = list(z_as_int64.shape)
-        z_as_int64 = z_as_int64.reshape([-1, 1])
-        mask = 2**numpy.arange(64, dtype=z_as_int64.dtype).reshape([1, 64])
-        return (z_as_int64 & mask).astype(bool).astype(int).reshape(xshape + [64])
+        z_as_uint64 = numpy.uint64(x)#int64(x)
+        xshape = list(z_as_uint64.shape)
+        z_as_uint64 = z_as_uint64.reshape([-1, 1])
+        mask = 2**numpy.arange(64, dtype=z_as_uint64.dtype).reshape([1, 64])
+        return (z_as_uint64 & mask).astype(bool).astype(int).reshape(xshape + [64])
 
     def isFeatureEnabledByInt(self, index:int):
         return self.bits[index] == 1
@@ -119,25 +207,26 @@ class MessageDecoder:
     def validateCRC(self, data:bytes, crc:bytes):
         hash = crc8.crc8()
         hash.update(data)
-        d = hash.digest()
-        if hash.digest() == crc:
+        d = hash.digest()#.to_bytes(1, 'big')
+        if hash.digest() == crc:#.to_bytes(1,'big'):
             return True
         else:
             return False
         
     def parseBytes(self, b:bytes):
-        #try:
+
         self.messageType = b[1]
+
         data_bytes = b[2:]
-        data_bytes = data_bytes[:-1]
-        self.crc = b[-1:]
-        #strc = ''
-        #print('Data_Bytes=')
-        #for b1 in bytes(data_bytes):
-        #    strc += f'[{hex(b1)}]'
-        #print(strc)
-        #test = msgpack.unpackb(b'\x92\xA4\x49\x33\x3A\x30\x01', use_list=False, raw=False)
-        if self.validateCRC( data=data_bytes, crc=self.crc) == False:
+        
+        self.crc = b[-2]
+          
+        data_bytes = b[2:]
+        data_bytes = data_bytes[:-2]
+        combined = (len(data_bytes)+1).to_bytes(1, 'big') + data_bytes 
+        decoded = cobs.decode(combined) 
+
+        if self.validateCRC( data=decoded, crc=self.crc.to_bytes(1, 'big')) == False:
             raise Exception(f"Error. CRC validation failed for received message. Bytes = {b}")
         
         self.payload = msgpack.unpackb(data_bytes, use_list=True, raw=False)
@@ -155,7 +244,18 @@ class MessageEncoder:
         #try:
         mt_enc = msgpack.packb(mt)
         data_enc = msgpack.packb(payload)  
-        len_enc = msgpack.packb( len(mt_enc) + len(data_enc) + 2 )
+        payload_size = len(mt_enc) + len(data_enc) + 2
+            
+        
+        index = 0
+        cobbered = cobs.encode(data_enc)
+        cob_head = cobbered[0]
+        #cob_len = cobbered[0]
+        cobbered_payload = cobbered[1:]
+            
+            
+                
+        len_enc = msgpack.packb( len(mt_enc) + len(data_enc) + 2 )        
         crc_enc = self.getCRC(data=data_enc)
         eot_enc = b'\x00'
         return len_enc + mt_enc + data_enc + crc_enc + eot_enc    
@@ -169,7 +269,7 @@ class ArduinoConn:
         self.boardIndex = bi
         self.connectionState = cs
         self.timeout = timeout
-        self.lastMessageReceived = time.process_time()
+        self.lastMessageReceived = time.time()
     def setState(self, newState:ConnectionState):
         if newState != self.connectionState:
             if debug_comm:print(f'PYDEBUG Board Index: {self.boardIndex}, changing state from {self.connectionState} to {newState}')
@@ -260,7 +360,7 @@ class Connection:
                 #if time.process_time() - arduino.lastMessageReceived >= arduino.timeout:
                 #    arduino.setState(ConnectionState.CONNECTING)
             elif arduino.connectionState == ConnectionState.CONNECTED:
-                #d = time.time() - arduino.lastMessageReceived
+                d = time.time() - arduino.lastMessageReceived
                 if (time.time() - arduino.lastMessageReceived) >= arduino.timeout:
                     arduino.setState(ConnectionState.DISCONNECTED)
 
@@ -318,15 +418,18 @@ class UDPConnection(Connection):
                 #sent = sock.sendto(payload, client_address)
                 
                 try:
-                    md = MessageDecoder(bytes(self.buffer[:-1]))
+                    md = MessageDecoder(bytes(self.buffer))
                     self.fromip = add[0] # TODO: Allow for multiple arduino's to communicate via UDP. Hardcoding is for lazy weasels!
                     self.fromport = add[1]
                     self.onMessageRecv(m=md)
                 except Exception as ex:
-                    print(f'PYDEBUG {str(ex)}')
+                    just_the_string = traceback.format_exc()
+                    print(just_the_string)
+                    print(f'PYDEBUG: {str(ex)}')
                 
                 self.updateState()
             except TimeoutError:
+                self.updateState()
                 pass
             except Exception as error:
                 just_the_string = traceback.format_exc()
@@ -367,12 +470,14 @@ class SerialConnetion(Connection):
             try:
                 data = self.arduino.read()
                 if data == b'\x00':
+                    self.buffer += bytearray(data)
                     #print(bytes(self.buffer))
-                    #strb = ''
+                    strb = ''
                     #print('Bytes from wire: ')
-                    #for b in bytes(self.buffer):
-                    #    strb += f'[{hex(b)}]'
-                    #print(strb)
+                    
+                    for b in bytes(self.buffer):
+                        strb += f'[{hex(b)}]'
+                    print(strb)
                     try:
                         md = MessageDecoder(bytes(self.buffer))
                         self.onMessageRecv(m=md)

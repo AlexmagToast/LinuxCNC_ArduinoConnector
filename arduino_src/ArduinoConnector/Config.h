@@ -1,15 +1,15 @@
 #ifndef CONFIG_H_
 #define CONFIG_H_
 
-#define ENABLE_FEATUREMAP
+// Arduiono IO Feature Options // Uncomment to enable. Do not edit assigned index values.
 #define DEBUG                     0
 #define DEBUG_PROTOCOL_VERBOSE    1
-//s#define INPUTS                    2                       
+//#define INPUTS                   2                       
 //#define SINPUTS                   3                      
-//#define OUTPUTS                   4
+#define OUTPUTS                   4
 //#define PWMOUTPUTS                5
 //#define AINPUTS                   6   
-//#define DALLAS_TEMP_SENSOR        7
+#define DALLAS_TEMP_SENSOR        7
 //#define LPOTIS                    8
 //#define BINSEL                    9
 //#define QUADENC                   10
@@ -17,15 +17,21 @@
 //#define STATUSLED                 12
 //#define DLED                      13
 //#define KEYPAD                    14
-#define SERIAL_TO_LINUXCNC        15 // Only select ONE option for the connection type
-//#define ETHERNET_UDP_TO_LINUXCNC  16
-//#define ETHERNET_TCP_TO_LINUXCNC 17 // FUTURE
-//#define WIFI_TCP_TO_LINUXCNC      18 // FUTURE
-//#define WIFI_UDP_TO_LINUXCNC     19 // FUTURE
-//#define WIFI_UDP_ASYNC_TO_LINUXCNC 20
-//#define MEMORY_MONITOR              21 // Requires https://github.com/mpflaga/Arduino-MemoryFree/
+//#define MEMORY_MONITOR            15 // Requires https://github.com/mpflaga/Arduino-MemoryFree/
+//#define RAPIDCHANGE_ATC           16
+#define STARTUP_OUTPINS_STATE      17 // Set output pin states at startup, see OutPinInitialState map below
+#define DISCONNECT_OUTPINS_STATE   18 // Set output pin states on disconnect from LinuxCNC, see OutPinOnDisconnectState map below.
 
-//################################################### SERIAL CONNECTION OPTIONS ###################################################
+// Connction-Related Options // Uncomment to enable. CHOSE ONLY ONE! Do not edit assigned index values.
+// Regardless of enabled option, debug/trace will be output via Serial.
+//#define SERIAL_TO_LINUXCNC          1 
+//#define ETHERNET_UDP_TO_LINUXCNC      2
+//#define ETHERNET_TCP_TO_LINUXCNC    3 // FUTURE
+//#define WIFI_TCP_TO_LINUXCNC        4 // FUTURE
+//#define WIFI_UDP_TO_LINUXCNC        5 // FUTURE
+#define WIFI_UDP_ASYNC_TO_LINUXCNC  6 // FUTURE, REQUIRES Arduino Nano ESP32 or Equivalent 
+
+//##### SERIAL CONNECTION OPTIONS ######
 #define DEFAULT_SERIAL_BAUD_RATE 115200
 #define SERIAL_START_DELAY 3000 // To avoid initial serial output failing to arrive during debugging.
 //#define ENABLE_SERIAL2 TRUE // For future
@@ -34,12 +40,23 @@ const uint16_t RX_BUFFER_SIZE = 512; // Serial, TCP and UDP connections utilize 
 
 
 
-const uint8_t BOARD_INDEX = 0; // Each board connecting to the server should have a differnet index number.
+const uint8_t BOARD_INDEX = 0; // Each board connecting to the server should have a different index number.
 
 #ifdef SERIAL_TO_LINUXCNC
 const uint16_t SERIAL_RX_TIMEOUT = 5000; // This value is used by the Serial-version of the Connection object as the amount of time beween retries of messages such as MT_HANDSHAKE and 2*SERIAL_RX_TIMEOUT as the connection timeout period. MINIMUM RECOMMENDED TIMEOUT = 1000.  Highly recommended that the timeout be set to 1000ms or greater.
 #endif
-//################################################### ETHERNET CONNECTION OPTIONS ###################################################
+
+/*
+#if defined(DEBUG_PROTOCOL_VERBOSE) 
+#define ARDUINOTRACE_ENABLE 1// Enable all traces
+#include <ArduinoTrace.h>
+#else
+#define ARDUINOTRACE_ENABLE 0//Disable all traces
+#include <ArduinoTrace.h>
+#endif
+*/
+
+//################# ETHERNET CONNECTION OPTIONS #############################
 // Requires an Arduino / Shield that is compatible with the Arduino Ethernet Library
 // Tested and working models:
 //      - Ethernet Network Shield W5100
@@ -68,11 +85,11 @@ byte ARDUINO_MAC[] = {
 #endif
 
 #if DHCP == 0
-  IPAddress ARDUINO_IP(192, 168, 1, 88);
+  IPAddress ARDUINO_IP(192, 168, 1, 111);
 #endif
 
   //IPAddress SERVER_IP(192, 168, 1, 2);
-  const char* SERVER_IP = "192.168.1.2";
+  const char* SERVER_IP = "10.0.0.24";
 
 // 10 = Most Boards
 // 5 = MKR ETH Shield
@@ -101,8 +118,14 @@ byte ARDUINO_MAC[] = {
 
                     //Use Arduino IO's as Outputs. Define how many Outputs you want in total and then which Pins you want to be Outputs.
 #ifdef OUTPUTS
-  const int Outputs = 1;              //number of outputs
-  int OutPinmap[] = {4};
+  const int Outputs = 9;              //number of outputs
+  int OutPinmap[] = {4,5,6,7,8,9,10,11,12};
+  #ifdef STARTUP_OUTPINS_STATE
+    int OutPinInitialState[] = {1,1,1,1,1,1,1,1,1}; // Map to set initial pin states
+  #endif
+  #ifdef DISCONNECT_OUTPINS_STATE
+    int OutPinOnDisconnectState[] = {-1,-1,-1,-1,-1,-1,-1,-1,-1}; // Map to set pin states on reconnect. -1 is no change
+  #endif
 #endif
 
                     //Use Arduino PWM Capable IO's as PWM Outputs. Define how many  PWM Outputs you want in total and then which Pins you want to be  PWM Outputs.
@@ -132,12 +155,22 @@ byte ARDUINO_MAC[] = {
   // This version is expecting 1 sensor per pin. Future todo: add multi sensors per-pin support
   int TmpSensorMap[] = {2,3};
   DallasTemperature * TmpSensorControlMap[TmpSensors];
-  #define TEMP_OUTPUT_C 1 // 1 to output in C, any other value to output in F
+  #define TEMP_OUTPUT_C 0 // 1 to output in C, any other value to output in F
 #endif
 
 
-
-
+/*
+  RapidChange ATC Support
+  https://rapidchangeatc.com/docs/wiring-diagram/#microcontroller-wiring-diagram
+  Automatic tool changer that utilizes standard spindles.
+  DIRECTION_PIN and STEP_PIN are for stepper connections
+  ACTION_PIN is the pin the RapidChange ATC script utilizes to trigger UP/DOWN of cover.
+*/
+#ifdef RAPIDCHANGE_ATC
+  #define DIRECTION_PIN     0
+  #define STEP_PIN          1
+  #define ACTION_PIN        2
+#endif
                        
 /*This is a special mode of AInputs. My machine had originally Selector Knobs with many Pins on the backside to select different Speed Settings.
 I turned them into a "Potentiometer" by connecting all Pins with 10K Resistors in series. Then i applied GND to the first and 5V to the last Pin.

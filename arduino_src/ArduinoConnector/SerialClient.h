@@ -85,17 +85,24 @@ public:
   { 
     //MsgPacketizer::send(this->_client, this->_mi, hm);
     MsgPacketizer::send(Serial, MT_HANDSHAKE, _getHandshakeMessage());
-    Serial.flush();
+    //size_t packetsize = _getHandshakeMessagePacked(_txBuffer);
+    //Serial.write((uint8_t*)_txBuffer, packetsize);
+    //Serial.flush();
   }
 
   virtual void _sendHeartbeatMessage()
   { 
     //MsgPacketizer::send(this->_client, this->_mi, hm);
     MsgPacketizer::send(Serial, MT_HEARTBEAT, _getHeartbeatMessage());
-    Serial.flush();
+    //size_t packetsize = _getHeartbeatMessagePacked(_txBuffer);
+    //Serial.write((uint8_t*)_txBuffer, packetsize);
+    //Serial.flush();
   }
   virtual void _sendPinStatusMessage()
   { 
+    //size_t packetsize = _getPinStatusMessagePacked(_txBuffer);
+    //Serial.write((uint8_t*)_txBuffer, packetsize);
+    //Serial.flush();
     MsgPacketizer::send(Serial, MT_PINSTATUS, _getPinStatusMessage());
   }
 
@@ -103,8 +110,11 @@ public:
   #ifdef DEBUG
   virtual void _sendDebugMessage(String& message)
   {
+    //size_t packetsize = _getDebugMessagePacked(_txBuffer, message);
+    //Serial.write((uint8_t*)_txBuffer, packetsize);
+    //Serial.flush();
     MsgPacketizer::send(Serial, MT_DEBUG, _getDebugMessage(message));
-    Serial.flush();
+    //Serial.flush();
   }
   #endif
   

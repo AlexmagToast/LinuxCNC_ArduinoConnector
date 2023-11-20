@@ -140,10 +140,10 @@ public:
 
   virtual void _sendHandshakeMessage()
   { 
-    size_t packetsize = _getHandshakeMessagePacked(_txBuffer);
-    _udpClient.beginPacket(_serverIP, _txPort);
-    _udpClient.write((uint8_t*)_txBuffer, packetsize);
-    _udpClient.endPacket();
+    //size_t packetsize = _getHandshakeMessagePacked(_txBuffer);
+    //_udpClient.beginPacket(_serverIP, _txPort);
+    //_udpClient.write((uint8_t*)_txBuffer, packetsize);
+    //_udpClient.endPacket();
 /*
     //MsgPacketizer::send(this->_client, this->_mi, hm);
     
@@ -199,7 +199,7 @@ public:
     */
 
 
-    //#MsgPacketizer::send(_udpClient, _serverIP, _txPort, MT_HANDSHAKE, _packer);    
+    MsgPacketizer::send(_udpClient, _serverIP, _txPort, MT_HANDSHAKE, _getHandshakeMessage());    
   }
 
   virtual void _sendHeartbeatMessage()
@@ -211,15 +211,24 @@ public:
   #ifdef DEBUG
   virtual void _sendDebugMessage(String& message)
   {
+    //size_t packetsize = _getDebugMessagePacked(_txBuffer, message);
+    //_udpClient.beginPacket(_serverIP, _txPort);
+    //_udpClient.write((uint8_t*)_txBuffer, packetsize);
+    //_udpClient.endPacket();
     MsgPacketizer::send(_udpClient, _serverIP, _txPort, MT_DEBUG, _getDebugMessage(message));
   }
+  #endif
   
   virtual void _sendPinStatusMessage()
   { 
-    MsgPacketizer::send(Serial, MT_PINSTATUS, _getPinStatusMessage());
+    //size_t packetsize = _getPinStatusMessagePacked(_txBuffer);
+    //_udpClient.beginPacket(_serverIP, _txPort);
+   // _udpClient.write((uint8_t*)_txBuffer, packetsize);
+    //_udpClient.endPacket();
+    MsgPacketizer::send(_udpClient, _serverIP, _txPort, MT_PINSTATUS, _getPinStatusMessage());
   }
 
-  #endif
+  
   
   uint8_t subscribed = false;
   EthernetUDP _udpClient;

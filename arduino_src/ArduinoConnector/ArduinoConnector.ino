@@ -73,20 +73,13 @@ Communication Status      = 'E' -read/Write  -Pin State: 0:0
   MsgPacketizer >= V0.5.0 (REQUIRED, including all dependencies)
   
 */
-/*
-  Library dependencies (use Arduino Library Manager)
-  MsgPacketizer >= V0.5.0 (REQUIRED, including all dependencies)
-  
-*/
-#include "Version.h"
 
+#include "Version.h"
 #include "Config.h"
 #include "IOInterface.h"
+#include "FeatureMap.h"
+featureMap fm;
 
-#ifdef ENABLE_FEATUREMAP
-  #include "FeatureMap.h"
-  featureMap fm;
-#endif
 
 #ifdef MEMORY_MONITOR
 #include <MemoryFree.h>
@@ -134,10 +127,16 @@ Serial.begin(DEFAULT_SERIAL_BAUD_RATE);
   Serial.println(NUM_DIGITAL_PINS);
 #endif
 
-#ifdef ENABLE_FEATUREMAP
+//#ifdef ENABLE_FEATUREMAP
   Serial.println("Dumping Feature Map to Serial..");
   fm.DumpFeatureMapToSerial();
+//#endif
+
+#ifdef RAPIDCHANGE_ATC
+  #include "RapidChangeATC.h"
+  setup_rapidchange();
 #endif
+
 #ifdef DEBUG
 #ifdef MEMORY_MONITOR
   Serial.print(F("ARDUINO DEBUG: FREE RAM: "));
@@ -172,10 +171,17 @@ Serial.begin(DEFAULT_SERIAL_BAUD_RATE);
     oldAinput[i] = -1;
     }
 #endif
+
+
 #ifdef OUTPUTS
   for(int o= 0; o<Outputs;o++){
     pinMode(OutPinmap[o], OUTPUT);
-    oldOutState[o] = 0;
+    #if defined(STARTUP_OUTPINS_STATE)
+      writeOutputs(OutPinmap[o], OutPinInitialState[OutPinmap[o]]);
+      oldOutState[o] = OutPinInitialState[OutPinmap[o]];
+    #else
+      oldOutState[o] = 0;
+    #endif
     }
 #endif
 
@@ -195,8 +201,10 @@ Serial.begin(DEFAULT_SERIAL_BAUD_RATE);
     OneWire * oneWire = new OneWire(TmpSensorMap[o]);
 
     // Pass our oneWire reference to Dallas Temperature sensor 
-    DallasTemperature * sensors = new DallasTemperature(oneWire);
-    TmpSensorControlMap[o] = sensors;
+    DallasTemperature * sensor = new DallasTemperature(oneWire);
+    sensor->setWaitForConversion(false);
+    sensor->requestTemperatures(); // Do initial request
+    TmpSensorControlMap[o] = sensor;
     }
 #endif
 
@@ -245,6 +253,15 @@ void commUpdate(){
     #endif
     if (new_state == CS_DISCONNECTED)
     {
+      #if defined(OUTPUTS) and defined(DISCONNECT_OUTPINS_STATE)
+        for(int o= 0; o<Outputs;o++){
+          if ( OutPinInitialState[OutPinmap[o]] != -1 ) // Optional state change based on disconnected state
+          {
+            writeOutputs(OutPinmap[o], OutPinInitialState[OutPinmap[o]]);
+            oldOutState[o] = OutPinInitialState[OutPinmap[o]];
+          }
+        }
+      #endif
       #ifdef STATUSLED
         StatLedErr(500,200);
       #endif
@@ -298,7 +315,9 @@ void do_io(uint8_t forceUpdate){
   //#ifdef DEBUG
   //  Serial.println("ARDUINO DEBUG: resending data following reconnect..");
   //#endif
-    
+  #ifdef RAPIDCHANGE_ATC
+    do_rapidchange_work();
+  #endif
   #ifdef INPUTS
     if(forceUpdate == 1) {
       for (int x = 0; x < Inputs; x++){
