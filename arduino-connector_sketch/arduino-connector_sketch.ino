@@ -25,18 +25,24 @@
 */
 #include <Arduino.h>
 #include <EEPROM.h>
+#include <FastCRC.h>
 #include <UUID.h>
-UUID uuid;
 
+FastCRC16 CRC16;
+UUID uuid;
 
 const int UUID_LENGTH = 8;  // Length of the UUID string
 const int EEPROM_PROVISIONING_ADDRESS = 0;  // starting address in EEPROM
 const uint16_t EEPROM_HEADER = 0xbeef;
+const uint8_t EEPROM_CONFIG_FORMAT_VERSION = 0x1; 
 
 struct eepromData
 {
-  uint16_t header = EEPROM_HEADER;
+  uint16_t header;
   uint8_t uid[UUID_LENGTH+1];
+  uint8_t configVersion;
+  uint16_t configLen; // Length of config data
+  uint16_t configCRC; // CRC of config block
 }epd;
 
 void setup() {
@@ -52,15 +58,15 @@ void setup() {
 
     //Print the result of calling eeprom_crc()
 
-    Serial.print("CRC32 of EEPROM data: 0x");
+    //Serial.print("CRC32 of EEPROM data: 0x");
 
-    Serial.print(eeprom_crc(), HEX);
+    //Serial.print(eeprom_crc(), HEX);
 
     EEPROM.get(EEPROM_PROVISIONING_ADDRESS, epd);
     
     if(epd.header != EEPROM_HEADER)
     {
-      Serial.println("EEPROM HEADER MISSING, GENERATING NEW HEADER AND UID..");
+      Serial.println("EEPROM HEADER MISSING, GENERATING NEW UID..");
 
       uuid.generate();
       char u[9];
@@ -72,6 +78,10 @@ void setup() {
       memcpy( (void*)epd.uid, uuid.toCharArray(), 8);
       epd.uid[8] = 0;
       epd.header = EEPROM_HEADER;
+      epd.configLen = 0;
+      epd.configVersion = EEPROM_CONFIG_FORMAT_VERSION;
+      epd.configCRC = 0;
+      
       Serial.print("Writing header value = 0x");
       Serial.print(epd.header, HEX);
       Serial.print(" to EEPROM and uid value = ");
@@ -86,8 +96,25 @@ void setup() {
       Serial.println("\nEEPROM HEADER DUMP");
       Serial.print("Head = 0x");
       Serial.println(epd.header, HEX);
-      Serial.print("UID = ");
-      Serial.println((char*)epd.uid);
+      Serial.print("Config Version = 0x");
+      Serial.println(epd.configVersion, HEX);
+
+      if(epd.configVersion != EEPROM_CONFIG_FORMAT_VERSION)
+      {
+         Serial.print("Error. Expected EEPROM Config Version: 0x");
+         Serial.print(EEPROM_CONFIG_FORMAT_VERSION);
+         Serial.print(", got: 0x");
+         Serial.println(epd.configVersion);
+         while (true)
+         {
+
+         }
+      }
+
+      Serial.print("Config Length = 0x");
+      Serial.println(epd.configLen, HEX);
+      Serial.print("Config CRC = 0x");
+      Serial.println(epd.configCRC, HEX);
     }
 
 
@@ -105,7 +132,7 @@ void loop() {
  // Serial.println((char*)u);
   delay(1000);
 }
-
+/*
 unsigned long eeprom_crc(void) {
 
   const unsigned long crc_table[16] = {
@@ -134,3 +161,4 @@ unsigned long eeprom_crc(void) {
 
   return crc;
 }
+*/
