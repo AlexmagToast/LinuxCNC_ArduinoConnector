@@ -64,18 +64,38 @@ namespace protocol
   enum MessageTypes
   {
     MT_HEARTBEAT      =   1,
-    MT_HANDSHAKE      =   2, 
-    MT_COMMAND        =   3,
-    MT_PINSTATUS      =   4,
-    MT_DEBUG          =   5
+    MT_RESPONSE       =   2,
+    MT_HANDSHAKE      =   3, 
+    MT_COMMAND        =   4,
+    MT_PINSTATUS      =   5,
+    MT_DEBUG          =   6
+  };
+
+  enum ResponseTypes
+  {
+    MT_ACK  = 1,
+    MT_NAK  = 2
   };
 
   struct HandshakeMessage {
-      uint8_t protocolVersion = PROTOCOL_VERSION
+      uint8_t protocolVersion = PROTOCOL_VERSION;
+      uint64_t featureMap;
       uint32_t timeout;
       String uid;
-      MSGPACK_DEFINE(protocolVersion, timeout, boardIndex); 
+      MSGPACK_DEFINE(protocolVersion, timeout, uid); 
   }hm;
+
+  // First ResponseMessage received by the Arduino is in response to the Python side receiving the HandshakeMessage from the Arduiono.  The arduinoIndex value
+  // in the ResponseMessage gets used by the Arduino when sending subsequent
+  // messages to python, such as via UDP.  This avoids the need to send the full UID in each message to the python side.
+
+  struct ResponseMessage {
+      uint8_t arduinoIndex; // ID of Arduino
+      uint8_t messageType;  // The message type the Response is directed to
+      uint8_t seqNum;  // Usually zero, unless the response is during a sequence of messages, e.g., during config provisioning.   
+      uint8_t responseType;  // 1 ACK, 0 NAK
+      MSGPACK_DEFINE(arduinoIndex, messageType, seqNum, responseType); 
+  }rm;
 
   struct ArduinoPropertiesMessage {
     String    uid;
@@ -85,25 +105,33 @@ namespace protocol
     uint8_t   analogOutputs;
     uint16_t  eepromSize;
     uint32_t  eepromCRC;
-    MSGPACK_DEFINE(featureMap, uid, digitalPins, analogInputs, analogOutputs, eepromCRC); 
+    MSGPACK_DEFINE(uid, featureMap, digitalPins, analogInputs, analogOutputs, eepromSize, eepromCRC); 
   }apm;
 
   struct HeartbeatMessage {
-      uint8_t boardIndex = BOARD_INDEX+1;
+      uint8_t boardIndex;
       MSGPACK_DEFINE(boardIndex); 
   }hb;
 
+  // This message may be deprecated in the near future
   struct CommandMessage {
       String cmd;
-      int boardIndex = BOARD_INDEX;
+      int boardIndex;
       MSGPACK_DEFINE(cmd, boardIndex); 
   }cm;
   
   struct PinStatusMessage {
       String status;
-      uint8_t boardIndex = BOARD_INDEX+1;
+      uint8_t boardIndex;
       MSGPACK_DEFINE(status, boardIndex); 
   }pm;
+  
+  struct ConfigMessage {
+      uint8_t chunkSeqID;
+      uint8_t numChunks;
+      String chunkData; 
+      MSGPACK_DEFINE(chunkSeqID, numChunks, chunkData); 
+  }cfg;
 
   #ifdef DEBUG
   struct DebugMessage {

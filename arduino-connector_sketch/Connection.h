@@ -3,8 +3,7 @@
 #pragma once
 #include "Protocol.h"
 
-#include "CRC8.h"
-#include "CRC.h"
+const int RX_BUFFER_SIZE = 512;
 
 enum ConnectionState
 {
@@ -16,7 +15,7 @@ enum ConnectionState
   CS_CONNECTION_TIMEOUT,
   CS_ERROR
 };
-CRC8 _crc;
+
 class ConnectionBase {
 public:
   ConnectionBase(uint16_t retryPeriod, uint64_t& fm) : _retryPeriod(retryPeriod), _featureMap(fm)
@@ -355,25 +354,7 @@ protected:
     #endif
     return protocol::hb;
   }
-  size_t _getPinStatusMessagePacked(byte* outBuffer)
-  {
-    MsgPack::Packer packer;
-    packer.serialize(protocol::pm);
-    uint8_t size = packer.size();
-    size_t packetsize = _packetizeMessage(packer, protocol::MT_PINSTATUS, outBuffer);
 
-    #ifdef DEBUG_PROTOCOL_VERBOSE
-      Serial.print("DEBUG: START TX DUMP FOR MT_PINSTATUS");
-      for( int x = 0; x < packetsize; x++ )
-      {
-        Serial.print("[0x");
-        Serial.print(_txBuffer[x], HEX);
-        Serial.print("]");
-      }     
-      Serial.println("END TX DUMP FOR MT_PINSTATUS");
-    #endif
-    return packetsize;
-  }
   protocol::PinStatusMessage& _getPinStatusMessage()
   {
     #ifdef DEBUG_PROTOCOL_VERBOSE
@@ -388,26 +369,6 @@ protected:
   }
 
   #ifdef DEBUG
-  size_t _getDebugMessagePacked(byte* outBuffer, String& message)
-  {
-    MsgPack::Packer packer;
-    protocol::dm.message = message;
-    packer.serialize(protocol::dm);
-    uint8_t size = packer.size();
-    size_t packetsize = _packetizeMessage(packer, protocol::MT_DEBUG, outBuffer);
-
-    #ifdef DEBUG_PROTOCOL_VERBOSE
-      Serial.print("DEBUG: START TX DUMP FOR MT_DEBUGMESSAGE");
-      for( int x = 0; x < packetsize; x++ )
-      {
-        Serial.print("[0x");
-        Serial.print(_txBuffer[x], HEX);
-        Serial.print("]");
-      }     
-      Serial.println("END TX DUMP FOR MT_DEBUGMESSAGE");
-    #endif
-    return packetsize;
-  }
   protocol::DebugMessage& _getDebugMessage(String& message)
   {
     protocol::dm.message = message;
