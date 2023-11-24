@@ -40,11 +40,12 @@ const uint8_t EEPROM_CONFIG_FORMAT_VERSION = 0x1;
 const uint32_t EEPROM_DEFAULT_SIZE = 1024; // Default size of EEPROM to initialize if EEPROM.length() reports zero. This occurs on chips such as the ESP8266 ESP-12F, and EEPROM space can be simulated in flash by EEPROM.begin(). See https://forum.arduino.cc/t/esp-eeprom-is-data-persistent-when-flashing-new-rev-or-new-program/1167637
 const int SERIAL_RX_TIMEOUT = 5000;
 
-uint64_t featureMap = 0;
-//
+uint64_t fm;
+SerialConnection serialClient(SERIAL_RX_TIMEOUT, fm /* TODO: Re-implement feature map*/);
 
 FastCRC16 CRC16;
 UUID uuid;
+const char * uid;
 
 // Builtin LED proposal for errors/diagnostics
 // General failure during setup, e.g., EEPROM failure or some other condition preventing normal startup.  Blink pattern: 250 ms on, 250 ms off (rapid blinking). 
@@ -53,7 +54,7 @@ UUID uuid;
 struct eepromData
 {
   uint16_t header;
-  uint8_t uid[UUID_LENGTH+1];
+  char uid[UUID_LENGTH+1];
   uint8_t configVersion;
   uint16_t configLen; // Length of config data
   uint16_t configCRC; // CRC of config block
@@ -62,7 +63,6 @@ struct eepromData
 
 
 void setup() {
-  SerialConnection serialCient(SERIAL_RX_TIMEOUT, featureMap);
   pinMode(LED_BUILTIN, OUTPUT); // Initialize builtin LED for error feedback/diagnostics 
 
   Serial.begin(115200);
@@ -126,7 +126,9 @@ void setup() {
       
     EEPROM.put(EEPROM_PROVISIONING_ADDRESS, epd);
     EEPROM.commit();
-    //serialCient.setUID(uuid.toCharArray());
+
+    serialClient.setUID(epd.uid);
+    
     
     #ifdef DEBUG
     Serial.print("Wrote header value = 0x");
@@ -167,15 +169,17 @@ void setup() {
       Serial.print("Config CRC = 0x");
       Serial.println(epd.configCRC, HEX);
     #endif
-    //serialCient.setUID((char*)epd.uid);
+
+    serialClient.setUID(epd.uid);
+    
   }
 
   digitalWrite(LED_BUILTIN, LOW);// Signal startup success to builtin LED
-  //serialCient.DoWork(); // Causes init to occur on first execution
+  serialClient.DoWork(); // Causes
 }
 
 void loop() {
-  //serialCient.DoWork(); // Causes init to occur on first execution
+  serialClient.DoWork(); // Causes
 }
 
 // Causes builtin LED to blink in a defined sequence.

@@ -37,6 +37,11 @@ public:
     return _myState;
   }
 
+  void setUID(char* uid)
+  {
+    _uid = uid;
+  }
+
   virtual void SendPinStatusMessage(char sig, int pin, int state)
   {
     String status = String(sig);
@@ -183,8 +188,6 @@ public:
     return protocol::cm;
   }
 
-  //void setUID(char* uid) { _uid = uid; }
-
 protected:
   virtual uint8_t _onInit();
   virtual void _onConnect();
@@ -239,7 +242,7 @@ protected:
       Serial.println("ARDUINO DEBUG: ---- RX END COMMAND MESSAGE DUMP ----");
       #endif
       protocol::cm.cmd = n.cmd;
-      protocol::cm.boardIndex = n.boardIndex;
+      protocol::cm.boardIndex = n.boardIndex-1;
       _commandReceived = 1;
   }
 
@@ -261,7 +264,7 @@ protected:
   {
     protocol::hm.featureMap = this->_featureMap;
     protocol::hm.timeout = _retryPeriod * 2;
-    //protocol::hm.uid = this->_uid;
+    protocol::hm.uid = _uid;
     #ifdef DEBUG_PROTOCOL_VERBOSE   
       Serial.println("ARDUINO DEBUG: ---- TX HANDSHAKE MESSAGE DUMP ----");
       Serial.print("ARDUINO DEBUG: Protocol Version: 0x");
@@ -272,8 +275,8 @@ protected:
       Serial.println(protocol::hm.timeout);
       Serial.print("ARDUINO DEBUG: Board Index: ");
       Serial.println(protocol::hm.boardIndex);
-      //Serial.print("ARDUINO DEBUG: Board UID: ");
-      //Serial.println(protocol::hm.uid);
+      Serial.print("ARDUINO DEBUG: Board UID: ");
+      Serial.println(protocol::hm.uid);
       Serial.println("ARDUINO DEBUG: ---- TX END HANDSHAKE MESSAGE DUMP ----");
     #endif
     return protocol::hm;
@@ -417,7 +420,8 @@ protected:
   uint8_t _handshakeReceived = 0;
   uint8_t _heartbeatReceived = 0;
   uint8_t _commandReceived = 0;
-  String _uid;
+  const char * _uid;
+
 
 };
 #endif
