@@ -43,11 +43,12 @@ class ConnectionState(StrEnum):
         return self.value
        
 class MessageType(IntEnum):
-    MT_HEARTBEAT = 1, 
-    MT_HANDSHAKE = 2, 
-    MT_COMMAND = 3, 
-    MT_PINSTATUS = 4, 
-    MT_DEBUG = 5, 
+    MT_HEARTBEAT = 1,
+    MT_RESPONSE = 2, 
+    MT_HANDSHAKE = 3, 
+    MT_COMMAND = 4, 
+    MT_PINSTATUS = 5, 
+    MT_DEBUG = 6, 
     UNKNOWN = -1
 
 FeatureTypes = {

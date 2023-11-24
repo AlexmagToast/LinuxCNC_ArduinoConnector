@@ -81,8 +81,8 @@ namespace protocol
       uint8_t protocolVersion = PROTOCOL_VERSION;
       uint64_t featureMap;
       uint32_t timeout;
-      String uid;
-      MSGPACK_DEFINE(protocolVersion, timeout, uid); 
+      //String uid;
+      MSGPACK_DEFINE(protocolVersion, featureMap, timeout); 
   }hm;
 
   // First ResponseMessage received by the Arduino is in response to the Python side receiving the HandshakeMessage from the Arduiono.  The arduinoIndex value

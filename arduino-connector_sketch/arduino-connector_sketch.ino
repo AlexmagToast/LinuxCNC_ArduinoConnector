@@ -41,7 +41,7 @@ const uint32_t EEPROM_DEFAULT_SIZE = 1024; // Default size of EEPROM to initiali
 const int SERIAL_RX_TIMEOUT = 5000;
 
 uint64_t featureMap = 0;
-SerialConnection serialCient(SERIAL_RX_TIMEOUT, featureMap /* TODO: Re-implement feature map*/);
+//
 
 FastCRC16 CRC16;
 UUID uuid;
@@ -62,6 +62,7 @@ struct eepromData
 
 
 void setup() {
+  SerialConnection serialCient(SERIAL_RX_TIMEOUT, featureMap);
   pinMode(LED_BUILTIN, OUTPUT); // Initialize builtin LED for error feedback/diagnostics 
 
   Serial.begin(115200);
@@ -125,6 +126,7 @@ void setup() {
       
     EEPROM.put(EEPROM_PROVISIONING_ADDRESS, epd);
     EEPROM.commit();
+    //serialCient.setUID(uuid.toCharArray());
     
     #ifdef DEBUG
     Serial.print("Wrote header value = 0x");
@@ -165,14 +167,15 @@ void setup() {
       Serial.print("Config CRC = 0x");
       Serial.println(epd.configCRC, HEX);
     #endif
+    //serialCient.setUID((char*)epd.uid);
   }
 
   digitalWrite(LED_BUILTIN, LOW);// Signal startup success to builtin LED
-  serialCient.DoWork(); // Causes init to occur on first execution
+  //serialCient.DoWork(); // Causes init to occur on first execution
 }
 
 void loop() {
-  serialCient.DoWork(); // Causes init to occur on first execution
+  //serialCient.DoWork(); // Causes init to occur on first execution
 }
 
 // Causes builtin LED to blink in a defined sequence.
