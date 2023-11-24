@@ -9,6 +9,7 @@ from queue import Queue
 import time
 import crc8
 import traceback
+import logging
 import numpy
 import socket
 from cobs import cobs
@@ -201,35 +202,30 @@ class FeatureMapDecoder:
 
 
 class MessageDecoder:
-    def __init__(self, b:bytes):
+    def __init__(self, b:bytearray):
         self.parseBytes(b)
 
-    def validateCRC(self, data:bytes, crc:bytes):
+    def validateCRC(self, data:bytearray, crc:bytes):
         hash = crc8.crc8()
         hash.update(data)
-        d = hash.digest()#.to_bytes(1, 'big')
+        #d = hash.digest()#.to_bytes(1, 'big')
         if hash.digest() == crc:#.to_bytes(1,'big'):
             return True
         else:
             return False
         
-    def parseBytes(self, b:bytes):
-
-        self.messageType = b[1]
-
-        data_bytes = b[2:]
-        
-        self.crc = b[-2]
-          
-        data_bytes = b[2:]
-        data_bytes = data_bytes[:-2]
-        combined = (len(data_bytes)+1).to_bytes(1, 'big') + data_bytes 
-        decoded = cobs.decode(combined) 
-
-        if self.validateCRC( data=decoded, crc=self.crc.to_bytes(1, 'big')) == False:
+    def parseBytes(self, b:bytearray):
+        decoded = cobs.decode(b)
+        logging.debug(f"cobs encoded: {b}, rest: {b}")
+        # divide into index, data, crc
+        self.messageType = decoded[0]
+        data = decoded[1:-1]
+        self.crc = decoded[-1].to_bytes(1, byteorder="big")
+        logging.debug(f"message type: {self.messageType}, data: {data}, crc: {self.crc}")
+        # check crc8
+        if self.validateCRC( data=data, crc=self.crc) == False:
             raise Exception(f"Error. CRC validation failed for received message. Bytes = {b}")
-        
-        self.payload = msgpack.unpackb(data_bytes, use_list=True, raw=False)
+        self.payload = msgpack.unpackb(data, use_list=True, raw=False)
 
 class MessageEncoder:
     #def __init__(self):
@@ -438,7 +434,7 @@ class UDPConnection(Connection):
 class SerialConnetion(Connection):
     def __init__(self, dev:str, myType = ConnectionType.SERIAL):
         super().__init__(myType)
-        self.buffer = bytes()
+        self.buffer = bytearray()
         self.shutdown = False
         
         self.daemon = None
@@ -479,10 +475,11 @@ class SerialConnetion(Connection):
                         strb += f'[{hex(b)}]'
                     print(strb)
                     try:
-                        md = MessageDecoder(bytes(self.buffer))
+                        md = MessageDecoder(self.buffer[:-1])
                         self.onMessageRecv(m=md)
                     except Exception as ex:
-                        print(f'PYDEBUG {str(ex)}')
+                        just_the_string = traceback.format_exc()
+                        print(f'PYDEBUG: {str(just_the_string)}')
                 
                     #arduino.write(bytes(self.buffer))
                     self.buffer = bytes()
