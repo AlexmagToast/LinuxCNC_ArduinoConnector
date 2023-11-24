@@ -6,10 +6,10 @@
 #define DEBUG_PROTOCOL_VERBOSE    1
 //#define INPUTS                   2                       
 //#define SINPUTS                   3                      
-#define OUTPUTS                   4
+//#define OUTPUTS                   4
 //#define PWMOUTPUTS                5
 //#define AINPUTS                   6   
-#define DALLAS_TEMP_SENSOR        7
+//#define DALLAS_TEMP_SENSOR        7
 //#define LPOTIS                    8
 //#define BINSEL                    9
 //#define QUADENC                   10
@@ -19,17 +19,17 @@
 //#define KEYPAD                    14
 //#define MEMORY_MONITOR            15 // Requires https://github.com/mpflaga/Arduino-MemoryFree/
 //#define RAPIDCHANGE_ATC           16
-#define STARTUP_OUTPINS_STATE      17 // Set output pin states at startup, see OutPinInitialState map below
-#define DISCONNECT_OUTPINS_STATE   18 // Set output pin states on disconnect from LinuxCNC, see OutPinOnDisconnectState map below.
+//#define STARTUP_OUTPINS_STATE      17 // Set output pin states at startup, see OutPinInitialState map below
+//#define DISCONNECT_OUTPINS_STATE   18 // Set output pin states on disconnect from LinuxCNC, see OutPinOnDisconnectState map below.
 
 // Connction-Related Options // Uncomment to enable. CHOSE ONLY ONE! Do not edit assigned index values.
 // Regardless of enabled option, debug/trace will be output via Serial.
-//#define SERIAL_TO_LINUXCNC          1 
+#define SERIAL_TO_LINUXCNC          1 
 //#define ETHERNET_UDP_TO_LINUXCNC      2
 //#define ETHERNET_TCP_TO_LINUXCNC    3 // FUTURE
 //#define WIFI_TCP_TO_LINUXCNC        4 // FUTURE
 //#define WIFI_UDP_TO_LINUXCNC        5 // FUTURE
-#define WIFI_UDP_ASYNC_TO_LINUXCNC  6 // FUTURE, REQUIRES Arduino Nano ESP32 or Equivalent 
+//#define WIFI_UDP_ASYNC_TO_LINUXCNC  6 // FUTURE, REQUIRES Arduino Nano ESP32 or Equivalent 
 
 //##### SERIAL CONNECTION OPTIONS ######
 #define DEFAULT_SERIAL_BAUD_RATE 115200

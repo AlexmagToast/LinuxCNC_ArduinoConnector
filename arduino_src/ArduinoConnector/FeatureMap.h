@@ -250,7 +250,7 @@ struct featureMap
         Serial.println(flag);
       #endif
       #ifdef RAPIDCHANGE_ATC
-        flag = bitRead(this->features, RAPIDCHANGE_ATC);
+        flag = bitRead(this->features, RAPIDCHANGE_ATC);  
         Serial.print("[ID");
         Serial.print(RAPIDCHANGE_ATC);
         Serial.print("]");
