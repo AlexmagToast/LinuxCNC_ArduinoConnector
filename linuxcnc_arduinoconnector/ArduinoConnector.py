@@ -136,8 +136,6 @@ class ArduinoYamlParser:
                     raise Exception(f'Error. {ConfigElement.COMPONENT_NAME} undefined in config file ({str})')
                 else:
                     new_arduino.component_name = doc[ConfigElement.ARDUINO_KEY][ConfigElement.COMPONENT_NAME]
-                a = ArduinoSettings(alias=doc[ConfigElement.ARDUINO_KEY][ConfigElement.ALIAS], component_name=doc[ConfigElement.ARDUINO_KEY][ConfigElement.COMPONENT_NAME],
-                                    dev=doc[ConfigElement.ARDUINO_KEY][ConfigElement.DEV])
                 if ConfigElement.PIN_MAP in doc[ConfigElement.ARDUINO_KEY].keys():
                     for k, v in doc[ConfigElement.ARDUINO_KEY][ConfigElement.PIN_MAP].items():
                         pins = []
