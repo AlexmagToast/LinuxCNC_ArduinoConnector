@@ -123,15 +123,15 @@ class ArduinoYamlParser:
                 new_arduino = ArduinoSettings() # create a new arduino config object
                 if ConfigElement.ARDUINO_KEY not in doc.keys():
                     raise Exception(f'Error. {ConfigElement.ALIAS} undefined in config file ({str})')
-                if ConfigElement.ALIAS not in doc[ConfigElement.ARDUINO_KEY].keys():
+                if ConfigElement.ALIAS not in doc[ConfigElement.ARDUINO_KEY].keys(): # TODO: Make this optional
                     raise Exception(f'Error. {ConfigElement.ALIAS} undefined in config file ({str})')
                 else:
                     new_arduino.alias = doc[ConfigElement.ARDUINO_KEY][ConfigElement.ALIAS]
-                if ConfigElement.DEV not in doc[ConfigElement.ARDUINO_KEY].keys():
+                if ConfigElement.DEV not in doc[ConfigElement.ARDUINO_KEY].keys(): # TODO: Make this optional
                     raise Exception(f'Error. {ConfigElement.DEV} undefined in config file ({str})')
                 else:
                     new_arduino.dev = doc[ConfigElement.ARDUINO_KEY][ConfigElement.DEV]
-                if ConfigElement.COMPONENT_NAME not in doc[ConfigElement.ARDUINO_KEY].keys():
+                if ConfigElement.COMPONENT_NAME not in doc[ConfigElement.ARDUINO_KEY].keys(): # TODO: Make this optional
                     raise Exception(f'Error. {ConfigElement.COMPONENT_NAME} undefined in config file ({str})')
                 else:
                     new_arduino.component_name = doc[ConfigElement.ARDUINO_KEY][ConfigElement.COMPONENT_NAME]
