@@ -3,25 +3,31 @@ arduino:
   component_name: arduino # Name of component to use in HAL
   dev: /dev/cu.usbserial-0001 # Used for initial programming
   pin_map:
+
     analogInputs:
-      - id: 0
+      - pin_id: 0
         pin_name: ain.0 #hal pin name
         pin_type: HAL_FLOAT #hal pin type
         
     analogOutputs:
-      - id: 1
+      - pin_id: 1
         pin_name: aout.1 #hal pin name
         pin_type: HAL_FLOAT #hal pin type
         
     digitalInputs:
-      - id: 2
+      - pin_id: 2
         pin_name: din.2 #hal pin name
         pin_type: HAL_BIT #hal pin type
 
     digitalOutputs:
-      - id: 3
+      - pin_id: 3
         pin_name: dout.3 #hal pin name
         pin_type: HAL_BIT #hal pin type
-
+      - pin_id: 4
+        pin_name: dout.4 #hal pin name
+        pin_type: HAL_BIT #hal pin type
 --- # Allows for multiple configuration profiles in a single yaml file
 arduino: 
+  alias: Arduino R4 Minima
+  component_name: arduino # Name of component to use in HAL
+  dev: /dev/cu.usbserial-0002 # Used for initial programming

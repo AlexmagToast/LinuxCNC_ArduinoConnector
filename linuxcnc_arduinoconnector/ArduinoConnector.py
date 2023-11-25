@@ -1,4 +1,5 @@
 from multiprocessing import Value
+import os
 from re import T
 import serial
 import msgpack
@@ -13,6 +14,72 @@ import logging
 import numpy
 import socket
 from cobs import cobs
+import yaml
+
+logging.basicConfig(level=logging.DEBUG)
+
+class ConfigElement(StrEnum):
+    ARDUINO_KEY = 'arduino'
+    ALIAS = 'alias'
+    COMPONENT_NAME = 'component_name'
+    DEV = 'dev'
+    PIN_MAP = 'pin_map'
+    ANALOG_INPUTS = 'analogInputs'
+    ANALOG_OUTPUTS = 'analogOutputs'
+    DIGITAL_INPUTS = 'digitalInputs'
+    DIGITAL_OUTPUTS = 'digitalOutputs'
+    PIN_ID = 'pin_id'
+    PIN_NAME = 'pin_name'
+    PIN_TYPE = 'pin_type'
+    NONE = 'UNKNOWN'
+    def __str__(self) -> str:
+        return self.value
+
+class ArduinoSettings:
+    def __init__(self, alias:str, component_name:str, dev:str):
+        self.alias = alias
+        self.component_name = component_name
+        self.dev = dev
+        self.analogInputs = {}
+        self.analogOuptuts = {}
+        self.digitalInputs = {}
+        self.digitalOutputs = {}
+        
+
+class ArduinoYamlParser:
+    def __init__(self, path:str):
+        self.parseYaml(path=path)
+        pass
+    def parseYaml(self, path:str):
+        if os.path.exists(path) == False:
+            raise Exception(f'Error. {path} not found.')
+        with open(path, 'r') as file:
+            
+            logging.debug(f'Loading config, path = {path}')
+            docs = yaml.safe_load_all(file)
+            for doc in docs:
+                if ConfigElement.ARDUINO_KEY not in doc.keys():
+                    raise Exception(f'Error. {ConfigElement.ALIAS} undefined in config file ({str})')
+                if ConfigElement.ALIAS not in doc[ConfigElement.ARDUINO_KEY].keys():
+                    raise Exception(f'Error. {ConfigElement.ALIAS} undefined in config file ({str})')
+                if ConfigElement.DEV not in doc[ConfigElement.ARDUINO_KEY].keys():
+                    raise Exception(f'Error. {ConfigElement.DEV} undefined in config file ({str})')
+                if ConfigElement.COMPONENT_NAME not in doc[ConfigElement.ARDUINO_KEY].keys():
+                    raise Exception(f'Error. {ConfigElement.COMPONENT_NAME} undefined in config file ({str})')
+                a = ArduinoSettings(alias=doc[ConfigElement.ARDUINO_KEY][ConfigElement.ALIAS], component_name=doc[ConfigElement.ARDUINO_KEY][ConfigElement.COMPONENT_NAME],
+                                    dev=doc[ConfigElement.ARDUINO_KEY][ConfigElement.DEV])
+                if ConfigElement.PIN_MAP in doc[ConfigElement.ARDUINO_KEY].keys():
+                    if ConfigElement.ANALOG_INPUTS in doc[ConfigElement.ARDUINO_KEY][ConfigElement.PIN_MAP]:
+                        pass
+                    if ConfigElement.ANALOG_OUTPUTS in doc[ConfigElement.ARDUINO_KEY][ConfigElement.PIN_MAP]:
+                        pass
+                    if ConfigElement.DIGITAL_INPUTS in doc[ConfigElement.ARDUINO_KEY][ConfigElement.PIN_MAP]:
+                        pass
+                    if ConfigElement.DIGITAL_OUTPUTS in doc[ConfigElement.ARDUINO_KEY][ConfigElement.PIN_MAP]:
+                        pass
+                    
+        #with open('example_config.yaml', 'r') as file:
+        #	docs = yaml.safe_load_all(file)
 
 class ConnectionType(StrEnum):
     SERIAL = 'SERIAL'
