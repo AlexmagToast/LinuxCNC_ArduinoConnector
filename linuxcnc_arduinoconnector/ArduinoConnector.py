@@ -117,7 +117,6 @@ class ArduinoYamlParser:
         if os.path.exists(path) == False:
             raise Exception(f'Error. {path} not found.')
         with open(path, 'r') as file:
-            
             logging.debug(f'Loading config, path = {path}')
             docs = yaml.safe_load_all(file)
             for doc in docs:
