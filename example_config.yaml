@@ -23,6 +23,7 @@ arduino:
       - pin_id: 3
         pin_name: dout.3 #hal pin name
         pin_type: HAL_BIT #hal pin type
+        
       - pin_id: 4
         pin_name: dout.4 #hal pin name
         pin_type: HAL_BIT #hal pin type
