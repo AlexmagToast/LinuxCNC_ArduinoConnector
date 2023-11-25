@@ -1,6 +1,7 @@
 from multiprocessing import Value
 import os
 from re import T
+from pytest import Config
 import serial
 import msgpack
 from strenum import StrEnum
@@ -24,33 +25,95 @@ class ConfigElement(StrEnum):
     COMPONENT_NAME = 'component_name'
     DEV = 'dev'
     PIN_MAP = 'pin_map'
+    PIN_ID = 'pin_id'
+    PIN_NAME = 'pin_name'
+    PIN_TYPE = 'pin_type'
+    def __str__(self) -> str:
+        return self.value
+
+class ConfigPinTypes(StrEnum):
     ANALOG_INPUTS = 'analogInputs'
     ANALOG_OUTPUTS = 'analogOutputs'
     DIGITAL_INPUTS = 'digitalInputs'
     DIGITAL_OUTPUTS = 'digitalOutputs'
-    PIN_ID = 'pin_id'
-    PIN_NAME = 'pin_name'
-    PIN_TYPE = 'pin_type'
-    NONE = 'UNKNOWN'
+    def __str__(self) -> str:
+        return self.value
+class PinTypes(StrEnum):
+    ANALOG_INPUT = 'ain'
+    ANALOG_OUTPUT = 'aout'
+    DIGITAL_INPUT = 'din'
+    DIGITAL_OUTPUT = 'dout'
+    UNDEFINED = 'undefined'
     def __str__(self) -> str:
         return self.value
 
+class HalPinTypes(StrEnum):
+    HAL_BIT = 'HAL_BIT'
+    HAL_FLOAT = 'HAL_FLOAT'
+    UNDEFINED = 'undefined'
+    def __str__(self) -> str:
+        return self.value
+class HalPinDirection(StrEnum):
+    HAL_IN = 'HAL_IN'
+    HAL_OUT = 'HAL_OUT'
+    def __str__(self) -> str:
+        return self.value
+class ArduinoPin:
+    def __init__(self, pinName:str, pinType:PinTypes, halPinType:HalPinTypes):
+        self.pinName = pinName
+        self.pinType = pinType
+        self.halPinType = halPinType
+        if pinType == PinTypes.ANALOG_INPUT or pinType == PinTypes.DIGITAL_INPUT:
+            self.direction = HalPinDirection.HAL_IN
+        else:
+            self.direction = HalPinDirection.HAL_OUT
+    def __str__(self) -> str:
+        return f'pinName = {self.pinName}, pinType={self.pinType}, halPinType={self.halPinType}'
+
 class ArduinoSettings:
-    def __init__(self, alias:str, component_name:str, dev:str):
+    def __init__(self, alias='undefined', component_name='arduino', dev='undefined'):
         self.alias = alias
         self.component_name = component_name
         self.dev = dev
-        self.analogInputs = {}
-        self.analogOuptuts = {}
-        self.digitalInputs = {}
-        self.digitalOutputs = {}
-        
+        self.pin_map = {}
+    def printPinMap(self) -> str:
+        s = ''
+        for k,v in self.pin_map.items():
+            s += f'\nPin Type = {k}, values: ['
+            for p in v:
+                s += str(p)
+            s += ']'
+        return s
+            
+    def __str__(self) -> str:
+        return f'alias = {self.alias}, component_name={self.component_name}, dev={self.dev}, pin_map = {self.printPinMap()}'
 
 class ArduinoYamlParser:
     def __init__(self, path:str):
         self.parseYaml(path=path)
         pass
-    def parseYaml(self, path:str):
+    def parsePin(self, doc: dict, pinType: PinTypes) -> ArduinoPin:
+        pinName = ''
+        halPinType = HalPinTypes.UNDEFINED
+        if ConfigElement.PIN_ID not in doc.keys():
+            raise Exception(f'Error. {ConfigElement.PIN_ID} undefined in config yaml')
+        if ConfigElement.PIN_TYPE in doc.keys():
+            halPinType = HalPinTypes(str(doc[ConfigElement.PIN_TYPE]).upper())
+        else:
+            if pinType == PinTypes.ANALOG_INPUT or pinType == PinTypes.ANALOG_OUTPUT:
+                halPinType = HalPinTypes.HAL_FLOAT
+            if pinType == PinTypes.DIGITAL_INPUT or pinType == PinTypes.DIGITAL_OUTPUT:
+                halPinType = HalPinTypes.HAL_BIT
+            else:
+                raise Exception(f'Error. {pinType} is an unsupported {ConfigElement.PIN_TYPE} value')
+        if ConfigElement.PIN_NAME in doc.keys():    
+            pinName = str(doc[ConfigElement.PIN_NAME]).upper()
+        else:
+            pinName = f"{pinType}.{str(doc[ConfigElement.PIN_TYPE])}"
+        
+        return ArduinoPin(pinName=pinName, pinType=pinType, halPinType=halPinType) 
+        
+    def parseYaml(self, path:str) -> list[ArduinoSettings]: # parseYaml returns a list of ArduinoSettings objects. WILL throw exceptions on error
         if os.path.exists(path) == False:
             raise Exception(f'Error. {path} not found.')
         with open(path, 'r') as file:
@@ -58,28 +121,32 @@ class ArduinoYamlParser:
             logging.debug(f'Loading config, path = {path}')
             docs = yaml.safe_load_all(file)
             for doc in docs:
+                new_arduino = ArduinoSettings() # create a new arduino config object
                 if ConfigElement.ARDUINO_KEY not in doc.keys():
                     raise Exception(f'Error. {ConfigElement.ALIAS} undefined in config file ({str})')
                 if ConfigElement.ALIAS not in doc[ConfigElement.ARDUINO_KEY].keys():
                     raise Exception(f'Error. {ConfigElement.ALIAS} undefined in config file ({str})')
+                else:
+                    new_arduino.alias = doc[ConfigElement.ARDUINO_KEY][ConfigElement.ALIAS]
                 if ConfigElement.DEV not in doc[ConfigElement.ARDUINO_KEY].keys():
                     raise Exception(f'Error. {ConfigElement.DEV} undefined in config file ({str})')
+                else:
+                    new_arduino.dev = doc[ConfigElement.ARDUINO_KEY][ConfigElement.DEV]
                 if ConfigElement.COMPONENT_NAME not in doc[ConfigElement.ARDUINO_KEY].keys():
                     raise Exception(f'Error. {ConfigElement.COMPONENT_NAME} undefined in config file ({str})')
+                else:
+                    new_arduino.component_name = doc[ConfigElement.ARDUINO_KEY][ConfigElement.COMPONENT_NAME]
                 a = ArduinoSettings(alias=doc[ConfigElement.ARDUINO_KEY][ConfigElement.ALIAS], component_name=doc[ConfigElement.ARDUINO_KEY][ConfigElement.COMPONENT_NAME],
                                     dev=doc[ConfigElement.ARDUINO_KEY][ConfigElement.DEV])
                 if ConfigElement.PIN_MAP in doc[ConfigElement.ARDUINO_KEY].keys():
-                    if ConfigElement.ANALOG_INPUTS in doc[ConfigElement.ARDUINO_KEY][ConfigElement.PIN_MAP]:
-                        pass
-                    if ConfigElement.ANALOG_OUTPUTS in doc[ConfigElement.ARDUINO_KEY][ConfigElement.PIN_MAP]:
-                        pass
-                    if ConfigElement.DIGITAL_INPUTS in doc[ConfigElement.ARDUINO_KEY][ConfigElement.PIN_MAP]:
-                        pass
-                    if ConfigElement.DIGITAL_OUTPUTS in doc[ConfigElement.ARDUINO_KEY][ConfigElement.PIN_MAP]:
-                        pass
-                    
-        #with open('example_config.yaml', 'r') as file:
-        #	docs = yaml.safe_load_all(file)
+                    for k, v in doc[ConfigElement.ARDUINO_KEY][ConfigElement.PIN_MAP].items():
+                        pins = []
+                        for v1 in v:    
+                            pins.append(self.parsePin(doc=v1, pinType=ConfigPinTypes(k)))
+                        new_arduino.pin_map[ConfigPinTypes(k)] = pins
+                logging.debug(f'Loaded Arduino from config:\n{new_arduino}')
+                
+
 
 class ConnectionType(StrEnum):
     SERIAL = 'SERIAL'

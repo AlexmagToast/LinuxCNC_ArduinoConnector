@@ -2,6 +2,7 @@ arduino:
   alias: Arduino R4 Wifi
   component_name: arduino # Name of component to use in HAL
   dev: /dev/cu.usbserial-0001 # Used for initial programming
+  
   pin_map:
 
     analogInputs:
@@ -15,9 +16,10 @@ arduino:
         pin_type: HAL_FLOAT #hal pin type
         
     digitalInputs:
-      - pin_id: 2
+      - pin_id: PD_0
         pin_name: din.2 #hal pin name
         pin_type: HAL_BIT #hal pin type
+
 
     digitalOutputs:
       - pin_id: 3
