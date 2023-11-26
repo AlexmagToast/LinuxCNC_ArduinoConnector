@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "linuxcnc-arduinoconnector"
+version = "0.1.0"
+description = "Enables connecting an Arduino to LinuxCNC and provides as many IO's as you could ever wish for"
+authors = ["Alexander Richter <info@theartoftinkering.com>"]
+readme = "README.md"
+homepage = "https://github.com/AlexmagToast/LinuxCNC_ArduinoConnector"
+repository = "https://github.com/AlexmagToast/LinuxCNC_ArduinoConnector"
+
+
+[tool.poetry.dependencies]
+python = ">=3.9,<3.13"
+pyserial = "^3.5"
+strenum = "^0.4.15"
+crc8 = "^0.2.0"
+numpy = "^1.26.1"
+msgpack = "^1.0.7"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
