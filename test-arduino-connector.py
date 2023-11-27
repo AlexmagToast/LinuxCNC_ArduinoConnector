@@ -43,7 +43,7 @@ while True:
 		raise SystemExit
 	except Exception as ex:
 		just_the_string = traceback.format_exc()
-		if Debug:print(just_the_string)
+		#if Debug:print(just_the_string)
 
 
 

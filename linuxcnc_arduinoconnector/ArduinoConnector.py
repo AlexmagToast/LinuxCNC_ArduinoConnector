@@ -53,6 +53,7 @@ class ConfigPinTypes(Enum):
     #DIGITAL_OUTPUTS = 'digitalOutputs'
     def __str__(self) -> str:
         return self.value[0]
+    
 class PinTypes(StrEnum):
     ANALOG_INPUT = 'ain'
     ANALOG_OUTPUT = 'aout'
@@ -68,6 +69,7 @@ class HalPinTypes(StrEnum):
     UNDEFINED = 'undefined'
     def __str__(self) -> str:
         return self.value
+    
 class HalPinDirection(StrEnum):
     HAL_IN = 'HAL_IN'
     HAL_OUT = 'HAL_OUT'
@@ -162,7 +164,7 @@ class ArduinoYamlParser:
         
     def parseYaml(path:str) -> list[ArduinoSettings]: # parseYaml returns a list of ArduinoSettings objects. WILL throw exceptions on error
         if os.path.exists(path) == False:
-            raise Exception(f'Error. {path} not found.')
+            raise FileNotFoundError(f'Error. {path} not found.')
         with open(path, 'r') as file:
             logging.debug(f'Loading config, path = {path}')
             docs = yaml.safe_load_all(file)

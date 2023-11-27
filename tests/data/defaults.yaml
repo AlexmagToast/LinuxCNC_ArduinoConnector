@@ -1,0 +1,15 @@
+mcu: #micro controller unit
+  alias: Arduino 2560 Mega
+  component_name: arduino # Name of component to use in HAL
+  dev: /dev/cu.usbserial-0002 # Used for initial programming
+  
+  io_map:
+    analogInputs:
+      - pin_id: 0
+      - pin_id: 1
+      - pin_id: 2
+      - pin_id: 3
+      - pin_id: 4
+      - pin_id: 5
+      - pin_id: 6
+      - pin_id: 7
