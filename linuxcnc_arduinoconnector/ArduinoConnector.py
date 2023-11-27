@@ -103,7 +103,7 @@ class ArduinoPin:
         if ConfigElement.PIN_NAME in doc.keys():    
             self.pinName = doc[ConfigElement.PIN_NAME]
         else:
-            self.pinName = f"{self.pinType.value[0]}"
+            self.pinName = f"{self.pinType.value}"
 
     def __str__(self) -> str:
         return f'pinName = {self.pinName}, pinType={self.pinType}, halPinType={self.halPinType}'
@@ -123,8 +123,8 @@ class AnalogInput(ArduinoPin):
             ArduinoPin.parseYAML(self, doc=yaml)
 
     def __str__(self) -> str:
-        return f'pinName = {self.pinName}, pinType={self.pinType},'\
-            f'halPinType={self.halPinType}, pinSmoothing={self.pinSmoothing},'\
+        return f'\npinID={self.pinID}, pinName = {self.pinName}, pinType={self.pinType}, '\
+            f'halPinType={self.halPinType}, pinSmoothing={self.pinSmoothing}, '\
             f'pinMinVal={self.pinMinVal}, pinMaxVal={self.pinMaxVal}'  
     
     def parseYAML(self, doc):
@@ -198,8 +198,6 @@ class ArduinoYamlParser:
                         new_arduino.io_map[a] = []
                         for v1 in v:   
                             new_arduino.io_map[a].append(c(v1)) # Here we just call the lamda function, which magically returns a correct object with all the settings
-                        print(new_arduino)
-                        #new_arduino.io_map[ConfigPinTypes(k)] = pins
                 logging.debug(f'Loaded Arduino from config:\n{new_arduino}')
                 
 
