@@ -1,11 +1,11 @@
 from multiprocessing import Value
 import os
 from re import T
-from pytest import Config
+
 import serial
 import msgpack
 from strenum import StrEnum
-from enum import IntEnum
+from enum import Enum, IntEnum
 from threading import Thread
 from queue import Queue
 import time
@@ -19,25 +19,40 @@ import yaml
 
 logging.basicConfig(level=logging.DEBUG)
 
+DEFAULT_VALUE_KEY = 1 # List position for default values
+YAML_PARSER_KEY = 1
+
 class ConfigElement(StrEnum):
-    ARDUINO_KEY = 'arduino'
+    ARDUINO_KEY = 'mcu'
     ALIAS = 'alias'
     COMPONENT_NAME = 'component_name'
     DEV = 'dev'
-    PIN_MAP = 'pin_map'
+    IO_MAP = 'io_map'
     PIN_ID = 'pin_id'
     PIN_NAME = 'pin_name'
     PIN_TYPE = 'pin_type'
     def __str__(self) -> str:
         return self.value
-
-class ConfigPinTypes(StrEnum):
-    ANALOG_INPUTS = 'analogInputs'
-    ANALOG_OUTPUTS = 'analogOutputs'
-    DIGITAL_INPUTS = 'digitalInputs'
-    DIGITAL_OUTPUTS = 'digitalOutputs'
+    
+class AnalogConfigElement(Enum):
+    PIN_SMOOTHING = ['pin_smoothing', 200]
+    PIN_MIN_VALUE = ['pin_min_val', 0]
+    PIN_MAX_VALUE = ['pin_max_val', 1023]
     def __str__(self) -> str:
-        return self.value
+        return self.value[0]
+    
+# ConfigPinTypes enum now includes both a string constant and a parsing lamda for each IO/feature type
+# As shown below, the YAML can be read in and the lamda for the feature can be called so all of
+# the associated settings for a given feature get auto-magically parsed from the YAML.
+# See the YAML parsing method in the YamlArduinoParser class below for an example of how this
+# enum + lamda enables some dark magic elegance.
+class ConfigPinTypes(Enum):
+    ANALOG_INPUTS = ['analogInputs', lambda yaml : AnalogInput(yaml=yaml)]
+    #ANALOG_OUTPUTS = 'analogOutputs'
+    #DIGITAL_INPUTS = 'digitalInputs'
+    #DIGITAL_OUTPUTS = 'digitalOutputs'
+    def __str__(self) -> str:
+        return self.value[0]
 class PinTypes(StrEnum):
     ANALOG_INPUT = 'ain'
     ANALOG_OUTPUT = 'aout'
@@ -56,29 +71,79 @@ class HalPinTypes(StrEnum):
 class HalPinDirection(StrEnum):
     HAL_IN = 'HAL_IN'
     HAL_OUT = 'HAL_OUT'
+    UNDEFINED = 'undefined'
     def __str__(self) -> str:
         return self.value
+
 class ArduinoPin:
-    def __init__(self, pinName:str, pinType:PinTypes, halPinType:HalPinTypes):
+    def __init__(self, pinName:str='', pinID:str='', pinType:PinTypes=PinTypes.UNDEFINED, halPinType:HalPinTypes=HalPinTypes.UNDEFINED, 
+                 halPinDirection:HalPinDirection=HalPinDirection.UNDEFINED, yaml:dict = None): 
         self.pinName = pinName
         self.pinType = pinType
         self.halPinType = halPinType
-        if pinType == PinTypes.ANALOG_INPUT or pinType == PinTypes.DIGITAL_INPUT:
-            self.direction = HalPinDirection.HAL_IN
+        self.direction = halPinDirection
+        self.pinID = pinID
+        #if yaml != None: self.parseYAML(doc=yaml)
+
+    def parseYAML(self, doc):
+        if ConfigElement.PIN_ID not in doc.keys():
+            raise Exception(f'Error. {ConfigElement.PIN_ID} undefined in config yaml')
+        self.pinID = doc[ConfigElement.PIN_ID]
+        if ConfigElement.PIN_TYPE in doc.keys():
+            self.halPinType = HalPinTypes(str(doc[ConfigElement.PIN_TYPE]).upper())
+        '''
         else:
-            self.direction = HalPinDirection.HAL_OUT
+            if self.pinType == PinTypes.ANALOG_INPUT or pinType == PinTypes.ANALOG_OUTPUT:
+                halPinType = HalPinTypes.HAL_FLOAT
+            if pinType == PinTypes.DIGITAL_INPUT or pinType == PinTypes.DIGITAL_OUTPUT:
+                halPinType = HalPinTypes.HAL_BIT
+            else:
+                raise Exception(f'Error. {pinType} is an unsupported {ConfigElement.PIN_TYPE} value')
+        '''
+        if ConfigElement.PIN_NAME in doc.keys():    
+            self.pinName = doc[ConfigElement.PIN_NAME]
+        else:
+            self.pinName = f"{self.pinType.value[0]}"
+
     def __str__(self) -> str:
         return f'pinName = {self.pinName}, pinType={self.pinType}, halPinType={self.halPinType}'
+    
+class AnalogInput(ArduinoPin):
+    def __init__(self,yaml:dict = None):
+        ArduinoPin.__init__(self, pinType=PinTypes.ANALOG_INPUT, 
+                       halPinType=HalPinTypes.HAL_FLOAT, halPinDirection=HalPinDirection.HAL_IN,
+                       yaml=yaml)
+        
+        # set the defaults, which can be overriden through the yaml profile
+        self.pinSmoothing = AnalogConfigElement.PIN_SMOOTHING.value[DEFAULT_VALUE_KEY] #smoothing const   #optional
+        self.pinMinVal = AnalogConfigElement.PIN_MIN_VALUE.value[DEFAULT_VALUE_KEY] #minimum value         #optional     these could be used to convert the value to 0-10 for example
+        self.pinMaxVal = AnalogConfigElement.PIN_MAX_VALUE.value[DEFAULT_VALUE_KEY] #maximum value      #optional
+        if yaml != None: 
+            self.parseYAML(doc=yaml)
+            ArduinoPin.parseYAML(self, doc=yaml)
+
+    def __str__(self) -> str:
+        return f'pinName = {self.pinName}, pinType={self.pinType},'\
+            f'halPinType={self.halPinType}, pinSmoothing={self.pinSmoothing},'\
+            f'pinMinVal={self.pinMinVal}, pinMaxVal={self.pinMaxVal}'  
+    
+    def parseYAML(self, doc):
+        if AnalogConfigElement.PIN_SMOOTHING.value[0] in doc.keys():
+            self.pinSmoothing = int(doc[AnalogConfigElement.PIN_SMOOTHING.value[0]])
+        if AnalogConfigElement.PIN_MIN_VALUE.value[0] in doc.keys():
+            self.pinMinVal = int(doc[AnalogConfigElement.PIN_MIN_VALUE.value[0]])
+        if AnalogConfigElement.PIN_MAX_VALUE.value[0] in doc.keys():
+            self.pinMaxVal = int(doc[AnalogConfigElement.PIN_MAX_VALUE.value[0]])
 
 class ArduinoSettings:
     def __init__(self, alias='undefined', component_name='arduino', dev='undefined'):
         self.alias = alias
         self.component_name = component_name
         self.dev = dev
-        self.pin_map = {}
-    def printPinMap(self) -> str:
+        self.io_map = {}
+    def printIOMap(self) -> str:
         s = ''
-        for k,v in self.pin_map.items():
+        for k,v in self.io_map.items():
             s += f'\nPin Type = {k}, values: ['
             for p in v:
                 s += str(p)
@@ -86,32 +151,14 @@ class ArduinoSettings:
         return s
             
     def __str__(self) -> str:
-        return f'alias = {self.alias}, component_name={self.component_name}, dev={self.dev}, pin_map = {self.printPinMap()}'
+        return f'alias = {self.alias}, component_name={self.component_name}, dev={self.dev}, io_map = {self.printIOMap()}'
 
 class ArduinoYamlParser:
     def __init__(self, path:str):
         self.parseYaml(path=path)
         pass
-    def parsePin(self, doc: dict, pinType: PinTypes) -> ArduinoPin:
-        pinName = ''
-        halPinType = HalPinTypes.UNDEFINED
-        if ConfigElement.PIN_ID not in doc.keys():
-            raise Exception(f'Error. {ConfigElement.PIN_ID} undefined in config yaml')
-        if ConfigElement.PIN_TYPE in doc.keys():
-            halPinType = HalPinTypes(str(doc[ConfigElement.PIN_TYPE]).upper())
-        else:
-            if pinType == PinTypes.ANALOG_INPUT or pinType == PinTypes.ANALOG_OUTPUT:
-                halPinType = HalPinTypes.HAL_FLOAT
-            if pinType == PinTypes.DIGITAL_INPUT or pinType == PinTypes.DIGITAL_OUTPUT:
-                halPinType = HalPinTypes.HAL_BIT
-            else:
-                raise Exception(f'Error. {pinType} is an unsupported {ConfigElement.PIN_TYPE} value')
-        if ConfigElement.PIN_NAME in doc.keys():    
-            pinName = str(doc[ConfigElement.PIN_NAME]).upper()
-        else:
-            pinName = f"{pinType}.{str(doc[ConfigElement.PIN_TYPE])}"
-        
-        return ArduinoPin(pinName=pinName, pinType=pinType, halPinType=halPinType) 
+    #def parsePin(self, doc: dict, pinType: PinTypes) -> ArduinoPin:
+    #    return ArduinoPin(pinName=pinName, pinType=pinType, halPinType=halPinType) 
         
     def parseYaml(self, path:str) -> list[ArduinoSettings]: # parseYaml returns a list of ArduinoSettings objects. WILL throw exceptions on error
         if os.path.exists(path) == False:
@@ -135,12 +182,24 @@ class ArduinoYamlParser:
                     raise Exception(f'Error. {ConfigElement.COMPONENT_NAME} undefined in config file ({str})')
                 else:
                     new_arduino.component_name = doc[ConfigElement.ARDUINO_KEY][ConfigElement.COMPONENT_NAME]
-                if ConfigElement.PIN_MAP in doc[ConfigElement.ARDUINO_KEY].keys():
-                    for k, v in doc[ConfigElement.ARDUINO_KEY][ConfigElement.PIN_MAP].items():
-                        pins = []
-                        for v1 in v:    
-                            pins.append(self.parsePin(doc=v1, pinType=ConfigPinTypes(k)))
-                        new_arduino.pin_map[ConfigPinTypes(k)] = pins
+                if ConfigElement.IO_MAP in doc[ConfigElement.ARDUINO_KEY].keys():
+                    for k, v in doc[ConfigElement.ARDUINO_KEY][ConfigElement.IO_MAP].items():
+                        # here is the promised dark magic elegance referenced above.
+                        # The key 'k', e.g., 'analogInputs' is cast to the corresponding enum object as 'a', the string value 'b',
+                        # and the YAML parsing lamda function 'c'.
+                        if len([e for e in ConfigPinTypes if e.value[0] == k]) == 0:
+                            # This logic skips unsupported features that happen to be included in the YAML.
+                            # Future TODO: throw an exception. For now, just ignore as more developmet is needed to finish the feature parsers.
+                            continue
+                            
+                        a = [e for e in ConfigPinTypes if e.value[0] == k][0] # object reference from enum
+                        b = [e.value[0] for e in ConfigPinTypes if e.value[0] == k][0] # String of enum
+                        c = [e.value[YAML_PARSER_KEY] for e in ConfigPinTypes if e.value[0] == k][0] # Parser lamda from enum
+                        new_arduino.io_map[a] = []
+                        for v1 in v:   
+                            new_arduino.io_map[a].append(c(v1)) # Here we just call the lamda function, which magically returns a correct object with all the settings
+                        print(new_arduino)
+                        #new_arduino.io_map[ConfigPinTypes(k)] = pins
                 logging.debug(f'Loaded Arduino from config:\n{new_arduino}')
                 
 

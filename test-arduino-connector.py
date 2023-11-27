@@ -15,7 +15,7 @@ from linuxcnc_arduinoconnector.ArduinoConnector import ArduinoYamlParser, Connec
 
 #	for doc in docs:
 #		a = ArduinoYamlParser(doc=doc)
-a = ArduinoYamlParser(path='example_config.yaml')
+a = ArduinoYamlParser(path='new_config.yaml')
 sc = SerialConnetion(myType=ConnectionType.SERIAL, dev='/dev/cu.usbserial-0001')
 #sc = UDPConnection(myType=ConnectionType.UDP, listenip='', listenport=54321)
 sc.startRxTask()
