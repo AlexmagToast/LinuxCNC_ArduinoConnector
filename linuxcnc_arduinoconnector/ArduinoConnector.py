@@ -154,18 +154,19 @@ class ArduinoSettings:
         return f'alias = {self.alias}, component_name={self.component_name}, dev={self.dev}, io_map = {self.printIOMap()}'
 
 class ArduinoYamlParser:
-    def __init__(self, path:str):
-        self.parseYaml(path=path)
-        pass
+    #def __init__(self, path:str):
+    #    self.parseYaml(path=path)
+    #    pass
     #def parsePin(self, doc: dict, pinType: PinTypes) -> ArduinoPin:
     #    return ArduinoPin(pinName=pinName, pinType=pinType, halPinType=halPinType) 
         
-    def parseYaml(self, path:str) -> list[ArduinoSettings]: # parseYaml returns a list of ArduinoSettings objects. WILL throw exceptions on error
+    def parseYaml(path:str) -> list[ArduinoSettings]: # parseYaml returns a list of ArduinoSettings objects. WILL throw exceptions on error
         if os.path.exists(path) == False:
             raise Exception(f'Error. {path} not found.')
         with open(path, 'r') as file:
             logging.debug(f'Loading config, path = {path}')
             docs = yaml.safe_load_all(file)
+            mcu_list = []
             for doc in docs:
                 new_arduino = ArduinoSettings() # create a new arduino config object
                 if ConfigElement.ARDUINO_KEY not in doc.keys():
@@ -198,8 +199,9 @@ class ArduinoYamlParser:
                         new_arduino.io_map[a] = []
                         for v1 in v:   
                             new_arduino.io_map[a].append(c(v1)) # Here we just call the lamda function, which magically returns a correct object with all the settings
+                mcu_list.append(new_arduino)
                 logging.debug(f'Loaded Arduino from config:\n{new_arduino}')
-                
+        return mcu_list      
 
 
 class ConnectionType(StrEnum):
