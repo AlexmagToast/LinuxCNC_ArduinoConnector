@@ -106,7 +106,7 @@ class ArduinoPin:
             self.pinName = f"{self.pinType.value}"
 
     def __str__(self) -> str:
-        return f'pinName = {self.pinName}, pinType={self.pinType}, halPinType={self.halPinType}'
+        return f'pinName = {self.pinName}, pinType={self.pinType.name}, halPinType={self.halPinType}'
     
 class AnalogInput(ArduinoPin):
     def __init__(self,yaml:dict = None):
@@ -123,7 +123,7 @@ class AnalogInput(ArduinoPin):
             ArduinoPin.parseYAML(self, doc=yaml)
 
     def __str__(self) -> str:
-        return f'\npinID={self.pinID}, pinName = {self.pinName}, pinType={self.pinType}, '\
+        return f'\npinID={self.pinID}, pinName = {self.pinName}, pinType={self.pinType.name}, '\
             f'halPinType={self.halPinType}, pinSmoothing={self.pinSmoothing}, '\
             f'pinMinVal={self.pinMinVal}, pinMaxVal={self.pinMaxVal}'  
     
