@@ -47,7 +47,7 @@ class AnalogConfigElement(Enum):
 # See the YAML parsing method in the YamlArduinoParser class below for an example of how this
 # enum + lamda enables some dark magic elegance.
 class ConfigPinTypes(Enum):
-    ANALOG_INPUTS = ['analogInputs', lambda yaml : AnalogInput(yaml=yaml)]
+    ANALOG_INPUTS = ['analogInputs', lambda yaml : AnalogPin(yaml=yaml, halPinDirection=HalPinDirection.HAL_IN)]
     #ANALOG_OUTPUTS = 'analogOutputs'
     #DIGITAL_INPUTS = 'digitalInputs'
     #DIGITAL_OUTPUTS = 'digitalOutputs'
@@ -110,10 +110,10 @@ class ArduinoPin:
     def __str__(self) -> str:
         return f'pinName = {self.pinName}, pinType={self.pinType.name}, halPinType={self.halPinType}'
     
-class AnalogInput(ArduinoPin):
-    def __init__(self,yaml:dict = None):
+class AnalogPin(ArduinoPin):
+    def __init__(self,yaml:dict = None, halPinDirection=HalPinDirection):
         ArduinoPin.__init__(self, pinType=PinTypes.ANALOG_INPUT, 
-                       halPinType=HalPinTypes.HAL_FLOAT, halPinDirection=HalPinDirection.HAL_IN,
+                       halPinType=HalPinTypes.HAL_FLOAT, halPinDirection=halPinDirection,
                        yaml=yaml)
         
         # set the defaults, which can be overriden through the yaml profile
