@@ -83,7 +83,7 @@ class ArduinoPin:
         self.pinName = pinName
         self.pinType = pinType
         self.halPinType = halPinType
-        self.direction = halPinDirection
+        self.halPinDirection = halPinDirection
         self.pinID = pinID
         #if yaml != None: self.parseYAML(doc=yaml)
 
@@ -126,7 +126,7 @@ class AnalogPin(ArduinoPin):
 
     def __str__(self) -> str:
         return f'\npinID={self.pinID}, pinName = {self.pinName}, pinType={self.pinType.name}, '\
-            f'halPinType={self.halPinType}, pinSmoothing={self.pinSmoothing}, '\
+            f'halPinDirection = {self.halPinDirection}, halPinType={self.halPinType}, pinSmoothing={self.pinSmoothing}, '\
             f'pinMinVal={self.pinMinVal}, pinMaxVal={self.pinMaxVal}'  
     
     def parseYAML(self, doc):

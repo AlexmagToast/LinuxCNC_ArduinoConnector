@@ -2,7 +2,8 @@ import pytest
 #import os
 from pathlib import Path
 
-from LinuxCNC_ArduinoConnector.ArduinoConnector import AnalogConfigElement, ArduinoYamlParser, ConfigPinTypes
+from linuxcnc_arduinoconnector.ArduinoConnector import AnalogConfigElement, ArduinoYamlParser, ConfigPinTypes
+
 
 @pytest.fixture
 def base_path() -> Path:
