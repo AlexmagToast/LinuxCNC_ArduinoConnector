@@ -27,12 +27,20 @@ class ConfigElement(StrEnum):
     ALIAS = 'alias'
     COMPONENT_NAME = 'component_name'
     DEV = 'dev'
+    CONNECTION = 'connection'
     IO_MAP = 'io_map'
-    PIN_ID = 'pin_id'
-    PIN_NAME = 'pin_name'
-    PIN_TYPE = 'pin_type'
     def __str__(self) -> str:
         return self.value
+    
+class PinConfigElement(Enum):
+    PIN_ID = ['pin_id', None]
+    PIN_NAME = ['pin_name', None]
+    PIN_TYPE = ['pin_type', None]
+    PIN_INITIAL_STATE = ['pin_initial_state', -1]
+    PIN_CONNECT_STATE = ['pin_connect_state', -1]
+    PIN_DISCONNECT_STATE = ['pin_disconnect_state', -1]
+    def __str__(self) -> str:
+        return self.value[0]
     
 class AnalogConfigElement(Enum):
     PIN_SMOOTHING = ['pin_smoothing', 200]
@@ -41,16 +49,44 @@ class AnalogConfigElement(Enum):
     def __str__(self) -> str:
         return self.value[0]
     
+class DigitalConfigElement(Enum):
+    PIN_DEBOUNCE = ['pin_debounce', 1]
+    def __str__(self) -> str:
+        return self.value[0]
+
+class ConnectionConfigElement(Enum):
+    TIMEOUT = ['timeout', 5000]
+    TYPE = ['type', None]
+
+class UDPConfigElement(Enum):
+    ARDUINO_IP = ['arduino_ip', None]
+    ARDUINO_PORT = ['arduino_port', 54321]
+    LISTEN_PORT: ['listen_port', 54321] # optional, default is set to arduino_port  
+    def __str__(self) -> str:
+        return self.value[0]
+
+class SerialConfigElement(Enum):
+    BAUDRATE = ['baudrate', 115200]
+    def __str__(self) -> str:
+        return self.value[0]
 # ConfigPinTypes enum now includes both a string constant and a parsing lamda for each IO/feature type
 # As shown below, the YAML can be read in and the lamda for the feature can be called so all of
 # the associated settings for a given feature get auto-magically parsed from the YAML.
 # See the YAML parsing method in the YamlArduinoParser class below for an example of how this
 # enum + lamda enables some dark magic elegance.
+    
 class ConfigPinTypes(Enum):
     ANALOG_INPUTS = ['analogInputs', lambda yaml : AnalogPin(yaml=yaml, halPinDirection=HalPinDirection.HAL_IN)]
-    #ANALOG_OUTPUTS = 'analogOutputs'
-    #DIGITAL_INPUTS = 'digitalInputs'
-    #DIGITAL_OUTPUTS = 'digitalOutputs'
+    ANALOG_OUTPUTS = ['analogOutputs',  lambda yaml : AnalogPin(yaml=yaml, halPinDirection=HalPinDirection.HAL_OUT)]
+    PWM_OUTPUTS = ['pwmOutputs',  lambda yaml : ArduinoPin(yaml=yaml, pinType=ConfigPinTypes.PWM_OUTPUTS, halPinDirection=HalPinDirection.HAL_OUT)]
+    DIGITAL_INPUTS = ['digitalInputs', lambda yaml : DigitalPin(yaml=yaml, halPinDirection=HalPinDirection.HAL_IN)]
+    DIGITAL_OUTPUTS = ['digitalOutputs', lambda yaml : DigitalPin(yaml=yaml, halPinDirection=HalPinDirection.HAL_OUT)]
+    def __str__(self) -> str:
+        return self.value[0]
+    
+class ConfigConnectionTypes(Enum):
+    SERIAL = ['Serial', lambda yaml : None]
+    UDP = ['UDP', lambda yaml: None]
     def __str__(self) -> str:
         return self.value[0]
     
@@ -77,6 +113,12 @@ class HalPinDirection(StrEnum):
     def __str__(self) -> str:
         return self.value
 
+
+class ConnectionType:
+    def __init__(self, yaml:dict = None):
+        pass
+
+
 class ArduinoPin:
     def __init__(self, pinName:str='', pinID:str='', pinType:PinTypes=PinTypes.UNDEFINED, halPinType:HalPinTypes=HalPinTypes.UNDEFINED, 
                  halPinDirection:HalPinDirection=HalPinDirection.UNDEFINED, yaml:dict = None): 
@@ -85,41 +127,47 @@ class ArduinoPin:
         self.halPinType = halPinType
         self.halPinDirection = halPinDirection
         self.pinID = pinID
+        self.pinInitialState = PinConfigElement.PIN_INITIAL_STATE.value[DEFAULT_VALUE_KEY]
+        self.pinConnectState = PinConfigElement.PIN_CONNECT_STATE.value[DEFAULT_VALUE_KEY]
+        self.pinDisconnectState = PinConfigElement.PIN_DISCONNECT_STATE.value[DEFAULT_VALUE_KEY]
         #if yaml != None: self.parseYAML(doc=yaml)
 
     def parseYAML(self, doc):
-        if ConfigElement.PIN_ID not in doc.keys():
-            raise Exception(f'Error. {ConfigElement.PIN_ID} undefined in config yaml')
-        self.pinID = doc[ConfigElement.PIN_ID]
-        if ConfigElement.PIN_TYPE in doc.keys():
-            self.halPinType = HalPinTypes(str(doc[ConfigElement.PIN_TYPE]).upper())
-        '''
-        else:
-            if self.pinType == PinTypes.ANALOG_INPUT or pinType == PinTypes.ANALOG_OUTPUT:
-                halPinType = HalPinTypes.HAL_FLOAT
-            if pinType == PinTypes.DIGITAL_INPUT or pinType == PinTypes.DIGITAL_OUTPUT:
-                halPinType = HalPinTypes.HAL_BIT
-            else:
-                raise Exception(f'Error. {pinType} is an unsupported {ConfigElement.PIN_TYPE} value')
-        '''
-        if ConfigElement.PIN_NAME in doc.keys():    
-            self.pinName = doc[ConfigElement.PIN_NAME]
+        if PinConfigElement.PIN_ID.value[0] not in doc.keys():
+            raise Exception(f'Error. {PinConfigElement.PIN_ID.value[0]} undefined in config yaml')
+        self.pinID = doc[PinConfigElement.PIN_ID.value[0]]
+        if PinConfigElement.PIN_TYPE.value[0] in doc.keys():
+            self.halPinType = HalPinTypes(str(doc[PinConfigElement.PIN_TYPE.value[0]]).upper())
+        if PinConfigElement.PIN_NAME.value[0] in doc.keys():    
+            self.pinName = doc[PinConfigElement.PIN_NAME.value[0]]
         else:
             self.pinName = f"{self.pinType.value}"
+        if PinConfigElement.PIN_INITIAL_STATE.value[0] in doc.keys():    
+            self.pinInitialState = doc[PinConfigElement.PIN_INITIAL_STATE.value[0]]
+        if PinConfigElement.PIN_DISCONNECT_STATE.value[0] in doc.keys():    
+            self.pinDisconnectState = doc[PinConfigElement.PIN_DISCONNECT_STATE.value[0]]
+        if PinConfigElement.PIN_CONNECT_STATE.value[0] in doc.keys():    
+            self.pinConnectState = doc[PinConfigElement.PIN_CONNECT_STATE.value[0]]
 
     def __str__(self) -> str:
         return f'pinName = {self.pinName}, pinType={self.pinType.name}, halPinType={self.halPinType}'
     
 class AnalogPin(ArduinoPin):
     def __init__(self,yaml:dict = None, halPinDirection=HalPinDirection):
-        ArduinoPin.__init__(self, pinType=PinTypes.ANALOG_INPUT, 
-                       halPinType=HalPinTypes.HAL_FLOAT, halPinDirection=halPinDirection,
-                       yaml=yaml)
+        if halPinDirection == HalPinDirection.HAL_IN:
+            ArduinoPin.__init__(self, pinType=PinTypes.ANALOG_INPUT, 
+                        halPinType=HalPinTypes.HAL_FLOAT, halPinDirection=halPinDirection,
+                        yaml=yaml)
+        else:
+            ArduinoPin.__init__(self, pinType=PinTypes.ANALOG_OUTPUT, 
+                        halPinType=HalPinTypes.HAL_FLOAT, halPinDirection=halPinDirection,
+                        yaml=yaml)
         
         # set the defaults, which can be overriden through the yaml profile
         self.pinSmoothing = AnalogConfigElement.PIN_SMOOTHING.value[DEFAULT_VALUE_KEY] #smoothing const   #optional
         self.pinMinVal = AnalogConfigElement.PIN_MIN_VALUE.value[DEFAULT_VALUE_KEY] #minimum value         #optional     these could be used to convert the value to 0-10 for example
         self.pinMaxVal = AnalogConfigElement.PIN_MAX_VALUE.value[DEFAULT_VALUE_KEY] #maximum value      #optional
+        
         if yaml != None: 
             self.parseYAML(doc=yaml)
             ArduinoPin.parseYAML(self, doc=yaml)
@@ -136,6 +184,33 @@ class AnalogPin(ArduinoPin):
             self.pinMinVal = int(doc[AnalogConfigElement.PIN_MIN_VALUE.value[0]])
         if AnalogConfigElement.PIN_MAX_VALUE.value[0] in doc.keys():
             self.pinMaxVal = int(doc[AnalogConfigElement.PIN_MAX_VALUE.value[0]])
+
+class DigitalPin(ArduinoPin):
+    def __init__(self,  halPinDirection:HalPinDirection, yaml:dict = None):
+        if halPinDirection == HalPinDirection.HAL_IN:
+            ArduinoPin.__init__(self, pinType=PinTypes.DIGITAL_INPUT, 
+                        halPinType=HalPinTypes.HAL_BIT, halPinDirection=halPinDirection,
+                        yaml=yaml)
+        else:
+            ArduinoPin.__init__(self, pinType=PinTypes.DIGITAL_OUTPUT, 
+                        halPinType=HalPinTypes.HAL_BIT, halPinDirection=halPinDirection,
+                        yaml=yaml)
+        
+        # set the defaults, which can be overriden through the yaml profile
+        self.pinDebounce = DigitalConfigElement.PIN_DEBOUNCE.value[DEFAULT_VALUE_KEY] #smoothing const   #optional
+
+        if yaml != None: 
+            self.parseYAML(doc=yaml)
+            ArduinoPin.parseYAML(self, doc=yaml)
+
+    def __str__(self) -> str:
+        return f'\npinID={self.pinID}, pinName = {self.pinName}, pinType={self.pinType.name}, '\
+            f'halPinDirection = {self.halPinDirection}, halPinType={self.halPinType}, pinDebounce={self.pinDebounce}'
+    
+    def parseYAML(self, doc):
+        if DigitalConfigElement.PIN_DEBOUNCE.value[0] in doc.keys():
+            self.pinDebounce = int(doc[DigitalConfigElement.PIN_DEBOUNCE.value[0]])
+
 
 class ArduinoSettings:
     def __init__(self, alias='undefined', component_name='arduino', dev='undefined'):

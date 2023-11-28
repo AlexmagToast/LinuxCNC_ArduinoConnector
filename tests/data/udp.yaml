@@ -1,0 +1,13 @@
+mcu: #micro controller unit
+  alias: Arduino 2560 Mega
+  component_name: arduino # Name of component to use in HAL
+  dev: /dev/cu.usbserial-0002 # Used for initial programming
+  connection:
+    ## UDP Example
+    type: UDP #required for UDP
+    arduino_ip: 192.168.1.22 #required for UDP
+    arduino_port: 54321 # optional, default is 54321
+    listen_port: 54321 # optional, default is set to arduino_port  
+    timeout: 5000 #optional, defaults to 5000 ms
+
+  io_map:
