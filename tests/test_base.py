@@ -73,3 +73,7 @@ def test_config_not_found():
         a = ArduinoYamlParser.parseYaml(path='missing.yaml')
     assert str(excinfo.value) == "Error. missing.yaml not found."  
         
+def test_config_convert(base_path: Path, monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.chdir(base_path / "data")
+    a = ArduinoYamlParser.parseYaml(path='defaults.yaml')
+    pass

@@ -95,6 +95,7 @@ class PinTypes(StrEnum):
     ANALOG_OUTPUT = 'aout'
     DIGITAL_INPUT = 'din'
     DIGITAL_OUTPUT = 'dout'
+    BINARY_SELECTOR_SWITCH = 'binSel'
     UNDEFINED = 'undefined'
     def __str__(self) -> str:
         return self.value
@@ -210,6 +211,9 @@ class DigitalPin(ArduinoPin):
     def parseYAML(self, doc):
         if DigitalConfigElement.PIN_DEBOUNCE.value[0] in doc.keys():
             self.pinDebounce = int(doc[DigitalConfigElement.PIN_DEBOUNCE.value[0]])
+
+
+
 
 
 class ArduinoSettings:
