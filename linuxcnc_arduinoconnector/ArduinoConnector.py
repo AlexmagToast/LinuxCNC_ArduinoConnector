@@ -1,3 +1,28 @@
+#!/usr/bin/env python3
+# MIT License
+# ArduinoConnector
+# By Alexander Richter, info@theartoftinkering.com &
+# Ken Thompson, https://github.com/KennethThompson
+# Copyright (c) 2023 Alexander Richter
+
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
 from multiprocessing import Value
 import os
 from re import T
@@ -16,11 +41,14 @@ import numpy
 import socket
 from cobs import cobs
 import yaml
+from pathlib import Path
 
 logging.basicConfig(level=logging.DEBUG)
 
 DEFAULT_VALUE_KEY = 1 # List position for default values
 YAML_PARSER_KEY = 1
+
+INFO = Info()
 
 class ConfigElement(StrEnum):
     ARDUINO_KEY = 'mcu'
@@ -614,7 +642,7 @@ class SerialConnetion(Connection):
         self.buffer = bytearray()
         self.shutdown = False
         
-        self.daemon = None
+        self.daemon = None        
         self.arduino = serial.Serial(dev, 115200, timeout=1, xonxoff=False, rtscts=False, dsrdtr=True)
         self.arduino.timeout = 1
         
@@ -671,3 +699,10 @@ class SerialConnetion(Connection):
                 just_the_string = traceback.format_exc()
                 print(just_the_string)
 		
+def main():
+    logging.debug(f'Starting up!')
+    #with open(Path.home() / ".ssh" / "known_hosts") as f:
+    #    lines = f.readlines()
+
+if __name__ == "__main__":
+    main()
