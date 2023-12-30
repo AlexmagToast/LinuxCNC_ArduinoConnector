@@ -42,13 +42,16 @@ import socket
 from cobs import cobs
 import yaml
 from pathlib import Path
+#from qtvcp.core import Info
 
 logging.basicConfig(level=logging.DEBUG)
 
 DEFAULT_VALUE_KEY = 1 # List position for default values
 YAML_PARSER_KEY = 1
 
-INFO = Info()
+DEFAULT_PROFILE = "config.yaml"
+
+#INFO = Info()
 
 class ConfigElement(StrEnum):
     ARDUINO_KEY = 'mcu'
@@ -292,6 +295,36 @@ class ArduinoYamlParser:
                     raise Exception(f'Error. {ConfigElement.COMPONENT_NAME} undefined in config file ({str})')
                 else:
                     new_arduino.component_name = doc[ConfigElement.ARDUINO_KEY][ConfigElement.COMPONENT_NAME]
+                
+                new_arduino.baud_rate = SerialConfigElement.BAUDRATE.value[DEFAULT_VALUE_KEY]
+                new_arduino.connection_timeout = ConnectionConfigElement.TIMEOUT.value[DEFAULT_VALUE_KEY]
+
+                if ConfigElement.CONNECTION in doc[ConfigElement.ARDUINO_KEY].keys():
+                    
+                    #lc = [x.lower() for x in doc[ConfigElement.ARDUINO_KEY][ConfigElement.CONNECTION].keys()]
+                    if ConnectionConfigElement.TYPE.value[0] in doc[ConfigElement.ARDUINO_KEY][ConfigElement.CONNECTION].keys():
+                        type = doc[ConfigElement.ARDUINO_KEY][ConfigElement.CONNECTION][ConnectionConfigElement.TYPE.value[0]].lower()
+                        if type == ConfigConnectionTypes.SERIAL.value[0].lower():
+                            if SerialConfigElement.BAUDRATE.value[0] in doc[ConfigElement.ARDUINO_KEY][ConfigElement.CONNECTION].keys():
+                                new_arduino.baud_rate = doc[ConfigElement.ARDUINO_KEY][ConfigElement.CONNECTION][SerialConfigElement.BAUDRATE.value[0]]
+                        #elif type == ConfigConnectionTypes.UDP.value[0].lower():
+                        #    pass
+                        else:
+                            raise Exception(f'Error. Connection type of {type} is unsupported')
+                    else:
+                        raise Exception(f'Error. Connection type undefined in config file')
+
+                    
+
+                    #if ConfigConnectionTypes.SERIAL.value[0] in doc[ConfigElement.ARDUINO_KEY][ConfigElement.CONNECTION].values():
+                    #    pass
+                    #for k, v in doc[ConfigElement.ARDUINO_KEY][ConfigElement.CONNECTION].items():
+                    #    if k.lower() == 'type' and v == ConfigConnectionTypes.SERIAL.value[0]:
+                    #        pass
+                    #    if k.lower() == 'type' and v == ConfigConnectionTypes.UDP.value[0]:
+                    #        pass
+                    
+                        
                 if ConfigElement.IO_MAP in doc[ConfigElement.ARDUINO_KEY].keys():
                     for k, v in doc[ConfigElement.ARDUINO_KEY][ConfigElement.IO_MAP].items():
                         # here is the promised dark magic elegance referenced above.
@@ -698,9 +731,39 @@ class SerialConnetion(Connection):
             except Exception as error:
                 just_the_string = traceback.format_exc()
                 print(just_the_string)
-		
+
+
+class ArduinoConnection:
+    def __init__(self, settings:ArduinoSettings):
+        self.settings = settings
+            
+    def __str__(self) -> str:
+        return f'Arduino Alias = {self.settings.alias}, Component Name = {self.settings.component_name}'
+
+arduino_map = []
+
 def main():
     logging.debug(f'Starting up!')
+    home_profile_loc = Path.home() / ".arduino" / DEFAULT_PROFILE #"profile.yaml"
+    arduino_profiles = []
+    if os.path.exists(home_profile_loc):
+        logging.debug(f'Found config: {str(home_profile_loc)}')
+        arduino_profiles = ArduinoYamlParser.parseYaml(path=home_profile_loc)
+    elif os.path.exists(DEFAULT_PROFILE):
+        logging.debug(f'Found config: {DEFAULT_PROFILE} in local directory')
+        arduino_profiles = ArduinoYamlParser.parseYaml(path=DEFAULT_PROFILE)
+    else:
+        err = f'No porfile yaml found!'
+        logging.error(err)
+        raise Exception(err)
+    if len(arduino_profiles) == 0:
+        err = f'No arduino properties found in porfile yaml!'
+        logging.error(err)
+        raise Exception(err)
+    for a in arduino_profiles:
+        arduino_map.append(ArduinoConnection(a))
+    pass
+    # logging.debug(f'Looking for config.yaml in
     #with open(Path.home() / ".ssh" / "known_hosts") as f:
     #    lines = f.readlines()
 
