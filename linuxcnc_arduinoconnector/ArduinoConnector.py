@@ -246,8 +246,8 @@ class DigitalPin(ArduinoPin):
             ArduinoPin.parseYAML(self, doc=yaml)
             #j = self.toJson()
         
-        m = self.toJson()
-        pass
+        #m = self.toJson()
+        #pass
     def __str__(self) -> str:
 
         return f'\npinID={self.pinID}, pinName = {self.pinName}, pinType={self.pinType.name}, '\
