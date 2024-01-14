@@ -24,15 +24,19 @@
   SOFTWARE.
 */
 #include <Arduino.h>
-#include <EEPROM.h>
-#include <FastCRC.h>
-#include <UUID.h>
+#include "Config.h"
+#include "FeatureMap.h"
+//#include <EEPROM.h>
+//#include <FastCRC.h>
+//#include <UUID.h>
 #include "SerialConnection.h"
 
 
 #define DEBUG
 
-const int SERIAL_STARTUP_DELAY = 5000; // In milliseconds
+featureMap fm;
+SerialConnection serialClient(SERIAL_RX_TIMEOUT, fm.features);
+/*
 const int UUID_LENGTH = 8;  // Length of the UUID string
 const int EEPROM_PROVISIONING_ADDRESS = 0;  // starting address in EEPROM
 const uint16_t EEPROM_HEADER = 0xbeef;
@@ -41,7 +45,7 @@ const uint32_t EEPROM_DEFAULT_SIZE = 1024; // Default size of EEPROM to initiali
 const int SERIAL_RX_TIMEOUT = 5000;
 
 uint64_t fm;
-SerialConnection serialClient(SERIAL_RX_TIMEOUT, fm /* TODO: Re-implement feature map*/);
+SerialConnection serialClient(SERIAL_RX_TIMEOUT, fm);
 
 FastCRC16 CRC16;
 UUID uuid;
@@ -60,7 +64,7 @@ struct eepromData
   uint16_t configCRC; // CRC of config block
 }epd;
 
-
+*/
 
 void setup() {
   pinMode(LED_BUILTIN, OUTPUT); // Initialize builtin LED for error feedback/diagnostics 
@@ -74,7 +78,7 @@ void setup() {
   #ifdef DEBUG
     Serial.println("STARTING UP.. ");
   #endif
-
+  /*
   if( EEPROM.length() == 0 )
   {
     #ifdef DEBUG
@@ -137,6 +141,7 @@ void setup() {
     Serial.print((char*)epd.uid);
     Serial.print(" to EEPROM.");
     #endif
+    
   }
   else
   {
@@ -171,9 +176,10 @@ void setup() {
     #endif
 
     serialClient.setUID(epd.uid);
-    
+   
   }
-
+  */
+  serialClient.setUID("UNDEFINED");
   digitalWrite(LED_BUILTIN, LOW);// Signal startup success to builtin LED
   serialClient.DoWork(); // Causes
 }

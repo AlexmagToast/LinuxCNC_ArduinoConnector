@@ -213,8 +213,8 @@ protected:
       Serial.println(n.protocolVersion, HEX);
       Serial.print("ARDUINO DEBUG: Feature Map: 0x");
       Serial.println(n.featureMap, HEX);
-      Serial.print("ARDUINO DEBUG: Board Index: ");
-      Serial.println(n.boardIndex);
+      //Serial.print("ARDUINO DEBUG: Board Index: ");
+      //Serial.println(n.boardIndex);
       Serial.println("ARDUINO DEBUG: ---- RX END HANDSHAKE MESSAGE DUMP ----");
       #endif
       _handshakeReceived = 1;
@@ -224,8 +224,8 @@ protected:
   {
       #ifdef DEBUG_PROTOCOL_VERBOSE
       Serial.println("ARDUINO DEBUG: ---- RX HEARTBEAT MESSAGE DUMP ----");
-      Serial.print("ARDUINO DEBUG: Board Index: ");
-      Serial.println(n.boardIndex);
+      //Serial.print("ARDUINO DEBUG: Board Index: ");
+      //Serial.println(n.boardIndex);
       Serial.println("ARDUINO DEBUG: ---- RX END HEARTBEAT MESSAGE DUMP ----");
       #endif
       _heartbeatReceived = 1;
@@ -237,12 +237,12 @@ protected:
       Serial.println("ARDUINO DEBUG: ---- RX COMMAND MESSAGE DUMP ----");
       Serial.print("ARDUINO DEBUG: Command: ");
       Serial.println(n.cmd);
-      Serial.print("ARDUINO DEBUG: Board Index: ");
-      Serial.println(n.boardIndex);
+      //Serial.print("ARDUINO DEBUG: Board Index: ");
+      //Serial.println(n.boardIndex);
       Serial.println("ARDUINO DEBUG: ---- RX END COMMAND MESSAGE DUMP ----");
       #endif
       protocol::cm.cmd = n.cmd;
-      protocol::cm.boardIndex = n.boardIndex-1;
+      //protocol::cm.boardIndex = n.boardIndex-1;
       _commandReceived = 1;
   }
 
@@ -273,8 +273,8 @@ protected:
       Serial.println(protocol::hm.featureMap, HEX);
       Serial.print("ARDUINO DEBUG: Timeout: ");
       Serial.println(protocol::hm.timeout);
-      Serial.print("ARDUINO DEBUG: Board Index: ");
-      Serial.println(protocol::hm.boardIndex);
+      //Serial.print("ARDUINO DEBUG: Board Index: ");
+     // Serial.println(protocol::hm.boardIndex);
       Serial.print("ARDUINO DEBUG: Board UID: ");
       Serial.println(protocol::hm.uid);
       Serial.println("ARDUINO DEBUG: ---- TX END HANDSHAKE MESSAGE DUMP ----");
@@ -369,8 +369,8 @@ protected:
       Serial.println("ARDUINO DEBUG: ---- TX PINSTATUS MESSAGE DUMP ----");
       Serial.print("ARDUINO DEBUG: STATUS: ");
       Serial.println(protocol::pm.status);      
-      Serial.print("ARDUINO DEBUG: Board Index: ");
-      Serial.println(protocol::pm.boardIndex);
+      //Serial.print("ARDUINO DEBUG: Board Index: ");
+      //Serial.println(protocol::pm.boardIndex);
       Serial.println("ARDUINO DEBUG: ---- TX END PINSTATUS MESSAGE DUMP ----");
     #endif
     return protocol::pm;
@@ -382,8 +382,8 @@ protected:
     protocol::dm.message = message;
     // No need to wrap in DEBUG define as the entire method is only compiled in when DEBUG is defined
     Serial.println("ARDUINO DEBUG: ---- TX DEBUG MESSAGE DUMP ----");
-    Serial.print("ARDUINO DEBUG: Board Index: ");
-    Serial.println(protocol::dm.boardIndex);
+    //Serial.print("ARDUINO DEBUG: Board Index: ");
+    //Serial.println(protocol::dm.boardIndex);
     Serial.print("ARDUINO DEBUG: Message: ");
     Serial.println(protocol::dm.message);
     Serial.println("ARDUINO DEBUG: ---- TX END DEBUG MESSAGE DUMP ----");

@@ -116,14 +116,12 @@ namespace protocol
   // This message may be deprecated in the near future
   struct CommandMessage {
       String cmd;
-      int boardIndex;
-      MSGPACK_DEFINE(cmd, boardIndex); 
+      MSGPACK_DEFINE(cmd); 
   }cm;
   
   struct PinStatusMessage {
       String status;
-      uint8_t boardIndex;
-      MSGPACK_DEFINE(status, boardIndex); 
+      MSGPACK_DEFINE(status); 
   }pm;
   
   struct ConfigMessage {
@@ -135,9 +133,9 @@ namespace protocol
 
   #ifdef DEBUG
   struct DebugMessage {
-      uint8_t boardIndex = BOARD_INDEX+1;
+      //uint8_t boardIndex = BOARD_INDEX+1;
       String message;
-      MSGPACK_DEFINE(boardIndex, message); 
+      MSGPACK_DEFINE(message); 
   }dm;
   #endif
 

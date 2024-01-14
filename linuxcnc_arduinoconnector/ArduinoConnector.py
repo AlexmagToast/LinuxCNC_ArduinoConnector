@@ -2,8 +2,8 @@
 # MIT License
 # ArduinoConnector
 # By Alexander Richter, info@theartoftinkering.com &
-# Ken Thompson, https://github.com/KennethThompson
-# Copyright (c) 2023 Alexander Richter
+# Ken Thompson (not THAT Ken Thompson), https://github.com/KennethThompson
+# Copyright (c) 2023 Alexander Richter & Ken Thompson
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -23,10 +23,11 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+import json
 from multiprocessing import Value
 import os
 from re import T
-
+import getopt, sys
 import serial
 import msgpack
 from strenum import StrEnum
@@ -184,6 +185,15 @@ class ArduinoPin:
     def __str__(self) -> str:
         return f'pinName = {self.pinName}, pinType={self.pinType.name}, halPinType={self.halPinType}'
     
+    def toJson(self):
+        return {'pinName': self.pinName,
+                'pinType': self.pinType.name,
+                'pinID': self.pinID,
+                'pinInitialState': self.pinInitialState,
+                'pinConnectState': self.pinConnectState,
+                'pinDisconnectState': self.pinDisconnectState}
+
+    
 class AnalogPin(ArduinoPin):
     def __init__(self,yaml:dict = None, halPinDirection=HalPinDirection):
         if halPinDirection == HalPinDirection.HAL_IN:
@@ -234,8 +244,10 @@ class DigitalPin(ArduinoPin):
         if yaml != None: 
             self.parseYAML(doc=yaml)
             ArduinoPin.parseYAML(self, doc=yaml)
-
+            #j = self.toJson()
+            #pass
     def __str__(self) -> str:
+
         return f'\npinID={self.pinID}, pinName = {self.pinName}, pinType={self.pinType.name}, '\
             f'halPinDirection = {self.halPinDirection}, halPinType={self.halPinType}, pinDebounce={self.pinDebounce}'
     
@@ -252,6 +264,8 @@ class ArduinoSettings:
         self.alias = alias
         self.component_name = component_name
         self.dev = dev
+        self.baud_rate = 19200
+        self.connection_timeout = 10
         self.io_map = {}
     def printIOMap(self) -> str:
         s = ''
@@ -462,7 +476,7 @@ class MessageDecoder:
         
     def parseBytes(self, b:bytearray):
         decoded = cobs.decode(b)
-        logging.debug(f"cobs encoded: {b}, rest: {b}")
+        logging.debug(f"cobs encoded: {b}")
         # divide into index, data, crc
         self.messageType = decoded[0]
         data = decoded[1:-1]
@@ -537,9 +551,8 @@ class Connection:
                 uint8_t protocolVersion = PROTOCOL_VERSION;
                 uint64_t featureMap = 0;
                 uiint32_t timeOut = 0;
-                uint8_t boardIndex = BOARD_INDEX+1;
-                MSGPACK_DEFINE(protocolVersion, featureMap, boardIndex); 
-            }hm;
+                string uid;
+            };
             '''
             # FUTURE TODO: Make a MT_HANDSHAKE decoder class rather than the following hard codes..
             if m.payload[0] != protocol_ver:
@@ -553,11 +566,11 @@ class Connection:
                 ef = fmd.getEnabledFeatures()
                 print(f'PYDEBUG: Enabled Features : {ef}')
             to = m.payload[2] #timeout value
-            bi = m.payload[3]-1 # board index is always sent over incremeented by one
+            #bi = m.payload[3]-1 # board index is always sent over incremeented by one
             
-            self.arduinos[bi].setState(ConnectionState.CONNECTED)
-            self.arduinos[bi].lastMessageReceived = time.time()
-            self.arduinos[bi].timeout = to / 1000 # always delivered in ms, convert to seconds
+            #self.arduinos[bi].setState(ConnectionState.CONNECTED)
+            #self.arduinos[bi].lastMessageReceived = time.time()
+            #self.arduinos[bi].timeout = to / 1000 # always delivered in ms, convert to seconds
             hsr = MessageEncoder().encodeBytes(mt=MessageType.MT_HANDSHAKE, payload=m.payload)
             self.sendMessage(bytes(hsr))
             
@@ -669,14 +682,14 @@ class UDPConnection(Connection):
                 just_the_string = traceback.format_exc()
                 print(just_the_string)
 		
-class SerialConnetion(Connection):
-    def __init__(self, dev:str, myType = ConnectionType.SERIAL):
+class SerialConnection(Connection):
+    def __init__(self, dev:str, myType = ConnectionType.SERIAL, baudRate:int = 115200, timeout:int=1):
         super().__init__(myType)
         self.buffer = bytearray()
         self.shutdown = False
         
         self.daemon = None        
-        self.arduino = serial.Serial(dev, 115200, timeout=1, xonxoff=False, rtscts=False, dsrdtr=True)
+        self.arduino = serial.Serial(dev, baudrate=baudRate, timeout=timeout, xonxoff=False, rtscts=False, dsrdtr=True)
         self.arduino.timeout = 1
         
     def startRxTask(self):
@@ -736,14 +749,20 @@ class SerialConnetion(Connection):
 class ArduinoConnection:
     def __init__(self, settings:ArduinoSettings):
         self.settings = settings
+        self.serialConn = SerialConnection(dev=settings.dev, baudRate=settings.baud_rate, timeout=settings.connection_timeout)
             
     def __str__(self) -> str:
         return f'Arduino Alias = {self.settings.alias}, Component Name = {self.settings.component_name}'
 
 arduino_map = []
 
-def main():
-    logging.debug(f'Starting up!')
+def listDevices():
+    import serial.tools.list_ports
+    for port in serial.tools.list_ports.comports():
+        print(f'Device: {port}')
+
+def locateProfile() -> list[ArduinoConnection]:
+    #logging.debug(f'Starting up!')
     home_profile_loc = Path.home() / ".arduino" / DEFAULT_PROFILE #"profile.yaml"
     arduino_profiles = []
     if os.path.exists(home_profile_loc):
@@ -762,6 +781,71 @@ def main():
         raise Exception(err)
     for a in arduino_profiles:
         arduino_map.append(ArduinoConnection(a))
+    return arduino_profiles
+
+def main():
+    # Remove 1st argument from the
+    # list of command line arguments
+    argumentList = sys.argv[1:]
+    
+    # Options
+    options = "hdp:"
+    
+    # Long options
+    long_options = ["Help", "Devices", "Profile="]
+    target_profile = None
+    devs = []
+    try:
+        # Parsing argument
+        arguments, values = getopt.getopt(argumentList, options, long_options)
+     
+        # checking each argument
+        for currentArgument, currentValue in arguments:
+    
+            if currentArgument in ("-h", "--Help"):
+                print ("Displaying Help")
+                
+            elif currentArgument in ("-d", "--devices"):
+                print('Listing available Serial devices:')
+                listDevices()
+                sys.exit()
+                ##print ("Displaying file_name:", sys.argv[0])
+                
+            elif currentArgument in ("-p", "--profile"):
+                print (f'Profile: {currentValue}')
+                target_profile = currentValue
+             
+    except getopt.error as err:
+        # output error, and return with an error code
+        print (str(err))
+        sys.exit()
+    if target_profile is not None:
+        # user provided a profile path to utilize
+        try:
+            devs = ArduinoYamlParser.parseYaml(path=target_profile)
+
+        except Exception as err:
+            print (str(err))
+            sys.exit()
+    else:
+        devs = locateProfile()
+
+    if len(devs) == 0:
+        print ('No Arduino profiles found in profile yaml!')
+        sys.exit()
+    
+
+    arduino_connections = list[ArduinoConnection]
+    try:
+        for a in devs:
+            c = ArduinoConnection(a)
+            c.serialConn.startRxTask()
+    except Exception as err:
+        pass
+
+    while(True):time.sleep(0.01)
+
+
     pass
     # logging.debug(f'Looking for config.yaml in
     #with open(Path.home() / ".ssh" / "known_hosts") as f:
