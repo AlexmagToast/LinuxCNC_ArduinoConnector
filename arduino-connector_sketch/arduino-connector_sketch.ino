@@ -181,11 +181,11 @@ void setup() {
   */
   serialClient.setUID("UNDEFINED");
   digitalWrite(LED_BUILTIN, LOW);// Signal startup success to builtin LED
-  serialClient.DoWork(); // Causes
+  serialClient.DoWork(); 
 }
 
 void loop() {
-  serialClient.DoWork(); // Causes
+  serialClient.DoWork(); 
 }
 
 // Causes builtin LED to blink in a defined sequence.

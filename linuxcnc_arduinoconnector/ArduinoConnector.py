@@ -245,7 +245,9 @@ class DigitalPin(ArduinoPin):
             self.parseYAML(doc=yaml)
             ArduinoPin.parseYAML(self, doc=yaml)
             #j = self.toJson()
-            #pass
+        
+        m = self.toJson()
+        pass
     def __str__(self) -> str:
 
         return f'\npinID={self.pinID}, pinName = {self.pinName}, pinType={self.pinType.name}, '\
@@ -256,6 +258,10 @@ class DigitalPin(ArduinoPin):
             self.pinDebounce = int(doc[DigitalConfigElement.PIN_DEBOUNCE.value[0]])
 
 
+    def toJson(self):
+        s = ArduinoPin.toJson(self)
+        s['halPinDirection'] = self.halPinDirection.name
+        return s
 
 
 
@@ -520,39 +526,36 @@ class MessageEncoder:
 
 RX_MAX_QUEUE_SIZE = 10
 
-class ArduinoConn:
-    def __init__(self, bi:int, cs:ConnectionState, timeout:int):
-        self.boardIndex = bi
-        self.connectionState = cs
-        self.timeout = timeout
-        self.lastMessageReceived = time.time()
-    def setState(self, newState:ConnectionState):
-        if newState != self.connectionState:
-            if debug_comm:print(f'PYDEBUG Board Index: {self.boardIndex}, changing state from {self.connectionState} to {newState}')
-            self.connectionState = newState
-
-
 class Connection:
     # Constructor
     def __init__(self, myType:ConnectionType):
         self.connectionType = myType
-        self.arduinos = [ArduinoConn(bi=0, cs=ConnectionState.DISCONNECTED, timeout=10)] #TODO: Fix this. hard coded for testing, should be based on config
+        self.connectionState = ConnectionState.DISCONNECTED
+        self.timeout = 10
+        self.lastMessageReceived = time.time()
         self.rxQueue = Queue(RX_MAX_QUEUE_SIZE)
 
     def sendCommand(self, m:str):
         cm = MessageEncoder().encodeBytes(mt=MessageType.MT_COMMAND, payload=[m, 1])
         self.sendMessage(bytes(cm))
 
+    def setState(self, newState:ConnectionState):
+        if newState != self.connectionState:
+            if debug_comm:print(f'PYDEBUG: changing state from {self.connectionState} to {newState}')
+            self.connectionState = newState
+
     def onMessageRecv(self, m:MessageDecoder):
         if m.messageType == MessageType.MT_HANDSHAKE:
             if debug_comm:print(f'PYDEBUG onMessageRecv() - Received MT_HANDSHAKE, Values = {m.payload}')
             '''
                 struct HandshakeMessage {
-                uint8_t protocolVersion = PROTOCOL_VERSION;
-                uint64_t featureMap = 0;
-                uiint32_t timeOut = 0;
-                string uid;
-            };
+                    uint8_t protocolVersion = PROTOCOL_VERSION;
+                    uint64_t featureMap;
+                    uint32_t timeout;
+                    uint16_t configVersion; // 0 indicates no config, >0 indicates an existing config
+                    String uid;
+                    MSGPACK_DEFINE(protocolVersion, featureMap, timeout, configVersion, uid); 
+                }hm;
             '''
             # FUTURE TODO: Make a MT_HANDSHAKE decoder class rather than the following hard codes..
             if m.payload[0] != protocol_ver:
@@ -577,21 +580,21 @@ class Connection:
         if m.messageType == MessageType.MT_HEARTBEAT:
             if debug_comm:print(f'PYDEBUG onMessageRecv() - Received MT_HEARTBEAT, Values = {m.payload}')
             bi = m.payload[0]-1 # board index is always sent over incremeented by one
-            if self.arduinos[bi].connectionState != ConnectionState.CONNECTED:
+            if self.connectionState != ConnectionState.CONNECTED:
                 debugstr = f'PYDEBUG Error. Received message from arduino ({m.payload[0]-1}) prior to completing handshake. Ignoring.'
                 if debug_comm:print(debugstr)
                 return
-            self.arduinos[bi].lastMessageReceived = time.time()
+            self.lastMessageReceived = time.time()
             hb = MessageEncoder().encodeBytes(mt=MessageType.MT_HEARTBEAT, payload=m.payload)
             self.sendMessage(bytes(hb))
         if m.messageType == MessageType.MT_PINSTATUS:
             if debug_comm:print(f'PYDEBUG onMessageRecv() - Received MT_PINSTATUS, Values = {m.payload}')
             bi = m.payload[1]-1 # board index is always sent over incremeented by one
-            if self.arduinos[bi].connectionState != ConnectionState.CONNECTED:
+            if self.connectionState != ConnectionState.CONNECTED:
                 debugstr = f'PYDEBUG Error. Received message from arduino ({m.payload[1]-1}) prior to completing handshake. Ignoring.'
                 if debug_comm:print(debugstr)
                 return
-            self.arduinos[bi].lastMessageReceived = time.time()
+            self.lastMessageReceived = time.time()
             try:
                 self.rxQueue.put(m, timeout=5)
             except Queue.Empty:
@@ -606,21 +609,20 @@ class Connection:
         pass
 
     def updateState(self):
-        for arduino in self.arduinos:
-            if arduino.connectionState == ConnectionState.DISCONNECTED:
-                #self.lastMessageReceived = time.process_time()
-                arduino.setState(ConnectionState.CONNECTING)
-            elif arduino.connectionState == ConnectionState.CONNECTING:
-                pass
-                #if time.process_time() - arduino.lastMessageReceived >= arduino.timeout:
-                #    arduino.setState(ConnectionState.CONNECTING)
-            elif arduino.connectionState == ConnectionState.CONNECTED:
-                d = time.time() - arduino.lastMessageReceived
-                if (time.time() - arduino.lastMessageReceived) >= arduino.timeout:
-                    arduino.setState(ConnectionState.DISCONNECTED)
+        if self.connectionState == ConnectionState.DISCONNECTED:
+            #self.lastMessageReceived = time.process_time()
+            self.setState(ConnectionState.CONNECTING)
+        elif self.connectionState == ConnectionState.CONNECTING:
+            pass
+            #if time.process_time() - arduino.lastMessageReceived >= arduino.timeout:
+            #    arduino.setState(ConnectionState.CONNECTING)
+        elif self.connectionState == ConnectionState.CONNECTED:
+            d = time.time() - self.lastMessageReceived
+            if (time.time() - self.lastMessageReceived) >= self.timeout:
+                self.setState(ConnectionState.DISCONNECTED)
 
-    def getState(self, index:int):
-        return self.arduinos[index].connectionState
+    def getConnectionState(self) -> ConnectionState:
+        return self.connectionState
   
  
 
