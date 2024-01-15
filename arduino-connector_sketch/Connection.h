@@ -3,7 +3,7 @@
 #pragma once
 #include "Protocol.h"
 
-const int RX_BUFFER_SIZE = 512;
+
 
 enum ConnectionState
 {
@@ -245,6 +245,23 @@ protected:
       //protocol::cm.boardIndex = n.boardIndex-1;
       _commandReceived = 1;
   }
+  void _onConfigMessage(const protocol::ConfigMessage& n)
+  {
+      #ifdef DEBUG_PROTOCOL_VERBOSE
+      Serial.println("ARDUINO DEBUG: ---- RX CONFIG MESSAGE DUMP ----");
+      Serial.print("ARDUINO DEBUG: Seq ID: ");
+      Serial.println(n.chunkSeqID);
+      Serial.print("ARDUINO DEBUG: Num Chunks: ");
+      Serial.println(n.chunkSeqID);
+      Serial.print("ARDUINO DEBUG: Chunk: ");
+      Serial.println(n.chunkData);
+      //Serial.print("ARDUINO DEBUG: Board Index: ");
+      //Serial.println(n.boardIndex);
+      Serial.println("ARDUINO DEBUG: ---- RX END CONFIG MESSAGE DUMP ----");
+      #endif
+      //protocol::cm.boardIndex = n.boardIndex-1;
+      //_commandReceived = 1;
+  }
 
   void _setState(int new_state)
   {
@@ -264,6 +281,8 @@ protected:
   {
     protocol::hm.featureMap = this->_featureMap;
     protocol::hm.timeout = _retryPeriod * 2;
+    protocol::hm.maxMsgSize = 0; //RX_BUFFER_SIZE;
+    protocol::hm.configVersion = 0;
     protocol::hm.uid = _uid;
     #ifdef DEBUG_PROTOCOL_VERBOSE   
       Serial.println("ARDUINO DEBUG: ---- TX HANDSHAKE MESSAGE DUMP ----");
@@ -273,6 +292,10 @@ protected:
       Serial.println(protocol::hm.featureMap, HEX);
       Serial.print("ARDUINO DEBUG: Timeout: ");
       Serial.println(protocol::hm.timeout);
+      Serial.print("ARDUINO DEBUG: MaxMsgSize: ");
+      Serial.println(protocol::hm.maxMsgSize);
+      Serial.print("ARDUINO DEBUG: ConfigVersion: ");
+      Serial.println(protocol::hm.configVersion);
       //Serial.print("ARDUINO DEBUG: Board Index: ");
      // Serial.println(protocol::hm.boardIndex);
       Serial.print("ARDUINO DEBUG: Board UID: ");

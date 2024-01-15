@@ -273,6 +273,8 @@ class ArduinoSettings:
         self.baud_rate = 19200
         self.connection_timeout = 10
         self.io_map = {}
+
+
     def printIOMap(self) -> str:
         s = ''
         for k,v in self.io_map.items():
@@ -284,6 +286,15 @@ class ArduinoSettings:
             
     def __str__(self) -> str:
         return f'alias = {self.alias}, component_name={self.component_name}, dev={self.dev}, io_map = {self.printIOMap()}'
+    
+    def configJSON(self):
+        pc = {}
+        for k, v in self.io_map.items():
+            pc[k.name] = {}
+            for pin in v:
+                pc[k.name][pin.pinName] = pin.toJson()
+        return pc
+            
 
 class ArduinoYamlParser:
     #def __init__(self, path:str):
@@ -392,6 +403,7 @@ class MessageType(IntEnum):
     MT_COMMAND = 4, 
     MT_PINSTATUS = 5, 
     MT_DEBUG = 6, 
+    MT_CONFIG = 7
     UNKNOWN = -1
 
 FeatureTypes = {
@@ -481,8 +493,9 @@ class MessageDecoder:
             return False
         
     def parseBytes(self, b:bytearray):
-        decoded = cobs.decode(b)
         logging.debug(f"cobs encoded: {b}")
+        decoded = cobs.decode(b)
+        
         # divide into index, data, crc
         self.messageType = decoded[0]
         data = decoded[1:-1]
@@ -503,7 +516,7 @@ class MessageEncoder:
         return hash.digest()
         
     def encodeBytes(self, mt:MessageType, payload:list) -> bytes:
-        mt_enc = msgpack.packb(mt)
+        #mt_enc = msgpack.packb(mt)
         data_enc = msgpack.packb(payload)  
         crc_enc = self.getCRC(data=data_enc)
         eot_enc = b'\x00'
@@ -514,6 +527,43 @@ class MessageEncoder:
         #print(strb)
         return encoded
 
+class ProtocolMessage:
+    def __init__(self, messageType:MessageType):
+        self.mt = messageType
+        self.payload = None
+    
+    def packetize(self):
+        me = MessageEncoder()
+        return me.encodeBytes(self.mt, self.payload)
+        
+
+    def depacketize(self):
+        pass
+            
+class ConfigMessage(ProtocolMessage):
+    def __init__(self, configJSON):
+        super().__init__(messageType=MessageType.MT_CONFIG)
+        self.totalChunks = 1
+        self.chunkSeqID = 1
+        self.payload = [] 
+        self.payload.append(self.totalChunks)
+        self.payload.append(self.chunkSeqID)
+        self.payload.append('short bus')
+
+class HandshakeMessage(ProtocolMessage):
+    def __init__(self, md:MessageDecoder):
+        super().__init__(messageType=MessageType.MT_HANDSHAKE)
+        #md = MessageDecoder()
+        #md.parseBytes(encoded)
+        self.protocolVersion = md.payload[0]
+        if self.protocolVersion != protocol_ver:
+            raise Exception(f'Expected protocol version {protocol_ver}, got {self.protocolVersion}')
+        self.enabledFeatures = FeatureMapDecoder(md.payload[1])
+        self.timeout = md.payload[2]
+        self.maxMsgSize = md.payload[3]
+        self.configVersion = md.payload[4]
+        self.UID = md.payload[5]
+    
 
 
 RX_MAX_QUEUE_SIZE = 10
@@ -524,7 +574,9 @@ class Connection:
         self.connectionType = myType
         self.connectionState = ConnectionState.DISCONNECTED
         self.timeout = 10
+        self.configVersion = -1 # -1 initial state, this value changes once the arduino sends a handshake
         self.lastMessageReceived = time.time()
+        self._callbacks = []
         self.rxQueue = Queue(RX_MAX_QUEUE_SIZE)
 
     def sendCommand(self, m:str):
@@ -539,6 +591,8 @@ class Connection:
     def onMessageRecv(self, m:MessageDecoder):
         if m.messageType == MessageType.MT_HANDSHAKE:
             if debug_comm:print(f'PYDEBUG onMessageRecv() - Received MT_HANDSHAKE, Values = {m.payload}')
+            hsm = HandshakeMessage(m)
+            pass
             '''
                 struct HandshakeMessage {
                     uint8_t protocolVersion = PROTOCOL_VERSION;
@@ -548,27 +602,26 @@ class Connection:
                     String uid;
                     MSGPACK_DEFINE(protocolVersion, featureMap, timeout, configVersion, uid); 
                 }hm;
-            '''
+            
             # FUTURE TODO: Make a MT_HANDSHAKE decoder class rather than the following hard codes..
             if m.payload[0] != protocol_ver:
                 debugstr = f'PYDEBUG Error. Protocol version mismatched. Expected {protocol_ver}, got {m.payload[0]}'
                 if debug_comm:print(debugstr)
                 raise Exception(debugstr)
             
-            
             fmd = FeatureMapDecoder(m.payload[1])
             if debug_comm:
                 ef = fmd.getEnabledFeatures()
                 print(f'PYDEBUG: Enabled Features : {ef}')
-            to = m.payload[2] #timeout value
-            #bi = m.payload[3]-1 # board index is always sent over incremeented by one
-            
+            to = m.payload[2] # timeout value
+            self.maxMsgSize = m.payload[3]
+            self.configVersion = m.payload[4] # config version
             self.setState(ConnectionState.CONNECTED)
             self.lastMessageReceived = time.time()
             self.timeout = to / 1000 # always delivered in ms, convert to seconds
             hsr = MessageEncoder().encodeBytes(mt=MessageType.MT_HANDSHAKE, payload=m.payload)
             self.sendMessage(bytes(hsr))
-            
+            '''
         if m.messageType == MessageType.MT_HEARTBEAT:
             if debug_comm:print(f'PYDEBUG onMessageRecv() - Received MT_HEARTBEAT, Values = {m.payload}')
             #bi = m.payload[0]-1 # board index is always sent over incremeented by one
@@ -579,6 +632,7 @@ class Connection:
             self.lastMessageReceived = time.time()
             hb = MessageEncoder().encodeBytes(mt=MessageType.MT_HEARTBEAT, payload=m.payload)
             self.sendMessage(bytes(hb))
+
         if m.messageType == MessageType.MT_PINSTATUS:
             if debug_comm:print(f'PYDEBUG onMessageRecv() - Received MT_PINSTATUS, Values = {m.payload}')
             bi = m.payload[1]-1 # board index is always sent over incremeented by one
@@ -596,6 +650,12 @@ class Connection:
             #return None 
             #hb = MessageEncoder().encodeBytes(mt=MessageType.MT_HEARTBEAT, payload=m.payload)
             #self.sendMessage(bytes(hb))
+                # iterate over received messages and print them and remove them from buffer
+        #for index, msg in self._recv_msgs.items():
+            # do some stuff in user-defined callback function
+        #    logging.debug(f"received msg = index: {index}, msg: {msg}")
+        #    if (index in self._callbacks) and (self._callbacks[index] is not None):
+        #        self._callbacks[index](msg)
             
     def sendMessage(self, b:bytes):
         pass
@@ -615,6 +675,9 @@ class Connection:
 
     def getConnectionState(self) -> ConnectionState:
         return self.connectionState
+    
+    def subscribe(self, index: int, callback: callable):
+        self._callbacks[index] = callback
   
  
 
@@ -679,7 +742,7 @@ class UDPConnection(Connection):
 class SerialConnection(Connection):
     def __init__(self, dev:str, myType = ConnectionType.SERIAL, baudRate:int = 115200, timeout:int=1):
         super().__init__(myType)
-        self.buffer = bytearray()
+        self.rxBuffer = bytearray()
         self.shutdown = False
         
         self.daemon = None        
@@ -709,6 +772,53 @@ class SerialConnection(Connection):
         
         while(self.shutdown == False):
             try:
+                num_bytes = self.arduino.in_waiting
+                if num_bytes > 0:
+                    while(True):                            
+                        logging.debug(f"bytes in_waiting: {num_bytes}")
+                        
+                        #msgpacketizer.feed(arduino.read(num_bytes))
+                        self.rxBuffer += self.arduino.read(num_bytes)
+                        #logging.debug(f"rx waiting bytes: {self.rxBuffer}")
+                        #while True:
+                            #chunk = bytearray()
+                        newlinepos = self.rxBuffer.find(b'\n')
+                        termpos = self.rxBuffer.find(b'\x00')
+
+                        readDebug = False
+                        readMessage = False
+
+                        if newlinepos != -1 and termpos != -1: 
+                            if newlinepos < termpos:
+                                readDebug = True
+                            else:
+                                readMessage = True
+                        elif newlinepos != -1:
+                            readDebug = True
+                        elif termpos != -1:
+                            readMessage = True
+                        else:
+                            break
+
+                        if readDebug:
+                            [chunk, self.rxBuffer] = self.rxBuffer.split(b'\n', maxsplit=1)
+                            print(bytes(chunk).decode('utf8', errors='ignore'))
+                            #logging.debug(f"chunk bytes: {chunk}")
+                            #pass
+                            # new line found first
+                        elif readMessage:
+                            # msgpack terminator found
+                            [chunk, self.rxBuffer] = self.rxBuffer.split(b'\x00', maxsplit=1)
+                            logging.debug(f"chunk bytes: {chunk}")
+                            try:
+                                md = MessageDecoder(chunk)
+                                self.onMessageRecv(m=md)
+                            except Exception as ex:
+                                just_the_string = traceback.format_exc()
+                                print(f'PYDEBUG: {str(just_the_string)}')
+                            
+                #else: time.sleep(0.01)
+                '''
                 data = self.arduino.read()
                 if data == b'\x00':
                     self.buffer += bytearray(data)
@@ -734,7 +844,10 @@ class SerialConnection(Connection):
                     self.buffer = bytes()
                 else:
                     self.buffer += bytearray(data)
-                self.updateState()
+                self.updateState()   
+                
+                '''
+
             except Exception as error:
                 just_the_string = traceback.format_exc()
                 print(just_the_string)
@@ -747,6 +860,17 @@ class ArduinoConnection:
             
     def __str__(self) -> str:
         return f'Arduino Alias = {self.settings.alias}, Component Name = {self.settings.component_name}'
+    
+    def doWork(self):
+        if self.serialConn.getConnectionState() == ConnectionState.CONNECTED and self.serialConn.configVersion == 0:
+            j = self.settings.configJSON()
+            config_json = json.dumps(j)
+            cf = ConfigMessage(configJSON=config_json)
+            out = cf.packetize()
+            #print(out)
+            self.serialConn.configVersion = 1
+            self.serialConn.sendMessage(out)
+            #pass
 
 arduino_map = []
 
@@ -813,6 +937,7 @@ def main():
         # output error, and return with an error code
         print (str(err))
         sys.exit()
+
     if target_profile is not None:
         # user provided a profile path to utilize
         try:
@@ -830,16 +955,28 @@ def main():
     
     listDevices()
 
-    arduino_connections = list[ArduinoConnection]
+    arduino_connections = []
     try:
         for a in devs:
             c = ArduinoConnection(a)
             c.serialConn.startRxTask()
+            arduino_connections.append(c)
     except Exception as err:
         print(str(err))
         sys.exit()
 
-    while(True):time.sleep(0.01)
+    while(True):
+        try:
+            for ac in arduino_connections:
+                ac.doWork()
+            time.sleep(0.01)
+        except Exception as err:
+            arduino_connections.clear()
+            #print(str(err))
+            just_the_string = traceback.format_exc()
+            print(just_the_string)
+            sys.exit()
+            
 
 
     #pass

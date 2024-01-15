@@ -24,12 +24,16 @@ SOFTWARE.
 #pragma once
 #ifndef PROTOCOL_H_
 #define PROTOCOL_H_
+
+#define MSGPACKETIZER_MAX_PUBLISH_ELEMENT_SIZE 10
+#define MSGPACK_MAX_PACKET_BYTE_SIZE 128
+#define PACKETIZER_MAX_PACKET_BINARY_SIZE 128
 /*
 // The following are otpomizations for low-memory boards such as Arduino Unos.\
 // See https://github.com/hideakitai/MsgPacketizer#memory-management-only-for-no-stl-boards
 // TODO: Board detect & set these dynamically based on detected board
 // max publishing element size in one destination
-#define MSGPACKETIZER_MAX_PUBLISH_ELEMENT_SIZE 5
+define MSGPACKETIZER_MAX_PUBLISH_ELEMENT_SIZE 5
 // max destinations to publish
 #define MSGPACKETIZER_MAX_PUBLISH_DESTINATION_SIZE 1
 
@@ -68,7 +72,8 @@ namespace protocol
     MT_HANDSHAKE      =   3, 
     MT_COMMAND        =   4,
     MT_PINSTATUS      =   5,
-    MT_DEBUG          =   6
+    MT_DEBUG          =   6,
+    MT_CONFIG         =   7
   };
 
   enum ResponseTypes
@@ -81,9 +86,10 @@ namespace protocol
       uint8_t protocolVersion = PROTOCOL_VERSION;
       uint64_t featureMap;
       uint32_t timeout;
+      uint16_t maxMsgSize;
       uint16_t configVersion; // 0 indicates no config, >0 indicates an existing config
       String uid;
-      MSGPACK_DEFINE(protocolVersion, featureMap, timeout, configVersion, uid); 
+      MSGPACK_DEFINE(protocolVersion, featureMap, timeout, maxMsgSize, configVersion, uid); 
   }hm;
 
   // First ResponseMessage received by the Arduino is in response to the Python side receiving the HandshakeMessage from the Arduiono.  The arduinoIndex value

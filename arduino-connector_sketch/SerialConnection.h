@@ -75,6 +75,10 @@ public:
           [&](const protocol::CommandMessage& n) {
               _onCommandMessage(n);
           });
+      MsgPacketizer::subscribe(Serial, MT_CONFIG,
+          [&](const protocol::ConfigMessage& n) {
+              _onConfigMessage(n);
+          });
         subscribed = 1;
     }
     MsgPacketizer::update();

@@ -20,3 +20,5 @@
 #define DEBUG_PROTOCOL_VERBOSE
 const int SERIAL_STARTUP_DELAY = 5000; // In milliseconds
 const int SERIAL_RX_TIMEOUT = 10000;
+
+const int RX_BUFFER_SIZE = 512;
