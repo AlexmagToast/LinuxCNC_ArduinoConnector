@@ -563,17 +563,17 @@ class Connection:
             to = m.payload[2] #timeout value
             #bi = m.payload[3]-1 # board index is always sent over incremeented by one
             
-            #self.arduinos[bi].setState(ConnectionState.CONNECTED)
-            #self.arduinos[bi].lastMessageReceived = time.time()
-            #self.arduinos[bi].timeout = to / 1000 # always delivered in ms, convert to seconds
+            self.setState(ConnectionState.CONNECTED)
+            self.lastMessageReceived = time.time()
+            self.timeout = to / 1000 # always delivered in ms, convert to seconds
             hsr = MessageEncoder().encodeBytes(mt=MessageType.MT_HANDSHAKE, payload=m.payload)
             self.sendMessage(bytes(hsr))
             
         if m.messageType == MessageType.MT_HEARTBEAT:
             if debug_comm:print(f'PYDEBUG onMessageRecv() - Received MT_HEARTBEAT, Values = {m.payload}')
-            bi = m.payload[0]-1 # board index is always sent over incremeented by one
+            #bi = m.payload[0]-1 # board index is always sent over incremeented by one
             if self.connectionState != ConnectionState.CONNECTED:
-                debugstr = f'PYDEBUG Error. Received message from arduino ({m.payload[0]-1}) prior to completing handshake. Ignoring.'
+                debugstr = f'PYDEBUG Error. Received message from arduino prior to completing handshake. Ignoring.'
                 if debug_comm:print(debugstr)
                 return
             self.lastMessageReceived = time.time()
