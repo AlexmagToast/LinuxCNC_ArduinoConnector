@@ -779,10 +779,10 @@ class SerialConnection(Connection):
                         
                         #msgpacketizer.feed(arduino.read(num_bytes))
                         self.rxBuffer += self.arduino.read(num_bytes)
-                        #logging.debug(f"rx waiting bytes: {self.rxBuffer}")
+                        logging.debug(f"rx waiting bytes: {self.rxBuffer}")
                         #while True:
                             #chunk = bytearray()
-                        newlinepos = self.rxBuffer.find(b'\n')
+                        newlinepos = self.rxBuffer.find(b'\r\n')
                         termpos = self.rxBuffer.find(b'\x00')
 
                         readDebug = False
@@ -801,10 +801,10 @@ class SerialConnection(Connection):
                             break
 
                         if readDebug:
-                            [chunk, self.rxBuffer] = self.rxBuffer.split(b'\n', maxsplit=1)
+                            [chunk, self.rxBuffer] = self.rxBuffer.split(b'\r\n', maxsplit=1)
                             print(bytes(chunk).decode('utf8', errors='ignore'))
-                            #logging.debug(f"chunk bytes: {chunk}")
-                            #pass
+                            logging.debug(f"chunk bytes: {chunk}")
+                            pass
                             # new line found first
                         elif readMessage:
                             # msgpack terminator found
