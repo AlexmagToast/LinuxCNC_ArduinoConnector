@@ -503,28 +503,16 @@ class MessageEncoder:
         return hash.digest()
         
     def encodeBytes(self, mt:MessageType, payload:list) -> bytes:
-        
-        #try:
         mt_enc = msgpack.packb(mt)
-        #data_enc = msgpack.packb(payload)  
-        #payload_size = len(mt_enc) + len(data_enc) + 2
-            
-        
-        #index = 0
-        #cobbered = cobs.encode(data_enc)
-        #cob_head = cobbered[0]
-        #cob_len = cobbered[0]
-        #cobbered_payload = cobbered[1:]
-        #p = mt.to_bytes()
-        #p += payload.to_bytes()
-        c = msgpack.packb(payload)
-        
-                
-        #len_enc = msgpack.packb( len(mt_enc) + len(data_enc) + 2 )        
-        crc_enc = self.getCRC(data=p)
+        data_enc = msgpack.packb(payload)  
+        crc_enc = self.getCRC(data=data_enc)
         eot_enc = b'\x00'
-        #return len_enc + mt_enc + data_enc + crc_enc + eot_enc
-        return mt_enc + c + crc_enc + eot_enc
+        encoded =  cobs.encode( msgpack.packb(mt) + data_enc + crc_enc) + eot_enc
+        #strb = ''
+        #for b in bytes(encoded):
+        #    strb += f'[{hex(b)}]'
+        #print(strb)
+        return encoded
 
 
 
@@ -840,6 +828,7 @@ def main():
         print ('No Arduino profiles found in profile yaml!')
         sys.exit()
     
+    listDevices()
 
     arduino_connections = list[ArduinoConnection]
     try:
@@ -847,12 +836,13 @@ def main():
             c = ArduinoConnection(a)
             c.serialConn.startRxTask()
     except Exception as err:
-        pass
+        print(str(err))
+        sys.exit()
 
     while(True):time.sleep(0.01)
 
 
-    pass
+    #pass
     # logging.debug(f'Looking for config.yaml in
     #with open(Path.home() / ".ssh" / "known_hosts") as f:
     #    lines = f.readlines()
