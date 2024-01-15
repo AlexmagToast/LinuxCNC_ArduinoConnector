@@ -503,24 +503,28 @@ class MessageEncoder:
         return hash.digest()
         
     def encodeBytes(self, mt:MessageType, payload:list) -> bytes:
+        
         #try:
         mt_enc = msgpack.packb(mt)
-        data_enc = msgpack.packb(payload)  
-        payload_size = len(mt_enc) + len(data_enc) + 2
+        #data_enc = msgpack.packb(payload)  
+        #payload_size = len(mt_enc) + len(data_enc) + 2
             
         
-        index = 0
-        cobbered = cobs.encode(data_enc)
-        cob_head = cobbered[0]
+        #index = 0
+        #cobbered = cobs.encode(data_enc)
+        #cob_head = cobbered[0]
         #cob_len = cobbered[0]
-        cobbered_payload = cobbered[1:]
-            
-            
+        #cobbered_payload = cobbered[1:]
+        #p = mt.to_bytes()
+        #p += payload.to_bytes()
+        c = msgpack.packb(payload)
+        
                 
-        len_enc = msgpack.packb( len(mt_enc) + len(data_enc) + 2 )        
-        crc_enc = self.getCRC(data=data_enc)
+        #len_enc = msgpack.packb( len(mt_enc) + len(data_enc) + 2 )        
+        crc_enc = self.getCRC(data=p)
         eot_enc = b'\x00'
-        return len_enc + mt_enc + data_enc + crc_enc + eot_enc    
+        #return len_enc + mt_enc + data_enc + crc_enc + eot_enc
+        return mt_enc + c + crc_enc + eot_enc
 
 
 
