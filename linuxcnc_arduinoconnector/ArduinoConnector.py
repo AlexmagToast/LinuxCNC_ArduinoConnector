@@ -543,12 +543,8 @@ class ProtocolMessage:
 class ConfigMessage(ProtocolMessage):
     def __init__(self, configJSON):
         super().__init__(messageType=MessageType.MT_CONFIG)
-        self.totalChunks = 1
-        self.chunkSeqID = 1
         self.payload = [] 
-        self.payload.append(self.totalChunks)
-        self.payload.append(self.chunkSeqID)
-        self.payload.append('short bus')
+        self.payload.append(configJSON)
 
 class HandshakeMessage(ProtocolMessage):
     def __init__(self, md:MessageDecoder):
@@ -563,6 +559,7 @@ class HandshakeMessage(ProtocolMessage):
         self.maxMsgSize = md.payload[3]
         self.configVersion = md.payload[4]
         self.UID = md.payload[5]
+        self.payload = md.payload
     
 
 
@@ -577,6 +574,9 @@ class Connection:
         self.configVersion = -1 # -1 initial state, this value changes once the arduino sends a handshake
         self.lastMessageReceived = time.time()
         self._callbacks = []
+        self.maxMsgSize = 512
+        self.enabledFeatures = None
+        self.uid = ''
         self.rxQueue = Queue(RX_MAX_QUEUE_SIZE)
 
     def sendCommand(self, m:str):
@@ -591,8 +591,23 @@ class Connection:
     def onMessageRecv(self, m:MessageDecoder):
         if m.messageType == MessageType.MT_HANDSHAKE:
             if debug_comm:print(f'PYDEBUG onMessageRecv() - Received MT_HANDSHAKE, Values = {m.payload}')
-            hsm = HandshakeMessage(m)
-            pass
+            try:
+                hsm = HandshakeMessage(m)
+                self.timeout = hsm.timeout / 1000
+                self.configVersion = hsm.configVersion
+                self.maxMsgSize = hsm.maxMsgSize
+                self.enabledFeatures = hsm.enabledFeatures
+                self.uid = hsm.UID
+                self.setState(ConnectionState.CONNECTED)
+                self.lastMessageReceived = time.time()
+
+                resp = hsm.packetize()
+                self.sendMessage(resp)
+                
+            except Exception as ex:
+                logging.debug(f'error: {str(ex)}')
+                
+            #pass
             '''
                 struct HandshakeMessage {
                     uint8_t protocolVersion = PROTOCOL_VERSION;
@@ -774,48 +789,54 @@ class SerialConnection(Connection):
             try:
                 num_bytes = self.arduino.in_waiting
                 if num_bytes > 0:
-                    while(True):                            
+                                             
                         logging.debug(f"bytes in_waiting: {num_bytes}")
                         
                         #msgpacketizer.feed(arduino.read(num_bytes))
                         self.rxBuffer += self.arduino.read(num_bytes)
-                        logging.debug(f"rx waiting bytes: {self.rxBuffer}")
+                        #logging.debug(f"rx waiting bytes: {self.rxBuffer}")
+                        while(True):  
                         #while True:
                             #chunk = bytearray()
-                        newlinepos = self.rxBuffer.find(b'\r\n')
-                        termpos = self.rxBuffer.find(b'\x00')
+                            newlinepos = self.rxBuffer.find(b'\r\n')
+                            termpos = self.rxBuffer.find(b'\x00')
 
-                        readDebug = False
-                        readMessage = False
-
-                        if newlinepos != -1 and termpos != -1: 
-                            if newlinepos < termpos:
+                            readDebug = False
+                            readMessage = False
+                            if newlinepos == -1 and termpos == -1:
+                                break
+                            elif newlinepos != -1 and termpos != -1: 
+                                if newlinepos < termpos:
+                                    readDebug = True
+                                else:
+                                    readMessage = True
+                            elif newlinepos != -1:
                                 readDebug = True
-                            else:
+                            elif termpos != -1:
                                 readMessage = True
-                        elif newlinepos != -1:
-                            readDebug = True
-                        elif termpos != -1:
-                            readMessage = True
-                        else:
-                            break
+                            else:
+                                break
 
-                        if readDebug:
-                            [chunk, self.rxBuffer] = self.rxBuffer.split(b'\r\n', maxsplit=1)
-                            print(bytes(chunk).decode('utf8', errors='ignore'))
-                            logging.debug(f"chunk bytes: {chunk}")
-                            pass
-                            # new line found first
-                        elif readMessage:
-                            # msgpack terminator found
-                            [chunk, self.rxBuffer] = self.rxBuffer.split(b'\x00', maxsplit=1)
-                            logging.debug(f"chunk bytes: {chunk}")
-                            try:
-                                md = MessageDecoder(chunk)
-                                self.onMessageRecv(m=md)
-                            except Exception as ex:
-                                just_the_string = traceback.format_exc()
-                                print(f'PYDEBUG: {str(just_the_string)}')
+                            if readDebug:
+                                [chunk, self.rxBuffer] = self.rxBuffer.split(b'\r\n', maxsplit=1)
+                                
+                                print(bytes(chunk).decode('utf8', errors='ignore'))
+                                #logging.debug(f"chunk bytes: {chunk}")
+                                #pass
+                                # new line found first
+                            elif readMessage:
+                                # msgpack terminator found
+                                [chunk, self.rxBuffer] = self.rxBuffer.split(b'\x00', maxsplit=1)
+
+                                #chunk.append(10)
+                                #b = bytearray( b'\n' + chunk)
+                                logging.debug(f"chunk bytes: {chunk}")
+                                try:
+                                    md = MessageDecoder(chunk)
+                                    self.onMessageRecv(m=md)
+                                except Exception as ex:
+                                    just_the_string = traceback.format_exc()
+                                    print(f'PYDEBUG: {str(just_the_string)}')
                             
                 #else: time.sleep(0.01)
                 '''

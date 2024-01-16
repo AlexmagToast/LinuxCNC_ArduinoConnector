@@ -132,10 +132,8 @@ namespace protocol
   }pm;
   
   struct ConfigMessage {
-      uint8_t chunkSeqID;
-      uint8_t numChunks;
-      String chunkData; 
-      MSGPACK_DEFINE(chunkSeqID, numChunks, chunkData); 
+      String configString; 
+      MSGPACK_DEFINE(configString); 
   }cfg;
 
   #ifdef DEBUG

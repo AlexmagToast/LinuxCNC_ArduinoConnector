@@ -2,7 +2,7 @@
 #define CONNECTION_H_
 #pragma once
 #include "Protocol.h"
-
+#include <ArduinoJson.h>
 
 
 enum ConnectionState
@@ -249,15 +249,31 @@ protected:
   {
       #ifdef DEBUG_PROTOCOL_VERBOSE
       Serial.println("ARDUINO DEBUG: ---- RX CONFIG MESSAGE DUMP ----");
-      Serial.print("ARDUINO DEBUG: Seq ID: ");
-      Serial.println(n.chunkSeqID);
-      Serial.print("ARDUINO DEBUG: Num Chunks: ");
-      Serial.println(n.chunkSeqID);
-      Serial.print("ARDUINO DEBUG: Chunk: ");
-      Serial.println(n.chunkData);
+      Serial.print("ARDUINO DEBUG: Config String: ");
+      Serial.println(n.configString);
+      /*
+      JsonDocument doc;
+        // Deserialize the JSON document
+      DeserializationError error = deserializeJson(doc, n.chunkData);
+
+      // Test if parsing succeeds.
+      if (error) {
+        Serial.print(F("deserializeJson() failed: "));
+        Serial.println(error.f_str());
+        return;
+      }
+      // Generate the prettified JSON and send it to the Serial port.
+      //serializeJsonPretty(doc, Serial);
       //Serial.print("ARDUINO DEBUG: Board Index: ");
       //Serial.println(n.boardIndex);
-      Serial.println("ARDUINO DEBUG: ---- RX END CONFIG MESSAGE DUMP ----");
+      //Serial.println("ARDUINO DEBUG: ---- RX END CONFIG MESSAGE DUMP ----");
+      serializeJson(doc, Serial);
+      // The above line prints:
+      // {"sensor":"gps","time":1351824120,"data":[48.756080,2.302038]}
+
+      // Start a new line
+      Serial.println();
+      */
       #endif
       //protocol::cm.boardIndex = n.boardIndex-1;
       //_commandReceived = 1;
@@ -281,7 +297,7 @@ protected:
   {
     protocol::hm.featureMap = this->_featureMap;
     protocol::hm.timeout = _retryPeriod * 2;
-    protocol::hm.maxMsgSize = 0; //RX_BUFFER_SIZE;
+    protocol::hm.maxMsgSize = RX_BUFFER_SIZE;
     protocol::hm.configVersion = 0;
     protocol::hm.uid = _uid;
     #ifdef DEBUG_PROTOCOL_VERBOSE   
