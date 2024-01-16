@@ -25,6 +25,7 @@
 */
 #include <Arduino.h>
 #include "Config.h"
+#include <ArduinoJson.h>
 #include "FeatureMap.h"
 //#include <EEPROM.h>
 //#include <FastCRC.h>
@@ -66,6 +67,104 @@ struct eepromData
 
 */
 
+/*
+
+{
+  "DIGITAL_INPUTS": {
+    "din.3": {
+      "pinName": "din.3",
+      "pinType": "DIGITAL_INPUT",
+      "pinID": 3,
+      "pinInitialState": -1,
+      "pinConnectState": -1,
+      "pinDisconnectState": -1,
+      "halPinDirection": "HAL_IN"
+    },
+    "din.4": {
+      "pinName": "din.4",
+      "pinType": "DIGITAL_INPUT",
+      "pinID": 4,
+      "pinInitialState": -1,
+      "pinConnectState": -1,
+      "pinDisconnectState": -1,
+      "halPinDirection": "HAL_IN"
+    },
+    "din.5": {
+      "pinName": "din.5",
+      "pinType": "DIGITAL_INPUT",
+      "pinID": 5,
+      "pinInitialState": -1,
+      "pinConnectState": -1,
+      "pinDisconnectState": -1,
+      "halPinDirection": "HAL_IN"
+    },
+    "din.6": {
+      "pinName": "din.6",
+      "pinType": "DIGITAL_INPUT",
+      "pinID": 6,
+      "pinInitialState": -1,
+      "pinConnectState": -1,
+      "pinDisconnectState": -1,
+      "halPinDirection": "HAL_IN"
+    },
+    "din.7": {
+      "pinName": "din.7",
+      "pinType": "DIGITAL_INPUT",
+      "pinID": 7,
+      "pinInitialState": -1,
+      "pinConnectState": -1,
+      "pinDisconnectState": -1,
+      "halPinDirection": "HAL_IN"
+    },
+    "din.8": {
+      "pinName": "din.8",
+      "pinType": "DIGITAL_INPUT",
+      "pinID": 8,
+      "pinInitialState": -1,
+      "pinConnectState": -1,
+      "pinDisconnectState": -1,
+      "halPinDirection": "HAL_IN"
+    }
+  },
+  "DIGITAL_OUTPUTS": {
+    "dout.9": {
+      "pinName": "dout.9",
+      "pinType": "DIGITAL_OUTPUT",
+      "pinID": 9,
+      "pinInitialState": -1,
+      "pinConnectState": -1,
+      "pinDisconnectState": -1,
+      "halPinDirection": "HAL_OUT"
+    },
+    "dout.10": {
+      "pinName": "dout.10",
+      "pinType": "DIGITAL_OUTPUT",
+      "pinID": 10,
+      "pinInitialState": -1,
+      "pinConnectState": -1,
+      "pinDisconnectState": -1,
+      "halPinDirection": "HAL_OUT"
+    }
+  }
+}
+
+*/
+void onConfig(const char* conf) {
+    #ifdef DEBUG
+    Serial.println("ON CONFIG!");
+    #endif
+    StaticJsonDocument<200> filter;
+    filter["DIGITAL_INPUTS"] = true;
+    //deserializeJson(doc, input, DeserializationOption::Filter(filter));
+
+       // Deserialize the document
+    StaticJsonDocument<400> doc;
+    deserializeJson(doc, conf, DeserializationOption::Filter(filter));
+    // Print the result
+    serializeJsonPretty(doc, Serial);
+    //String json(config)
+
+}
 void setup() {
   pinMode(LED_BUILTIN, OUTPUT); // Initialize builtin LED for error feedback/diagnostics 
 
@@ -180,6 +279,7 @@ void setup() {
   }
   */
   serialClient.setUID("UNDEFINED");
+  serialClient.RegisterConfigCallback(onConfig);
   digitalWrite(LED_BUILTIN, LOW);// Signal startup success to builtin LED
   serialClient.DoWork(); 
 }

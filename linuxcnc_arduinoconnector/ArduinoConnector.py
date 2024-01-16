@@ -549,8 +549,6 @@ class ConfigMessage(ProtocolMessage):
 class HandshakeMessage(ProtocolMessage):
     def __init__(self, md:MessageDecoder):
         super().__init__(messageType=MessageType.MT_HANDSHAKE)
-        #md = MessageDecoder()
-        #md.parseBytes(encoded)
         self.protocolVersion = md.payload[0]
         if self.protocolVersion != protocol_ver:
             raise Exception(f'Expected protocol version {protocol_ver}, got {self.protocolVersion}')
@@ -885,7 +883,8 @@ class ArduinoConnection:
     def doWork(self):
         if self.serialConn.getConnectionState() == ConnectionState.CONNECTED and self.serialConn.configVersion == 0:
             j = self.settings.configJSON()
-            config_json = json.dumps(j)
+            config_json = json.dumps(j, indent=2)
+            print(config_json)
             cf = ConfigMessage(configJSON=config_json)
             out = cf.packetize()
             #print(out)

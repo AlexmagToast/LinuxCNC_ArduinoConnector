@@ -17,11 +17,20 @@ enum ConnectionState
 };
 
 class ConnectionBase {
+
+  using m_cb = void (*)(const char*);
+
 public:
   ConnectionBase(uint16_t retryPeriod, uint64_t& fm) : _retryPeriod(retryPeriod), _featureMap(fm)
   {
 
   }
+
+  void RegisterConfigCallback(m_cb act)
+  {
+    _configAction = act;
+  }
+
 
   virtual ~ConnectionBase(){}
 
@@ -249,12 +258,16 @@ protected:
   {
       #ifdef DEBUG_PROTOCOL_VERBOSE
       Serial.println("ARDUINO DEBUG: ---- RX CONFIG MESSAGE DUMP ----");
-      Serial.print("ARDUINO DEBUG: Config String: ");
-      Serial.println(n.configString);
-      /*
+      //Serial.print("ARDUINO DEBUG: Config String: ");
+      //Serial.println(n.configString);
+      if(_configAction != NULL)
+      {
+        _configAction(n.configString.c_str());
+      }
+      
       JsonDocument doc;
         // Deserialize the JSON document
-      DeserializationError error = deserializeJson(doc, n.chunkData);
+      DeserializationError error = deserializeJson(doc, n.configString);
 
       // Test if parsing succeeds.
       if (error) {
@@ -263,17 +276,17 @@ protected:
         return;
       }
       // Generate the prettified JSON and send it to the Serial port.
-      //serializeJsonPretty(doc, Serial);
+      serializeJsonPretty(doc, Serial);
       //Serial.print("ARDUINO DEBUG: Board Index: ");
       //Serial.println(n.boardIndex);
       //Serial.println("ARDUINO DEBUG: ---- RX END CONFIG MESSAGE DUMP ----");
-      serializeJson(doc, Serial);
+      //serializeJson(doc, Serial);
       // The above line prints:
       // {"sensor":"gps","time":1351824120,"data":[48.756080,2.302038]}
 
       // Start a new line
-      Serial.println();
-      */
+      //Serial.println();
+      
       #endif
       //protocol::cm.boardIndex = n.boardIndex-1;
       //_commandReceived = 1;
@@ -460,6 +473,9 @@ protected:
   uint8_t _heartbeatReceived = 0;
   uint8_t _commandReceived = 0;
   const char * _uid;
+  
+  private:
+    m_cb _configAction = NULL;
 
 
 };
