@@ -536,7 +536,6 @@ class ProtocolMessage:
         me = MessageEncoder()
         return me.encodeBytes(self.mt, self.payload)
         
-
     def depacketize(self):
         pass
             
@@ -884,7 +883,7 @@ class ArduinoConnection:
         if self.serialConn.getConnectionState() == ConnectionState.CONNECTED and self.serialConn.configVersion == 0:
             j = self.settings.configJSON()
             config_json = json.dumps(j, indent=2)
-            print(config_json)
+            #print(config_json)
             cf = ConfigMessage(configJSON=config_json)
             out = cf.packetize()
             #print(out)

@@ -31,12 +31,14 @@
 //#include <FastCRC.h>
 //#include <UUID.h>
 #include "SerialConnection.h"
-
+#include <Array.h>
 
 #define DEBUG
 
 featureMap fm;
 SerialConnection serialClient(SERIAL_RX_TIMEOUT, fm.features);
+
+
 /*
 const int UUID_LENGTH = 8;  // Length of the UUID string
 const int EEPROM_PROVISIONING_ADDRESS = 0;  // starting address in EEPROM
@@ -149,19 +151,77 @@ struct eepromData
 }
 
 */
+
+#ifdef DINPUTS
+
+struct dinput
+{
+    String pinName;
+    String pinType;
+    String pinID;
+    int pinInitialState;
+    int pinConnectState;
+    int pinDisconnectState;
+    String halPinDirection;
+};
+const int ELEMENT_COUNT_MAX = 30;
+typedef Array<dinput,ELEMENT_COUNT_MAX> dinput_array_t;
+dinput_array_t dinput_arr;
+//vector<dinput> dinput_vect;
+#endif
+
 void onConfig(const char* conf) {
     #ifdef DEBUG
     Serial.println("ON CONFIG!");
     #endif
-    StaticJsonDocument<200> filter;
-    filter["DIGITAL_INPUTS"] = true;
-    //deserializeJson(doc, input, DeserializationOption::Filter(filter));
+    #ifdef DINPUTS 
+      //dinput_vect.clear();
+      StaticJsonDocument<200> filter;
+      filter["DIGITAL_INPUTS"] = true;
+      StaticJsonDocument<400> doc;
+      DeserializationError error = deserializeJson(doc, conf, DeserializationOption::Filter(filter));
+      if (error) {
+        Serial.print("deserializeJson() failed: ");
+        Serial.println(error.c_str());
+        return;
+      }
+      for (JsonPair DIGITAL_INPUTS_item : doc["DIGITAL_INPUTS"].as<JsonObject>()) {
+      dinput d = (dinput){.pinName = DIGITAL_INPUTS_item.value()["pinName"],
+        .pinType = DIGITAL_INPUTS_item.value()["pinType"],
+        .pinID =  DIGITAL_INPUTS_item.value()["pinID"],
+        .pinInitialState =  DIGITAL_INPUTS_item.value()["pinInitialState"],
+        .pinConnectState = DIGITAL_INPUTS_item.value()["pinConnectState"],
+        .pinDisconnectState = DIGITAL_INPUTS_item.value()["pinDisconnectState"],
+        .halPinDirection = DIGITAL_INPUTS_item.value()["halPinDirection"]
+      };
+      dinput_arr.push_back(d);
+      //dinput_vect.push_back(d);
+      //const char* DIGITAL_INPUTS_item_key = DIGITAL_INPUTS_item.key().c_str(); // "din.3", "din.4", "din.5", ...
+      //Serial.print("KEY:");
+      //Serial.println(d.pinName);
+      //const char* DIGITAL_INPUTS_item_value_pinName = DIGITAL_INPUTS_item.value()["pinName"]; // "din.3", ...
+      //const char* DIGITAL_INPUTS_item_value_pinType = DIGITAL_INPUTS_item.value()["pinType"];
+      //int DIGITAL_INPUTS_item_value_pinID = DIGITAL_INPUTS_item.value()["pinID"]; // 3, 4, 5, 6, 7, 8
+      //int DIGITAL_INPUTS_item_value_pinInitialState = DIGITAL_INPUTS_item.value()["pinInitialState"]; // -1, ...
+      //int DIGITAL_INPUTS_item_value_pinConnectState = DIGITAL_INPUTS_item.value()["pinConnectState"]; // -1, ...
+      //int DIGITAL_INPUTS_item_value_pinDisconnectState = DIGITAL_INPUTS_item.value()["pinDisconnectState"];
+      //const char* DIGITAL_INPUTS_item_value_halPinDirection = DIGITAL_INPUTS_item.value()["halPinDirection"];
 
-       // Deserialize the document
-    StaticJsonDocument<400> doc;
-    deserializeJson(doc, conf, DeserializationOption::Filter(filter));
+    }
+    /*
+      "din.3": {
+      "pinName": "din.3",
+      "pinType": "DIGITAL_INPUT",
+      "pinID": 3,
+      "pinInitialState": -1,
+      "pinConnectState": -1,
+      "pinDisconnectState": -1,
+      "halPinDirection": "HAL_IN"
+    },
+    */
+    #endif
     // Print the result
-    serializeJsonPretty(doc, Serial);
+    //serializeJsonPretty(doc, Serial);
     //String json(config)
 
 }
