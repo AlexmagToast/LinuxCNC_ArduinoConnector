@@ -159,10 +159,11 @@ struct dinput
     String pinName;
     String pinType;
     String pinID;
-    int pinInitialState;
-    int pinConnectState;
-    int pinDisconnectState;
+    int8_t pinInitialState;
+    int8_t pinConnectState;
+    int8_t pinDisconnectState;
     String halPinDirection;
+    int8_t pinCurrentState;
 };
 const int ELEMENT_COUNT_MAX = 30;
 typedef Array<dinput,ELEMENT_COUNT_MAX> dinput_array_t;
