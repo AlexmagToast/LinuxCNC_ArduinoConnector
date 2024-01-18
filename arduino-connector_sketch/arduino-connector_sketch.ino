@@ -201,49 +201,22 @@ void onConfig(const char* conf) {
         .halPinDirection = DIGITAL_INPUTS_item.value()["halPinDirection"]
       };
       dinput_arr.push_back(d);
+      }
+      
     #endif
     #ifdef DOUTPUTS
       for (JsonPair DIGITAL_OUTPUTS_item : doc["DIGITAL_OUTPUTS"].as<JsonObject>()) {
-      dpin d = (dpin){.pinName = DIGITAL_INPUTS_item.value()["pinName"],
-        .pinType = DIGITAL_INPUTS_item.value()["pinType"],
-        .pinID =  DIGITAL_INPUTS_item.value()["pinID"],
-        .pinInitialState =  DIGITAL_INPUTS_item.value()["pinInitialState"],
-        .pinConnectState = DIGITAL_INPUTS_item.value()["pinConnectState"],
-        .pinDisconnectState = DIGITAL_INPUTS_item.value()["pinDisconnectState"],
-        .halPinDirection = DIGITAL_INPUTS_item.value()["halPinDirection"]
+      dpin d = (dpin){.pinName = DIGITAL_OUTPUTS_item.value()["pinName"],
+        .pinType = DIGITAL_OUTPUTS_item.value()["pinType"],
+        .pinID =  DIGITAL_OUTPUTS_item.value()["pinID"],
+        .pinInitialState =  DIGITAL_OUTPUTS_item.value()["pinInitialState"],
+        .pinConnectState = DIGITAL_OUTPUTS_item.value()["pinConnectState"],
+        .pinDisconnectState = DIGITAL_OUTPUTS_item.value()["pinDisconnectState"],
+        .halPinDirection = DIGITAL_OUTPUTS_item.value()["halPinDirection"]
       };
       doutput_arr.push_back(d);
       }
     #endif
-      //dinput_vect.push_back(d);
-      //const char* DIGITAL_INPUTS_item_key = DIGITAL_INPUTS_item.key().c_str(); // "din.3", "din.4", "din.5", ...
-      //Serial.print("KEY:");
-      //Serial.println(d.pinName);
-      //const char* DIGITAL_INPUTS_item_value_pinName = DIGITAL_INPUTS_item.value()["pinName"]; // "din.3", ...
-      //const char* DIGITAL_INPUTS_item_value_pinType = DIGITAL_INPUTS_item.value()["pinType"];
-      //int DIGITAL_INPUTS_item_value_pinID = DIGITAL_INPUTS_item.value()["pinID"]; // 3, 4, 5, 6, 7, 8
-      //int DIGITAL_INPUTS_item_value_pinInitialState = DIGITAL_INPUTS_item.value()["pinInitialState"]; // -1, ...
-      //int DIGITAL_INPUTS_item_value_pinConnectState = DIGITAL_INPUTS_item.value()["pinConnectState"]; // -1, ...
-      //int DIGITAL_INPUTS_item_value_pinDisconnectState = DIGITAL_INPUTS_item.value()["pinDisconnectState"];
-      //const char* DIGITAL_INPUTS_item_value_halPinDirection = DIGITAL_INPUTS_item.value()["halPinDirection"];
-
-    }
-    /*
-      "din.3": {
-      "pinName": "din.3",
-      "pinType": "DIGITAL_INPUT",
-      "pinID": 3,
-      "pinInitialState": -1,
-      "pinConnectState": -1,
-      "pinDisconnectState": -1,
-      "halPinDirection": "HAL_IN"
-    },
-    */
-    
-    // Print the result
-    //serializeJsonPretty(doc, Serial);
-    //String json(config)
-
 }
 void setup() {
   pinMode(LED_BUILTIN, OUTPUT); // Initialize builtin LED for error feedback/diagnostics 
