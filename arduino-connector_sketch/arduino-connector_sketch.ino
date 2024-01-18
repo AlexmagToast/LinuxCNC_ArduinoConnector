@@ -152,9 +152,8 @@ struct eepromData
 
 */
 
-#ifdef DINPUTS
-
-struct dinput
+#if defined(DINPUTS) || defined(DOUTPUTS)
+struct dpin
 {
     String pinName;
     String pinType;
@@ -166,9 +165,15 @@ struct dinput
     int8_t pinCurrentState;
 };
 const int ELEMENT_COUNT_MAX = 30;
-typedef Array<dinput,ELEMENT_COUNT_MAX> dinput_array_t;
-dinput_array_t dinput_arr;
-//vector<dinput> dinput_vect;
+typedef Array<dpin,ELEMENT_COUNT_MAX> dpin_array_t;
+#endif
+
+#ifdef DINPUTS
+dpin_array_t dinput_arr;
+#endif
+
+#ifdef DOUTPUTS
+dpin_array_t doutput_arr;
 #endif
 
 void onConfig(const char* conf) {
@@ -187,7 +192,7 @@ void onConfig(const char* conf) {
         return;
       }
       for (JsonPair DIGITAL_INPUTS_item : doc["DIGITAL_INPUTS"].as<JsonObject>()) {
-      dinput d = (dinput){.pinName = DIGITAL_INPUTS_item.value()["pinName"],
+      dpin d = (dpin){.pinName = DIGITAL_INPUTS_item.value()["pinName"],
         .pinType = DIGITAL_INPUTS_item.value()["pinType"],
         .pinID =  DIGITAL_INPUTS_item.value()["pinID"],
         .pinInitialState =  DIGITAL_INPUTS_item.value()["pinInitialState"],
@@ -196,6 +201,20 @@ void onConfig(const char* conf) {
         .halPinDirection = DIGITAL_INPUTS_item.value()["halPinDirection"]
       };
       dinput_arr.push_back(d);
+    #endif
+    #ifdef DOUTPUTS
+      for (JsonPair DIGITAL_OUTPUTS_item : doc["DIGITAL_OUTPUTS"].as<JsonObject>()) {
+      dpin d = (dpin){.pinName = DIGITAL_INPUTS_item.value()["pinName"],
+        .pinType = DIGITAL_INPUTS_item.value()["pinType"],
+        .pinID =  DIGITAL_INPUTS_item.value()["pinID"],
+        .pinInitialState =  DIGITAL_INPUTS_item.value()["pinInitialState"],
+        .pinConnectState = DIGITAL_INPUTS_item.value()["pinConnectState"],
+        .pinDisconnectState = DIGITAL_INPUTS_item.value()["pinDisconnectState"],
+        .halPinDirection = DIGITAL_INPUTS_item.value()["halPinDirection"]
+      };
+      doutput_arr.push_back(d);
+      }
+    #endif
       //dinput_vect.push_back(d);
       //const char* DIGITAL_INPUTS_item_key = DIGITAL_INPUTS_item.key().c_str(); // "din.3", "din.4", "din.5", ...
       //Serial.print("KEY:");
@@ -220,7 +239,7 @@ void onConfig(const char* conf) {
       "halPinDirection": "HAL_IN"
     },
     */
-    #endif
+    
     // Print the result
     //serializeJsonPretty(doc, Serial);
     //String json(config)
