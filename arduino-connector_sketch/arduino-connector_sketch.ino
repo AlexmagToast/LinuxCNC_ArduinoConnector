@@ -176,14 +176,42 @@ dpin_array_t dinput_arr;
 dpin_array_t doutput_arr;
 #endif
 
+void onConnectionStageChange(int s) {
+}
+
 void onConfig(const char* conf) {
     #ifdef DEBUG
     Serial.println("ON CONFIG!");
     #endif
-    #ifdef DINPUTS 
-      //dinput_vect.clear();
+    #ifdef DINPUTS
+      {
+          //dinput_vect.clear();
+          StaticJsonDocument<200> filter;
+          filter["DIGITAL_INPUTS"] = true;
+          StaticJsonDocument<400> doc;
+          DeserializationError error = deserializeJson(doc, conf, DeserializationOption::Filter(filter));
+          if (error) {
+            Serial.print("deserializeJson() failed: ");
+            Serial.println(error.c_str());
+            return;
+          }
+          for (JsonPair DIGITAL_INPUTS_item : doc["DIGITAL_INPUTS"].as<JsonObject>()) {
+            dpin d = (dpin){.pinName = DIGITAL_INPUTS_item.value()["pinName"],
+              .pinType = DIGITAL_INPUTS_item.value()["pinType"],
+              .pinID =  DIGITAL_INPUTS_item.value()["pinID"],
+              .pinInitialState =  DIGITAL_INPUTS_item.value()["pinInitialState"],
+              .pinConnectState = DIGITAL_INPUTS_item.value()["pinConnectState"],
+              .pinDisconnectState = DIGITAL_INPUTS_item.value()["pinDisconnectState"],
+              .halPinDirection = DIGITAL_INPUTS_item.value()["halPinDirection"]
+            };
+          dinput_arr.push_back(d);
+          }
+      }
+    #endif
+    #ifdef DOUTPUTS
+    {
       StaticJsonDocument<200> filter;
-      filter["DIGITAL_INPUTS"] = true;
+      filter["DIGITAL_OUTPUTS"] = true;
       StaticJsonDocument<400> doc;
       DeserializationError error = deserializeJson(doc, conf, DeserializationOption::Filter(filter));
       if (error) {
@@ -191,31 +219,18 @@ void onConfig(const char* conf) {
         Serial.println(error.c_str());
         return;
       }
-      for (JsonPair DIGITAL_INPUTS_item : doc["DIGITAL_INPUTS"].as<JsonObject>()) {
-      dpin d = (dpin){.pinName = DIGITAL_INPUTS_item.value()["pinName"],
-        .pinType = DIGITAL_INPUTS_item.value()["pinType"],
-        .pinID =  DIGITAL_INPUTS_item.value()["pinID"],
-        .pinInitialState =  DIGITAL_INPUTS_item.value()["pinInitialState"],
-        .pinConnectState = DIGITAL_INPUTS_item.value()["pinConnectState"],
-        .pinDisconnectState = DIGITAL_INPUTS_item.value()["pinDisconnectState"],
-        .halPinDirection = DIGITAL_INPUTS_item.value()["halPinDirection"]
-      };
-      dinput_arr.push_back(d);
-      }
-      
-    #endif
-    #ifdef DOUTPUTS
       for (JsonPair DIGITAL_OUTPUTS_item : doc["DIGITAL_OUTPUTS"].as<JsonObject>()) {
-      dpin d = (dpin){.pinName = DIGITAL_OUTPUTS_item.value()["pinName"],
-        .pinType = DIGITAL_OUTPUTS_item.value()["pinType"],
-        .pinID =  DIGITAL_OUTPUTS_item.value()["pinID"],
-        .pinInitialState =  DIGITAL_OUTPUTS_item.value()["pinInitialState"],
-        .pinConnectState = DIGITAL_OUTPUTS_item.value()["pinConnectState"],
-        .pinDisconnectState = DIGITAL_OUTPUTS_item.value()["pinDisconnectState"],
-        .halPinDirection = DIGITAL_OUTPUTS_item.value()["halPinDirection"]
-      };
-      doutput_arr.push_back(d);
+        dpin d = (dpin){.pinName = DIGITAL_OUTPUTS_item.value()["pinName"],
+          .pinType = DIGITAL_OUTPUTS_item.value()["pinType"],
+          .pinID =  DIGITAL_OUTPUTS_item.value()["pinID"],
+          .pinInitialState =  DIGITAL_OUTPUTS_item.value()["pinInitialState"],
+          .pinConnectState = DIGITAL_OUTPUTS_item.value()["pinConnectState"],
+          .pinDisconnectState = DIGITAL_OUTPUTS_item.value()["pinDisconnectState"],
+          .halPinDirection = DIGITAL_OUTPUTS_item.value()["halPinDirection"]
+        };
+        doutput_arr.push_back(d);
       }
+    }  
     #endif
 }
 void setup() {
@@ -333,12 +348,33 @@ void setup() {
   */
   serialClient.setUID("UNDEFINED");
   serialClient.RegisterConfigCallback(onConfig);
+  serialClient.RegisterCSCallback(onConnectionStageChange);
   digitalWrite(LED_BUILTIN, LOW);// Signal startup success to builtin LED
   serialClient.DoWork(); 
 }
 
 void loop() {
   serialClient.DoWork(); 
+
+  #ifdef DINPUTS
+  for (dpin pin : dinput_arr)
+  {
+    int v = digitalRead(atoi(pin.pinID.c_str()));
+    if(pin.pinCurrentState != v)
+    {
+      pin.pinCurrentState = v;
+      // send update out
+    }
+  }
+  #endif
+/*
+  #ifdef DOUTPUTS
+  for (dpin pin : doutput_arr)
+  {
+    //Serial << element << " ";
+  }
+  #endif
+*/
 }
 
 // Causes builtin LED to blink in a defined sequence.

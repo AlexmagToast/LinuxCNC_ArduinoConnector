@@ -19,6 +19,7 @@ enum ConnectionState
 class ConnectionBase {
 
   using m_cb = void (*)(const char*);
+  using m_cscb = void (*)(int);
 
 public:
   ConnectionBase(uint16_t retryPeriod, uint64_t& fm) : _retryPeriod(retryPeriod), _featureMap(fm)
@@ -31,6 +32,10 @@ public:
     _configAction = act;
   }
 
+  void RegisterCSCallback(m_cscb act)
+  {
+    _csAction = act;
+  }
 
   virtual ~ConnectionBase(){}
 
@@ -304,6 +309,10 @@ protected:
       Serial.flush();
     #endif
     this->_myState = new_state;
+    if( this->_csAction != NULL )
+    {
+      this->_csAction(new_state);
+    }
   }
 
   protocol::HandshakeMessage& _getHandshakeMessage()
@@ -476,6 +485,7 @@ protected:
   
   private:
     m_cb _configAction = NULL;
+    m_cscb _csAction = NULL;
 
 
 };
