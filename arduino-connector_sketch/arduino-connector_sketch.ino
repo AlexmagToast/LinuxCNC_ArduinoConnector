@@ -186,6 +186,7 @@ void onConfig(const char* conf) {
     #ifdef DINPUTS
       {
           //dinput_vect.clear();
+          dinput_arr.clear();
           StaticJsonDocument<200> filter;
           filter["DIGITAL_INPUTS"] = true;
           StaticJsonDocument<400> doc;
@@ -210,6 +211,7 @@ void onConfig(const char* conf) {
     #endif
     #ifdef DOUTPUTS
     {
+      doutput_arr.clear();
       StaticJsonDocument<200> filter;
       filter["DIGITAL_OUTPUTS"] = true;
       StaticJsonDocument<400> doc;
