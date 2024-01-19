@@ -1,7 +1,7 @@
 mcu: 
   alias: Arduino R4 Wifi
   component_name: arduino # Name of component to use in HAL
-  dev: /dev/cu.usbmodem14201 # Used for initial programming
+  dev: /dev/cu.usbmodemF412FA68D6802 # Used for initial programming
   
   io_map:
         

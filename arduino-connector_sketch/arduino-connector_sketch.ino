@@ -163,6 +163,8 @@ struct dpin
     int8_t pinDisconnectState;
     String halPinDirection;
     int8_t pinCurrentState;
+    unsigned long t;
+    uint16_t bounce;
 };
 const int ELEMENT_COUNT_MAX = 30;
 typedef Array<dpin,ELEMENT_COUNT_MAX> dpin_array_t;
@@ -205,6 +207,8 @@ void onConfig(const char* conf) {
               .pinDisconnectState = DIGITAL_INPUTS_item.value()["pinDisconnectState"],
               .halPinDirection = DIGITAL_INPUTS_item.value()["halPinDirection"]
             };
+            d.bounce = 250;
+            d.t = 0;
           dinput_arr.push_back(d);
           }
       }
@@ -357,14 +361,25 @@ void setup() {
 
 void loop() {
   serialClient.DoWork(); 
-
+  unsigned long currentMills = millis();
   #ifdef DINPUTS
-  for (dpin pin : dinput_arr)
+  for (dpin& pin : dinput_arr)
   {
     int v = digitalRead(atoi(pin.pinID.c_str()));
-    if(pin.pinCurrentState != v)
+    //Serial.print("READDDDD...");
+    //Serial.println(v);
+    if(pin.pinCurrentState != v && (currentMills - pin.t) >= pin.bounce)
     {
+
+      Serial.print("PIN CHANGE! ");
+      Serial.print("PIN: ");
+      Serial.print(pin.pinID);
+      Serial.print(" Current value: ");
+      Serial.print(pin.pinCurrentState);
+      Serial.print(" New value: ");
+      Serial.println(v);
       pin.pinCurrentState = v;
+      pin.t = currentMills;
       // send update out
     }
   }
