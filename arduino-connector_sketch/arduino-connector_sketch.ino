@@ -31,179 +31,41 @@
 //#include <FastCRC.h>
 //#include <UUID.h>
 #include "SerialConnection.h"
+#include "ConfigManager.h"
 #include <Vector.h>
 
 featureMap fm;
 SerialConnection serialClient(SERIAL_RX_TIMEOUT, fm.features);
-
-
-/*
-const int UUID_LENGTH = 8;  // Length of the UUID string
-const int EEPROM_PROVISIONING_ADDRESS = 0;  // starting address in EEPROM
-const uint16_t EEPROM_HEADER = 0xbeef;
-const uint8_t EEPROM_CONFIG_FORMAT_VERSION = 0x1; 
-const uint32_t EEPROM_DEFAULT_SIZE = 1024; // Default size of EEPROM to initialize if EEPROM.length() reports zero. This occurs on chips such as the ESP8266 ESP-12F, and EEPROM space can be simulated in flash by EEPROM.begin(). See https://forum.arduino.cc/t/esp-eeprom-is-data-persistent-when-flashing-new-rev-or-new-program/1167637
-const int SERIAL_RX_TIMEOUT = 5000;
-
-uint64_t fm;
-SerialConnection serialClient(SERIAL_RX_TIMEOUT, fm);
-
-FastCRC16 CRC16;
-UUID uuid;
-const char * uid;
-
-// Builtin LED proposal for errors/diagnostics
-// General failure during setup, e.g., EEPROM failure or some other condition preventing normal startup.  Blink pattern: 250 ms on, 250 ms off (rapid blinking). 
-// Success at startup.  Blink Pattern: solid LED (no blinking)
-
-struct eepromData
-{
-  uint16_t header;
-  char uid[UUID_LENGTH+1];
-  uint8_t configVersion;
-  uint16_t configLen; // Length of config data
-  uint16_t configCRC; // CRC of config block
-}epd;
-
-*/
-
-/*
-
-{
-  "DIGITAL_INPUTS": {
-    "din.3": {
-      "pinName": "din.3",
-      "pinType": "DIGITAL_INPUT",
-      "pinID": 3,
-      "pinInitialState": -1,
-      "pinConnectState": -1,
-      "pinDisconnectState": -1,
-      "halPinDirection": "HAL_IN"
-    },
-    "din.4": {
-      "pinName": "din.4",
-      "pinType": "DIGITAL_INPUT",
-      "pinID": 4,
-      "pinInitialState": -1,
-      "pinConnectState": -1,
-      "pinDisconnectState": -1,
-      "halPinDirection": "HAL_IN"
-    },
-    "din.5": {
-      "pinName": "din.5",
-      "pinType": "DIGITAL_INPUT",
-      "pinID": 5,
-      "pinInitialState": -1,
-      "pinConnectState": -1,
-      "pinDisconnectState": -1,
-      "halPinDirection": "HAL_IN"
-    },
-    "din.6": {
-      "pinName": "din.6",
-      "pinType": "DIGITAL_INPUT",
-      "pinID": 6,
-      "pinInitialState": -1,
-      "pinConnectState": -1,
-      "pinDisconnectState": -1,
-      "halPinDirection": "HAL_IN"
-    },
-    "din.7": {
-      "pinName": "din.7",
-      "pinType": "DIGITAL_INPUT",
-      "pinID": 7,
-      "pinInitialState": -1,
-      "pinConnectState": -1,
-      "pinDisconnectState": -1,
-      "halPinDirection": "HAL_IN"
-    },
-    "din.8": {
-      "pinName": "din.8",
-      "pinType": "DIGITAL_INPUT",
-      "pinID": 8,
-      "pinInitialState": -1,
-      "pinConnectState": -1,
-      "pinDisconnectState": -1,
-      "halPinDirection": "HAL_IN"
-    }
-  },
-  "DIGITAL_OUTPUTS": {
-    "dout.9": {
-      "pinName": "dout.9",
-      "pinType": "DIGITAL_OUTPUT",
-      "pinID": 9,
-      "pinInitialState": -1,
-      "pinConnectState": -1,
-      "pinDisconnectState": -1,
-      "halPinDirection": "HAL_OUT"
-    },
-    "dout.10": {
-      "pinName": "dout.10",
-      "pinType": "DIGITAL_OUTPUT",
-      "pinID": 10,
-      "pinInitialState": -1,
-      "pinConnectState": -1,
-      "pinDisconnectState": -1,
-      "halPinDirection": "HAL_OUT"
-    }
-  }
-}
-
-*/
-
-#if defined(DINPUTS) || defined(DOUTPUTS)
-struct dpin
-{
-    String pinName;
-    String pinType;
-    String pinID;
-    int8_t pinInitialState;
-    int8_t pinConnectState;
-    int8_t pinDisconnectState;
-    String halPinDirection;
-    uint16_t debounce;
-    uint8_t inputPullup;
-    int8_t pinCurrentState;
-    unsigned long t;
-};
-
-const int ELEMENT_COUNT_MAX = 30;
-//int storage_array[ELEMENT_COUNT_MAX];
-//Vector<int> vector(storage_array);
-//vector.push_back(77);
-
-
-//const int ELEMENT_COUNT_MAX = 15;
-//typedef Array<dpin,ELEMENT_COUNT_MAX> dpin_array_t;
-//typedef Vector<dpin> dpin_array_t(storage_array);
-#endif
+ConfigManager configManager;
 
 #ifdef DINPUTS
-  dpin din_storage_array[ELEMENT_COUNT_MAX];
-  Vector<dpin> dinput_arr(din_storage_array);
-//Array<dpin,ELEMENT_COUNT_MAX>  dinput_arr;
+  dpin * din_storage_array = NULL; //[ELEMENT_COUNT_MAX];
+  Vector<dpin> * dinput_arr = NULL; //(din_storage_array);
+  //Array<dpin,ELEMENT_COUNT_MAX>  dinput_arr;
 #endif
 
 #ifdef DOUTPUTS
-  dpin dout_storage_array[ELEMENT_COUNT_MAX];
-  Vector<dpin> doutput_arr(dout_storage_array);
-//Array<dpin,ELEMENT_COUNT_MAX>  doutput_arr;
+  dpin * dout_storage_array = NULL; //[ELEMENT_COUNT_MAX];
+  Vector<dpin> * doutput_arr = NULL; //(dout_storage_array);
+  //Array<dpin,ELEMENT_COUNT_MAX>  doutput_arr;
 #endif
 
-void onConnectionStageChange(int s) {
-}
-
 void onConfig(const char* conf) {
-    #ifdef DEBUG
-    Serial.print("ON CONFIG!");
-    Serial.println(conf);
-    Serial.print("Sixe of Config: ");
-    Serial.println(strlen(conf));
-    #endif
-    #ifdef DINPUTS
-      {
-          dinput_arr.clear();
+      #ifdef DEBUG
+      Serial.print("ON CONFIG!");
+      Serial.println(conf);
+      Serial.print("Sixe of Config: ");
+      Serial.println(strlen(conf));
+      #endif
+      #ifdef DINPUTS
+        { 
+          //din_storage_array = new dpin[]; //[ELEMENT_COUNT_MAX];
+          //Vector<dpin> * dinput_arr = NULL; //(din_storage_array);
+          //dinput_arr = new 
+          //dinput_arr.clear();
           StaticJsonDocument<200> filter;
           filter["DIGITAL_INPUTS"] = true;
+          filter["DIGITAL_INPUTS_COUNT"] = true;
           StaticJsonDocument<1024> doc;
           DeserializationError error = deserializeJson(doc, conf, DeserializationOption::Filter(filter));
           if (error) {
@@ -213,6 +75,15 @@ void onConfig(const char* conf) {
             #endif
             return;
           }
+          int DIGITAL_INPUTS_COUNT = doc["DIGITAL_INPUTS_COUNT"];
+          if( din_storage_array != NULL )
+          {
+            delete din_storage_array;
+            delete dinput_arr;
+          }
+          din_storage_array = new dpin[DIGITAL_INPUTS_COUNT];
+          //dinput_arr = new Vector<dpin>(din_storage_array);
+
           for (JsonPair DIGITAL_INPUTS_item : doc["DIGITAL_INPUTS"].as<JsonObject>()) {
             dpin d = (dpin){.pinName = DIGITAL_INPUTS_item.value()["pinName"],
               .pinType = DIGITAL_INPUTS_item.value()["pinType"],
@@ -231,44 +102,49 @@ void onConfig(const char* conf) {
               pinMode(atoi(d.pinID.c_str()), INPUT_PULLUP);
             }
             else { pinMode(atoi(d.pinID.c_str()), INPUT); }
-            dinput_arr.push_back(d);
+            //dinput_arr->push_back(d);
           }
-      }
-    #endif
-    #ifdef DOUTPUTS
-    {
-      doutput_arr.clear();
-      
-      StaticJsonDocument<200> filter;
-      filter["DIGITAL_OUTPUTS"] = true;
-      StaticJsonDocument<1024> doc;
-      DeserializationError error = deserializeJson(doc, conf, DeserializationOption::Filter(filter));
-      if (error) {
-        #ifdef DEBUG
-        Serial.print("deserializeJson() of DIGITAL_OUTPUTS  failed: ");
-        Serial.println(error.c_str());
-        #endif
-        return;
-      }
-      
-      for (JsonPair DIGITAL_OUTPUTS_item : doc["DIGITAL_OUTPUTS"].as<JsonObject>()) {
-        dpin d = (dpin){.pinName = DIGITAL_OUTPUTS_item.value()["pinName"],
-          .pinType = DIGITAL_OUTPUTS_item.value()["pinType"],
-          .pinID =  DIGITAL_OUTPUTS_item.value()["pinID"],
-          .pinInitialState =  DIGITAL_OUTPUTS_item.value()["pinInitialState"],
-          .pinConnectState = DIGITAL_OUTPUTS_item.value()["pinConnectState"],
-          .pinDisconnectState = DIGITAL_OUTPUTS_item.value()["pinDisconnectState"],
-          .halPinDirection = DIGITAL_OUTPUTS_item.value()["halPinDirection"]
-        };
+        }
+      #endif
+      #ifdef DOUTPUTS
+      {
+        doutput_arr.clear();
         
+        StaticJsonDocument<200> filter;
+        filter["DIGITAL_OUTPUTS"] = true;
+        StaticJsonDocument<1024> doc;
+        DeserializationError error = deserializeJson(doc, conf, DeserializationOption::Filter(filter));
+        if (error) {
+          #ifdef DEBUG
+          Serial.print("deserializeJson() of DIGITAL_OUTPUTS  failed: ");
+          Serial.println(error.c_str());
+          #endif
+          return;
+        }
         
-        doutput_arr.push_back(d);
+        for (JsonPair DIGITAL_OUTPUTS_item : doc["DIGITAL_OUTPUTS"].as<JsonObject>()) {
+          dpin d = (dpin){.pinName = DIGITAL_OUTPUTS_item.value()["pinName"],
+            .pinType = DIGITAL_OUTPUTS_item.value()["pinType"],
+            .pinID =  DIGITAL_OUTPUTS_item.value()["pinID"],
+            .pinInitialState =  DIGITAL_OUTPUTS_item.value()["pinInitialState"],
+            .pinConnectState = DIGITAL_OUTPUTS_item.value()["pinConnectState"],
+            .pinDisconnectState = DIGITAL_OUTPUTS_item.value()["pinDisconnectState"],
+            .halPinDirection = DIGITAL_OUTPUTS_item.value()["halPinDirection"]
+          };
+          
+          
+          doutput_arr.push_back(d);
+          
+        }
         
-      }
-      
-    }  
-    #endif
+      }  
+      #endif
+  }
+
+void onConnectionStageChange(int s) {
 }
+
+
 void setup() {
   pinMode(LED_BUILTIN, OUTPUT); // Initialize builtin LED for error feedback/diagnostics 
 
@@ -392,6 +268,7 @@ void setup() {
 void loop() {
   serialClient.DoWork(); 
   unsigned long currentMills = millis();
+  /*
   #ifdef DINPUTS
   for (dpin& pin : dinput_arr)
   {
@@ -415,6 +292,7 @@ void loop() {
     }
   }
   #endif
+  */
 /*
   #ifdef DOUTPUTS
   for (dpin pin : doutput_arr)

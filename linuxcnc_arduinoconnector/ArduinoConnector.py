@@ -297,6 +297,7 @@ class ArduinoSettings:
         pc = {}
         for k, v in self.io_map.items():
             pc[k.name] = {}
+            pc[k.name + '_COUNT'] = len(v)
             for pin in v:
                 pc[k.name][pin.pinName] = pin.toJson()
         return pc
@@ -565,6 +566,9 @@ class HandshakeMessage(ProtocolMessage):
         self.maxMsgSize = md.payload[3]
         self.configVersion = md.payload[4]
         self.UID = md.payload[5]
+        self.digitalPins = md.payload[6]
+        self.analogInputs = md.payload[7]
+        self.analogOutputs = md.payload[8]
         self.payload = md.payload
     
 

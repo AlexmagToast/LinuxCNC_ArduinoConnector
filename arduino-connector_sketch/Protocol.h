@@ -93,9 +93,9 @@ namespace protocol
       uint16_t maxMsgSize;
       uint16_t configVersion; // 0 indicates no config, >0 indicates an existing config
       String uid;
-      uint8_t   digitalPins;
-      uint8_t   analogInputs;
-      uint8_t   analogOutputs;
+      uint8_t   digitalPins = NUM_DIGITAL_PINS;
+      uint8_t   analogInputs = NUM_ANALOG_INPUTS;
+      uint8_t   analogOutputs = NUM_ANALOG_OUTPUTS;
       MSGPACK_DEFINE(protocolVersion, featureMap, timeout, maxMsgSize, configVersion, uid, digitalPins, analogInputs, analogOutputs); 
   }hm;
 
