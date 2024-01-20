@@ -25,9 +25,13 @@ SOFTWARE.
 #ifndef PROTOCOL_H_
 #define PROTOCOL_H_
 
-#define MSGPACKETIZER_MAX_PUBLISH_ELEMENT_SIZE 10
-#define MSGPACK_MAX_PACKET_BYTE_SIZE 128
-#define PACKETIZER_MAX_PACKET_BINARY_SIZE 128
+#define MSGPACKETIZER_MAX_PUBLISH_ELEMENT_SIZE 20
+#define MSGPACK_MAX_PACKET_BYTE_SIZE 2048
+#define PACKETIZER_MAX_PACKET_BINARY_SIZE 512
+#define MSGPACK_MAX_ARRAY_SIZE 512
+#define MSGPACK_MAX_OBJECT_SIZE 512
+#define MSGPACKETIZER_DEBUGLOG_ENABLE
+//#define MSGPACKETIZER_ENABLE_STREAM
 /*
 // The following are otpomizations for low-memory boards such as Arduino Unos.\
 // See https://github.com/hideakitai/MsgPacketizer#memory-management-only-for-no-stl-boards
@@ -89,7 +93,10 @@ namespace protocol
       uint16_t maxMsgSize;
       uint16_t configVersion; // 0 indicates no config, >0 indicates an existing config
       String uid;
-      MSGPACK_DEFINE(protocolVersion, featureMap, timeout, maxMsgSize, configVersion, uid); 
+      uint8_t   digitalPins;
+      uint8_t   analogInputs;
+      uint8_t   analogOutputs;
+      MSGPACK_DEFINE(protocolVersion, featureMap, timeout, maxMsgSize, configVersion, uid, digitalPins, analogInputs, analogOutputs); 
   }hm;
 
   // First ResponseMessage received by the Arduino is in response to the Python side receiving the HandshakeMessage from the Arduiono.  The arduinoIndex value
@@ -103,7 +110,7 @@ namespace protocol
       uint8_t responseType;  // 1 ACK, 0 NAK
       MSGPACK_DEFINE(arduinoIndex, messageType, seqNum, responseType); 
   }rm;
-
+/*
   struct ArduinoPropertiesMessage {
     String    uid;
     uint64_t  featureMap;
@@ -114,7 +121,7 @@ namespace protocol
     uint32_t  eepromCRC;
     MSGPACK_DEFINE(uid, featureMap, digitalPins, analogInputs, analogOutputs, eepromSize, eepromCRC); 
   }apm;
-
+*/
   struct HeartbeatMessage {
       uint8_t boardIndex;
       MSGPACK_DEFINE(boardIndex); 

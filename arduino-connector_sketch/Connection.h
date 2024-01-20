@@ -261,14 +261,15 @@ protected:
   }
   void _onConfigMessage(const protocol::ConfigMessage& n)
   {
-      #ifdef DEBUG_PROTOCOL_VERBOSE
-      Serial.println("ARDUINO DEBUG: ---- RX CONFIG MESSAGE DUMP ----");
-      //Serial.print("ARDUINO DEBUG: Config String: ");
-      //Serial.println(n.configString);
       if(_configAction != NULL)
       {
         _configAction(n.configString.c_str());
       }
+      #ifdef DEBUG_PROTOCOL_VERBOSE
+      Serial.println("ARDUINO DEBUG: ---- RX CONFIG MESSAGE DUMP ----");
+      //Serial.print("ARDUINO DEBUG: Config String: ");
+      //Serial.println(n.configString);
+
       
       JsonDocument doc;
         // Deserialize the JSON document
@@ -276,8 +277,10 @@ protected:
 
       // Test if parsing succeeds.
       if (error) {
+        #ifdef DEBUG
         Serial.print(F("deserializeJson() failed: "));
         Serial.println(error.f_str());
+        #endif
         return;
       }
       // Generate the prettified JSON and send it to the Serial port.
@@ -335,7 +338,7 @@ protected:
       Serial.print("ARDUINO DEBUG: ConfigVersion: ");
       Serial.println(protocol::hm.configVersion);
       //Serial.print("ARDUINO DEBUG: Board Index: ");
-     // Serial.println(protocol::hm.boardIndex);
+     //Serial.println(protocol::hm.boardIndex);
       Serial.print("ARDUINO DEBUG: Board UID: ");
       Serial.println(protocol::hm.uid);
       Serial.println("ARDUINO DEBUG: ---- TX END HANDSHAKE MESSAGE DUMP ----");

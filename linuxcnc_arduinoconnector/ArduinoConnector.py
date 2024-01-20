@@ -82,7 +82,8 @@ class AnalogConfigElement(Enum):
         return self.value[0]
     
 class DigitalConfigElement(Enum):
-    PIN_DEBOUNCE = ['pin_debounce', 1]
+    PIN_DEBOUNCE = ['pin_debounce', 250]
+    INPUT_PULLUP = ['input_pullup', False]
     def __str__(self) -> str:
         return self.value[0]
 
@@ -240,7 +241,7 @@ class DigitalPin(ArduinoPin):
         
         # set the defaults, which can be overriden through the yaml profile
         self.pinDebounce = DigitalConfigElement.PIN_DEBOUNCE.value[DEFAULT_VALUE_KEY] #smoothing const   #optional
-
+        self.inputPullup = DigitalConfigElement.INPUT_PULLUP.value[DEFAULT_VALUE_KEY] 
         if yaml != None: 
             self.parseYAML(doc=yaml)
             ArduinoPin.parseYAML(self, doc=yaml)
@@ -256,11 +257,16 @@ class DigitalPin(ArduinoPin):
     def parseYAML(self, doc):
         if DigitalConfigElement.PIN_DEBOUNCE.value[0] in doc.keys():
             self.pinDebounce = int(doc[DigitalConfigElement.PIN_DEBOUNCE.value[0]])
+        if DigitalConfigElement.INPUT_PULLUP.value[0] in doc.keys():
+            self.inputPullup = bool(doc[DigitalConfigElement.INPUT_PULLUP.value[0]])
+        
 
 
     def toJson(self):
         s = ArduinoPin.toJson(self)
         s['halPinDirection'] = self.halPinDirection.name
+        s['pinDebounce'] = self.pinDebounce
+        s['inputPullup'] = self.inputPullup 
         return s
 
 
@@ -518,9 +524,12 @@ class MessageEncoder:
     def encodeBytes(self, mt:MessageType, payload:list) -> bytes:
         #mt_enc = msgpack.packb(mt)
         data_enc = msgpack.packb(payload)  
+        #print(f'DATA = {data_enc}')
         crc_enc = self.getCRC(data=data_enc)
         eot_enc = b'\x00'
         encoded =  cobs.encode( msgpack.packb(mt) + data_enc + crc_enc) + eot_enc
+        #print(f'ENCODED = {encoded}')
+        #print(f'DECODED AGAIN: {cobs.decode(encoded[:-1])}')
         #strb = ''
         #for b in bytes(encoded):
         #    strb += f'[{hex(b)}]'
@@ -882,7 +891,7 @@ class ArduinoConnection:
     def doWork(self):
         if self.serialConn.getConnectionState() == ConnectionState.CONNECTED and self.serialConn.configVersion == 0:
             j = self.settings.configJSON()
-            config_json = json.dumps(j, indent=2)
+            config_json = json.dumps(j)# indent=2)
             #print(config_json)
             cf = ConfigMessage(configJSON=config_json)
             out = cf.packetize()

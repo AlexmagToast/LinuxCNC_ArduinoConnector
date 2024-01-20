@@ -31,9 +31,7 @@
 //#include <FastCRC.h>
 //#include <UUID.h>
 #include "SerialConnection.h"
-#include <Array.h>
-
-#define DEBUG
+#include <Vector.h>
 
 featureMap fm;
 SerialConnection serialClient(SERIAL_RX_TIMEOUT, fm.features);
@@ -162,20 +160,33 @@ struct dpin
     int8_t pinConnectState;
     int8_t pinDisconnectState;
     String halPinDirection;
+    uint16_t debounce;
+    uint8_t inputPullup;
     int8_t pinCurrentState;
     unsigned long t;
-    uint16_t bounce;
 };
+
 const int ELEMENT_COUNT_MAX = 30;
-typedef Array<dpin,ELEMENT_COUNT_MAX> dpin_array_t;
+//int storage_array[ELEMENT_COUNT_MAX];
+//Vector<int> vector(storage_array);
+//vector.push_back(77);
+
+
+//const int ELEMENT_COUNT_MAX = 15;
+//typedef Array<dpin,ELEMENT_COUNT_MAX> dpin_array_t;
+//typedef Vector<dpin> dpin_array_t(storage_array);
 #endif
 
 #ifdef DINPUTS
-dpin_array_t dinput_arr;
+  dpin din_storage_array[ELEMENT_COUNT_MAX];
+  Vector<dpin> dinput_arr(din_storage_array);
+//Array<dpin,ELEMENT_COUNT_MAX>  dinput_arr;
 #endif
 
 #ifdef DOUTPUTS
-dpin_array_t doutput_arr;
+  dpin dout_storage_array[ELEMENT_COUNT_MAX];
+  Vector<dpin> doutput_arr(dout_storage_array);
+//Array<dpin,ELEMENT_COUNT_MAX>  doutput_arr;
 #endif
 
 void onConnectionStageChange(int s) {
@@ -183,19 +194,23 @@ void onConnectionStageChange(int s) {
 
 void onConfig(const char* conf) {
     #ifdef DEBUG
-    Serial.println("ON CONFIG!");
+    Serial.print("ON CONFIG!");
+    Serial.println(conf);
+    Serial.print("Sixe of Config: ");
+    Serial.println(strlen(conf));
     #endif
     #ifdef DINPUTS
       {
-          //dinput_vect.clear();
           dinput_arr.clear();
           StaticJsonDocument<200> filter;
           filter["DIGITAL_INPUTS"] = true;
-          StaticJsonDocument<400> doc;
+          StaticJsonDocument<1024> doc;
           DeserializationError error = deserializeJson(doc, conf, DeserializationOption::Filter(filter));
           if (error) {
-            Serial.print("deserializeJson() failed: ");
+            #ifdef DEBUG
+            Serial.print("deserializeJson() of DIGITAL_INPUTS failed: ");
             Serial.println(error.c_str());
+            #endif
             return;
           }
           for (JsonPair DIGITAL_INPUTS_item : doc["DIGITAL_INPUTS"].as<JsonObject>()) {
@@ -205,26 +220,37 @@ void onConfig(const char* conf) {
               .pinInitialState =  DIGITAL_INPUTS_item.value()["pinInitialState"],
               .pinConnectState = DIGITAL_INPUTS_item.value()["pinConnectState"],
               .pinDisconnectState = DIGITAL_INPUTS_item.value()["pinDisconnectState"],
-              .halPinDirection = DIGITAL_INPUTS_item.value()["halPinDirection"]
+              .halPinDirection = DIGITAL_INPUTS_item.value()["halPinDirection"],
+              .debounce = DIGITAL_INPUTS_item.value()["pinDebounce"],
+              .inputPullup = DIGITAL_INPUTS_item.value()["inputPullup"],
+              .pinCurrentState = 0,
+              .t = 0
             };
-            d.bounce = 250;
-            d.t = 0;
-          dinput_arr.push_back(d);
+            if (d.inputPullup == 1)
+            {
+              pinMode(atoi(d.pinID.c_str()), INPUT_PULLUP);
+            }
+            else { pinMode(atoi(d.pinID.c_str()), INPUT); }
+            dinput_arr.push_back(d);
           }
       }
     #endif
     #ifdef DOUTPUTS
     {
       doutput_arr.clear();
+      
       StaticJsonDocument<200> filter;
       filter["DIGITAL_OUTPUTS"] = true;
-      StaticJsonDocument<400> doc;
+      StaticJsonDocument<1024> doc;
       DeserializationError error = deserializeJson(doc, conf, DeserializationOption::Filter(filter));
       if (error) {
-        Serial.print("deserializeJson() failed: ");
+        #ifdef DEBUG
+        Serial.print("deserializeJson() of DIGITAL_OUTPUTS  failed: ");
         Serial.println(error.c_str());
+        #endif
         return;
       }
+      
       for (JsonPair DIGITAL_OUTPUTS_item : doc["DIGITAL_OUTPUTS"].as<JsonObject>()) {
         dpin d = (dpin){.pinName = DIGITAL_OUTPUTS_item.value()["pinName"],
           .pinType = DIGITAL_OUTPUTS_item.value()["pinType"],
@@ -234,8 +260,12 @@ void onConfig(const char* conf) {
           .pinDisconnectState = DIGITAL_OUTPUTS_item.value()["pinDisconnectState"],
           .halPinDirection = DIGITAL_OUTPUTS_item.value()["halPinDirection"]
         };
+        
+        
         doutput_arr.push_back(d);
+        
       }
+      
     }  
     #endif
 }
@@ -368,9 +398,9 @@ void loop() {
     int v = digitalRead(atoi(pin.pinID.c_str()));
     //Serial.print("READDDDD...");
     //Serial.println(v);
-    if(pin.pinCurrentState != v && (currentMills - pin.t) >= pin.bounce)
+    if(pin.pinCurrentState != v && (currentMills - pin.t) >= pin.debounce)
     {
-
+      #ifdef DEBUG
       Serial.print("PIN CHANGE! ");
       Serial.print("PIN: ");
       Serial.print(pin.pinID);
@@ -378,6 +408,7 @@ void loop() {
       Serial.print(pin.pinCurrentState);
       Serial.print(" New value: ");
       Serial.println(v);
+      #endif
       pin.pinCurrentState = v;
       pin.t = currentMills;
       // send update out

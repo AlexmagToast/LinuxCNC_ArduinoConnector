@@ -95,7 +95,7 @@ public:
   { 
     //MsgPacketizer::send(this->_client, this->_mi, hm);
     MsgPacketizer::send(Serial, MT_HEARTBEAT, _getHeartbeatMessage());
-    Serial.flush();
+    //Serial.flush();
   }
   virtual void _sendPinStatusMessage()
   { 
