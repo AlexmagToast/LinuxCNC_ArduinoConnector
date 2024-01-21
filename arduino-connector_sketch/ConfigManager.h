@@ -6,13 +6,11 @@
 #if defined(DINPUTS) || defined(DOUTPUTS)
 struct dpin
 {
-    String pinName;
     String pinType;
     String pinID;
     int8_t pinInitialState;
     int8_t pinConnectState;
     int8_t pinDisconnectState;
-    String halPinDirection;
     uint16_t debounce;
     uint8_t inputPullup;
     int8_t pinCurrentState;

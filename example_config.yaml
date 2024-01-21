@@ -39,6 +39,8 @@ mcu:
       - pin_id: 17
         pin_name: din.17 #hal pin name
     digitalOutputs:
+      - pin_id: 51
+        pin_name: dout.51
       - pin_id: 13
         pin_name: dout.13 #hal pin name
         
