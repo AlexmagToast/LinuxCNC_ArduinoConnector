@@ -32,23 +32,13 @@
 //#include <UUID.h>
 #include "SerialConnection.h"
 #include "ConfigManager.h"
-#include <Vector.h>
-
+//#include <ArxContainer.h>
+//#include <Vector.h>
+//using namespace arx;
 featureMap fm;
 SerialConnection serialClient(SERIAL_RX_TIMEOUT, fm.features);
 ConfigManager configManager;
-
-#ifdef DINPUTS
-  dpin * din_storage_array = NULL; //[ELEMENT_COUNT_MAX];
-  Vector<dpin> * dinput_arr = NULL; //(din_storage_array);
-  //Array<dpin,ELEMENT_COUNT_MAX>  dinput_arr;
-#endif
-
-#ifdef DOUTPUTS
-  dpin * dout_storage_array = NULL; //[ELEMENT_COUNT_MAX];
-  Vector<dpin> * doutput_arr = NULL; //(dout_storage_array);
-  //Array<dpin,ELEMENT_COUNT_MAX>  doutput_arr;
-#endif
+//std::map<String, int> mp;// {{"one", 1}, {"two", 2}, {"four", 4}};
 
 void onConfig(const char* conf) {
       #ifdef DEBUG
@@ -63,10 +53,10 @@ void onConfig(const char* conf) {
           //Vector<dpin> * dinput_arr = NULL; //(din_storage_array);
           //dinput_arr = new 
           //dinput_arr.clear();
-          StaticJsonDocument<200> filter;
+          JsonDocument filter;
           filter["DIGITAL_INPUTS"] = true;
           filter["DIGITAL_INPUTS_COUNT"] = true;
-          StaticJsonDocument<1024> doc;
+          JsonDocument doc;
           DeserializationError error = deserializeJson(doc, conf, DeserializationOption::Filter(filter));
           if (error) {
             #ifdef DEBUG
@@ -76,13 +66,14 @@ void onConfig(const char* conf) {
             return;
           }
           int DIGITAL_INPUTS_COUNT = doc["DIGITAL_INPUTS_COUNT"];
-          if( din_storage_array != NULL )
-          {
-            delete din_storage_array;
-            delete dinput_arr;
-          }
-          din_storage_array = new dpin[DIGITAL_INPUTS_COUNT];
-          //dinput_arr = new Vector<dpin>(din_storage_array);
+          //if( din_storage_array != NULL )
+          //{
+          //  delete din_storage_array;
+          //  delete dinput_arr;
+          //}
+          //dpin din_storage_array[DIGITAL_INPUTS_COUNT];
+          //Vector<dpin> dinput_arr();//din_storage_array);
+          //dinput_arr.setStorage(din_storage_array);
 
           for (JsonPair DIGITAL_INPUTS_item : doc["DIGITAL_INPUTS"].as<JsonObject>()) {
             dpin d = (dpin){.pinName = DIGITAL_INPUTS_item.value()["pinName"],

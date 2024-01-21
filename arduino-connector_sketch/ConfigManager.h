@@ -1,7 +1,7 @@
 #ifndef CONFIG_MANAGER_H_
 #define CONFIG_MANAGER_H_
 #include "Config.h"
-#include <Vector.h>
+//#include <ArxContainer.h>
 
 #if defined(DINPUTS) || defined(DOUTPUTS)
 struct dpin
@@ -41,11 +41,46 @@ public:
   {
 
   }
-
+#ifdef DINPUTS
+  void setDigitalInputPin(dpin pin, uint8_t index)
+  {
+    dinput_arr[index] = pin;
+  }
+  void clearDigitalInputPins()
+  {
+    if( dinput_arr != NULL )
+    {
+      delete[] dinput_arr;
+    }
+    dinput_arr = NULL;
+  }
+  void initDigitalInputPins(size_t size)
+  {
+    if( dinput_arr != NULL )
+    {
+      delete[] dinput_arr;
+    }
+    dinput_arr = new dpin[size];
+  }
+#endif
   
 private:
+#ifdef DINPUTS
+  //dpin * din_storage_array = NULL; //[ELEMENT_COUNT_MAX];
+  //Vector<dpin> dinput_arr; //(din_storage_array);
+  //Array<dpin,ELEMENT_COUNT_MAX>  dinput_arr;
+  //std::map<String, dpin> dinput_arr;
+  //MsgPack::map_t<String, dpin> dinput_arr;
+  dpin * dinput_arr = NULL;//new dpin[100];// = NULL;
+#endif
+
+#ifdef DOUTPUTS
+  //dpin * dout_storage_array = NULL; //[ELEMENT_COUNT_MAX];
+  Vector<dpin> doutput_arr; //(dout_storage_array);
+  //Array<dpin,ELEMENT_COUNT_MAX>  doutput_arr;
+#endif
 
 
 
-}
+};
 #endif
