@@ -19,7 +19,7 @@ enum ConnectionState
 class ConnectionBase {
 
   using m_cb = void (*)(const char*);
-  using m_cscb = void (*)(int);
+  using m_cscb = void (*)(int, uint64_t);
 
 public:
   ConnectionBase(uint16_t retryPeriod, uint64_t& fm) : _retryPeriod(retryPeriod), _featureMap(fm)
@@ -263,7 +263,7 @@ protected:
   {
       if(_configAction != NULL)
       {
-        _configAction(n.configString.c_str());
+        _configAction(n.configString.c_str(), );
       }
       #ifdef DEBUG_PROTOCOL_VERBOSE
       Serial.println("ARDUINO DEBUG: ---- RX CONFIG MESSAGE DUMP ----");

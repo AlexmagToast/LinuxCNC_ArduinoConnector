@@ -105,8 +105,8 @@ struct featureMap
       Serial.print("]");
       Serial.print(" DEBUG = ");
       Serial.println(flag);
-      #ifdef INPUTS
-        flag = bitRead(this->features, INPUTS);
+      #ifdef DINPUTS
+        flag = bitRead(this->features, DINPUTS);
         Serial.print("[ID0");
         Serial.print(INPUTS);
         Serial.print("]");
@@ -121,8 +121,8 @@ struct featureMap
         Serial.print(" SINPUTS = ");
         Serial.println(flag);
       #endif
-      #ifdef OUTPUTS
-        flag = bitRead(this->features, OUTPUTS);
+      #ifdef DOUTPUTS
+        flag = bitRead(this->features, DOUTPUTS);
         Serial.print("[ID0");
         Serial.print(OUTPUTS);
         Serial.print("]");
@@ -209,54 +209,8 @@ struct featureMap
         Serial.print(" KEYPAD = ");
         Serial.println(flag);
       #endif
-      #ifdef SERIAL_TO_LINUXCNC
-        flag = bitRead(this->features, SERIAL_TO_LINUXCNC);
-        Serial.print("[ID");
-        Serial.print(SERIAL_TO_LINUXCNC);
-        Serial.print("]");
-        Serial.print(" SERIAL_TO_LINUXCNC = ");
-        Serial.println(flag);
-      #endif
-      #ifdef ETHERNET_UDP_TO_LINUXCNC
-        flag = bitRead(this->features, ETHERNET_UDP_TO_LINUXCNC);
-        Serial.print("[ID");
-        Serial.print(ETHERNET_UDP_TO_LINUXCNC);
-        Serial.print("]");
-        Serial.print(" ETHERNET_UDP_TO_LINUXCNC = ");
-        Serial.println(flag);
-      #endif
-      #ifdef ETHERNET_TCP_TO_LINUXCNC
-        flag = bitRead(this->features, ETHERNET_TCP_TO_LINUXCNC);
-        Serial.print("[ID");
-        Serial.print(ETHERNET_TCP_TO_LINUXCNC);
-        Serial.print("]");
-        Serial.print(" ETHERNET_TCP_TO_LINUXCNC = ");
-        Serial.println(flag);
-      #endif
-      #ifdef WIFI_UDP_TO_LINUXCNC
-        flag = bitRead(this->features, WIFI_UDP_TO_LINUXCNC);
-        Serial.print("[ID");
-        Serial.print(WIFI_UDP_TO_LINUXCNC);
-        Serial.print("]");
-        Serial.print(" WIFI_UDP_TO_LINUXCNC = ");
-        Serial.println(flag);
-      #endif
-      #ifdef WIFI_TCP_TO_LINUXCNC
-        flag = bitRead(this->features, WIFI_TCP_TO_LINUXCNC);
-        Serial.print("[ID");
-        Serial.print(WIFI_TCP_TO_LINUXCNC);
-        Serial.print("]");
-        Serial.print(" WIFI_TCP_TO_LINUXCNC = ");
-        Serial.println(flag);
-      #endif
-      #ifdef MEMORY_MONITOR
-        flag = bitRead(this->features, MEMORY_MONITOR);
-        Serial.print("[ID");
-        Serial.print(MEMORY_MONITOR);
-        Serial.print("]");
-        Serial.print(" MEMORY_MONITOR = ");
-        Serial.println(flag);
-      #endif
+
+
       Serial.println("------------------- End Feature Map Decode Dump ------------------- ");
     #endif
   }

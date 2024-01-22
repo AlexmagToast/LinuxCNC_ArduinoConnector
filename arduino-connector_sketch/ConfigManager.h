@@ -6,7 +6,6 @@
 #if defined(DINPUTS) || defined(DOUTPUTS)
 struct dpin
 {
-    String pinType;
     String pinID;
     int8_t pinInitialState;
     int8_t pinConnectState;

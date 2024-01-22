@@ -40,7 +40,7 @@ SerialConnection serialClient(SERIAL_RX_TIMEOUT, fm.features);
 ConfigManager configManager;
 //std::map<String, int> mp;// {{"one", 1}, {"two", 2}, {"four", 4}};
 
-void onConfig(const char* conf) {
+void onConfig(const char* conf, uint64_t featureID) {
       #ifdef DEBUG
       Serial.print("ON CONFIG!");
       Serial.println(conf);
@@ -55,7 +55,7 @@ void onConfig(const char* conf) {
           //dinput_arr.clear();
           JsonDocument filter;
           filter["DIGITAL_INPUTS"] = true;
-          filter["DIGITAL_INPUTS_COUNT"] = true;
+          //filter["DIGITAL_INPUTS_COUNT"] = true;
           JsonDocument doc;
           DeserializationError error = deserializeJson(doc, conf, DeserializationOption::Filter(filter));
           if (error) {
@@ -65,7 +65,7 @@ void onConfig(const char* conf) {
             #endif
             return;
           }
-          int DIGITAL_INPUTS_COUNT = doc["DIGITAL_INPUTS_COUNT"];
+          //int DIGITAL_INPUTS_COUNT = doc["DIGITAL_INPUTS_COUNT"];
           //if( din_storage_array != NULL )
           //{
           //  delete din_storage_array;
@@ -75,19 +75,17 @@ void onConfig(const char* conf) {
           //Vector<dpin> dinput_arr();//din_storage_array);
           //dinput_arr.setStorage(din_storage_array);
 
-          for (JsonPair DIGITAL_INPUTS_item : doc["DIGITAL_INPUTS"].as<JsonObject>()) {
-            dpin d = (dpin){.pinName = DIGITAL_INPUTS_item.value()["pinName"],
-              .pinType = DIGITAL_INPUTS_item.value()["pinType"],
-              .pinID =  DIGITAL_INPUTS_item.value()["pinID"],
-              .pinInitialState =  DIGITAL_INPUTS_item.value()["pinInitialState"],
-              .pinConnectState = DIGITAL_INPUTS_item.value()["pinConnectState"],
-              .pinDisconnectState = DIGITAL_INPUTS_item.value()["pinDisconnectState"],
-              .halPinDirection = DIGITAL_INPUTS_item.value()["halPinDirection"],
-              .debounce = DIGITAL_INPUTS_item.value()["pinDebounce"],
-              .inputPullup = DIGITAL_INPUTS_item.value()["inputPullup"],
+          //for (JsonPair DIGITAL_INPUTS_item : doc["DIGITAL_INPUTS"].as<JsonObject>()) {
+            dpin d = (dpin){
+              .pinID =  doc["pinID"],
+              .pinInitialState =  doc["pinInitialState"],
+              .pinConnectState = doc["pinConnectState"],
+              .pinDisconnectState = doc["pinDisconnectState"],
+              .debounce = doc["pinDebounce"],
+              .inputPullup = doc["inputPullup"],
               .pinCurrentState = 0,
               .t = 0
-            };
+            //};
             if (d.inputPullup == 1)
             {
               pinMode(atoi(d.pinID.c_str()), INPUT_PULLUP);

@@ -23,6 +23,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+import hashlib
 import json
 from multiprocessing import Value
 import os
@@ -49,6 +50,7 @@ logging.basicConfig(level=logging.DEBUG)
 
 DEFAULT_VALUE_KEY = 1 # List position for default values
 YAML_PARSER_KEY = 1
+FEATURE_INDEX_KEY = 2
 
 DEFAULT_PROFILE = "config.yaml"
 
@@ -109,11 +111,12 @@ class SerialConfigElement(Enum):
 # enum + lamda enables some dark magic elegance.
     
 class ConfigPinTypes(Enum):
-    ANALOG_INPUTS = ['analogInputs', lambda yaml : AnalogPin(yaml=yaml, halPinDirection=HalPinDirection.HAL_IN)]
-    ANALOG_OUTPUTS = ['analogOutputs',  lambda yaml : AnalogPin(yaml=yaml, halPinDirection=HalPinDirection.HAL_OUT)]
-    PWM_OUTPUTS = ['pwmOutputs',  lambda yaml : ArduinoPin(yaml=yaml, pinType=ConfigPinTypes.PWM_OUTPUTS, halPinDirection=HalPinDirection.HAL_OUT)]
-    DIGITAL_INPUTS = ['digitalInputs', lambda yaml : DigitalPin(yaml=yaml, halPinDirection=HalPinDirection.HAL_IN)]
-    DIGITAL_OUTPUTS = ['digitalOutputs', lambda yaml : DigitalPin(yaml=yaml, halPinDirection=HalPinDirection.HAL_OUT)]
+    DIGITAL_INPUTS = ['digitalInputs', lambda yaml, featureID : DigitalPin(yaml=yaml, featureID=featureID, halPinDirection=HalPinDirection.HAL_IN), 1]
+    DIGITAL_OUTPUTS = ['digitalOutputs', lambda yaml, featureID : DigitalPin(yaml=yaml, featureID=featureID, halPinDirection=HalPinDirection.HAL_OUT), 2]
+    ANALOG_INPUTS = ['analogInputs', lambda yaml, featureID : AnalogPin(yaml=yaml,featureID=featureID, halPinDirection=HalPinDirection.HAL_IN), 3]
+    ANALOG_OUTPUTS = ['analogOutputs',  lambda yaml, featureID : AnalogPin(yaml=yaml, featureID=featureID, halPinDirection=HalPinDirection.HAL_OUT), 4]
+    PWM_OUTPUTS = ['pwmOutputs',  lambda yaml, featureID : ArduinoPin(yaml=yaml, featureID=featureID, pinType=ConfigPinTypes.PWM_OUTPUTS, halPinDirection=HalPinDirection.HAL_OUT), 5]
+
     def __str__(self) -> str:
         return self.value[0]
     
@@ -154,13 +157,14 @@ class ConnectionType:
 
 
 class ArduinoPin:
-    def __init__(self, pinName:str='', pinID:str='', pinType:PinTypes=PinTypes.UNDEFINED, halPinType:HalPinTypes=HalPinTypes.UNDEFINED, 
+    def __init__(self, pinName:str='', featureID:int=0, pinID:str='', pinType:PinTypes=PinTypes.UNDEFINED, halPinType:HalPinTypes=HalPinTypes.UNDEFINED, 
                  halPinDirection:HalPinDirection=HalPinDirection.UNDEFINED, yaml:dict = None): 
         self.pinName = pinName
         self.pinType = pinType
         self.halPinType = halPinType
         self.halPinDirection = halPinDirection
         self.pinID = pinID
+        self.featureID = featureID
         self.pinInitialState = PinConfigElement.PIN_INITIAL_STATE.value[DEFAULT_VALUE_KEY]
         self.pinConnectState = PinConfigElement.PIN_CONNECT_STATE.value[DEFAULT_VALUE_KEY]
         self.pinDisconnectState = PinConfigElement.PIN_DISCONNECT_STATE.value[DEFAULT_VALUE_KEY]
@@ -187,8 +191,8 @@ class ArduinoPin:
         return f'pinName = {self.pinName}, pinType={self.pinType.name}, halPinType={self.halPinType}'
     
     def toJson(self):
-        return {'pinName': self.pinName,
-                'pinType': self.pinType.name,
+        return {#'pinName': self.pinName,
+                #'pinType': self.pinType.name,
                 'pinID': self.pinID,
                 'pinInitialState': self.pinInitialState,
                 'pinConnectState': self.pinConnectState,
@@ -196,13 +200,13 @@ class ArduinoPin:
 
     
 class AnalogPin(ArduinoPin):
-    def __init__(self,yaml:dict = None, halPinDirection=HalPinDirection):
+    def __init__(self,yaml:dict = None, featureID:int=0, halPinDirection=HalPinDirection):
         if halPinDirection == HalPinDirection.HAL_IN:
-            ArduinoPin.__init__(self, pinType=PinTypes.ANALOG_INPUT, 
+            ArduinoPin.__init__(self, featureID=featureID, pinType=PinTypes.ANALOG_INPUT, 
                         halPinType=HalPinTypes.HAL_FLOAT, halPinDirection=halPinDirection,
                         yaml=yaml)
         else:
-            ArduinoPin.__init__(self, pinType=PinTypes.ANALOG_OUTPUT, 
+            ArduinoPin.__init__(self, featureID=featureID, pinType=PinTypes.ANALOG_OUTPUT, 
                         halPinType=HalPinTypes.HAL_FLOAT, halPinDirection=halPinDirection,
                         yaml=yaml)
         
@@ -229,13 +233,13 @@ class AnalogPin(ArduinoPin):
             self.pinMaxVal = int(doc[AnalogConfigElement.PIN_MAX_VALUE.value[0]])
 
 class DigitalPin(ArduinoPin):
-    def __init__(self,  halPinDirection:HalPinDirection, yaml:dict = None):
+    def __init__(self,  halPinDirection:HalPinDirection,featureID:int=0, yaml:dict = None):
         if halPinDirection == HalPinDirection.HAL_IN:
-            ArduinoPin.__init__(self, pinType=PinTypes.DIGITAL_INPUT, 
+            ArduinoPin.__init__(self, pinType=PinTypes.DIGITAL_INPUT, featureID=featureID, 
                         halPinType=HalPinTypes.HAL_BIT, halPinDirection=halPinDirection,
                         yaml=yaml)
         else:
-            ArduinoPin.__init__(self, pinType=PinTypes.DIGITAL_OUTPUT, 
+            ArduinoPin.__init__(self, pinType=PinTypes.DIGITAL_OUTPUT, featureID=featureID,
                         halPinType=HalPinTypes.HAL_BIT, halPinDirection=halPinDirection,
                         yaml=yaml)
         
@@ -264,7 +268,7 @@ class DigitalPin(ArduinoPin):
 
     def toJson(self):
         s = ArduinoPin.toJson(self)
-        s['halPinDirection'] = self.halPinDirection.name
+        #s['halPinDirection'] = self.halPinDirection.name
         s['pinDebounce'] = self.pinDebounce
         s['inputPullup'] = self.inputPullup 
         return s
@@ -297,10 +301,13 @@ class ArduinoSettings:
         pc = {}
         for k, v in self.io_map.items():
             pc[k.name] = {}
-            pc[k.name + '_COUNT'] = len(v)
+            #pc[k.name + '_COUNT'] = len(v)
+            i = 0
             for pin in v:
-                pc[k.name][pin.pinName] = pin.toJson()
+                pc[k.name][i] = pin.toJson()
+                i += 1
         return pc
+
             
 
 class ArduinoYamlParser:
@@ -374,11 +381,13 @@ class ArduinoYamlParser:
                             continue
                             
                         a = [e for e in ConfigPinTypes if e.value[0] == k][0] # object reference from enum
-                        b = [e.value[0] for e in ConfigPinTypes if e.value[0] == k][0] # String of enum
+                        #b = [e.value[0] for e in ConfigPinTypes if e.value[0] == k][0] # String of enum
                         c = [e.value[YAML_PARSER_KEY] for e in ConfigPinTypes if e.value[0] == k][0] # Parser lamda from enum
+                        d = [e.value[FEATURE_INDEX_KEY] for e in ConfigPinTypes if e.value[0] == k][0] # Feature ID
                         new_arduino.io_map[a] = []
+                        
                         for v1 in v:   
-                            new_arduino.io_map[a].append(c(v1)) # Here we just call the lamda function, which magically returns a correct object with all the settings
+                            new_arduino.io_map[a].append(c(v1, d)) # Here we just call the lamda function, which magically returns a correct object with all the settings
                 mcu_list.append(new_arduino)
                 logging.debug(f'Loaded Arduino from config:\n{new_arduino}')
         return mcu_list      
@@ -415,21 +424,21 @@ class MessageType(IntEnum):
 
 FeatureTypes = {
     'DEBUG': 0,
-    'DEBUG_PROTOCOL_VERBOSE': 1,
-    'INPUTS':2,
-    'SINPUTS':3,
-    'OUTPUTS':4,
-    'PWMOUTPUTS:':5,
-    'AINPUTS':6,
-    'DALLAS_TEMPERATURE_SENSOR':7,
-    'LPOTIS':8,
-    'BINSEL':9,
-    'QUADENC':10,
-    'JOYSTICK':11,
-    'STATUSLED':12,
-    'DLED':13,
-    'KEYPAD':14,
-    'MEMORY_MONITOR':15
+    'DIGITAL_INPUTS':1,
+    'DIGIAL_OUTPUTS':2,
+    'ANALOG_INPUTS':3,
+    'ANALOG_OUTPUTS':4,
+    
+    #'PWMOUTPUTS:':4,
+    #'AINPUTS':5,
+    #'DALLAS_TEMPERATURE_SENSOR':6,
+    #'LPOTIS':7,
+    #'BINSEL':8,
+    #'QUADENC':9,
+    #'JOYSTICK':10,
+    #'STATUSLED':11,
+    #'DLED':12,
+    #'KEYPAD':13
 }
 ConnectionFeatureTypes = {
     'SERIAL_TO_LINUXCNC':1,
@@ -550,9 +559,12 @@ class ProtocolMessage:
         pass
             
 class ConfigMessage(ProtocolMessage):
-    def __init__(self, configJSON):
+    def __init__(self, configJSON, seq:int, total:int, featureID:str):
         super().__init__(messageType=MessageType.MT_CONFIG)
         self.payload = [] 
+        self.payload.append(featureID)
+        self.payload.append(seq)
+        self.payload.append(total)
         self.payload.append(configJSON)
 
 class HandshakeMessage(ProtocolMessage):
@@ -895,13 +907,26 @@ class ArduinoConnection:
     def doWork(self):
         if self.serialConn.getConnectionState() == ConnectionState.CONNECTED and self.serialConn.configVersion == 0:
             j = self.settings.configJSON()
-            config_json = json.dumps(j)# indent=2)
+            config_json = json.dumps(j)
+            #h = int(hashlib.sha256(config_json.encode('utf-8')).hexdigest(), 16) % 10**8
+            for k, v in j.items():
+                total = len(v)
+                seq = 0
+                for k1, v1 in v.items():
+                    v1['logicalID'] = k1
+                    cf = ConfigMessage(configJSON=json.dumps(v1), seq=seq, total=total, featureID=k)
+                    seq += 1
+                    self.serialConn.sendMessage(cf.packetize())
+                #cf = ConfigMessage(configJSON=config_json)
+                #out = cf.packetize()
+                
+            #config_json = json.dumps(j)
             #print(config_json)
-            cf = ConfigMessage(configJSON=config_json)
-            out = cf.packetize()
+            #cf = ConfigMessage(configJSON=config_json)
+            #out = cf.packetize()
             #print(out)
             self.serialConn.configVersion = 1
-            self.serialConn.sendMessage(out)
+            #self.serialConn.sendMessage(out)
             #pass
 
 arduino_map = []

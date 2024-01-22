@@ -139,8 +139,11 @@ namespace protocol
   }pm;
   
   struct ConfigMessage {
+      String featureID;
+      uint16_t seq;
+      uint16_t total;
       String configString; 
-      MSGPACK_DEFINE(configString); 
+      MSGPACK_DEFINE(featureID, seq, total, configString); 
   }cfg;
 
   #ifdef DEBUG
