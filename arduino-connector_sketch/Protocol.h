@@ -31,6 +31,7 @@ SOFTWARE.
 #define MSGPACK_MAX_ARRAY_SIZE 512
 #define MSGPACK_MAX_OBJECT_SIZE 512
 #define MSGPACKETIZER_DEBUGLOG_ENABLE
+#define PACKETIZER_MAX_PACKET_QUEUE_SIZE 10
 //#define MSGPACKETIZER_ENABLE_STREAM
 /*
 // The following are otpomizations for low-memory boards such as Arduino Unos.\
