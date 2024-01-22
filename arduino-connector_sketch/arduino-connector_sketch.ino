@@ -40,15 +40,68 @@ SerialConnection serialClient(SERIAL_RX_TIMEOUT, fm.features);
 ConfigManager configManager;
 //std::map<String, int> mp;// {{"one", 1}, {"two", 2}, {"four", 4}};
 
-void onConfig(const char* conf, uint64_t featureID) {
+void onConfig(const protocol::ConfigMessage& cm) {
       #ifdef DEBUG
-      Serial.print("ON CONFIG!");
-      Serial.println(conf);
-      Serial.print("Sixe of Config: ");
-      Serial.println(strlen(conf));
+        Serial.print("::onConfig called, featureID = ");
+        Serial.print(cm.featureID);
+        Serial.print(" Seq = ");
+        Serial.print(cm.seq);
+        Serial.print(" Total = ");
+        Serial.println(cm.total);
+        #ifdef DEBUG_VERBOSE
+          Serial.print("Config: ");
+          Serial.println(cm.configString);
+        #endif
       #endif
+      //Serial.print("Size of Config: ");
+      //Serial.println(strlen(conf));
+      switch (cm.featureID)
+      {
+        #ifdef DINPUTS
+        
+          case DINPUTS:
+          {
+            if(cm.seq == 0)
+            {
+              configManager.initDigitalInputPins(cm.total);
+            }
+            JsonDocument doc;
+
+            DeserializationError error = deserializeJson(doc, cm.configString);
+
+            if (error) {
+              Serial.print(F("deserializeJson() of DINPUTS failed: "));
+              Serial.println(error.f_str());
+              return;
+            }
+            
+              dpin d = (dpin){
+                .pinID =  doc["pinID"],
+                .pinInitialState =  doc["pinInitialState"],
+                .pinConnectState = doc["pinConnectState"],
+                .pinDisconnectState = doc["pinDisconnectState"],
+                .debounce = doc["pinDebounce"],
+                .inputPullup = doc["inputPullup"],
+                .logicalID = doc["logicalID"],
+                .pinCurrentState = 0,
+                .t = 0
+              };
+              if (d.inputPullup == 1)
+              {
+                pinMode(atoi(d.pinID.c_str()), INPUT_PULLUP);
+              }
+              else { pinMode(atoi(d.pinID.c_str()), INPUT); }
+              configManager.setDigitalInputPin(d, d.logicalID);
+              
+            
+          }
+        
+        #endif
+      }
+      /*
       #ifdef DINPUTS
         { 
+          
           //din_storage_array = new dpin[]; //[ELEMENT_COUNT_MAX];
           //Vector<dpin> * dinput_arr = NULL; //(din_storage_array);
           //dinput_arr = new 
@@ -85,7 +138,7 @@ void onConfig(const char* conf, uint64_t featureID) {
               .inputPullup = doc["inputPullup"],
               .pinCurrentState = 0,
               .t = 0
-            //};
+            };
             if (d.inputPullup == 1)
             {
               pinMode(atoi(d.pinID.c_str()), INPUT_PULLUP);
@@ -93,10 +146,12 @@ void onConfig(const char* conf, uint64_t featureID) {
             else { pinMode(atoi(d.pinID.c_str()), INPUT); }
             //dinput_arr->push_back(d);
           }
+          
         }
       #endif
       #ifdef DOUTPUTS
       {
+        
         doutput_arr.clear();
         
         StaticJsonDocument<200> filter;
@@ -126,8 +181,10 @@ void onConfig(const char* conf, uint64_t featureID) {
           
         }
         
+        
       }  
       #endif
+      */
   }
 
 void onConnectionStageChange(int s) {
@@ -144,7 +201,7 @@ void setup() {
   //}
   delay(SERIAL_STARTUP_DELAY);
   #ifdef DEBUG
-    Serial.println("STARTING UP.. ");
+    Serial.println("ARDUINO DEBUG: STARTING UP.. ");
   #endif
   /*
   if( EEPROM.length() == 0 )
@@ -257,31 +314,37 @@ void setup() {
 void loop() {
   serialClient.DoWork(); 
   unsigned long currentMills = millis();
-  /*
+  
   #ifdef DINPUTS
-  for (dpin& pin : dinput_arr)
+  
+  if(configManager.GetDigitalInputsReady() == 1)
   {
-    int v = digitalRead(atoi(pin.pinID.c_str()));
-    //Serial.print("READDDDD...");
-    //Serial.println(v);
-    if(pin.pinCurrentState != v && (currentMills - pin.t) >= pin.debounce)
+    //Serial.println("READY");
+    for( int x = 0; x < configManager.GetDigitalInputPinsLen(); x++ )
     {
-      #ifdef DEBUG
-      Serial.print("PIN CHANGE! ");
-      Serial.print("PIN: ");
-      Serial.print(pin.pinID);
-      Serial.print(" Current value: ");
-      Serial.print(pin.pinCurrentState);
-      Serial.print(" New value: ");
-      Serial.println(v);
-      #endif
-      pin.pinCurrentState = v;
-      pin.t = currentMills;
-      // send update out
+      dpin & pin = configManager.getDigitalInputPins()[x];
+      int v = digitalRead(atoi(pin.pinID.c_str()));
+      if(pin.pinCurrentState != v && (currentMills - pin.t) >= pin.debounce)
+      {
+        #ifdef DEBUG
+        Serial.print("PIN CHANGE! ");
+        Serial.print("PIN: ");
+        Serial.print(pin.pinID);
+        Serial.print(" Current value: ");
+        Serial.print(pin.pinCurrentState);
+        Serial.print(" New value: ");
+        Serial.println(v);
+        #endif
+        pin.pinCurrentState = v;
+        pin.t = currentMills;
+        // send update out
+      }
     }
   }
+  //for (dpin & pin : configManager.getDigitalInputPins())
+
   #endif
-  */
+  
 /*
   #ifdef DOUTPUTS
   for (dpin pin : doutput_arr)

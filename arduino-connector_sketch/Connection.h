@@ -18,8 +18,8 @@ enum ConnectionState
 
 class ConnectionBase {
 
-  using m_cb = void (*)(const char*);
-  using m_cscb = void (*)(int, uint64_t);
+  using m_cb = void (*)(const protocol::ConfigMessage&);
+  using m_cscb = void (*)(int);
 
 public:
   ConnectionBase(uint16_t retryPeriod, uint64_t& fm) : _retryPeriod(retryPeriod), _featureMap(fm)
@@ -221,7 +221,7 @@ protected:
 
   void _onHandshakeMessage(const protocol::HandshakeMessage& n)
   {
-      #ifdef DEBUG_PROTOCOL_VERBOSE
+      #ifdef DEBUG_VERBOSE
       Serial.println("ARDUINO DEBUG: ---- RX HANDSHAKE MESSAGE DUMP ----");
       Serial.print("ARDUINO DEBUG: Protocol Version: 0x");
       Serial.println(n.protocolVersion, HEX);
@@ -236,7 +236,7 @@ protected:
 
   void _onHeartbeatMessage(const protocol::HeartbeatMessage& n)
   {
-      #ifdef DEBUG_PROTOCOL_VERBOSE
+      #ifdef DEBUG_VERBOSE
       Serial.println("ARDUINO DEBUG: ---- RX HEARTBEAT MESSAGE DUMP ----");
       //Serial.print("ARDUINO DEBUG: Board Index: ");
       //Serial.println(n.boardIndex);
@@ -247,7 +247,7 @@ protected:
 
   void _onCommandMessage(const protocol::CommandMessage& n)
   {
-      #ifdef DEBUG_PROTOCOL_VERBOSE
+      #ifdef DEBUG_VERBOSE
       Serial.println("ARDUINO DEBUG: ---- RX COMMAND MESSAGE DUMP ----");
       Serial.print("ARDUINO DEBUG: Command: ");
       Serial.println(n.cmd);
@@ -263,9 +263,11 @@ protected:
   {
       if(_configAction != NULL)
       {
-        _configAction(n.configString.c_str(), );
+        _configAction(n);
       }
-      #ifdef DEBUG_PROTOCOL_VERBOSE
+      _receiveTimer = millis(); // Don't let the heartbeat timeout elapse just because the arduino is busy processing config
+      /*
+      #ifdef DEBUG_VERBOSE
       Serial.println("ARDUINO DEBUG: ---- RX CONFIG MESSAGE DUMP ----");
       //Serial.print("ARDUINO DEBUG: Config String: ");
       //Serial.println(n.configString);
@@ -295,7 +297,9 @@ protected:
       // Start a new line
       //Serial.println();
       
+      
       #endif
+      */
       //protocol::cm.boardIndex = n.boardIndex-1;
       //_commandReceived = 1;
   }
@@ -325,7 +329,7 @@ protected:
     protocol::hm.maxMsgSize = RX_BUFFER_SIZE;
     protocol::hm.configVersion = 0;
     protocol::hm.uid = _uid;
-    #ifdef DEBUG_PROTOCOL_VERBOSE   
+    #ifdef DEBUG_VERBOSE   
       Serial.println("ARDUINO DEBUG: ---- TX HANDSHAKE MESSAGE DUMP ----");
       Serial.print("ARDUINO DEBUG: Protocol Version: 0x");
       Serial.println(protocol::hm.protocolVersion, HEX);
@@ -418,7 +422,7 @@ protected:
   */
   protocol::HeartbeatMessage& _getHeartbeatMessage()
   {
-    #ifdef DEBUG_PROTOCOL_VERBOSE
+    #ifdef DEBUG_VERBOSE
       Serial.println("ARDUINO DEBUG: ---- TX HEARTBEAT MESSAGE DUMP ----");
       Serial.print("ARDUINO DEBUG: Board Index: ");
       Serial.println(protocol::hb.boardIndex);
@@ -429,7 +433,7 @@ protected:
 
   protocol::PinStatusMessage& _getPinStatusMessage()
   {
-    #ifdef DEBUG_PROTOCOL_VERBOSE
+    #ifdef DEBUG_VERBOSE
       Serial.println("ARDUINO DEBUG: ---- TX PINSTATUS MESSAGE DUMP ----");
       Serial.print("ARDUINO DEBUG: STATUS: ");
       Serial.println(protocol::pm.status);      

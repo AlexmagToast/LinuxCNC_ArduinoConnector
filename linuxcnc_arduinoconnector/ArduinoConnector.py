@@ -193,6 +193,7 @@ class ArduinoPin:
     def toJson(self):
         return {#'pinName': self.pinName,
                 #'pinType': self.pinType.name,
+                'featureID' : self.featureID,
                 'pinID': self.pinID,
                 'pinInitialState': self.pinInitialState,
                 'pinConnectState': self.pinConnectState,
@@ -300,11 +301,12 @@ class ArduinoSettings:
     def configJSON(self):
         pc = {}
         for k, v in self.io_map.items():
-            pc[k.name] = {}
+            pc[k.value[FEATURE_INDEX_KEY]] = {}
             #pc[k.name + '_COUNT'] = len(v)
             i = 0
             for pin in v:
-                pc[k.name][i] = pin.toJson()
+                p = pin.toJson()
+                pc[k.value[FEATURE_INDEX_KEY]][i] = pin.toJson()
                 i += 1
         return pc
 
@@ -627,6 +629,8 @@ class Connection:
                 self.sendMessage(resp)
                 
             except Exception as ex:
+                just_the_string = traceback.format_exc()
+                print(just_the_string)
                 logging.debug(f'error: {str(ex)}')
                 
             #pass
@@ -812,7 +816,7 @@ class SerialConnection(Connection):
                 num_bytes = self.arduino.in_waiting
                 if num_bytes > 0:
                                              
-                        logging.debug(f"bytes in_waiting: {num_bytes}")
+                        #logging.debug(f"bytes in_waiting: {num_bytes}")
                         
                         #msgpacketizer.feed(arduino.read(num_bytes))
                         self.rxBuffer += self.arduino.read(num_bytes)
@@ -842,7 +846,7 @@ class SerialConnection(Connection):
                             if readDebug:
                                 [chunk, self.rxBuffer] = self.rxBuffer.split(b'\r\n', maxsplit=1)
                                 
-                                print(bytes(chunk).decode('utf8', errors='ignore'))
+                                print( f'ARDUINO DEBUG: {bytes(chunk).decode("utf8", errors="ignore")}')
                                 #logging.debug(f"chunk bytes: {chunk}")
                                 #pass
                                 # new line found first
@@ -914,9 +918,12 @@ class ArduinoConnection:
                 seq = 0
                 for k1, v1 in v.items():
                     v1['logicalID'] = k1
-                    cf = ConfigMessage(configJSON=json.dumps(v1), seq=seq, total=total, featureID=k)
+                    print(v1)
+                    cf = ConfigMessage(configJSON=json.dumps(v1), seq=seq, total=total, featureID=v1['featureID'])
                     seq += 1
+                    #print(cf.packetize())
                     self.serialConn.sendMessage(cf.packetize())
+                    time.sleep(.250)
                 #cf = ConfigMessage(configJSON=config_json)
                 #out = cf.packetize()
                 

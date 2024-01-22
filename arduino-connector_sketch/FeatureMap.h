@@ -108,7 +108,7 @@ struct featureMap
       #ifdef DINPUTS
         flag = bitRead(this->features, DINPUTS);
         Serial.print("[ID0");
-        Serial.print(INPUTS);
+        Serial.print(DINPUTS);
         Serial.print("]");
         Serial.print(" INPUTS = ");
         Serial.println(flag);

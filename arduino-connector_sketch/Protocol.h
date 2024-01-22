@@ -139,7 +139,7 @@ namespace protocol
   }pm;
   
   struct ConfigMessage {
-      String featureID;
+      uint64_t featureID;
       uint16_t seq;
       uint16_t total;
       String configString; 
