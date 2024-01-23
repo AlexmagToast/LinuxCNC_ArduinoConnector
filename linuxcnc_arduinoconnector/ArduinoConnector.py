@@ -29,6 +29,7 @@ from multiprocessing import Value
 import os
 from re import T
 import getopt, sys
+import threading
 import serial
 import msgpack
 from strenum import StrEnum
@@ -779,6 +780,60 @@ class UDPConnection(Connection):
             except Exception as error:
                 just_the_string = traceback.format_exc()
                 print(just_the_string)
+
+class RXThread(threading.Thread):
+    def __init__(self, pass_value):
+        super(RXThread, self).__init__()
+        self.running = False
+        self.value = pass_value
+        self.RUNNING = 0
+        self.FINISHED_OK  = 1
+        self.STOPPED = 2
+        self.CRASHED = 3
+        self.status = self.STOPPED
+
+    def run(self):
+        self.running = True    
+        self.status = self.RUNNING
+        while self.running:
+            try:
+                num_bytes = self.arduino.in_waiting
+                if num_bytes > 0:
+                    self.rxBuffer += self.arduino.read(num_bytes)
+                    while(True):  
+                        newlinepos = self.rxBuffer.find(b'\r\n')
+                        termpos = self.rxBuffer.find(b'\x00')
+
+                        readDebug = False
+                        readMessage = False
+                        if newlinepos == -1 and termpos == -1:
+                            break
+                        elif newlinepos != -1 and termpos != -1: 
+                            if newlinepos < termpos:
+                                readDebug = True
+                            else:
+                                readMessage = True
+                        elif newlinepos != -1:
+                            readDebug = True
+                        elif termpos != -1:
+                            readMessage = True
+                        else:
+                            break
+
+                        if readDebug:
+                            [chunk, self.rxBuffer] = self.rxBuffer.split(b'\r\n', maxsplit=1)
+                            print( f'ARDUINO DEBUG: {bytes(chunk).decode("utf8", errors="ignore")}')
+                        elif readMessage:
+                            [chunk, self.rxBuffer] = self.rxBuffer.split(b'\x00', maxsplit=1)
+                            logging.debug(f"chunk bytes: {chunk}")
+                            try:
+                                md = MessageDecoder(chunk)
+                                self.onMessageRecv(m=md)
+                            except Exception as ex:
+                                just_the_string = traceback.format_exc()
+                                print(f'PYDEBUG: {str(just_the_string)}')
+            except:
+                self.status = self.CRASHED
 		
 class SerialConnection(Connection):
     def __init__(self, dev:str, myType = ConnectionType.SERIAL, baudRate:int = 115200, timeout:int=1):
@@ -786,19 +841,24 @@ class SerialConnection(Connection):
         self.rxBuffer = bytearray()
         self.shutdown = False
         
-        self.daemon = None        
-        self.arduino = serial.Serial(dev, baudrate=baudRate, timeout=timeout, xonxoff=False, rtscts=False, dsrdtr=True)
-        self.arduino.timeout = 1
+        self.daemon = None    
+        self.baudRate = baudRate
+        self.timeout = timeout    
+        #self.arduino = serial.Serial(dev, baudrate=baudRate, timeout=timeout, xonxoff=False, rtscts=False, dsrdtr=True)
+        #self.arduino.timeout = 1
         
     def startRxTask(self):
+        #rx = RXThread(1)
+        #rx.start()
+        #pass
         # create and start the daemon thread
         #print('Starting background proceed watch task...')
         self.daemon = Thread(target=self.rxTask, daemon=False, name='Arduino RX')
         self.daemon.start()
         
-    def stopRxTask(self):
-        self.shutdown = True
-        self.daemon.join()
+    #def stopRxTask(self):
+    #    self.shutdown = True
+    #    self.daemon.join()
         
     def sendMessage(self, b: bytes):
         #return super().sendMessage()
@@ -810,94 +870,53 @@ class SerialConnection(Connection):
         self.sendMessage(bytes(cm))
         
     def rxTask(self):
-        
-        while(self.shutdown == False):
+
+        '''
+            while(self.shutdown == False):
             try:
                 num_bytes = self.arduino.in_waiting
                 if num_bytes > 0:
-                                             
-                        #logging.debug(f"bytes in_waiting: {num_bytes}")
-                        
-                        #msgpacketizer.feed(arduino.read(num_bytes))
-                        self.rxBuffer += self.arduino.read(num_bytes)
-                        #logging.debug(f"rx waiting bytes: {self.rxBuffer}")
-                        while(True):  
-                        #while True:
-                            #chunk = bytearray()
-                            newlinepos = self.rxBuffer.find(b'\r\n')
-                            termpos = self.rxBuffer.find(b'\x00')
+                    self.rxBuffer += self.arduino.read(num_bytes)
+                    while(True):  
+                        newlinepos = self.rxBuffer.find(b'\r\n')
+                        termpos = self.rxBuffer.find(b'\x00')
 
-                            readDebug = False
-                            readMessage = False
-                            if newlinepos == -1 and termpos == -1:
-                                break
-                            elif newlinepos != -1 and termpos != -1: 
-                                if newlinepos < termpos:
-                                    readDebug = True
-                                else:
-                                    readMessage = True
-                            elif newlinepos != -1:
+                        readDebug = False
+                        readMessage = False
+                        if newlinepos == -1 and termpos == -1:
+                            break
+                        elif newlinepos != -1 and termpos != -1: 
+                            if newlinepos < termpos:
                                 readDebug = True
-                            elif termpos != -1:
-                                readMessage = True
                             else:
-                                break
+                                readMessage = True
+                        elif newlinepos != -1:
+                            readDebug = True
+                        elif termpos != -1:
+                            readMessage = True
+                        else:
+                            break
 
-                            if readDebug:
-                                [chunk, self.rxBuffer] = self.rxBuffer.split(b'\r\n', maxsplit=1)
-                                
-                                print( f'ARDUINO DEBUG: {bytes(chunk).decode("utf8", errors="ignore")}')
-                                #logging.debug(f"chunk bytes: {chunk}")
-                                #pass
-                                # new line found first
-                            elif readMessage:
-                                # msgpack terminator found
-                                [chunk, self.rxBuffer] = self.rxBuffer.split(b'\x00', maxsplit=1)
-
-                                #chunk.append(10)
-                                #b = bytearray( b'\n' + chunk)
-                                logging.debug(f"chunk bytes: {chunk}")
-                                try:
-                                    md = MessageDecoder(chunk)
-                                    self.onMessageRecv(m=md)
-                                except Exception as ex:
-                                    just_the_string = traceback.format_exc()
-                                    print(f'PYDEBUG: {str(just_the_string)}')
+                        if readDebug:
+                            [chunk, self.rxBuffer] = self.rxBuffer.split(b'\r\n', maxsplit=1)
+                            print( f'ARDUINO DEBUG: {bytes(chunk).decode("utf8", errors="ignore")}')
+                        elif readMessage:
+                            [chunk, self.rxBuffer] = self.rxBuffer.split(b'\x00', maxsplit=1)
+                            logging.debug(f"chunk bytes: {chunk}")
+                            try:
+                                md = MessageDecoder(chunk)
+                                self.onMessageRecv(m=md)
+                            except Exception as ex:
+                                just_the_string = traceback.format_exc()
+                                print(f'PYDEBUG: {str(just_the_string)}')
                             
-                #else: time.sleep(0.01)
-                '''
-                data = self.arduino.read()
-                if data == b'\x00':
-                    self.buffer += bytearray(data)
-                    #print(bytes(self.buffer))
-                    strb = ''
-                    #print('Bytes from wire: ')
-                    
-                    for b in bytes(self.buffer):
-                        strb += f'[{hex(b)}]'
-                    print(strb)
-                    try:
-                        md = MessageDecoder(self.buffer[:-1])
-                        self.onMessageRecv(m=md)
-                    except Exception as ex:
-                        just_the_string = traceback.format_exc()
-                        print(f'PYDEBUG: {str(just_the_string)}')
-                
-                    #arduino.write(bytes(self.buffer))
-                    self.buffer = bytes()
-                elif data == b'\n':
-                    self.buffer += bytearray(data)
-                    print(bytes(self.buffer).decode('utf8', errors='ignore'))
-                    self.buffer = bytes()
-                else:
-                    self.buffer += bytearray(data)
-                self.updateState()   
-                
-                '''
-
+            except OSError as oserror:
+                print(str(oserror))
             except Exception as error:
                 just_the_string = traceback.format_exc()
                 print(just_the_string)
+        '''
+
 
 
 class ArduinoConnection:
@@ -923,7 +942,7 @@ class ArduinoConnection:
                     seq += 1
                     #print(cf.packetize())
                     self.serialConn.sendMessage(cf.packetize())
-                    time.sleep(.250)
+                    time.sleep(.2)
                 #cf = ConfigMessage(configJSON=config_json)
                 #out = cf.packetize()
                 
