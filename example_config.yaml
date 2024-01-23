@@ -3,13 +3,14 @@ mcu:
   component_name: arduino # Name of component to use in HAL
   #dev: /dev/cu.usbmodem14201  # Used for initial programming
   dev: /dev/cu.usbmodemF412FA68D6802 
-  
+  #dev: /dev/cu.usbserial-0001
   io_map:
         
     digitalInputs:
       - pin_id: 3
         pin_name: din.3 #hal pin name
         input_pullup: true
+        pin_debounce: 0
       - pin_id: 4
         pin_name: din.4 #hal pin name
         input_pullup: true
@@ -29,7 +30,7 @@ mcu:
         pin_name: din.9 #hal pin name
         input_pullup: true     
       - pin_id: 10
-        pin_name: din.10 #hal pin name
+        pin_name: din.9 #hal pin name
         input_pullup: true    
 
     digitalOutputs:
