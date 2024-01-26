@@ -67,6 +67,14 @@ class ConfigElement(StrEnum):
     def __str__(self) -> str:
         return self.value
     
+class ThreadStatus(StrEnum):
+    RUNNING = "RUNNING"
+    FINISHED_OK = "FINISHED_OK"
+    STOPPED = "STOPPED"
+    CRASHED = "CRASHED"
+    def __str__(self) -> str:
+        return self.value
+
 class PinConfigElement(Enum):
     PIN_ID = ['pin_id', None]
     PIN_NAME = ['pin_name', None]
@@ -797,41 +805,7 @@ class RXThread(threading.Thread):
         self.status = self.RUNNING
         while self.running:
             try:
-                num_bytes = self.arduino.in_waiting
-                if num_bytes > 0:
-                    self.rxBuffer += self.arduino.read(num_bytes)
-                    while(True):  
-                        newlinepos = self.rxBuffer.find(b'\r\n')
-                        termpos = self.rxBuffer.find(b'\x00')
-
-                        readDebug = False
-                        readMessage = False
-                        if newlinepos == -1 and termpos == -1:
-                            break
-                        elif newlinepos != -1 and termpos != -1: 
-                            if newlinepos < termpos:
-                                readDebug = True
-                            else:
-                                readMessage = True
-                        elif newlinepos != -1:
-                            readDebug = True
-                        elif termpos != -1:
-                            readMessage = True
-                        else:
-                            break
-
-                        if readDebug:
-                            [chunk, self.rxBuffer] = self.rxBuffer.split(b'\r\n', maxsplit=1)
-                            print( f'ARDUINO DEBUG: {bytes(chunk).decode("utf8", errors="ignore")}')
-                        elif readMessage:
-                            [chunk, self.rxBuffer] = self.rxBuffer.split(b'\x00', maxsplit=1)
-                            logging.debug(f"chunk bytes: {chunk}")
-                            try:
-                                md = MessageDecoder(chunk)
-                                self.onMessageRecv(m=md)
-                            except Exception as ex:
-                                just_the_string = traceback.format_exc()
-                                print(f'PYDEBUG: {str(just_the_string)}')
+                pass
             except:
                 self.status = self.CRASHED
 		
@@ -843,8 +817,11 @@ class SerialConnection(Connection):
         
         self.daemon = None    
         self.baudRate = baudRate
-        self.timeout = timeout    
-        #self.arduino = serial.Serial(dev, baudrate=baudRate, timeout=timeout, xonxoff=False, rtscts=False, dsrdtr=True)
+        self.timeout = timeout  
+
+        self.status = ThreadStatus.STOPPED
+  
+        self.arduino = serial.Serial(dev, baudrate=baudRate, timeout=timeout, xonxoff=False, rtscts=False, dsrdtr=True)
         #self.arduino.timeout = 1
         
     def startRxTask(self):
@@ -870,9 +847,8 @@ class SerialConnection(Connection):
         self.sendMessage(bytes(cm))
         
     def rxTask(self):
-
-        '''
-            while(self.shutdown == False):
+        self.status = ThreadStatus.RUNNING
+        while(self.shutdown == False):
             try:
                 num_bytes = self.arduino.in_waiting
                 if num_bytes > 0:
@@ -915,7 +891,7 @@ class SerialConnection(Connection):
             except Exception as error:
                 just_the_string = traceback.format_exc()
                 print(just_the_string)
-        '''
+        
 
 
 
@@ -928,6 +904,9 @@ class ArduinoConnection:
         return f'Arduino Alias = {self.settings.alias}, Component Name = {self.settings.component_name}'
     
     def doWork(self):
+        if self.serialConn.status == ThreadStatus.STOPPED:
+            self.serialConn.startRxTask()
+            
         if self.serialConn.getConnectionState() == ConnectionState.CONNECTED and self.serialConn.configVersion == 0:
             j = self.settings.configJSON()
             config_json = json.dumps(j)
