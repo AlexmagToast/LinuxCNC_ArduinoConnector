@@ -331,7 +331,7 @@ class ArduinoYamlParser:
         if os.path.exists(path) == False:
             raise FileNotFoundError(f'Error. {path} not found.')
         with open(path, 'r') as file:
-            logging.debug(f'Loading config, path = {path}')
+            logging.debug(f'PYDEBUG: Loading config, path = {path}')
             docs = yaml.safe_load_all(file)
             mcu_list = []
             for doc in docs:
@@ -390,7 +390,7 @@ class ArduinoYamlParser:
                             for v1 in v:   
                                 new_arduino.io_map[a].append(c(v1, d)) # Here we just call the lamda function, which magically returns a correct object with all the settings
                 mcu_list.append(new_arduino)
-                logging.debug(f'Loaded Arduino from config:\n{new_arduino}')
+                logging.debug(f'PYDEBUG: Loaded Arduino from config:\n{new_arduino}')
         return mcu_list      
 
 
@@ -510,17 +510,17 @@ class MessageDecoder:
             return False
         
     def parseBytes(self, b:bytearray):
-        logging.debug(f"cobs encoded: {b}")
+        logging.debug(f"PYDEBUG: cobs encoded: {b}")
         decoded = cobs.decode(b)
         
         # divide into index, data, crc
         self.messageType = decoded[0]
         data = decoded[1:-1]
         self.crc = decoded[-1].to_bytes(1, byteorder="big")
-        logging.debug(f"message type: {self.messageType}, data: {data}, crc: {self.crc}")
+        logging.debug(f"PYDEBUG: message type: {self.messageType}, data: {data}, crc: {self.crc}")
         # check crc8
         if self.validateCRC( data=data, crc=self.crc) == False:
-            raise Exception(f"Error. CRC validation failed for received message. Bytes = {b}")
+            raise Exception(f"PYDEBUG: Error. CRC validation failed for received message. Bytes = {b}")
         self.payload = msgpack.unpackb(data, use_list=True, raw=False)
 
 class MessageEncoder:
@@ -613,7 +613,7 @@ class Connection:
 
     def onMessageRecv(self, m:MessageDecoder):
         if m.messageType == MessageType.MT_HANDSHAKE:
-            if debug_comm:print(f'PYDEBUG onMessageRecv() - Received MT_HANDSHAKE, Values = {m.payload}')
+            if debug_comm:print(f'PYDEBUG: onMessageRecv() - Received MT_HANDSHAKE, Values = {m.payload}')
             try:
                 hsm = HandshakeMessage(m)
                 self.timeout = hsm.timeout / 1000
@@ -630,7 +630,7 @@ class Connection:
             except Exception as ex:
                 just_the_string = traceback.format_exc()
                 print(just_the_string)
-                logging.debug(f'error: {str(ex)}')
+                logging.debug(f'PYDEBUG: error: {str(ex)}')
                 
             #pass
             '''
@@ -802,7 +802,7 @@ class RXThread(threading.Thread):
 class SerialConnection(Connection):
     def __init__(self, dev:str, myType = ConnectionType.SERIAL, baudRate:int = 115200, timeout:int=1):
         super().__init__(myType)
-        logging.debug(f'SerialConnection __init__: dev={dev}, baudRate={baudRate}, timeout={timeout}')
+        logging.debug(f'PYDEBUG: SerialConnection __init__: dev={dev}, baudRate={baudRate}, timeout={timeout}')
         self.rxBuffer = bytearray()
         self.shutdown = False
         self.dev = dev
@@ -816,27 +816,27 @@ class SerialConnection(Connection):
         #self.arduino.timeout = 1
         
     def startRxTask(self):
-        logging.debug(f'SerialConnection::startRxTask: dev={self.dev}')
+        logging.debug(f'PYDEBUG: SerialConnection::startRxTask: dev={self.dev}')
         if self.daemon != None:
-            raise Exception(f'SerialConnection::startRxTask: dev={self.dev}, error: RX thread already started!')
+            raise Exception(f'PYDEBUG: SerialConnection::startRxTask: dev={self.dev}, error: RX thread already started!')
         
         self.daemon = Thread(target=self.rxTask, daemon=False, name='Arduino RX')
         self.daemon.start()
         
     def stopRxTask(self):
-        logging.debug(f'SerialConnection::stopRxTask dev={self.dev}')
+        logging.debug(f'PYDEBUG: SerialConnection::stopRxTask dev={self.dev}')
         self.shutdown = True
         self.daemon.join()
         self.daemon = None
         
     def sendMessage(self, b: bytes):
-        logging.debug(f'SerialConnection::sendMessage, dev={self.dev}, Message={b}')
+        logging.debug(f'PYDEBUG: SerialConnection::sendMessage, dev={self.dev}, Message={b}')
         self.arduino.write(b)
         self.arduino.flush()
     
     def sendCommand(self, m:str):
         cm = MessageEncoder().encodeBytes(mt=MessageType.MT_COMMAND, payload=[m, 1])
-        logging.debug(f'SerialConnection::sendCommand, dev={self.dev}, Command={bytes(cm)}')
+        logging.debug(f'PYDEBUG: SerialConnection::sendCommand, dev={self.dev}, Command={bytes(cm)}')
         self.sendMessage(bytes(cm))
         
     def rxTask(self):
@@ -874,18 +874,18 @@ class SerialConnection(Connection):
                             print( f'{bytes(chunk).decode("utf8", errors="ignore")}')
                         elif readMessage:
                             [chunk, self.rxBuffer] = self.rxBuffer.split(b'\x00', maxsplit=1)
-                            logging.debug(f'SerialConnection::rxTask, dev={self.dev}, chunk bytes: {chunk}')
+                            logging.debug(f'PYDEBUG: SerialConnection::rxTask, dev={self.dev}, chunk bytes: {chunk}')
                             try:
                                 md = MessageDecoder(chunk)
                                 self.onMessageRecv(m=md)
                             except Exception as ex:
                                 just_the_string = traceback.format_exc()
-                                logging.debug(f'SerialConnection::rxTask, dev={self.dev}, Exception: {str(just_the_string)}')
+                                logging.debug(f'PYDEBUG: SerialConnection::rxTask, dev={self.dev}, Exception: {str(just_the_string)}')
 
             except OSError as oserror:
                 print( f'OS Error = : {str(oserror)}')
                 just_the_string = traceback.format_exc()
-                logging.debug(f'SerialConnection::rxTask, dev={self.dev}, Exception: {str(just_the_string)}, OS Error: {str(oserror)}')
+                logging.debug(f'PYDEBUG: SerialConnection::rxTask, dev={self.dev}, Exception: {str(just_the_string)}, OS Error: {str(oserror)}')
                 
                 self.daemon = None
                 self.arduino = None
@@ -895,7 +895,7 @@ class SerialConnection(Connection):
                 break #break out of while
             except Exception as error:
                 just_the_string = traceback.format_exc()
-                logging.debug(f'SerialConnection::rxTask, dev={self.dev}, Exception: {str(just_the_string)}')
+                logging.debug(f'PYDEBUG: SerialConnection::rxTask, dev={self.dev}, Exception: {str(just_the_string)}')
                 
                 self.daemon = None
                 self.arduino = None
@@ -919,7 +919,7 @@ class ArduinoConnection:
             self.serialConn.startRxTask()
 
         if self.serialConn.status == ThreadStatus.CRASHED:
-            logging.debug(f'ArduinoConnection::doWork, dev={self.settings.dev}, alias={self.settings.alias}, ThreadStatus == CRASHED')
+            logging.debug(f'PYDEBUG: ArduinoConnection::doWork, dev={self.settings.dev}, alias={self.settings.alias}, ThreadStatus == CRASHED')
             # perhaps device was unplugged..
             found = False
             for port in serial.tools.list_ports.comports():
@@ -927,11 +927,11 @@ class ArduinoConnection:
                     found = True
             if found == False:
                 retry = 5
-                logging.debug(f'ArduinoConnection::doWork, dev={self.settings.dev}, alias={self.settings.alias}. Error: Serial device not found! Retrying in {retry} seconds..')
+                logging.debug(f'PYDEBUG: ArduinoConnection::doWork, dev={self.settings.dev}, alias={self.settings.alias}. Error: Serial device not found! Retrying in {retry} seconds..')
                 time.sleep(retry) # TODO: Make retry settable via the yaml config?
 
             else:
-                logging.debug(f'ArduinoConnection::doWork, dev={self.settings.dev}, alias={self.settings.alias}, Serial deice found, restarting RX thread..')
+                logging.debug(f'PYDEBUG: ArduinoConnection::doWork, dev={self.settings.dev}, alias={self.settings.alias}, Serial deice found, restarting RX thread..')
                 time.sleep(1) # TODO: Consider making this delay settable? Trying to avoid hammering the serial port when its in a strange state
                 self.serialConn.startRxTask()
             
@@ -951,7 +951,7 @@ class ArduinoConnection:
                         self.serialConn.sendMessage(cf.packetize())
                     except Exception as error:
                         just_the_string = traceback.format_exc()
-                        logging.debug(f'ArduinoConnection::doWork, dev={self.settings.dev}, alias={self.settings.alias}, Exception: {str(error)}, Traceback = {just_the_string}')
+                        logging.debug(f'PYDEBUG: ArduinoConnection::doWork, dev={self.settings.dev}, alias={self.settings.alias}, Exception: {str(error)}, Traceback = {just_the_string}')
                         # Future TODO: Consider doing something intelligent and not just reporting an error. Maybe increment a hal pin that reflects error counts?
                         return
                     time.sleep(.2)
@@ -969,17 +969,17 @@ def locateProfile() -> list[ArduinoConnection]:
     home_profile_loc = Path.home() / ".arduino" / DEFAULT_PROFILE #"profile.yaml"
     arduino_profiles = []
     if os.path.exists(home_profile_loc):
-        logging.debug(f'Found config: {str(home_profile_loc)}')
+        logging.debug(f'PYDEBUG: Found config: {str(home_profile_loc)}')
         arduino_profiles = ArduinoYamlParser.parseYaml(path=home_profile_loc)
     elif os.path.exists(DEFAULT_PROFILE):
-        logging.debug(f'Found config: {DEFAULT_PROFILE} in local directory')
+        logging.debug(f'PYDEBUG: Found config: {DEFAULT_PROFILE} in local directory')
         arduino_profiles = ArduinoYamlParser.parseYaml(path=DEFAULT_PROFILE)
     else:
-        err = f'No porfile yaml found!'
+        err = f'PYDEBUG: No porfile yaml found!'
         logging.error(err)
         raise Exception(err)
     if len(arduino_profiles) == 0:
-        err = f'No arduino properties found in porfile yaml!'
+        err = f'PYDEBUG: No arduino properties found in porfile yaml!'
         logging.error(err)
         raise Exception(err)
     for a in arduino_profiles:
@@ -1015,14 +1015,14 @@ def main():
                 ##print ("Displaying file_name:", sys.argv[0])
                 
             elif currentArgument in ("-p", "--profile"):
-                logging.debug(f'Profile: {currentValue}')
+                logging.debug(f'PYDEBUG: Profile: {currentValue}')
                 target_profile = currentValue
              
     except getopt.error as err:
         # output error, and return with an error code
         just_the_string = traceback.format_exc()
         #print(just_the_string)
-        logging.debug(f'error: {str(just_the_string)}')
+        logging.debug(f'PYDEBUG: error: {str(just_the_string)}')
         #print (str(err))
         sys.exit()
 
@@ -1034,7 +1034,7 @@ def main():
         except Exception as err:
             just_the_string = traceback.format_exc()
             print(just_the_string)
-            logging.debug(f'error: {str(just_the_string)}')
+            logging.debug(f'PYDEBUG: error: {str(just_the_string)}')
             sys.exit()
     else:
         devs = locateProfile()
@@ -1050,11 +1050,11 @@ def main():
         for a in devs:
             c = ArduinoConnection(a)
             arduino_connections.append(c)
-            logging.info(f'Loaded Arduino profile: {str(c)}')
+            logging.info(f'PYDEBUG: Loaded Arduino profile: {str(c)}')
     except Exception as err:
         just_the_string = traceback.format_exc()
         #print(just_the_string)
-        logging.debug(f'error: {str(just_the_string)}')
+        logging.debug(f'PYDEBUG: error: {str(just_the_string)}')
         #print(str(err))
         sys.exit()
 
