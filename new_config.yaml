@@ -1,6 +1,6 @@
 mcu: #micro controller unit
   alias: Arduino 2560 Mega
-  component_name: arduino # Name of component to use in HAL
+  component_name: arduino.0 # Name of component to use in HAL
   dev: /dev/cu.usbserial-0002 # Used for initial programming
   debug: #optional
     debug_level: Warning #optional

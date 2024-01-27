@@ -91,7 +91,7 @@ mcu:
         input_pullup: true
         pin_debounce: 50
         
-  digitalOutputs:
+
 ---
 mcu: 
   alias: Arduino ESP8266
