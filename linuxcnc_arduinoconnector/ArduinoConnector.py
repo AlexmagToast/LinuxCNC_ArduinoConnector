@@ -63,6 +63,7 @@ class ConfigElement(StrEnum):
     COMPONENT_NAME = 'component_name'
     DEV = 'dev'
     CONNECTION = 'connection'
+    ENABLED = 'enabled'
     IO_MAP = 'io_map'
     def __str__(self) -> str:
         return self.value
@@ -289,6 +290,7 @@ class ArduinoSettings:
         self.baud_rate = 19200
         self.connection_timeout = 10
         self.io_map = {}
+        self.enabled = True
 
 
     def printIOMap(self) -> str:
@@ -348,7 +350,8 @@ class ArduinoYamlParser:
                     raise Exception(f'Error. {ConfigElement.COMPONENT_NAME} undefined in config file ({str})')
                 else:
                     new_arduino.component_name = doc[ConfigElement.ARDUINO_KEY][ConfigElement.COMPONENT_NAME]
-                
+                if ConfigElement.ENABLED in doc[ConfigElement.ARDUINO_KEY].keys(): 
+                    new_arduino.enabled = doc[ConfigElement.ARDUINO_KEY][ConfigElement.ENABLED]
                 new_arduino.baud_rate = SerialConfigElement.BAUDRATE.value[DEFAULT_VALUE_KEY]
                 new_arduino.connection_timeout = ConnectionConfigElement.TIMEOUT.value[DEFAULT_VALUE_KEY]
 
@@ -889,9 +892,11 @@ class ArduinoConnection:
         self.serialConn = SerialConnection(dev=settings.dev, baudRate=settings.baud_rate, timeout=settings.connection_timeout)
             
     def __str__(self) -> str:
-        return f'Arduino Alias = {self.settings.alias}, Component Name = {self.settings.component_name}'
+        return f'Arduino Alias = {self.settings.alias}, Component Name = {self.settings.component_name}, Enabled = {self.settings.enabled}'
     
     def doWork(self):
+        if self.settings.enabled == False:
+            return # do nothing. TODO: Still indicate the arduino is disabled via the HAL
         if self.serialConn.status == ThreadStatus.STOPPED:
             self.serialConn.startRxTask()
             
@@ -1003,8 +1008,8 @@ def main():
     try:
         for a in devs:
             c = ArduinoConnection(a)
-            #c.serialConn.startRxTask()
             arduino_connections.append(c)
+            logging.info(f'Loaded Arduino: {str(c)}')
     except Exception as err:
         just_the_string = traceback.format_exc()
         #print(just_the_string)
