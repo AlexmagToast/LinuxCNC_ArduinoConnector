@@ -812,13 +812,14 @@ class SerialConnection(Connection):
 
         self.status = ThreadStatus.STOPPED
   
-        self.arduino = serial.Serial(dev, baudrate=baudRate, timeout=timeout, xonxoff=False, rtscts=False, dsrdtr=True)
+        self.arduino = None #serial.Serial(dev, baudrate=baudRate, timeout=timeout, xonxoff=False, rtscts=False, dsrdtr=True)
         #self.arduino.timeout = 1
         
     def startRxTask(self):
         logging.debug(f'SerialConnection::startRxTask: dev={self.dev}')
         if self.daemon != None:
             raise Exception(f'SerialConnection::startRxTask: dev={self.dev}, error: RX thread already started!')
+        
         self.daemon = Thread(target=self.rxTask, daemon=False, name='Arduino RX')
         self.daemon.start()
         
@@ -826,6 +827,7 @@ class SerialConnection(Connection):
         logging.debug(f'SerialConnection::stopRxTask dev={self.dev}')
         self.shutdown = True
         self.daemon.join()
+        self.daemon = None
         
     def sendMessage(self, b: bytes):
         logging.debug(f'SerialConnection::sendMessage, dev={self.dev}, Message={b}')
@@ -841,6 +843,8 @@ class SerialConnection(Connection):
         self.status = ThreadStatus.RUNNING
         while(self.shutdown == False):
             try:
+                if self.arduino == None:
+                    self.arduino = serial.Serial(self.dev, baudrate=self.baudRate, timeout=self.timeout, xonxoff=False, rtscts=False, dsrdtr=True)
                 num_bytes = self.arduino.in_waiting
                 #logging.debug(f'SerialConnection::rxTask, dev={self.dev}, in_waiting={num_bytes}')
                 if num_bytes > 0:
@@ -882,9 +886,23 @@ class SerialConnection(Connection):
                 print( f'OS Error = : {str(oserror)}')
                 just_the_string = traceback.format_exc()
                 logging.debug(f'SerialConnection::rxTask, dev={self.dev}, Exception: {str(just_the_string)}, OS Error: {str(oserror)}')
+                
+                self.daemon = None
+                self.arduino = None
+                self.configVersion = 0 # Force config send on reconnect; TODO: Consider making this less janky
+                self.setState(newState=ConnectionState.DISCONNECTED)
+                self.status = ThreadStatus.CRASHED
+                break #break out of while
             except Exception as error:
                 just_the_string = traceback.format_exc()
                 logging.debug(f'SerialConnection::rxTask, dev={self.dev}, Exception: {str(just_the_string)}')
+                
+                self.daemon = None
+                self.arduino = None
+                self.configVersion = 0 # Force config send on reconnect; TODO: Consider making this less janky
+                self.setState(newState=ConnectionState.DISCONNECTED)
+                self.status = ThreadStatus.CRASHED
+                break #break out of while
 
 class ArduinoConnection:
     def __init__(self, settings:ArduinoSettings):
@@ -899,6 +917,23 @@ class ArduinoConnection:
             return # do nothing. TODO: Still indicate the arduino is disabled via the HAL
         if self.serialConn.status == ThreadStatus.STOPPED:
             self.serialConn.startRxTask()
+
+        if self.serialConn.status == ThreadStatus.CRASHED:
+            logging.debug(f'ArduinoConnection::doWork, dev={self.settings.dev}, alias={self.settings.alias}, ThreadStatus == CRASHED')
+            # perhaps device was unplugged..
+            found = False
+            for port in serial.tools.list_ports.comports():
+                if self.settings.dev in port:
+                    found = True
+            if found == False:
+                retry = 5
+                logging.debug(f'ArduinoConnection::doWork, dev={self.settings.dev}, alias={self.settings.alias}. Error: Serial device not found! Retrying in {retry} seconds..')
+                time.sleep(retry) # TODO: Make retry settable via the yaml config?
+
+            else:
+                logging.debug(f'ArduinoConnection::doWork, dev={self.settings.dev}, alias={self.settings.alias}, Serial deice found, restarting RX thread..')
+                time.sleep(1) # TODO: Consider making this delay settable? Trying to avoid hammering the serial port when its in a strange state
+                self.serialConn.startRxTask()
             
         if self.serialConn.getConnectionState() == ConnectionState.CONNECTED and self.serialConn.configVersion == 0:
             j = self.settings.configJSON()
@@ -912,7 +947,13 @@ class ArduinoConnection:
                     #print(v1)
                     cf = ConfigMessage(configJSON=json.dumps(v1), seq=seq, total=total, featureID=v1['featureID'])
                     seq += 1
-                    self.serialConn.sendMessage(cf.packetize())
+                    try:
+                        self.serialConn.sendMessage(cf.packetize())
+                    except Exception as error:
+                        just_the_string = traceback.format_exc()
+                        logging.debug(f'ArduinoConnection::doWork, dev={self.settings.dev}, alias={self.settings.alias}, Exception: {str(error)}, Traceback = {just_the_string}')
+                        # Future TODO: Consider doing something intelligent and not just reporting an error. Maybe increment a hal pin that reflects error counts?
+                        return
                     time.sleep(.2)
 
             self.serialConn.configVersion = 1
@@ -1009,7 +1050,7 @@ def main():
         for a in devs:
             c = ArduinoConnection(a)
             arduino_connections.append(c)
-            logging.info(f'Loaded Arduino: {str(c)}')
+            logging.info(f'Loaded Arduino profile: {str(c)}')
     except Exception as err:
         just_the_string = traceback.format_exc()
         #print(just_the_string)
