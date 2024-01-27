@@ -1,6 +1,6 @@
 mcu: 
   alias: Arduino Nano ESP32
-  component_name: arduino # Name of component to use in HAL
+  component_name: arduinoesp32 # Name of component to use in HAL
   #dev: /dev/cu.usbmodem14201  # Used for initial programming
   #dev: /dev/cu.usbmodemF412FA68D6802 
   dev: /dev/cu.usbmodem3485187ABE842
@@ -90,3 +90,27 @@ mcu:
         pin_debounce: 50
         
   digitalOutputs:
+---
+mcu: 
+  alias: Arduino ESP8266
+  component_name: arduino8266 # Name of component to use in HAL
+  #dev: /dev/cu.usbmodem14201  # Used for initial programming
+  #dev: /dev/cu.usbmodemF412FA68D6802 
+  dev: /dev/cu.usbserial-0001
+  io_map:
+        
+    digitalInputs:
+      - pin_id: 14
+        pin_name: din.5 #hal pin name
+        input_pullup: true
+        pin_debounce: 50
+      - pin_id: 12
+        pin_name: din.6 #hal pin name
+        input_pullup: true
+        pin_debounce: 50
+
+    digitalOutputs:
+      - pin_id: 51
+        pin_name: dout.51
+      - pin_id: 13
+        pin_name: dout.13 #hal pin name

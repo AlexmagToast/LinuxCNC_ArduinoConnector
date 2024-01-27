@@ -82,6 +82,7 @@ class PinConfigElement(Enum):
     PIN_INITIAL_STATE = ['pin_initial_state', -1]
     PIN_CONNECT_STATE = ['pin_connect_state', -1]
     PIN_DISCONNECT_STATE = ['pin_disconnect_state', -1]
+    PIN_ENABLED = ['pin_enabled', True]
     def __str__(self) -> str:
         return self.value[0]
     
@@ -177,12 +178,15 @@ class ArduinoPin:
         self.pinInitialState = PinConfigElement.PIN_INITIAL_STATE.value[DEFAULT_VALUE_KEY]
         self.pinConnectState = PinConfigElement.PIN_CONNECT_STATE.value[DEFAULT_VALUE_KEY]
         self.pinDisconnectState = PinConfigElement.PIN_DISCONNECT_STATE.value[DEFAULT_VALUE_KEY]
+        self.pinEnabled = PinConfigElement.PIN_ENABLED.value[DEFAULT_VALUE_KEY]
         #if yaml != None: self.parseYAML(doc=yaml)
 
     def parseYAML(self, doc):
         if PinConfigElement.PIN_ID.value[0] not in doc.keys():
             raise Exception(f'Error. {PinConfigElement.PIN_ID.value[0]} undefined in config yaml')
         self.pinID = doc[PinConfigElement.PIN_ID.value[0]]
+        if PinConfigElement.PIN_ENABLED.value[0] in doc.keys():
+            self.pinEnabled = doc[PinConfigElement.PIN_ENABLED.value[0]]
         if PinConfigElement.PIN_TYPE.value[0] in doc.keys():
             self.halPinType = HalPinTypes(str(doc[PinConfigElement.PIN_TYPE.value[0]]).upper())
         if PinConfigElement.PIN_NAME.value[0] in doc.keys():    
@@ -197,12 +201,10 @@ class ArduinoPin:
             self.pinConnectState = doc[PinConfigElement.PIN_CONNECT_STATE.value[0]]
 
     def __str__(self) -> str:
-        return f'pinName = {self.pinName}, pinType={self.pinType.name}, halPinType={self.halPinType}'
+        return f'pinName = {self.pinName}, pinType={self.pinType.name}, halPinType={self.halPinType}, pinEnabled={self.pinEnabled}, pinIniitalState={self.pinInitialState}, pinConnectState={self.pinConnectState}, pinDisconnectState={self.pinDisconnectState}'
     
-    def toJson(self):
-        return {#'pinName': self.pinName,
-                #'pinType': self.pinType.name,
-                'featureID' : self.featureID,
+    def toJson(self): # This is the JSON sent to the Arduino during configuration.  Should only include the values needed by the Arduino to limit memory footprint/processing within the Arduino.
+        return {'featureID' : self.featureID,
                 'pinID': self.pinID,
                 'pinInitialState': self.pinInitialState,
                 'pinConnectState': self.pinConnectState,
@@ -254,15 +256,12 @@ class DigitalPin(ArduinoPin):
                         yaml=yaml)
         
         # set the defaults, which can be overriden through the yaml profile
-        self.pinDebounce = DigitalConfigElement.PIN_DEBOUNCE.value[DEFAULT_VALUE_KEY] #smoothing const   #optional
+        self.pinDebounce = DigitalConfigElement.PIN_DEBOUNCE.value[DEFAULT_VALUE_KEY]
         self.inputPullup = DigitalConfigElement.INPUT_PULLUP.value[DEFAULT_VALUE_KEY] 
         if yaml != None: 
             self.parseYAML(doc=yaml)
             ArduinoPin.parseYAML(self, doc=yaml)
-            #j = self.toJson()
-        
-        #m = self.toJson()
-        #pass
+
     def __str__(self) -> str:
 
         return f'\npinID={self.pinID}, pinName = {self.pinName}, pinType={self.pinType.name}, '\
@@ -274,11 +273,8 @@ class DigitalPin(ArduinoPin):
         if DigitalConfigElement.INPUT_PULLUP.value[0] in doc.keys():
             self.inputPullup = bool(doc[DigitalConfigElement.INPUT_PULLUP.value[0]])
         
-
-
     def toJson(self):
         s = ArduinoPin.toJson(self)
-        #s['halPinDirection'] = self.halPinDirection.name
         s['pinDebounce'] = self.pinDebounce
         s['inputPullup'] = self.inputPullup 
         return s
@@ -314,9 +310,10 @@ class ArduinoSettings:
             #pc[k.name + '_COUNT'] = len(v)
             i = 0
             for pin in v:
-                p = pin.toJson()
-                pc[k.value[FEATURE_INDEX_KEY]][i] = pin.toJson()
-                i += 1
+                if pin.pinEnabled == True:
+                    p = pin.toJson()
+                    pc[k.value[FEATURE_INDEX_KEY]][i] = pin.toJson()
+                    i += 1
         return pc
 
             
@@ -370,16 +367,6 @@ class ArduinoYamlParser:
                     else:
                         raise Exception(f'Error. Connection type undefined in config file')
 
-                    
-
-                    #if ConfigConnectionTypes.SERIAL.value[0] in doc[ConfigElement.ARDUINO_KEY][ConfigElement.CONNECTION].values():
-                    #    pass
-                    #for k, v in doc[ConfigElement.ARDUINO_KEY][ConfigElement.CONNECTION].items():
-                    #    if k.lower() == 'type' and v == ConfigConnectionTypes.SERIAL.value[0]:
-                    #        pass
-                    #    if k.lower() == 'type' and v == ConfigConnectionTypes.UDP.value[0]:
-                    #        pass
-                    
                         
                 if ConfigElement.IO_MAP in doc[ConfigElement.ARDUINO_KEY].keys():
                     for k, v in doc[ConfigElement.ARDUINO_KEY][ConfigElement.IO_MAP].items():
@@ -396,9 +383,9 @@ class ArduinoYamlParser:
                         c = [e.value[YAML_PARSER_KEY] for e in ConfigPinTypes if e.value[0] == k][0] # Parser lamda from enum
                         d = [e.value[FEATURE_INDEX_KEY] for e in ConfigPinTypes if e.value[0] == k][0] # Feature ID
                         new_arduino.io_map[a] = []
-                        
-                        for v1 in v:   
-                            new_arduino.io_map[a].append(c(v1, d)) # Here we just call the lamda function, which magically returns a correct object with all the settings
+                        if v != None:
+                            for v1 in v:   
+                                new_arduino.io_map[a].append(c(v1, d)) # Here we just call the lamda function, which magically returns a correct object with all the settings
                 mcu_list.append(new_arduino)
                 logging.debug(f'Loaded Arduino from config:\n{new_arduino}')
         return mcu_list      
@@ -812,9 +799,10 @@ class RXThread(threading.Thread):
 class SerialConnection(Connection):
     def __init__(self, dev:str, myType = ConnectionType.SERIAL, baudRate:int = 115200, timeout:int=1):
         super().__init__(myType)
+        logging.debug(f'SerialConnection __init__: dev={dev}, baudRate={baudRate}, timeout={timeout}')
         self.rxBuffer = bytearray()
         self.shutdown = False
-        
+        self.dev = dev
         self.daemon = None    
         self.baudRate = baudRate
         self.timeout = timeout  
@@ -825,25 +813,25 @@ class SerialConnection(Connection):
         #self.arduino.timeout = 1
         
     def startRxTask(self):
-        #rx = RXThread(1)
-        #rx.start()
-        #pass
-        # create and start the daemon thread
-        #print('Starting background proceed watch task...')
+        logging.debug(f'SerialConnection::startRxTask: dev={self.dev}')
+        if self.daemon != None:
+            raise Exception(f'SerialConnection::startRxTask: dev={self.dev}, error: RX thread already started!')
         self.daemon = Thread(target=self.rxTask, daemon=False, name='Arduino RX')
         self.daemon.start()
         
-    #def stopRxTask(self):
-    #    self.shutdown = True
-    #    self.daemon.join()
+    def stopRxTask(self):
+        logging.debug(f'SerialConnection::stopRxTask dev={self.dev}')
+        self.shutdown = True
+        self.daemon.join()
         
     def sendMessage(self, b: bytes):
-        #return super().sendMessage()
+        logging.debug(f'SerialConnection::sendMessage, dev={self.dev}, Message={b}')
         self.arduino.write(b)
         self.arduino.flush()
     
     def sendCommand(self, m:str):
         cm = MessageEncoder().encodeBytes(mt=MessageType.MT_COMMAND, payload=[m, 1])
+        logging.debug(f'SerialConnection::sendCommand, dev={self.dev}, Command={bytes(cm)}')
         self.sendMessage(bytes(cm))
         
     def rxTask(self):
@@ -851,6 +839,7 @@ class SerialConnection(Connection):
         while(self.shutdown == False):
             try:
                 num_bytes = self.arduino.in_waiting
+                #logging.debug(f'SerialConnection::rxTask, dev={self.dev}, in_waiting={num_bytes}')
                 if num_bytes > 0:
                     self.rxBuffer += self.arduino.read(num_bytes)
                     while(True):  
@@ -875,25 +864,24 @@ class SerialConnection(Connection):
 
                         if readDebug:
                             [chunk, self.rxBuffer] = self.rxBuffer.split(b'\r\n', maxsplit=1)
-                            print( f'ARDUINO DEBUG: {bytes(chunk).decode("utf8", errors="ignore")}')
+                            print( f'{bytes(chunk).decode("utf8", errors="ignore")}')
                         elif readMessage:
                             [chunk, self.rxBuffer] = self.rxBuffer.split(b'\x00', maxsplit=1)
-                            logging.debug(f"chunk bytes: {chunk}")
+                            logging.debug(f'SerialConnection::rxTask, dev={self.dev}, chunk bytes: {chunk}')
                             try:
                                 md = MessageDecoder(chunk)
                                 self.onMessageRecv(m=md)
                             except Exception as ex:
                                 just_the_string = traceback.format_exc()
-                                print(f'PYDEBUG: {str(just_the_string)}')
-                            
+                                logging.debug(f'SerialConnection::rxTask, dev={self.dev}, Exception: {str(just_the_string)}')
+
             except OSError as oserror:
-                print(str(oserror))
+                print( f'OS Error = : {str(oserror)}')
+                just_the_string = traceback.format_exc()
+                logging.debug(f'SerialConnection::rxTask, dev={self.dev}, Exception: {str(just_the_string)}, OS Error: {str(oserror)}')
             except Exception as error:
                 just_the_string = traceback.format_exc()
-                print(just_the_string)
-        
-
-
+                logging.debug(f'SerialConnection::rxTask, dev={self.dev}, Exception: {str(just_the_string)}')
 
 class ArduinoConnection:
     def __init__(self, settings:ArduinoSettings):
@@ -909,31 +897,20 @@ class ArduinoConnection:
             
         if self.serialConn.getConnectionState() == ConnectionState.CONNECTED and self.serialConn.configVersion == 0:
             j = self.settings.configJSON()
-            config_json = json.dumps(j)
+            #config_json = json.dumps(j)
             #h = int(hashlib.sha256(config_json.encode('utf-8')).hexdigest(), 16) % 10**8
             for k, v in j.items():
                 total = len(v)
                 seq = 0
                 for k1, v1 in v.items():
                     v1['logicalID'] = k1
-                    print(v1)
+                    #print(v1)
                     cf = ConfigMessage(configJSON=json.dumps(v1), seq=seq, total=total, featureID=v1['featureID'])
                     seq += 1
-                    #print(cf.packetize())
                     self.serialConn.sendMessage(cf.packetize())
                     time.sleep(.2)
-                #cf = ConfigMessage(configJSON=config_json)
-                #out = cf.packetize()
-                
-            #config_json = json.dumps(j)
-            #print(config_json)
-            #cf = ConfigMessage(configJSON=config_json)
-            #out = cf.packetize()
-            #print(out)
-            self.serialConn.configVersion = 1
-            #self.serialConn.sendMessage(out)
-            #pass
 
+            self.serialConn.configVersion = 1
 arduino_map = []
 
 def listDevices():
@@ -992,12 +969,15 @@ def main():
                 ##print ("Displaying file_name:", sys.argv[0])
                 
             elif currentArgument in ("-p", "--profile"):
-                print (f'Profile: {currentValue}')
+                logging.debug(f'Profile: {currentValue}')
                 target_profile = currentValue
              
     except getopt.error as err:
         # output error, and return with an error code
-        print (str(err))
+        just_the_string = traceback.format_exc()
+        #print(just_the_string)
+        logging.debug(f'error: {str(just_the_string)}')
+        #print (str(err))
         sys.exit()
 
     if target_profile is not None:
@@ -1006,7 +986,9 @@ def main():
             devs = ArduinoYamlParser.parseYaml(path=target_profile)
 
         except Exception as err:
-            print (str(err))
+            just_the_string = traceback.format_exc()
+            print(just_the_string)
+            logging.debug(f'error: {str(just_the_string)}')
             sys.exit()
     else:
         devs = locateProfile()
@@ -1021,10 +1003,13 @@ def main():
     try:
         for a in devs:
             c = ArduinoConnection(a)
-            c.serialConn.startRxTask()
+            #c.serialConn.startRxTask()
             arduino_connections.append(c)
     except Exception as err:
-        print(str(err))
+        just_the_string = traceback.format_exc()
+        #print(just_the_string)
+        logging.debug(f'error: {str(just_the_string)}')
+        #print(str(err))
         sys.exit()
 
     while(True):
