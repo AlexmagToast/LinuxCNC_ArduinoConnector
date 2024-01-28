@@ -170,7 +170,7 @@ class yamlData():
                 
         return new_DIn_configuration
     
-    def reportPins(file,MCU_no, pin_map):
+    def readPins(file,MCU_no, pin_map):
         yaml_data = read_yaml(file)
         Feature = yaml_data[MCU_no]['mcu']['io_map']
 
@@ -198,6 +198,51 @@ class yamlData():
                 
         return new_pin_map
     
+    def update_slave_yaml(yamlFile, newYaml):
+        
+        master_data = read_yaml(yamlFile)
+        slave_data = read_yaml(newYaml)
+
+        # Update slave_data based on master_data
+        updated_slave_data = yamlData.update_yaml_recursive(master_data, slave_data)
+        #print(updated_slave_data)
+        # Write the updated slave_data back to slave.yaml
+        with open(newYaml, 'w') as slave_file:
+            yaml.dump(updated_slave_data, slave_file, default_flow_style=None, sort_keys=False)
+            
+    def update_yaml_recursive(master_data, slave_data):
+        #print(master_data, slave_data)
+        if isinstance(master_data, dict) and isinstance(slave_data, dict):
+            updated_dict = {}
+            for key, master_value in master_data.items():
+                print(key)
+                if key in slave_data:
+                    # Recursively update nested dictionaries
+                    updated_dict[key] = yamlData.update_yaml_recursive(master_value, slave_data[key])
+                else:
+                    # Key doesn't exist in slave_data, skip it
+                    updated_dict[key] = master_value
+
+            # Remove extra keys from slave_data
+            for key in list(slave_data.keys()):
+                if key not in master_data:
+                    del slave_data[key]
+
+            return updated_dict
+
+        elif isinstance(master_data, list) and isinstance(slave_data, list):
+            # Update each element in the list recursively
+            return [yamlData.update_yaml_recursive(master_item, slave_item) for master_item, slave_item in zip(master_data, slave_data)]
+
+        else:
+            # Use the value from master_data
+            return master_data
+        
+
+slave_yaml_path = '/home/alex/Documents/GitHub/LinuxCNC_ArduinoConnector/new_config copy.yaml'
+master_yaml_path = file_path2
+yamlData.update_slave_yaml(master_yaml_path, slave_yaml_path)
+
 
 
 analogPins = {
@@ -293,15 +338,16 @@ binarySelectorSwitch = {
 #print(yamlData.readAnalogInputs(file_path,1))
 
 #print(yamlData.readDigitalInputs(file_path2,0))
-print(yamlData.reportPins(file_path2,0,analogPins))
+"""print(yamlData.readPins(file_path2,0,analogPins))
 print()
-print(yamlData.reportPins(file_path2,0,DIn_configuration))  
+print(yamlData.readPins(file_path2,0,DIn_configuration))  
 print()
-print(yamlData.reportPins(file_path2,0,pwmOutputs))
+print(yamlData.readPins(file_path2,0,pwmOutputs))
 print()
-print(yamlData.reportPins(file_path2,0,digitalOutput))
+print(yamlData.readPins(file_path2,0,digitalOutput))
 print()
-print(yamlData.reportPins(file_path2,0,lPoti))
+print(yamlData.readPins(file_path2,0,lPoti))
 print()
-print(yamlData.reportPins(file_path2,0,binarySelectorSwitch))
+print(yamlData.readPins(file_path2,0,binarySelectorSwitch))
 print()
+"""
