@@ -134,9 +134,174 @@ class yamlData():
                             new_AIn_configuration[pin_no['pin_id']][key] = AIn_configuration[key]['value']
                 
         return new_AIn_configuration
+    
 
-print(yamlData.readMCU(file_path,0))
-print(yamlData.readMCU(file_path,1))
+    def readDigitalInputs(file,MCU_no):
+        yaml_data = read_yaml(file)
+        DIn = yaml_data[MCU_no]['mcu']['io_map']
 
-print(yamlData.readAnalogInputs(file_path2,0))
+        DIn_configuration = {
+            'pin_id': {'value': '', 'ignore': 1, 'optional':0},
+            'pin_name': {'value': 'Din.', 'ignore': 0, 'optional':1},
+            'pin_mode': {'value': 'HAL_FLOAT', 'ignore': 0, 'optional':1},    
+            'pin_debounce': {'value': '200', 'ignore': 0, 'optional':1}
+        }
+
+        new_DIn_configuration ={}
+
+        if 'analogInputs' in DIn:
+            new_DIn_configuration={}
+            DIn = DIn['analogInputs']
+            
+            for pin_count, pin_no in enumerate(DIn):
+    
+                new_DIn_configuration[pin_no['pin_id']]= {}
+                
+                for key  in DIn_configuration:
+                    
+                    #print(DIn[pin_count]['pin_id'],parameter+1, key)
+                    if DIn_configuration[key]['ignore'] == 0 and key in DIn[pin_count]:
+                        #print(DIn[pin_count][key])
+                        new_DIn_configuration[pin_no['pin_id']][key] = DIn[pin_count][key]
+                    else:
+                        #print(DIn_configuration[key]['value'])
+                        if DIn_configuration[key]['ignore'] == 0:
+                            new_DIn_configuration[pin_no['pin_id']][key] = DIn_configuration[key]['value']
+                
+        return new_DIn_configuration
+    
+    def reportPins(file,MCU_no, pin_map):
+        yaml_data = read_yaml(file)
+        Feature = yaml_data[MCU_no]['mcu']['io_map']
+
+        
+        new_pin_map ={}
+        top_level_key = next(iter(pin_map))
+        if top_level_key in Feature:
+            Feature = Feature[top_level_key]
+
+            pin_map= pin_map[top_level_key]
+
+            for pin_count, pin_no in enumerate(Feature):
+
+                new_pin_map[pin_no['pin_id']]= {}
+                
+                for key  in pin_map:
+                    #print(Feature[pin_count]['pin_id'],parameter+1, key)
+                    if pin_map[key]['ignore'] == 0 and key in Feature[pin_count]:
+                        #print(Feature[pin_count][key])
+                        new_pin_map[pin_no['pin_id']][key] = Feature[pin_count][key]
+                    else:
+                        #print(pin_map[key]['value'])
+                        if pin_map[key]['ignore'] == 0:
+                            new_pin_map[pin_no['pin_id']][key] = pin_map[key]['value']
+                
+        return new_pin_map
+    
+
+
+analogPins = {
+            'analogInputs':{
+            'pin_id': {'value': '', 'ignore': 1, 'optional':0},
+            'pin_name': {'value': 'ain.', 'ignore': 0, 'optional':1},
+            'pin_type': {'value': 'HAL_FLOAT', 'ignore': 0, 'optional':1},    
+            'pin_smoothing': {'value': 200, 'ignore': 0, 'optional':1},
+            'pin_min_val': {'value': 0, 'ignore': 0, 'optional':1},
+            'pin_max_val': {'value': 1023, 'ignore': 0, 'optional':1},
+            'enabled': {'value': 'TRUE', 'ignore': 0, 'optional':1}
+             }
+}
+DIn_configuration = {
+            'digitalInputs':{
+            'pin_id': {'value': '', 'ignore': 1, 'optional':0}, 
+            'pin_name': {'value': 'Din.', 'ignore': 0, 'optional':1},
+            'pin_type': {'value': 'HAL_FLOAT', 'ignore': 0, 'optional':1},    
+            'pin_debounce': {'value': 200, 'ignore': 0, 'optional':1}
+            }
+}
+
+pwmOutputs = {
+            'pwmOutputs':{
+            'pin_id': {'value': '', 'ignore': 1, 'optional':0}, 
+            'pin_name': {'value': 'pwmout.', 'ignore': 0, 'optional':1},
+            'pin_type': {'value': 'HAL_FLOAT', 'ignore': 0, 'optional':1},   
+            'pin_init_state': {'value': 0, 'ignore': 0, 'optional':1},   
+            }
+}
+
+digitalOutput = {
+            'digitalOutput':{
+            'pin_id': {'value': '', 'ignore': 1, 'optional':0}, 
+            'pin_name': {'value': 'din.', 'ignore': 0, 'optional':1},
+            'pin_type': {'value': 'HAL_BIT', 'ignore': 0, 'optional':1},   
+            'pin_ondisconnected_state': {'value': '-1', 'ignore': 0, 'optional':1},
+            'pin_onconnected_state': {'value': '-1', 'ignore': 0, 'optional':1},
+            }
+}
+
+lPoti =     {'lPoti': {
+            'pin_id': {'value': '', 'ignore': 1, 'optional':0}, 
+            'pin_name': {'value': 'lpoti.', 'ignore': 0, 'optional':1},
+            'pin_type': {'value': 'HAL_S32', 'ignore': 0, 'optional':1},   
+            'lpoti_latches': {'value': 9, 'ignore': 0, 'optional':1},
+            'value_replace': {'value': [40,50,60,70,80,90,100,110,120], 'ignore': 0, 'optional':1},
+            }
+}
+
+        
+binarySelectorSwitch = {
+        'binarySelectorSwitch':{
+        'pin_id': {'value': '', 'ignore': 1, 'optional':0}, 
+        'pin_name': {'value': 'binSel.', 'ignore': 0, 'optional':1},
+        'pin_type': {'value': 'HAL_FLOAT', 'ignore': 0, 'optional':1},   
+        'pin_pins': {'value': [2,6,4,3,5], 'ignore': 0, 'optional':1},
+        'value_replace': {'value': [180,190,200,0,0,0,0,0,0,0,0,0,0,0,0,10,20,30,40,50,60,70,80,90,100,110,120,130,140,150,160,170], 'ignore': 0, 'optional':1},   
+        }
+        
+}
+"""
+    quadratureEncoder:
+      - pin_id: 0
+        pin_name: quadEnc  #hal pin name       #optional
+        encoder_mode: counter #updown #vpins
+        encoder_A_pin: 2  #?
+        encoder_B_pin: 3  #?
+        encoder_pins: [2,3] #?
+        encoder_steps: 4  #electrical pulses per latch
+        #new feature: create list of Virtual Pins, only one is ever selected/ HIGH, by rotation select next / previous one. In this config a simple encoder is used to select scale of an MPG. (Standard 0.1mm)
+        encoder_virtualpins: 3 #create 10 virtual Pins
+        encoder_virtualpin_start: 2 #select pin 3 at program start
+        pin_type: HAL_FLOAT #hal pin type     #optional   HAL_BIT, HAL_S32 , HAL_FLOAT
+        value_replace: [0.001,0.01,0.1,1]
+
+    joystick:
+      - pin_id: 2
+        pin_name: joystick  #hal pin name       #optional
+        joystick_center: 512  
+        joystick_deadband: 20 #ignore values around joystick_center + - deadband 
+        joystick_scaling: 0.01
+
+    statusled:
+      - pin_id: 13
+        useDled: 1 #use digital LED instead of Output 13 #weird setting?
+"""
+
+#print(yamlData.readMCU(file_path,0))
+#print(yamlData.readMCU(file_path,1))
+
+#print(yamlData.readAnalogInputs(file_path2,0))
 #print(yamlData.readAnalogInputs(file_path,1))
+
+#print(yamlData.readDigitalInputs(file_path2,0))
+print(yamlData.reportPins(file_path2,0,analogPins))
+print()
+print(yamlData.reportPins(file_path2,0,DIn_configuration))  
+print()
+print(yamlData.reportPins(file_path2,0,pwmOutputs))
+print()
+print(yamlData.reportPins(file_path2,0,digitalOutput))
+print()
+print(yamlData.reportPins(file_path2,0,lPoti))
+print()
+print(yamlData.reportPins(file_path2,0,binarySelectorSwitch))
+print()

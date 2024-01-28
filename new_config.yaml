@@ -65,7 +65,7 @@ mcu: #micro controller unit
 
     digitalOutput:
       - pin_id: 8
-        pin_name: din #hal pin name           #optional
+        pin_name: dout #hal pin name           #optional
         pin_type: HAL_BIT #hal pin type       #optional
         pin_init_state: 1 #turn on at boot  
         pin_ondisconnected_state: -1 #optional, default -1, 0/1 or -1 (no change from existing state)
