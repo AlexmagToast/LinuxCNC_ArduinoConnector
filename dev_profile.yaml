@@ -1,9 +1,7 @@
 mcu: 
-  alias: Arduino Nano ESP32
+  alias: M4 Grand Central
   component_name: arduino # Name of component to use in HAL
-  #dev: /dev/cu.usbmodem14201  # Used for initial programming
-  #dev: /dev/cu.usbmodemF412FA68D6802 
-  dev: /dev/cu.usbmodem3485187ABE842
+  dev: /dev/ttyACM0
   io_map:
         
     digitalInputs:
@@ -11,7 +9,7 @@ mcu:
         pin_name: din.2 #hal pin name
         input_pullup: true
         pin_debounce: 50
-        pin_enabled: false
+        pin_enabled: true
       - pin_id: 3
         pin_name: din.3 #hal pin name
         input_pullup: true
