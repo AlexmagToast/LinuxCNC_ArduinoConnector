@@ -100,6 +100,8 @@ mcu:
   #dev: /dev/cu.usbmodemF412FA68D6802 
   dev: /dev/cu.usbserial-0001
   enabled: true
+  connection: 
+    baudrate: 9600
   io_map:
         
     digitalInputs:

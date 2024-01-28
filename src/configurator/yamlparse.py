@@ -41,7 +41,7 @@ def get_all_keys(d):
 
 # Example Usage
 file_path = '/home/alex/Documents/GitHub/LinuxCNC_ArduinoConnector/example_config_nanoesp32_andesp8266.yaml'
-#file_path = '/home/alex/Documents/GitHub/LinuxCNC_ArduinoConnector/new_config.yaml'
+file_path2 = '/home/alex/Documents/GitHub/LinuxCNC_ArduinoConnector/new_config.yaml'
 
 # Reading YAML file
 yaml_data = read_yaml(file_path)
@@ -52,81 +52,91 @@ yaml_data = read_yaml(file_path)
 
 class yamlData():
 
-    def readMCU(file):
-        yaml_data = read_yaml(file)
-        mcu = yaml_data
-        print(mcu)
+    def readMCU(file, MCU_no):
         
-  
-        mcu_configurations = {  'alias':                {'standard_val': 'new Arduino', 'ignore': 0},
-                                'component_name':       {'standard_val': 'arduino.', 'ignore': 0},
-                                'dev':                  {'standard_val': '', 'ignore': 0},
-                                'debug':                {
-                                    'debug_level:':     {'standard_val': '0.', 'ignore': 0}},
-                                'connection':           {
-                                    'baudrate':         {'standard_val': '115200.', 'ignore': 0},
-                                    'connection_serial2':{'standard_val': '0.', 'ignore': 0},
-                                    'timeout':          {'standard_val': '5000', 'ignore': 0},
-                                    'arduino_ip':       {'standard_val': '', 'ignore': 0},
-                                    'arduino_port':     {'standard_val': '54321', 'ignore': 0},
-                                    'listen_port':      {'standard_val': '54321', 'ignore': 0}},
-                                'io_map':               {'standard_val': '', 'ignore': 1}
-        }
-
-    def readMCUS(file, MCU_no):
-        def get_value(setting_key, supplied_dict):
-            if setting_key in supplied_dict:
-                return supplied_dict[setting_key]
-            else:
-                return mcu_configurations[setting_key]['value']
-
         yaml_data = read_yaml(file)
         mcu = yaml_data[MCU_no]['mcu']
 
         mcu_configurations = {
-            'alias': {'value': 'new Arduino', 'ignore': 0, 'level': 0},
-            'component_name': {'value': 'arduino.', 'ignore': 0, 'level': 0},
-            'dev': {'value': '', 'ignore': 0, 'level': 0},
+            'alias': {'value': 'new Arduino', 'ignore': 0, 'optional': 1},
+            'component_name': {'value': 'arduino.', 'ignore': 0, 'optional': 1},
+            'dev': {'value': '', 'ignore': 0, 'optional': 1},
             'debug': {
-                'debug_level': {'value': '0.', 'ignore': 0, 'level': 1}
+                'debug_level': {'value': '0', 'ignore': 0, 'optional': 1}
             },
             'connection': {
-                'baudrate': {'value': '115200.', 'ignore': 0, 'level': 1},
-                'connection_serial2': {'value': '0.', 'ignore': 0, 'level': 1},
-                'timeout': {'value': '5000', 'ignore': 0, 'level': 1},
-                'arduino_ip': {'value': '', 'ignore': 0, 'level': 1},
-                'arduino_port': {'value': '54321', 'ignore': 0, 'level': 1},
-                'listen_port': {'value': '54321', 'ignore': 0, 'level': 1}
+                'baudrate': {'value': '115200', 'ignore': 0, 'optional': 1},
+                'connection_serial2': {'value': '0', 'ignore': 0, 'optional': 1},
+                'timeout': {'value': '5000', 'ignore': 0, 'optional': 1},
+                'arduino_ip': {'value': '', 'ignore': 0, 'optional': 1},
+                'arduino_port': {'value': '54321', 'ignore': 0, 'optional': 1},
+                'listen_port': {'value': '54321', 'ignore': 0, 'optional': 1}
             },
-            'io_map': {'value': '', 'ignore': 1, 'level': 0},
-            'enabled': {'value': 'TRUE', 'ignore': 0, 'level': 0}
+            'io_map': {'value': '', 'ignore': 1, 'optional': 1},
+            'enabled': {'value': 'TRUE', 'ignore': 0, 'optional': 1}
 
         }
-        new_mcu_configuration =[] 
+        new_mcu_configuration ={}
         # Loop through keys in mcu_configurations
         for key in mcu_configurations:
             try:
                 if mcu_configurations[key]['ignore'] == 0 and key in mcu:
-                    #new_mcu_configuration[key]['value'] = get_value(key, mcu)
-                    print(key,get_value(key, mcu))
-                elif mcu_configurations[key]['ignore'] == 0:
-                    print(key, mcu_configurations[key]['value'])
-                
-
+                    new_mcu_configuration[key] = mcu[key]
+                    #print(key,new_mcu_configuration[key], "tetst")
+                else:
+                    if mcu_configurations[key]['ignore'] == 0:
+                    #print(key, mcu_configurations[key]['value'])
+                        new_mcu_configuration[key] = mcu_configurations[key]
             except: 
+                new_mcu_configuration[key] = {}
                 for secondkey in mcu_configurations[key]:
-                    if mcu_configurations[key][secondkey]['ignore'] == 0 and key in mcu:
-                        #new_mcu_configuration[key][secondkey]['value'] = get_value(key, mcu)
-                    
-                        print(secondkey,get_value(key,secondkey, mcu))
-                    elif mcu_configurations[key][secondkey]['ignore'] == 0:
-                        print(secondkey,mcu_configurations[key][secondkey]['value'])
-                    
-                    
-                    
-
+                    if mcu_configurations[key][secondkey]['ignore'] == 0 and key in mcu and secondkey in mcu[key]:
+                        new_mcu_configuration[key][secondkey] = mcu[key][secondkey]
+                    else:
+                        if mcu_configurations[key][secondkey]['ignore'] == 0:
+                            new_mcu_configuration[key][secondkey] = mcu_configurations[key][secondkey]['value']
             
         return new_mcu_configuration
+    
+    def readAnalogInputs(file,MCU_no):
+        yaml_data = read_yaml(file)
+        AIn = yaml_data[MCU_no]['mcu']['io_map']
 
-out = yamlData.readMCUS(file_path,0)
-#print(yamlData.readMCUS(file_path,1))
+        AIn_configuration = {
+            'pin_id': {'value': '', 'ignore': 1, 'optional':0},
+            'pin_name': {'value': 'ain.', 'ignore': 0, 'optional':1},
+            'pin_type': {'value': 'HAL_FLOAT', 'ignore': 0, 'optional':1},    
+            'pin_smoothing': {'value': '200', 'ignore': 0, 'optional':1},
+            'pin_min_val': {'value': '0', 'ignore': 0, 'optional':1},
+            'pin_max_val': {'value': '1023', 'ignore': 0, 'optional':1},
+            'enabled': {'value': 'TRUE', 'ignore': 0, 'optional':1}
+        }
+
+        new_AIn_configuration ={}
+
+        if 'analogInputs' in AIn:
+            new_AIn_configuration={}
+            AIn = AIn['analogInputs']
+            
+            for pin_count, pin_no in enumerate(AIn):
+    
+                new_AIn_configuration[pin_no['pin_id']]= {}
+                
+                for key  in AIn_configuration:
+                    
+                    #print(AIn[pin_count]['pin_id'],parameter+1, key)
+                    if AIn_configuration[key]['ignore'] == 0 and key in AIn[pin_count]:
+                        #print(AIn[pin_count][key])
+                        new_AIn_configuration[pin_no['pin_id']][key] = AIn[pin_count][key]
+                    else:
+                        #print(AIn_configuration[key]['value'])
+                        if AIn_configuration[key]['ignore'] == 0:
+                            new_AIn_configuration[pin_no['pin_id']][key] = AIn_configuration[key]['value']
+                
+        return new_AIn_configuration
+
+print(yamlData.readMCU(file_path,0))
+print(yamlData.readMCU(file_path,1))
+
+print(yamlData.readAnalogInputs(file_path2,0))
+#print(yamlData.readAnalogInputs(file_path,1))
