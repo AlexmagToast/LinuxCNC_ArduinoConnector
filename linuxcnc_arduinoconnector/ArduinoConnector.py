@@ -81,8 +81,8 @@ class PinConfigElement(Enum):
     PIN_NAME = ['pin_name', None]
     PIN_TYPE = ['pin_type', None]
     PIN_INITIAL_STATE = ['pin_initial_state', -1]
-    PIN_CONNECT_STATE = ['pin_connect_state', -1]
-    PIN_DISCONNECT_STATE = ['pin_disconnect_state', -1]
+    PIN_CONNECTED_STATE = ['pin_connected_state', -1]
+    PIN_DISCONNECTED_STATE = ['pin_disconnected_state', -1]
     PIN_ENABLED = ['pin_enabled', True]
     def __str__(self) -> str:
         return self.value[0]
@@ -177,8 +177,8 @@ class ArduinoPin:
         self.pinID = pinID
         self.featureID = featureID
         self.pinInitialState = PinConfigElement.PIN_INITIAL_STATE.value[DEFAULT_VALUE_KEY]
-        self.pinConnectState = PinConfigElement.PIN_CONNECT_STATE.value[DEFAULT_VALUE_KEY]
-        self.pinDisconnectState = PinConfigElement.PIN_DISCONNECT_STATE.value[DEFAULT_VALUE_KEY]
+        self.pinConnectState = PinConfigElement.PIN_CONNECTED_STATE.value[DEFAULT_VALUE_KEY]
+        self.pinDisconnectState = PinConfigElement.PIN_DISCONNECTED_STATE.value[DEFAULT_VALUE_KEY]
         self.pinEnabled = PinConfigElement.PIN_ENABLED.value[DEFAULT_VALUE_KEY]
         #if yaml != None: self.parseYAML(doc=yaml)
 
@@ -196,10 +196,10 @@ class ArduinoPin:
             self.pinName = f"{self.pinType.value}"
         if PinConfigElement.PIN_INITIAL_STATE.value[0] in doc.keys():    
             self.pinInitialState = doc[PinConfigElement.PIN_INITIAL_STATE.value[0]]
-        if PinConfigElement.PIN_DISCONNECT_STATE.value[0] in doc.keys():    
-            self.pinDisconnectState = doc[PinConfigElement.PIN_DISCONNECT_STATE.value[0]]
-        if PinConfigElement.PIN_CONNECT_STATE.value[0] in doc.keys():    
-            self.pinConnectState = doc[PinConfigElement.PIN_CONNECT_STATE.value[0]]
+        if PinConfigElement.PIN_DISCONNECTED_STATE.value[0] in doc.keys():    
+            self.pinDisconnectState = doc[PinConfigElement.PIN_DISCONNECTED_STATE.value[0]]
+        if PinConfigElement.PIN_CONNECTED_STATE.value[0] in doc.keys():    
+            self.pinConnectState = doc[PinConfigElement.PIN_CONNECTED_STATE.value[0]]
 
     def __str__(self) -> str:
         return f'pinName = {self.pinName}, pinType={self.pinType.name}, halPinType={self.halPinType}, pinEnabled={self.pinEnabled}, pinIniitalState={self.pinInitialState}, pinConnectState={self.pinConnectState}, pinDisconnectState={self.pinDisconnectState}'
