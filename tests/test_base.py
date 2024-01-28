@@ -25,8 +25,8 @@ def test_config_defaults(base_path: Path, monkeypatch: pytest.MonkeyPatch):
         assert apin.pinMinVal == AnalogConfigElement.PIN_MIN_VALUE.value[1]
         assert apin.halPinDirection == HalPinDirection.HAL_IN
         assert apin.pinInitialState == PinConfigElement.PIN_INITIAL_STATE.value[1]
-        assert apin.pinConnectState == PinConfigElement.PIN_CONNECT_STATE.value[1]
-        assert apin.pinDisconnectState == PinConfigElement.PIN_DISCONNECT_STATE.value[1]
+        assert apin.pinConnectState == PinConfigElement.PIN_CONNECTED_STATE.value[1]
+        assert apin.pinDisconnectState == PinConfigElement.PIN_DISCONNECTED_STATE.value[1]
 
     # Anlog Output Pins Tests (Defaults)
     assert ConfigPinTypes.ANALOG_OUTPUTS in arduino.io_map
@@ -37,8 +37,8 @@ def test_config_defaults(base_path: Path, monkeypatch: pytest.MonkeyPatch):
         assert apin.pinMinVal == AnalogConfigElement.PIN_MIN_VALUE.value[1]
         assert apin.halPinDirection == HalPinDirection.HAL_OUT
         assert apin.pinInitialState == PinConfigElement.PIN_INITIAL_STATE.value[1]
-        assert apin.pinConnectState == PinConfigElement.PIN_CONNECT_STATE.value[1]
-        assert apin.pinDisconnectState == PinConfigElement.PIN_DISCONNECT_STATE.value[1]
+        assert apin.pinConnectState == PinConfigElement.PIN_CONNECTED_STATE.value[1]
+        assert apin.pinDisconnectState == PinConfigElement.PIN_DISCONNECTED_STATE.value[1]
 
     # Digital Input Pins Tests (Defaults)
     assert ConfigPinTypes.DIGITAL_INPUTS in arduino.io_map
@@ -47,8 +47,8 @@ def test_config_defaults(base_path: Path, monkeypatch: pytest.MonkeyPatch):
         assert apin.halPinDirection == HalPinDirection.HAL_IN
         assert apin.pinDebounce == DigitalConfigElement.PIN_DEBOUNCE.value[1]
         assert apin.pinInitialState == PinConfigElement.PIN_INITIAL_STATE.value[1]
-        assert apin.pinConnectState == PinConfigElement.PIN_CONNECT_STATE.value[1]
-        assert apin.pinDisconnectState == PinConfigElement.PIN_DISCONNECT_STATE.value[1]
+        assert apin.pinConnectState == PinConfigElement.PIN_CONNECTED_STATE.value[1]
+        assert apin.pinDisconnectState == PinConfigElement.PIN_DISCONNECTED_STATE.value[1]
     
     # Digital Output Pins Tests (Defaults)
     assert ConfigPinTypes.DIGITAL_OUTPUTS in arduino.io_map
@@ -56,8 +56,8 @@ def test_config_defaults(base_path: Path, monkeypatch: pytest.MonkeyPatch):
     for apin in arduino.io_map[ConfigPinTypes.DIGITAL_OUTPUTS]:
         assert apin.halPinDirection == HalPinDirection.HAL_OUT
         assert apin.pinInitialState == PinConfigElement.PIN_INITIAL_STATE.value[1]
-        assert apin.pinConnectState == PinConfigElement.PIN_CONNECT_STATE.value[1]
-        assert apin.pinDisconnectState == PinConfigElement.PIN_DISCONNECT_STATE.value[1]
+        assert apin.pinConnectState == PinConfigElement.PIN_CONNECTED_STATE.value[1]
+        assert apin.pinDisconnectState == PinConfigElement.PIN_DISCONNECTED_STATE.value[1]
         
     # PWM Output Pins Tests (Defaults)
     assert ConfigPinTypes.PWM_OUTPUTS in arduino.io_map
@@ -65,8 +65,8 @@ def test_config_defaults(base_path: Path, monkeypatch: pytest.MonkeyPatch):
     for apin in arduino.io_map[ConfigPinTypes.PWM_OUTPUTS]:
         assert apin.halPinDirection == HalPinDirection.HAL_OUT
         assert apin.pinInitialState == PinConfigElement.PIN_INITIAL_STATE.value[1]
-        assert apin.pinConnectState == PinConfigElement.PIN_CONNECT_STATE.value[1]
-        assert apin.pinDisconnectState == PinConfigElement.PIN_DISCONNECT_STATE.value[1]
+        assert apin.pinConnectState == PinConfigElement.PIN_CONNECTED_STATE.value[1]
+        assert apin.pinDisconnectState == PinConfigElement.PIN_DISCONNECTED_STATE.value[1]
 
 def test_config_not_found():
     with pytest.raises(FileNotFoundError) as excinfo:  
