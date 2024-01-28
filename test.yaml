@@ -1,0 +1,112 @@
+- mcu:
+    alias: Arduino 2560 Mega
+    component_name: arduino.0
+    dev: /dev/cu.usbserial-0002
+    debug: {debug_level: Warning}
+    connection: {type: UDP, baudrate: 115200, connection_serial2: 0, timeout: 5000,
+      arduino_ip: 192.168.1.22, arduino_port: 54321, listen_port: 54321}
+    io_map:
+      analogInputs:
+      - {pin_id: 0, pin_name: ain, pin_type: HAL_FLOAT, pin_smoothing: 200, pin_min_val: 10,
+        pin_max_val: 4096}
+      - {pin_id: 1}
+      - {pin_id: 3, pin_name: anain}
+      - {pin_id: 4, pin_type: HAL_BIT}
+      - {pin_id: 5, pin_smoothing: 500}
+      - {pin_id: 6, pin_min_val: 100}
+      - {pin_id: 7, pin_max_val: 2048}
+      - {pin_id: 8, pin_name: aaaabbbb, pin_type: HAL_BIT, pin_smoothing: 600, pin_min_val: 1000,
+        pin_max_val: 4096}
+      analogOutputs:
+      - {pin_id: 1, pin_name: aout.1, pin_type: HAL_FLOAT, pin_smoothing: 200, pin_min_val: 0,
+        pin_max_val: 1023}
+      pwmOutputs:
+      - {pin_id: 12, pin_name: pwmout, pin_type: HAL_FLOAT, pin_init_state: 0}
+      digitalInput:
+      - {pin_id: 4, pin_name: din, pin_mode: latching, pin_debounce: 1}
+      digitalOutput:
+      - {pin_id: 8, pin_name: dout, pin_type: HAL_BIT, pin_init_state: 1, pin_ondisconnected_state: -1,
+        pin_onconnected_state: -1}
+      lPoti:
+      - pin_id: 1
+        pin_name: lpoti
+        lpoti_latches: 9
+        pin_type: HAL_S32
+        value_replace: [40, 50, 60, 70, 80, 90, 100, 110, 120]
+      - pin_id: 2
+        pin_name: lpoti
+        lpoti_latches: 4
+        pin_type: HAL_FLOAT
+        value_replace: [0.001, 0.01, 0.1, 1]
+      binarySelectorSwitch:
+      - pin_id: 0
+        pin_name: binSel
+        pin_pins: [2, 6, 4, 3, 5]
+        pin_type: HAL_FLOAT
+        value_replace: [180, 190, 200, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 20,
+          30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160, 170]
+      quadratureEncoder:
+      - pin_id: 0
+        pin_name: quadEnc
+        encoder_mode: counter
+        encoder_A_pin: 2
+        encoder_B_pin: 3
+        encoder_pins: [2, 3]
+        encoder_steps: 4
+        encoder_virtualpins: 3
+        encoder_virtualpin_start: 2
+        pin_type: HAL_FLOAT
+        value_replace: [0.001, 0.01, 0.1, 1]
+      joystick:
+      - {pin_id: 2, pin_name: joystick, joystick_center: 512, joystick_deadband: 20,
+        joystick_scaling: 0.01}
+      statusled:
+      - {pin_id: 13, useDled: 1}
+      digitalLed:
+      - pin_id: 4
+        pin_name: dled
+        dled_count: 5
+        dled_on_colors:
+        - [0, 0, 255]
+        - [255, 0, 0]
+        - [0, 255, 0]
+        - [0, 255, 0]
+        - [0, 255, 0]
+        - [0, 255, 0]
+        - [0, 255, 0]
+        - [0, 255, 0]
+        dled_off_colors:
+        - [0, 0, 0]
+        - [0, 0, 0]
+        - [255, 0, 0]
+        - [255, 0, 0]
+        - [255, 0, 0]
+        - [0, 0, 255]
+        - [0, 0, 255]
+        - [0, 0, 255]
+        dled_fade: 10
+      matrixKeyboard:
+      - pin_id: 0
+        pin_name: keypad
+        Keyboard_cPins: [6, 7, 8, 9]
+        Keyboard_rPins: [2, 3, 4, 5]
+        Keyboard_chars: ['1', '2', '3', A, '4', '5', '6', B, '7', '8', '9', C, Yay,
+          '0', '#', D]
+        Keyboard_pin_types: [1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 2, 1, 0, 0]
+      LEDmultiplexing:
+      - pin_id: 0
+        pin_name: mled
+        Multiplexled_Vcc_Pins: [30, 31, 32, 33, 34, 35, 36, 37]
+        Multiplexled_Gnd_Pins: [40, 41, 42, 43, 44, 45, 46, 47]
+      dallasThermistor:
+      - pin_id: 0
+        pin_name: dtemp
+        pin_mode: c
+        pin_pins: [2, 3]
+      rcServo:
+      - {pin_id: 3, pin-name: servo, pin_type: HAL_S32, servo_min: 20, servo_max: 90,
+        servo_speed: 10, servo_on_pos: 34, servo_off_pos: 90}
+      Stepper:
+      - {pin_id: 0, pin_name: stepper, pin_mode: null}
+      glcd:
+      - {pin_id: 0}
