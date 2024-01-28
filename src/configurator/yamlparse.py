@@ -195,73 +195,35 @@ class yamlData():
                         #print(pin_map[key]['value'])
                         if pin_map[key]['ignore'] == 0:
                             new_pin_map[pin_no['pin_id']][key] = pin_map[key]['value']
-                
+
         return new_pin_map
     
-    def update_slave_yaml(source_File, newYaml):
-        
-                
-        def count_yaml_documents(file_path):
-            with open(file_path, 'r') as file:
-                content = file.read()
 
-            # Split the content based on '---' to identify individual YAML documents
-            yaml_documents = content.split('---')
+    def update_yaml(yaml_file, newYaml,mcu):
 
-            # Filter out empty documents (resulting from leading/trailing '---')
-            yaml_documents = [doc.strip() for doc in yaml_documents if doc.strip()]
 
-            return len(yaml_documents)
-        
+        #empty file
 
-        source_data = read_yaml(source_File)
-        modified_data = read_yaml(newYaml)
-        
-        with open("/home/alex/Documents/GitHub/LinuxCNC_ArduinoConnector/test.yaml", 'w'):
+        with open(yaml_file, 'w'):
             pass
-        for mcu in range(count_yaml_documents(newYaml)):
-            print(source_data[mcu])    
-
-            # Update modified_data based on source_data
-            updated_modified_data = yamlData.update_yaml_recursive(source_data, modified_data)
-
+        #write each mcu
+        for i in range(mcu+1):
             # Write the updated modified_data back to slave.yaml
-            with open("/home/alex/Documents/GitHub/LinuxCNC_ArduinoConnector/test.yaml", 'a') as slave_file:
-                yaml.dump(updated_modified_data, slave_file, default_flow_style=None, sort_keys=False)
+            if i > 0:
+                with open(yaml_file, 'a') as slave_file:
+                    slave_file.write("---\n")
+            # Write the updated modified_data back to slave.yaml
+            with open(yaml_file, 'a') as slave_file:
+                yaml.dump(newYaml[i], slave_file, default_flow_style=None, sort_keys=False)
+
+
         
-    def update_yaml_recursive(source_data, modified_data):
-        #print(source_data, modified_data)
-        if isinstance(source_data, dict) and isinstance(modified_data, dict):
-            updated_dict = {}
-            for key, master_value in source_data.items():
-                print(key, master_value)
-                if key in modified_data:
-                    # Recursively update nested dictionaries
-                    updated_dict[key] = yamlData.update_yaml_recursive(master_value, modified_data[key])
-                else:
-                    # Key doesn't exist in modified_data, skip it
-                    updated_dict[key] = master_value
-
-            # Remove extra keys from modified_data
-            for key in list(modified_data.keys()):
-                print(key)
-                if key not in source_data:
-                    del modified_data[key]
-
-            return updated_dict
-
-        elif isinstance(source_data, list) and isinstance(modified_data, list):
-            # Update each element in the list recursively
-            return [yamlData.update_yaml_recursive(master_item, slave_item) for master_item, slave_item in zip(source_data, modified_data)]
-
-        else:
-            # Use the value from source_data
-            return source_data
         
 
-slave_yaml_path = '/home/alex/Documents/GitHub/LinuxCNC_ArduinoConnector/new_config copy.yaml'
-source_yaml_path = file_path2
-yamlData.update_slave_yaml(source_yaml_path, slave_yaml_path)
+source_yaml_path2 = '/home/alex/Documents/GitHub/LinuxCNC_ArduinoConnector/new_config2.yaml'
+source_yaml_path = read_yaml('/home/alex/Documents/GitHub/LinuxCNC_ArduinoConnector/new_config.yaml')
+
+yamlData.update_yaml(source_yaml_path2, source_yaml_path ,1)
 
 analogPins = {
             'analogInputs':{
