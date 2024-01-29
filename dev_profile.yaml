@@ -1,7 +1,100 @@
 mcu: 
   alias: M4 Grand Central
-  component_name: arduino # Name of component to use in HAL
+  component_name: arduinom4 # Name of component to use in HAL
   dev: /dev/ttyACM0
+  enabled: true
+  io_map:
+    digitalInputs:
+      - pin_id: 2
+        pin_name: din.2 #hal pin name
+        input_pullup: true
+        pin_debounce: 50
+        pin_enabled: true
+      - pin_id: 3
+        pin_name: din.3 #hal pin name
+        input_pullup: true
+        pin_debounce: 50
+      - pin_id: 4
+        pin_name: din.4 #hal pin name
+        input_pullup: true
+        pin_debounce: 50
+      - pin_id: 5
+        pin_name: din.5 #hal pin name
+        input_pullup: true
+        pin_debounce: 50
+      - pin_id: 6
+        pin_name: din.6 #hal pin name
+        input_pullup: true
+        pin_debounce: 50
+      - pin_id: 7
+        pin_name: din.7 #hal pin name
+        input_pullup: true
+        pin_debounce: 50
+      - pin_id: 8
+        pin_name: din.8 #hal pin name
+        input_pullup: true
+        pin_debounce: 50
+      - pin_id: 9
+        pin_name: din.9 #hal pin name
+        input_pullup: true
+        pin_debounce: 50
+      - pin_id: 10
+        pin_name: din.10 #hal pin name
+        input_pullup: true
+        pin_debounce: 50
+      - pin_id: 11
+        pin_name: din.11 #hal pin name
+        input_pullup: true
+        pin_debounce: 50
+      - pin_id: 12
+        pin_name: din.12 #hal pin name
+        input_pullup: true
+        pin_debounce: 50
+      - pin_id: 13
+        pin_name: din.13 #hal pin name
+        input_pullup: true
+        pin_debounce: 50
+      - pin_id: 17
+        pin_name: din.17 #hal pin name
+        input_pullup: true
+        pin_debounce: 50
+      - pin_id: 18
+        pin_name: din.18 #hal pin name
+        input_pullup: true
+        pin_debounce: 50
+      - pin_id: 19
+        pin_name: din.19 #hal pin name
+        input_pullup: true
+        pin_debounce: 50
+      - pin_id: 20
+        pin_name: din.20 #hal pin name
+        input_pullup: true
+        pin_debounce: 50
+      - pin_id: 21
+        pin_name: din.21 #hal pin name
+        input_pullup: true
+        pin_debounce: 50
+      - pin_id: 22
+        pin_name: din.22 #hal pin name
+        input_pullup: true
+        pin_debounce: 50
+
+    digitalOutputs:
+        - pin_id: 23
+          pin_name: dout.23 #hal pin name
+          pin_debounce: 50
+        - pin_id: 24
+          pin_name: dout.24 #hal pin name
+          pin_debounce: 50
+---
+mcu: 
+  alias: Arduino Nano ESP32
+  component_name: arduinoesp32 # Name of component to use in HAL
+  #dev: /dev/cu.usbmodem14201  # Used for initial programming
+  #dev: /dev/cu.usbmodemF412FA68D6802 
+  dev: /dev/cu.usbmodem3485187ABE842
+  enabled: false
+  
   io_map:
         
     digitalInputs:
@@ -9,7 +102,7 @@ mcu:
         pin_name: din.2 #hal pin name
         input_pullup: true
         pin_debounce: 50
-        pin_enabled: true
+        pin_enabled: false
       - pin_id: 3
         pin_name: din.3 #hal pin name
         input_pullup: true
@@ -86,5 +179,30 @@ mcu:
         pin_name: din.24 #hal pin name
         input_pullup: true
         pin_debounce: 50
+---
+mcu: 
+  alias: Arduino ESP8266
+  component_name: arduino8266 # Name of component to use in HAL
+  #dev: /dev/cu.usbmodem14201  # Used for initial programming
+  #dev: /dev/cu.usbmodemF412FA68D6802 
+  dev: /dev/cu.usbserial-0001
+  enabled: false
+  #connection: 
+  #  baudrate: 9600
+  io_map:
         
-  digitalOutputs:
+    digitalInputs:
+      - pin_id: 14
+        pin_name: din.5 #hal pin name
+        input_pullup: true
+        pin_debounce: 50
+      - pin_id: 12
+        pin_name: din.6 #hal pin name
+        input_pullup: true
+        pin_debounce: 50
+
+    digitalOutputs:
+      - pin_id: 51
+        pin_name: dout.51
+      - pin_id: 13
+        pin_name: dout.13 #hal pin name

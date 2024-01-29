@@ -22,14 +22,11 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-
-import hashlib
 import json
-from multiprocessing import Value
 import os
 from re import T
 import getopt, sys
-import threading
+#import threading
 import serial
 import msgpack
 from strenum import StrEnum
@@ -41,10 +38,13 @@ import crc8
 import traceback
 import logging
 import numpy
-import socket
+#import socket
 from cobs import cobs
 import yaml
 from pathlib import Path
+
+#import linuxcnc
+import hal
 #from qtvcp.core import Info
 
 logging.basicConfig(level=logging.DEBUG)
@@ -52,6 +52,7 @@ logging.basicConfig(level=logging.DEBUG)
 DEFAULT_VALUE_KEY = 1 # List position for default values
 YAML_PARSER_KEY = 1
 FEATURE_INDEX_KEY = 2
+DEFAULT_PIN_NAME_KEY = 3
 
 DEFAULT_PROFILE = "config.yaml"
 
@@ -122,7 +123,7 @@ class SerialConfigElement(Enum):
 # enum + lamda enables some dark magic elegance.
     
 class ConfigPinTypes(Enum):
-    DIGITAL_INPUTS = ['digitalInputs', lambda yaml, featureID : DigitalPin(yaml=yaml, featureID=featureID, halPinDirection=HalPinDirection.HAL_IN), 1]
+    DIGITAL_INPUTS = ['digitalInputs', lambda yaml, featureID : DigitalPin(yaml=yaml, featureID=featureID, halPinDirection=HalPinDirection.HAL_IO), 1]
     DIGITAL_OUTPUTS = ['digitalOutputs', lambda yaml, featureID : DigitalPin(yaml=yaml, featureID=featureID, halPinDirection=HalPinDirection.HAL_OUT), 2]
     ANALOG_INPUTS = ['analogInputs', lambda yaml, featureID : AnalogPin(yaml=yaml,featureID=featureID, halPinDirection=HalPinDirection.HAL_IN), 3]
     ANALOG_OUTPUTS = ['analogOutputs',  lambda yaml, featureID : AnalogPin(yaml=yaml, featureID=featureID, halPinDirection=HalPinDirection.HAL_OUT), 4]
@@ -157,6 +158,7 @@ class HalPinTypes(StrEnum):
 class HalPinDirection(StrEnum):
     HAL_IN = 'HAL_IN'
     HAL_OUT = 'HAL_OUT'
+    HAL_IO = 'HAL_IO'
     UNDEFINED = 'undefined'
     def __str__(self) -> str:
         return self.value
@@ -180,6 +182,8 @@ class ArduinoPin:
         self.pinConnectState = PinConfigElement.PIN_CONNECTED_STATE.value[DEFAULT_VALUE_KEY]
         self.pinDisconnectState = PinConfigElement.PIN_DISCONNECTED_STATE.value[DEFAULT_VALUE_KEY]
         self.pinEnabled = PinConfigElement.PIN_ENABLED.value[DEFAULT_VALUE_KEY]
+        self.halPinConnection = None
+        self.halPinCurrentValue = 0
         #if yaml != None: self.parseYAML(doc=yaml)
 
     def parseYAML(self, doc):
@@ -214,7 +218,7 @@ class ArduinoPin:
     
 class AnalogPin(ArduinoPin):
     def __init__(self,yaml:dict = None, featureID:int=0, halPinDirection=HalPinDirection):
-        if halPinDirection == HalPinDirection.HAL_IN:
+        if halPinDirection == HalPinDirection.HAL_IN or halPinDirection == HalPinDirection.HAL_IO:
             ArduinoPin.__init__(self, featureID=featureID, pinType=PinTypes.ANALOG_INPUT, 
                         halPinType=HalPinTypes.HAL_FLOAT, halPinDirection=halPinDirection,
                         yaml=yaml)
@@ -247,7 +251,7 @@ class AnalogPin(ArduinoPin):
 
 class DigitalPin(ArduinoPin):
     def __init__(self,  halPinDirection:HalPinDirection,featureID:int=0, yaml:dict = None):
-        if halPinDirection == HalPinDirection.HAL_IN:
+        if halPinDirection == HalPinDirection.HAL_IN or halPinDirection == HalPinDirection.HAL_IO:
             ArduinoPin.__init__(self, pinType=PinTypes.DIGITAL_INPUT, featureID=featureID, 
                         halPinType=HalPinTypes.HAL_BIT, halPinDirection=halPinDirection,
                         yaml=yaml)
@@ -290,6 +294,7 @@ class ArduinoSettings:
         self.baud_rate = 19200
         self.connection_timeout = 10
         self.io_map = {}
+        
         self.enabled = True
 
 
@@ -720,7 +725,7 @@ class Connection:
         self._callbacks[index] = callback
   
  
-
+'''
 class UDPConnection(Connection):
     def __init__(self,  listenip:str, listenport:int, maxpacketsize=512, myType = ConnectionType.UDP):
         super().__init__(myType)
@@ -778,26 +783,7 @@ class UDPConnection(Connection):
             except Exception as error:
                 just_the_string = traceback.format_exc()
                 print(just_the_string)
-
-class RXThread(threading.Thread):
-    def __init__(self, pass_value):
-        super(RXThread, self).__init__()
-        self.running = False
-        self.value = pass_value
-        self.RUNNING = 0
-        self.FINISHED_OK  = 1
-        self.STOPPED = 2
-        self.CRASHED = 3
-        self.status = self.STOPPED
-
-    def run(self):
-        self.running = True    
-        self.status = self.RUNNING
-        while self.running:
-            try:
-                pass
-            except:
-                self.status = self.CRASHED
+'''
 		
 class SerialConnection(Connection):
     def __init__(self, dev:str, myType = ConnectionType.SERIAL, baudRate:int = 115200, timeout:int=1):
@@ -904,17 +890,68 @@ class SerialConnection(Connection):
                 self.status = ThreadStatus.CRASHED
                 break #break out of while
 
+class HalPinConnection:
+    def __init__(self, component:hal.component, pinName:str, pinType:HalPinTypes, pinDirection:HalPinDirection):
+        self.component = component
+        self.pinName = pinName
+        
+        if pinType == HalPinTypes.HAL_BIT:
+            self.pinType = hal.HAL_BIT
+        elif pinType == HalPinTypes.HAL_FLOAT:
+            self.pinType = hal.HAL_FLOAT
+        else:
+            raise Exception(f'Error. Pin type {pinType} is unsupported.')
+
+        if pinDirection == HalPinDirection.HAL_IN:
+            self.pinDirection = hal.HAL_IN
+        elif pinDirection == HalPinDirection.HAL_OUT:
+            self.pinDirection = hal.HAL_OUT
+        elif pinDirection == HalPinDirection.HAL_IO:
+            self.pinDirection = hal.HAL_IO
+        else:
+            raise Exception(f'Error. Pin Direction {pinDirection} is unsupported.')
+
+        self.halPin = self.component.newpin(self.pinName, self.pinType, self.pinDirection)
+
+    def Get(self):
+        return self.component[self.pinName]
+    
+    def Set(self, value):
+        self.component[self.pinName] = value
+
+
+
+
 class ArduinoConnection:
     def __init__(self, settings:ArduinoSettings):
         self.settings = settings
         self.serialConn = SerialConnection(dev=settings.dev, baudRate=settings.baud_rate, timeout=settings.connection_timeout)
+        self.component = hal.component(self.settings.component_name)
+
+        for k, v in settings.io_map.items():
+            for v1 in v:
+                v1.halPinConnection = HalPinConnection(component=self.component, pinName=v1.pinName, pinType=v1.halPinType, pinDirection=v1.halPinDirection) 
+            
             
     def __str__(self) -> str:
         return f'Arduino Alias = {self.settings.alias}, Component Name = {self.settings.component_name}, Enabled = {self.settings.enabled}'
     
+    def doFeaturePinUpdates(self):
+        for k, v in self.settings.io_map.items():
+            for v1 in v:
+                #if v1.halPinDirection == HalPinDirection.HAL_OUT:
+                r = v1.halPinConnection.Get()
+                if r != v1.halPinCurrentValue:
+                    print(f'VALUE CHANGED!!! Old Value {v1.halPinCurrentValue}, New Value {r}')
+                    v1.halPinCurrentValue = r
+                         #= HalPinConnection(component=self.component, pinName=v1.pinName, pinType=v1.halPinType, pinDirection=v1.halPinDirection) 
+            
+
     def doWork(self):
         if self.settings.enabled == False:
             return # do nothing. TODO: Still indicate the arduino is disabled via the HAL
+        self.doFeaturePinUpdates()
+
         if self.serialConn.status == ThreadStatus.STOPPED:
             self.serialConn.startRxTask()
 
