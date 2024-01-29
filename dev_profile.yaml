@@ -2,7 +2,7 @@ mcu:
   alias: M4 Grand Central
   component_name: arduinom4 # Name of component to use in HAL
   dev: /dev/ttyACM0
-  enabled: false
+  enabled: true
   io_map:
     digitalInputs:
       - pin_id: 2

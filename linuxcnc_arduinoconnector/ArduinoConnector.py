@@ -124,7 +124,7 @@ class SerialConfigElement(Enum):
 # enum + lamda enables some dark magic elegance.
     
 class ConfigPinTypes(Enum):
-    DIGITAL_INPUTS = ['digitalInputs', lambda yaml, featureID : DigitalPin(yaml=yaml, featureID=featureID, halPinDirection=HalPinDirection.HAL_IO), 1]
+    DIGITAL_INPUTS = ['digitalInputs', lambda yaml, featureID : DigitalPin(yaml=yaml, featureID=featureID, halPinDirection=HalPinDirection.HAL_IN), 1]
     DIGITAL_OUTPUTS = ['digitalOutputs', lambda yaml, featureID : DigitalPin(yaml=yaml, featureID=featureID, halPinDirection=HalPinDirection.HAL_OUT), 2]
     ANALOG_INPUTS = ['analogInputs', lambda yaml, featureID : AnalogPin(yaml=yaml,featureID=featureID, halPinDirection=HalPinDirection.HAL_IN), 3]
     ANALOG_OUTPUTS = ['analogOutputs',  lambda yaml, featureID : AnalogPin(yaml=yaml, featureID=featureID, halPinDirection=HalPinDirection.HAL_OUT), 4]
