@@ -2,7 +2,7 @@ mcu:
   alias: M4 Grand Central
   component_name: arduinom4 # Name of component to use in HAL
   dev: /dev/ttyACM0
-  enabled: true
+  enabled: false
   io_map:
     digitalInputs:
       - pin_id: 2
@@ -185,8 +185,8 @@ mcu:
   component_name: arduino8266 # Name of component to use in HAL
   #dev: /dev/cu.usbmodem14201  # Used for initial programming
   #dev: /dev/cu.usbmodemF412FA68D6802 
-  dev: /dev/cu.usbserial-0001
-  enabled: false
+  dev: /dev/ttyUSB0
+  enabled: true
   #connection: 
   #  baudrate: 9600
   io_map:

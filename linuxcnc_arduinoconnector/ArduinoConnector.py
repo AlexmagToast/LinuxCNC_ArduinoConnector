@@ -26,6 +26,7 @@ import json
 import os
 from re import T
 import getopt, sys
+import subprocess
 #import threading
 import serial
 import msgpack
@@ -811,9 +812,10 @@ class SerialConnection(Connection):
         
     def stopRxTask(self):
         logging.debug(f'PYDEBUG: SerialConnection::stopRxTask dev={self.dev}')
-        self.shutdown = True
-        self.daemon.join()
-        self.daemon = None
+        if self.daemon != None:
+            self.shutdown = True
+            self.daemon.join()
+            self.daemon = None
         
     def sendMessage(self, b: bytes):
         logging.debug(f'PYDEBUG: SerialConnection::sendMessage, dev={self.dev}, Message={b}')
@@ -926,11 +928,23 @@ class ArduinoConnection:
     def __init__(self, settings:ArduinoSettings):
         self.settings = settings
         self.serialConn = SerialConnection(dev=settings.dev, baudRate=settings.baud_rate, timeout=settings.connection_timeout)
-        self.component = hal.component(self.settings.component_name)
+        '''
+                while( True ):
+            try:
+                self.component = hal.component(self.settings.component_name)
+                logging.debug(f'PYDEBUG: ArduinoConnection::doWork, dev={self.settings.dev}, alias={self.settings.alias}, Successfully loaded component {self.settings.component_name} into HAL')
+                break
+            except hal.error as ex:
+                logging.debug(f'PYDEBUG: ArduinoConnection::doWork, dev={self.settings.dev}, alias={self.settings.alias}, Detected existing instance of {self.settings.component_name} in HAL, calling halcmd unload..')
+                subprocess.run(["halcmd", f"unload {self.settings.component_name}"])
+        '''
+        self.component = hal.component(self.settings.component_name) # Future TODO: Implement unload function as shown above.  Appear to need to handle CTRL+C in main loop to respect the unload request
+                
 
         for k, v in settings.io_map.items():
             for v1 in v:
-                v1.halPinConnection = HalPinConnection(component=self.component, pinName=v1.pinName, pinType=v1.halPinType, pinDirection=v1.halPinDirection) 
+                v1.halPinConnection = HalPinConnection(component=self.component, pinName=v1.pinName, pinType=v1.halPinType, pinDirection=v1.halPinDirection)
+        self.component.ready()
             
             
     def __str__(self) -> str:
@@ -1035,6 +1049,9 @@ def main():
     long_options = ["Help", "Devices", "Profile="]
     target_profile = None
     devs = []
+
+    
+
     try:
         # Parsing argument
         arguments, values = getopt.getopt(argumentList, options, long_options)
@@ -1100,12 +1117,16 @@ def main():
             for ac in arduino_connections:
                 ac.doWork()
             time.sleep(0.01)
+        except KeyboardInterrupt:
+            for ac in arduino_connections:
+                ac.serialConn.stopRxTask()
+            raise SystemExit
         except Exception as err:
             arduino_connections.clear()
             #print(str(err))
             just_the_string = traceback.format_exc()
             print(just_the_string)
-            sys.exit()
+            #sys.exit()
             
 
 
