@@ -4,9 +4,10 @@
 #pragma once
 #define ENABLE_FEATUREMAP
 #define DEBUG                       0
-#define DINPUTS                     1                       
-//#define SINPUTS                   2                      
-//#define DOUTPUTS                   3
+#define DINPUTS                     1 
+#define DOUTPUTS                    2                      
+//#define SINPUTS                   3                     
+
 //#define PWMOUTPUTS                4
 //#define AINPUTS                   5   
 //#define DALLAS_TEMP_SENSOR        6

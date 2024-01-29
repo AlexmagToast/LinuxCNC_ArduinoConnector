@@ -129,7 +129,96 @@ public:
     return 1;
   }
 #endif
-  
+#ifdef DOUTPUTS
+  void setDigitalOutputPin(dpin pin, uint8_t index)
+  {
+    #ifdef DEBUG
+      Serial.print("ConfigManager::setDigitalOutputPin, Index=0x");
+      Serial.println(index, HEX);
+      #ifdef DEBUG_VERBOSE
+        Serial.println("----------- START PIN CONFIG DUMP ------------");
+        Serial.print("pinID=");
+        Serial.println(pin.pinID);
+        Serial.print("pinInitialState=");
+        Serial.println(pin.pinInitialState);
+        Serial.print("pinConnectState=");
+        Serial.println(pin.pinConnectState);    
+        Serial.print("pinDisconnectState=");
+        Serial.println(pin.pinDisconnectState); 
+        Serial.print("debounce=");
+        Serial.println(pin.debounce); 
+        Serial.print("inputPullup=");
+        Serial.println(pin.inputPullup); 
+        Serial.print("logicalID=");
+        Serial.println(pin.logicalID); 
+        Serial.print("pinCurrentState=");
+        Serial.println(pin.pinCurrentState); 
+        Serial.print("t=");
+        Serial.println(pin.t);
+        Serial.println("----------- END PIN CONFIG DUMP ------------");
+      #endif     
+    #endif
+    doutput_arr[index] = pin;
+  }
+  void clearDigitalOutputPins()
+  {
+    if( doutput_arr != NULL )
+    {
+      delete[] doutput_arr;
+      doutput_arr_len = 0;
+      doutput_arr_ready = 0;
+    }
+    doutput_arr = NULL;
+  }
+  void initDigitalOutputPins(size_t size)
+  {
+    #ifdef DEBUG
+      Serial.print("ConfigManager::initDigitalOutputPins, Size=0x");
+      Serial.println(size, HEX);
+    #endif
+    if( doutput_arr != NULL )
+    {
+      delete[] doutput_arr;
+      doutput_arr_len = 0;
+      doutput_arr_ready = 0;
+    }
+    doutput_arr = new dpin[size];
+    doutput_arr_len = size;
+
+  }
+
+  dpin * getDigitalOutputPins()
+  {
+    return doutput_arr;
+  }
+
+  size_t & GetDigitalOutputPinsLen()
+  {
+    return doutput_arr_len;
+  }
+
+  uint8_t GetDigitalOutputsReady()
+  {
+    if(doutput_arr_ready == 1)
+      return 1;
+    if(doutput_arr == NULL)
+    {
+      return 0;
+    }
+    for( int x = 0; x < GetDigitalOutputPinsLen(); x++)
+    {
+      dpin d = getDigitalOutputPins()[x];
+      if(d.pinID.length() == 0)
+      {
+        //Serial.print("NOT READY PIN = ");
+        //Serial.println(x);
+        return 0;
+      }
+    }
+    doutput_arr_ready = 1;
+    return 1;
+  }
+#endif
 private:
 #ifdef DINPUTS
   //dpin * din_storage_array = NULL; //[ELEMENT_COUNT_MAX];
@@ -143,9 +232,9 @@ private:
 #endif
 
 #ifdef DOUTPUTS
-  //dpin * dout_storage_array = NULL; //[ELEMENT_COUNT_MAX];
-  Vector<dpin> doutput_arr; //(dout_storage_array);
-  //Array<dpin,ELEMENT_COUNT_MAX>  doutput_arr;
+  dpin * doutput_arr = NULL;//new dpin[100];// = NULL;
+  size_t doutput_arr_len = 0;
+  uint8_t doutput_arr_ready = 0;
 #endif
 
 
