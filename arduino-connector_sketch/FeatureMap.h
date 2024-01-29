@@ -124,7 +124,7 @@ struct featureMap
       #ifdef DOUTPUTS
         flag = bitRead(this->features, DOUTPUTS);
         Serial.print("[ID0");
-        Serial.print(OUTPUTS);
+        Serial.print(DOUTPUTS);
         Serial.print("]");
         Serial.print(" OUTPUTS = ");
         Serial.println(flag);

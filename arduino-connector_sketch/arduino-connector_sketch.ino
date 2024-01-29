@@ -97,6 +97,46 @@ void onConfig(const protocol::ConfigMessage& cm) {
           }
         
         #endif
+        #ifdef DOUTPUTS
+        
+          case DOUTPUTS:
+          {
+            if(cm.seq == 0)
+            {
+              configManager.initDigitalOutputPins(cm.total);
+            }
+            JsonDocument doc;
+
+            DeserializationError error = deserializeJson(doc, cm.configString);
+
+            if (error) {
+              Serial.print(F("deserializeJson() of DINPUTS failed: "));
+              Serial.println(error.f_str());
+              return;
+            }
+            
+              dpin d = (dpin){
+                .pinID =  doc["pinID"],
+                .pinInitialState =  doc["pinInitialState"],
+                .pinConnectState = doc["pinConnectState"],
+                .pinDisconnectState = doc["pinDisconnectState"],
+                .debounce = doc["pinDebounce"],
+                .inputPullup = doc["inputPullup"],
+                .logicalID = doc["logicalID"],
+                .pinCurrentState = 0,
+                .t = 0
+              };
+              if (d.inputPullup == 1)
+              {
+                pinMode(atoi(d.pinID.c_str()), INPUT_PULLUP);
+              }
+              else { pinMode(atoi(d.pinID.c_str()), INPUT); }
+              configManager.setDigitalOutputPin(d, d.logicalID);
+              
+            
+          }
+        
+        #endif
       }
       /*
       #ifdef DINPUTS
