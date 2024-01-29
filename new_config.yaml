@@ -169,7 +169,6 @@ mcu: #micro controller unit
         pin_pins: [2,3]
         # create mode, where a virtual pin is created; above Temp1 = on, below Temp2 = off. 
 
-
     rcServo: #new feature. 2 modes, 1 HAL_BIT: move servo to pos depending on on/Off. 2: HAL_S32 change pos by writing HALpin
       - pin_id: 3
         pin-name: servo
@@ -192,7 +191,7 @@ mcu: #micro controller unit
         #running out of ideas rn, so this is a remiinder for later
 
     
-    rapidchange_atc: 
+    #rapidchange_atc: 
       #isn't this just sending a dout pin high to the original controller?
 
 
