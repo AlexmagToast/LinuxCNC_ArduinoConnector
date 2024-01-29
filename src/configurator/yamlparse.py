@@ -39,13 +39,11 @@ def get_all_keys(d):
             keys.extend(get_all_keys(value))
     return keys
 
-
-class Features():
+class Features:
     def __init__(self, key):
         self.key = key
-        #self.value = value
 
-    def featureList(self,key):
+    def featureList2(self,key):
         if key == 'mcu':
             return self.mcu()
         elif key == 'analogInputs':
@@ -53,7 +51,16 @@ class Features():
         elif key == 'pwmOutputs':
             return self.pwmOutputs()
 
-        
+    def featureList(self, key):
+        # Dynamically call the method based on the provided key
+        method_name = key
+        if hasattr(self, method_name) and callable(getattr(self, method_name)):
+            return getattr(self, method_name)()
+        else:
+            # Handle other cases or raise an exception
+            return None  # Placeholder, adjust as needed
+
+
     def mcu(self):
         mcu_pins = {
             'alias': {'value': 'new Arduino', 'ignore': 0, 'optional': 0},
@@ -107,7 +114,6 @@ class Features():
         }
         return digitalInputs
     
-
     def pwmOutputs(self):
         pwmOutputs = {
                 'pwmOutputs':{
@@ -121,10 +127,7 @@ class Features():
                 }
         }
         return pwmOutputs
-    
     def digitalOutput(self):
-
-
         digitalOutput = {
                 'digitalOutput':{
                 'pin_id': {'value': '', 'ignore': 0, 'optional':0}, 
@@ -139,8 +142,6 @@ class Features():
         return digitalOutput
     
     def lPoti(self):
-
-
         lPoti = {
                 'lPoti': {
                 'pin_id': {'value': '', 'ignore': 0, 'optional':0}, 
@@ -155,7 +156,6 @@ class Features():
                 }
         }
         return lPoti
-
     def binSel(self):
         binarySelectorSwitch = {
             'binarySelectorSwitch':{
@@ -171,34 +171,69 @@ class Features():
             }
         }
         return binarySelectorSwitch
-"""
-    quadratureEncoder:
-      - pin_id: 0
-        pin_name: quadEnc  #hal pin name       #optional
-        encoder_mode: counter #updown #vpins
-        encoder_A_pin: 2  #?
-        encoder_B_pin: 3  #?
-        encoder_pins: [2,3] #?
-        encoder_steps: 4  #electrical pulses per latch
-        #new feature: create list of Virtual Pins, only one is ever selected/ HIGH, by rotation select next / previous one. In this config a simple encoder is used to select scale of an MPG. (Standard 0.1mm)
-        encoder_virtualpins: 3 #create 10 virtual Pins
-        encoder_virtualpin_start: 2 #select pin 3 at program start
-        pin_type: HAL_FLOAT #hal pin type     #optional   HAL_BIT, HAL_S32 , HAL_FLOAT
-        value_replace: [0.001,0.01,0.1,1]
+    def quadEnc(self):
+        quadratureEncoder={
+            'quadratureEncoder':{
+            'pin_id': {'value': '', 'ignore': 0, 'optional':0}, 
+            'pin_name': {'value': 'encoder.', 'ignore': 0, 'optional':1},
+            'pin_type': {'value': 'HAL_BIT', 'ignore': 0, 'optional':1},   
+            'pin_pins': {'value': [2,3], 'ignore': 0, 'optional':0},
+            'encoder_mode': {'value': 'counter', 'ignore': 0, 'optional':0}, #updown #vpins
+            'encoder_steps': {'value': 4, 'ignore': 0, 'optional':0},
+            
+            #new feature: create list of Virtual Pins, only one is ever selected/ HIGH, by rotation select next / previous one. In this config a simple encoder is used to select scale of an MPG. (Standard 0.1mm)
+            'encoder_virtualpins': {'value': 3, 'ignore': 0, 'optional':0}, #create 10 virtual Pins
+            'encoder_virtualpin_start': {'value': 2, 'ignore': 0, 'optional':0}, #select pin 3 at program start
+            'pin_type': {'value': 'FLOAT', 'ignore': 0, 'optional':0}, #hal pin type     #optional   HAL_BIT, HAL_S32 , HAL_FLOAT
+            'value_replace': {'value': [0.001,0.01,0.1,1], 'ignore': 0, 'optional':0},
+            'pin_init_state': {'value': -1, 'ignore': 0, 'optional':1},
+            'pin_connect_state': {'value': -1, 'ignore': 0, 'optional':1},   
+            'pin_disconnect_state': {'value': 0, 'ignore': 0, 'optional':1},
+            'enabled': {'value': 'TRUE', 'ignore': 0, 'optional':1}
+            }   
+        }
+        return quadratureEncoder()
+    def joystick(self):
+        joystick = {
+            'joystick':{
+            'pin_id': {'value': '', 'ignore': 0, 'optional':0}, 
+            'pin_name': {'value': 'encoder', 'ignore': 0, 'optional':1},
+            'pin_type': {'value': 'HAL_BIT', 'ignore': 0, 'optional':1},   
+            'pin_pins': {'value': [2,3], 'ignore': 0, 'optional':0},
+            'joystick_center': {'value': 512  , 'ignore': 0, 'optional':0},
+            'joystick_deadband': {'value': 20, 'ignore': 0, 'optional':0}, #ignore values around joystick_center + - deadband 
+            'joystick_scaling': {'value': 0.01, 'ignore': 0, 'optional':0},
+            'pin_type': {'value': 'FLOAT', 'ignore': 0, 'optional':0}, #hal pin type     #optional   HAL_BIT, HAL_S32 , HAL_FLOAT
+            'value_replace': {'value': [0.001,0.01,0.1,1], 'ignore': 0, 'optional':0},
+            'pin_init_state': {'value': -1, 'ignore': 0, 'optional':1},
+            'pin_connect_state': {'value': -1, 'ignore': 0, 'optional':1},   
+            'pin_disconnect_state': {'value': 0, 'ignore': 0, 'optional':1},
+            'enabled': {'value': 'TRUE', 'ignore': 0, 'optional':1}
+            }
+        }
+        return joystick
+    def statusled(self):
+        statLed = {
+            'statusled':{
+            'pin_id': {'value': '', 'ignore': 0, 'optional':0}, 
+            'pin_name': {'value': 'statusLED', 'ignore': 0, 'optional':1},
+            'pin_type': {'value': 'HAL_BIT', 'ignore': 0, 'optional':1},   
+            'pin_pins': {'value': 13 , 'ignore': 0, 'optional':0},
+            'useDled': {'value': 0  , 'ignore': 0, 'optional':0},
+            'joystick_deadband': {'value': 20, 'ignore': 0, 'optional':0}, #ignore values around joystick_center + - deadband 
+            'joystick_scaling': {'value': 0.01, 'ignore': 0, 'optional':0},
+            'pin_type': {'value': 'FLOAT', 'ignore': 0, 'optional':0}, #hal pin type     #optional   HAL_BIT, HAL_S32 , HAL_FLOAT
+            'value_replace': {'value': [0.001,0.01,0.1,1], 'ignore': 0, 'optional':0},
+            'pin_init_state': {'value': -1, 'ignore': 0, 'optional':1},
+            'pin_connect_state': {'value': -1, 'ignore': 0, 'optional':1},   
+            'pin_disconnect_state': {'value': 0, 'ignore': 0, 'optional':1},
+            'enabled': {'value': 'TRUE', 'ignore': 0, 'optional':1}
+            }
+        }
+        return statLed
 
-    joystick:
-      - pin_id: 2
-        pin_name: joystick  #hal pin name       #optional
-        joystick_center: 512  
-        joystick_deadband: 20 #ignore values around joystick_center + - deadband 
-        joystick_scaling: 0.01
 
-    statusled:
-      - pin_id: 13
-        useDled: 1 #use digital LED instead of Output 13 #weird setting?
-"""
-
-class yamlData():
+class yamlData:
 
     def readMCU(file, MCU_no):
         
@@ -249,7 +284,7 @@ class yamlData():
     def read_yaml(file,MCU_no, pin_map):
         yaml_data = read_yaml(file)
         Feature = yaml_data[MCU_no]['mcu']['io_map']
-
+        #IOcapa = Features('')
         
         new_pin_map ={}
         top_level_key = next(iter(pin_map))
@@ -275,21 +310,93 @@ class yamlData():
         return new_pin_map
     
 
-    def update_yaml(yaml_file, newYaml,mcu):
-        
-        #feature_config = Features.mcu()
-        mangledYaml = {}
+    def update_yaml(yaml_file, newYaml, readWrite):
+        #this Function parses a yaml file to dictionary or a dictionary to yaml file. 
+        # parameters are: yaml file url, dictionary, read or write (0,1)
 
+        #features = Features()
+        mangledYaml = {}
+        features_instance = Features(key='some_key')  # You need to provide a valid key here
+
+        #print(features_instance.featureList(key='mcu'))
+
+        def recursive_dict_traversal(dictionary, readWrite, parent):
+            features = Features('')
+            feature_list = {}
+
+            for key, value in dictionary.items():
+                print(parent)
+                if isinstance(value, dict):
+                    # If the value is another dictionary, recursively call the function
+                    #print(f"Entering dictionary at key: {key}")
+                    print(key, "dict")
+                    if(features.featureList(key)):
+                        feature_list = features.featureList(key)
+                        print(feature_list, "AAAAADAJASJASJASDASDADASDAAAAAA")
+                    recursive_dict_traversal(value,readWrite,parent)
+                    #print(f"Exiting dictionary at key: {key}")
+                    
+                if isinstance(value, list) and isinstance(value[0], dict):
+                    # If the value is another dictionary, recursively call the function
+                    #print(f"Entering array at key: {key}")
+                    print(key, "list")
+                    #if(features.featureList(key)):
+                    if(key == features.featureList(key)):
+                        feature_list = features.featureList(key)
+                        print(f"new key = {key}")
+                        parent = key
+                    recursive_dict_traversal(value[0],readWrite,parent)
+
+                    #print(f"Exiting array at key: {value}")
+                else:
+                    # If the value is not a dictionary, do something with it
+                    if isinstance(value, dict):
+                        pass
+                    else:
+                        print(key, value)
+                        print(feature_list)
+                        for i , key_no in enumerate(feature_list):
+                            print(i, key_no)
+                        #print(f"At key: {key}, value: {value}")
+
+        for i in range(1):
+            recursive_dict_traversal(newYaml[i],0,'mcu')
+
+        #empty file
+        with open(yaml_file, 'w'):
+            pass
+        #write each mcu
+        for i in range(1):
+            # Write the updated modified_data back to slave.yaml
+            if i > 0:
+                with open(yaml_file, 'a') as slave_file:
+                    slave_file.write("---\n")
+            # Write the updated modified_data back to slave.yaml
+            with open(yaml_file, 'a') as slave_file:
+                yaml.dump(newYaml[i], slave_file, default_flow_style=None, sort_keys=False)
+
+
+    def update_yaml_backup(yaml_file, newYaml,mcu):
+        
+        #features = Features()
+        mangledYaml = {}
+        features_instance = Features(key='some_key')  # You need to provide a valid key here
+
+        #print(features_instance.featureList(key='mcu'))
 
         def recursive_dict_traversal(dictionary):
+            features = Features('')
+            feature_list = {}
+
             for key, value in dictionary.items():
                 
                 if isinstance(value, dict):
                     # If the value is another dictionary, recursively call the function
                     #print(f"Entering dictionary at key: {key}")
                     print(key, "dict")
-                    print(Features.featureList('mcu'))
-                        
+                    if(features.featureList(key)):
+                        feature_list = features.featureList(key)
+                    print(feature_list, "AAAAADAJASJASJASDASDADASDAAAAAA")
                     recursive_dict_traversal(value)
                     #print(f"Exiting dictionary at key: {key}")
                     
@@ -297,6 +404,9 @@ class yamlData():
                     # If the value is another dictionary, recursively call the function
                     #print(f"Entering array at key: {key}")
                     print(key, "list")
+                    if(features.featureList(key)):
+                        feature_list = features.featureList(key)
+                    print(feature_list, "AAAAADAJASJASJASDASDADASDAAAAAA")
                     recursive_dict_traversal(value[0])
 
                     #print(f"Exiting array at key: {value}")
@@ -306,6 +416,10 @@ class yamlData():
                         pass
                     else:
                         print(key, value)
+                        print(feature_list)
+                        for i , key_no in enumerate(feature_list):
+                            print(i, key_no)
+                        
 
                         #print(f"At key: {key}, value: {value}")
 
@@ -361,11 +475,6 @@ file_path2 = '/home/alex/Documents/GitHub/LinuxCNC_ArduinoConnector/new_config.y
 
 # Reading YAML file
 yaml_data = read_yaml(file_path)
-#print(yaml_data)
-#print(yaml_data['mcu'])
-#print(yaml_data['mcu']['io_map']['analogInputs'])
-#print(yaml_data['mcu']['io_map']['digitalInputs'])
-
 
 source_yaml_path2 = '/home/alex/Documents/GitHub/LinuxCNC_ArduinoConnector/new_config2.yaml'
 source_yaml_path = read_yaml('/home/alex/Documents/GitHub/LinuxCNC_ArduinoConnector/new_config.yaml')
@@ -380,16 +489,20 @@ yamlData.update_yaml(source_yaml_path2, source_yaml_path ,1)
 #print(yamlData.readAnalogInputs(file_path,1))
 
 #print(yamlData.readDigitalInputs(file_path2,0))
-"""print(yamlData.read_yaml(file_path2,0,analogPins))
+"""
+IO_features = Features('')
+print(Features.featureList('','analogInputs()'))
+print(yamlData.read_yaml(file_path2,0,Features.analogInputs('')))
 print()
-print(yamlData.read_yaml(file_path2,0,DIn_configuration))  
+print(yamlData.read_yaml(file_path2,0,Features.digitalInputs('')))  
 print()
-print(yamlData.read_yaml(file_path2,0,pwmOutputs))
+print(yamlData.read_yaml(file_path2,0,Features.digitalOutput('')))
 print()
-print(yamlData.read_yaml(file_path2,0,digitalOutput))
+print(yamlData.read_yaml(file_path2,0,Features.pwmOutputs('')))
 print()
-print(yamlData.read_yaml(file_path2,0,lPoti))
+print(yamlData.read_yaml(file_path2,0,Features.binSel('')))
 print()
-print(yamlData.read_yaml(file_path2,0,binarySelectorSwitch))
+print(yamlData.read_yaml(file_path2,0,Features.lPoti('')))
 print()
+
 """
