@@ -126,11 +126,7 @@ void onConfig(const protocol::ConfigMessage& cm) {
                 .pinCurrentState = 0,
                 .t = 0
               };
-              if (d.inputPullup == 1)
-              {
-                pinMode(atoi(d.pinID.c_str()), INPUT_PULLUP);
-              }
-              else { pinMode(atoi(d.pinID.c_str()), INPUT); }
+              pinMode(atoi(d.pinID.c_str()), OUTPUT); 
               configManager.setDigitalOutputPin(d, d.logicalID);
               
             
