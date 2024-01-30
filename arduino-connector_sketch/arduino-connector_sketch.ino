@@ -1,9 +1,10 @@
 /*
   LinuxCNC_ArduinoConnector
-  By Alexander Richter, info@theartoftinkering.com 2022
-
+  By Alexander Richter, info@theartoftinkering.com &
+  Ken Thompson (not THAT Ken Thompson), https://github.com/KennethThompson
+  
   MIT License
-  Copyright (c) 2023 Alexander Richter
+  Copyright (c) 2023 Alexander Richter & Ken Thompson
 
   Permission is hereby granted, free of charge, to any person obtaining a copy
   of this software and associated documentation files (the "Software"), to deal

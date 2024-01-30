@@ -124,11 +124,11 @@ class SerialConfigElement(Enum):
 # enum + lamda enables some dark magic elegance.
     
 class ConfigPinTypes(Enum):
-    DIGITAL_INPUTS = ['digitalInputs', lambda yaml, featureID : DigitalPin(yaml=yaml, featureID=featureID, halPinDirection=HalPinDirection.HAL_IN), 1]
-    DIGITAL_OUTPUTS = ['digitalOutputs', lambda yaml, featureID : DigitalPin(yaml=yaml, featureID=featureID, halPinDirection=HalPinDirection.HAL_OUT), 2]
-    ANALOG_INPUTS = ['analogInputs', lambda yaml, featureID : AnalogPin(yaml=yaml,featureID=featureID, halPinDirection=HalPinDirection.HAL_IN), 3]
-    ANALOG_OUTPUTS = ['analogOutputs',  lambda yaml, featureID : AnalogPin(yaml=yaml, featureID=featureID, halPinDirection=HalPinDirection.HAL_OUT), 4]
-    PWM_OUTPUTS = ['pwmOutputs',  lambda yaml, featureID : ArduinoPin(yaml=yaml, featureID=featureID, pinType=ConfigPinTypes.PWM_OUTPUTS, halPinDirection=HalPinDirection.HAL_OUT), 5]
+    DIGITAL_INPUTS = ['digitalInputs', lambda yaml, featureID : DigitalPin(yaml=yaml, featureID=featureID, halPinDirection=HalPinDirection.HAL_OUT), 1]
+    DIGITAL_OUTPUTS = ['digitalOutputs', lambda yaml, featureID : DigitalPin(yaml=yaml, featureID=featureID, halPinDirection=HalPinDirection.HAL_IN), 2]
+    ANALOG_INPUTS = ['analogInputs', lambda yaml, featureID : AnalogPin(yaml=yaml,featureID=featureID, halPinDirection=HalPinDirection.HAL_OUT), 3]
+    ANALOG_OUTPUTS = ['analogOutputs',  lambda yaml, featureID : AnalogPin(yaml=yaml, featureID=featureID, halPinDirection=HalPinDirection.HAL_IN), 4]
+    PWM_OUTPUTS = ['pwmOutputs',  lambda yaml, featureID : ArduinoPin(yaml=yaml, featureID=featureID, pinType=ConfigPinTypes.PWM_OUTPUTS, halPinDirection=HalPinDirection.HAL_IN), 5]
 
     def __str__(self) -> str:
         return self.value[0]

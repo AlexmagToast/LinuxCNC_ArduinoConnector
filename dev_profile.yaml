@@ -86,6 +86,42 @@ mcu:
         - pin_id: 24
           pin_name: dout.24 #hal pin name
           pin_debounce: 50
+        - pin_id: 25
+          pin_name: dout.25 #hal pin name
+          pin_debounce: 50
+        - pin_id: 26
+          pin_name: dout.26 #hal pin name
+          pin_debounce: 50
+        - pin_id: 27
+          pin_name: dout.27 #hal pin name
+          pin_debounce: 50
+        - pin_id: 28
+          pin_name: dout.28 #hal pin name
+          pin_debounce: 50
+        - pin_id: 29
+          pin_name: dout.29 #hal pin name
+          pin_debounce: 50
+        - pin_id: 30
+          pin_name: dout.30 #hal pin name
+          pin_debounce: 50
+        - pin_id: 31
+          pin_name: dout.31 #hal pin name
+          pin_debounce: 50
+        - pin_id: 32
+          pin_name: dout.32 #hal pin name
+          pin_debounce: 50
+        - pin_id: 33
+          pin_name: dout.33 #hal pin name
+          pin_debounce: 50
+        - pin_id: 34
+          pin_name: dout.34 #hal pin name
+          pin_debounce: 50
+        - pin_id: 35
+          pin_name: dout.35 #hal pin name
+          pin_debounce: 50
+        - pin_id: 36
+          pin_name: dout.36 #hal pin name
+          pin_debounce: 50
 ---
 mcu: 
   alias: Arduino Nano ESP32
