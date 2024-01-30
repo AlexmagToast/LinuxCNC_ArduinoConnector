@@ -281,7 +281,7 @@ class yamlData:
             
         return new_mcu_configuration
     
-    def read_yaml(file,MCU_no, pin_map):
+    def read_yaml2(file,MCU_no, pin_map):
         yaml_data = read_yaml(file)
         Feature = yaml_data[MCU_no]['mcu']['io_map']
         #IOcapa = Features('')
@@ -309,10 +309,9 @@ class yamlData:
 
         return new_pin_map
     
-
-    def update_yaml(yaml_file, newYaml, readWrite):
+    def parse_dict_to_yaml(yaml_file, newYaml, readWrite):
         #this Function parses a yaml file to dictionary or a dictionary to yaml file. 
-        # parameters are: yaml file url, dictionary, read or write (0,1)
+        # parameters are: yaml file url, dictionary, read/write (0/1)
 
         #features = Features()
         mangledYaml = {}
@@ -325,56 +324,145 @@ class yamlData:
             feature_list = {}
 
             for key, value in dictionary.items():
-                print(parent)
+                #print(parent, "parent")
                 if isinstance(value, dict):
                     # If the value is another dictionary, recursively call the function
-                    #print(f"Entering dictionary at key: {key}")
-                    print(key, "dict")
-                    if(features.featureList(key)):
+                    parent.append(key)#set new parent
+                    if(features.featureList(key)):#if new Parent is a independant Feature get Feature Pins
                         feature_list = features.featureList(key)
-                        print(feature_list, "AAAAADAJASJASJASDASDADASDAAAAAA")
-                    recursive_dict_traversal(value,readWrite,parent)
-                    #print(f"Exiting dictionary at key: {key}")
-                    
-                if isinstance(value, list) and isinstance(value[0], dict):
-                    # If the value is another dictionary, recursively call the function
-                    #print(f"Entering array at key: {key}")
-                    print(key, "list")
-                    #if(features.featureList(key)):
-                    if(key == features.featureList(key)):
-                        feature_list = features.featureList(key)
-                        print(f"new key = {key}")
-                        parent = key
-                    recursive_dict_traversal(value[0],readWrite,parent)
 
-                    #print(f"Exiting array at key: {value}")
+                    recursive_dict_traversal(value,readWrite,parent) #parse contents
+                    parent.pop() #return back to previous parent
+                if isinstance(value, list) and isinstance(value[0], dict):
+                    #if value contains List with dictionary inside enter it and recurse                    
+                    parent.append(key) #set new parent
+                    if(key == features.featureList(key)): #if new Parent is a independant Feature get Feature Pins
+                        feature_list = features.featureList(key)
+                        
+                    recursive_dict_traversal(value[0],readWrite,parent) #parse contents
+                    parent.pop() #return back to previous parent
+                    
                 else:
                     # If the value is not a dictionary, do something with it
                     if isinstance(value, dict):
                         pass
                     else:
-                        print(key, value)
-                        print(feature_list)
+
                         for i , key_no in enumerate(feature_list):
                             print(i, key_no)
-                        #print(f"At key: {key}, value: {value}")
+                        print(f"parent:{parent[-1]},(key: {key}, value: {value},) ")
 
         for i in range(1):
-            recursive_dict_traversal(newYaml[i],0,'mcu')
+            recursive_dict_traversal(newYaml[i],readWrite,[])
 
-        #empty file
-        with open(yaml_file, 'w'):
-            pass
-        #write each mcu
-        for i in range(1):
-            # Write the updated modified_data back to slave.yaml
-            if i > 0:
+            #empty file
+            with open(yaml_file, 'w'):
+                pass
+            #write each mcu
+            for i in range(1):
+                # Write the updated modified_data back to slave.yaml
+                if i > 0:
+                    with open(yaml_file, 'a') as slave_file:
+                        slave_file.write("---\n")
+                # Write the updated modified_data back to slave.yaml
                 with open(yaml_file, 'a') as slave_file:
-                    slave_file.write("---\n")
-            # Write the updated modified_data back to slave.yaml
-            with open(yaml_file, 'a') as slave_file:
-                yaml.dump(newYaml[i], slave_file, default_flow_style=None, sort_keys=False)
+                    yaml.dump(newYaml[i], slave_file, default_flow_style=None, sort_keys=False)
 
+
+    def parse_yaml_to_dict(yaml_file):
+        #this Function parses a yaml file to dictionary or a dictionary to yaml file. 
+        # parameters are: yaml file url, dictionary, read/write (0/1)
+
+        mangledYaml = {}
+        
+        features_instance = Features(key='')
+        feature_settings = {}
+        
+
+        def recursive_dict_traversal(dictionary, parent):
+                    
+            for key, value in dictionary.items():
+                #print(parent, "parent")
+                if isinstance(value, dict):
+                    # If the value is another dictionary, recursively call the function
+                    parent.append(key)#set new parent
+
+                    recursive_dict_traversal(value,parent) #parse contents
+                    parent.pop() #return back to previous parent
+                if isinstance(value, list) and isinstance(value[0], dict):
+                    #if value contains List with dictionary inside enter it and recurse                    
+                    parent.append(key) #set new parent
+                    #print(mangledYaml[parent[-1]])
+
+                    recursive_dict_traversal(value[0],parent) #parse contents
+                    parent.pop() #return back to previous parent
+                    
+                else:
+                    
+                    if not isinstance(value, dict): # If the value is not a dictionary, do something with it
+                        if features_instance.featureList(parent[-1]) is not None:
+                            feature_settings = features_instance.featureList(parent[-1])
+                        """if features_instance.featureList(parent[-1]):# check if the current parent is a Feature and update feature_settins accordingly
+                            feature_settings = features_instance.featureList(parent[-1])"""
+                    print (feature_settings, "yooone")
+                        
+                                         
+
+                        
+                        #check if value is defined and if not replace by standard value
+                        #if feature_settings[key]['ignore'] == 0 :
+                        #    print(key, value, "replace by", feature_settings[key]['value'] , feature_settings[key]['ignore'])
+
+                        #print(f"parent:{parent},(key: {key}, value: {value},) ")
+                    
+                    #mangledYaml[parent[-1]][key]= value
+        
+        recursive_dict_traversal(yaml_file[0],[])
+        return mangledYaml
+
+        
+
+# Example Usage
+file_path = 'example_config_nanoesp32_andesp8266.yaml'
+file_path2 = 'new_config.yaml'
+
+# Reading YAML file
+yaml_data = read_yaml(file_path)
+
+source_yaml_path2 = 'new_config2.yaml'
+source_yaml_path = read_yaml('new_config.yaml')
+
+                    #write to file      edited config   count of mcus in file (need to fix this to detect automatically)
+rababer = yamlData.parse_yaml_to_dict(source_yaml_path)
+print(rababer)
+
+#print(yamlData.readMCU(file_path,0))
+#print(yamlData.readMCU(file_path,1))
+
+#print(yamlData.readAnalogInputs(file_path2,0))
+#print(yamlData.readAnalogInputs(file_path,1))
+
+#print(yamlData.readDigitalInputs(file_path2,0))
+"""
+IO_features = Features('')
+print(Features.featureList('','analogInputs()'))
+print(yamlData.read_yaml(file_path2,0,Features.analogInputs('')))
+print()
+print(yamlData.read_yaml(file_path2,0,Features.digitalInputs('')))  
+print()
+print(yamlData.read_yaml(file_path2,0,Features.digitalOutput('')))
+print()
+print(yamlData.read_yaml(file_path2,0,Features.pwmOutputs('')))
+print()
+print(yamlData.read_yaml(file_path2,0,Features.binSel('')))
+print()
+print(yamlData.read_yaml(file_path2,0,Features.lPoti('')))
+print()
+
+"""
+
+
+"""
 
     def update_yaml_backup(yaml_file, newYaml,mcu):
         
@@ -429,7 +517,7 @@ class yamlData:
 
 
 
-        """
+        
         for mcu_count in range(mcu+1):
             #print(newYaml[mcu_count]['mcu'])
 
@@ -450,59 +538,20 @@ class yamlData:
                 if newYaml[mcu_count]['mcu'][key] == feature_config[key]:
                     print("yes")
 
-        """
+    
 
-        #empty file
+    #empty file
 
-        with open(yaml_file, 'w'):
-            pass
-        #write each mcu
-        for i in range(mcu+1):
-            # Write the updated modified_data back to slave.yaml
-            if i > 0:
-                with open(yaml_file, 'a') as slave_file:
-                    slave_file.write("---\n")
-            # Write the updated modified_data back to slave.yaml
+    with open(yaml_file, 'w'):
+        pass
+    #write each mcu
+    for i in range(mcu+1):
+        # Write the updated modified_data back to slave.yaml
+        if i > 0:
             with open(yaml_file, 'a') as slave_file:
-                yaml.dump(newYaml[i], slave_file, default_flow_style=None, sort_keys=False)
+                slave_file.write("---\n")
+        # Write the updated modified_data back to slave.yaml
+        with open(yaml_file, 'a') as slave_file:
+            yaml.dump(newYaml[i], slave_file, default_flow_style=None, sort_keys=False)
 
-
-        
-
-# Example Usage
-file_path = '/home/alex/Documents/GitHub/LinuxCNC_ArduinoConnector/example_config_nanoesp32_andesp8266.yaml'
-file_path2 = '/home/alex/Documents/GitHub/LinuxCNC_ArduinoConnector/new_config.yaml'
-
-# Reading YAML file
-yaml_data = read_yaml(file_path)
-
-source_yaml_path2 = '/home/alex/Documents/GitHub/LinuxCNC_ArduinoConnector/new_config2.yaml'
-source_yaml_path = read_yaml('/home/alex/Documents/GitHub/LinuxCNC_ArduinoConnector/new_config.yaml')
-
-                    #write to file      edited config   count of mcus in file (need to fix this to detect automatically)
-yamlData.update_yaml(source_yaml_path2, source_yaml_path ,1)
-
-#print(yamlData.readMCU(file_path,0))
-#print(yamlData.readMCU(file_path,1))
-
-#print(yamlData.readAnalogInputs(file_path2,0))
-#print(yamlData.readAnalogInputs(file_path,1))
-
-#print(yamlData.readDigitalInputs(file_path2,0))
-"""
-IO_features = Features('')
-print(Features.featureList('','analogInputs()'))
-print(yamlData.read_yaml(file_path2,0,Features.analogInputs('')))
-print()
-print(yamlData.read_yaml(file_path2,0,Features.digitalInputs('')))  
-print()
-print(yamlData.read_yaml(file_path2,0,Features.digitalOutput('')))
-print()
-print(yamlData.read_yaml(file_path2,0,Features.pwmOutputs('')))
-print()
-print(yamlData.read_yaml(file_path2,0,Features.binSel('')))
-print()
-print(yamlData.read_yaml(file_path2,0,Features.lPoti('')))
-print()
-
-"""
+                """
