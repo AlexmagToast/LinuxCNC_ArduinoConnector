@@ -1,8 +1,35 @@
 mcu: 
+  alias: Arduino R4 Minima
+  component_name: arduinoMinima # Name of component to use in HAL
+  #dev: /dev/cu.usbmodem14201  # Used for initial programming
+  #dev: /dev/cu.usbmodemF412FA68D6802 
+  dev: /dev/ttyACM0
+  enabled: true
+  #connection: 
+  #  baudrate: 9600
+  io_map:
+        
+    digitalInputs:
+      - pin_id: 2
+        pin_name: din.2 #hal pin name
+        input_pullup: true
+        pin_debounce: 50
+      - pin_id: 3
+        pin_name: din.3 #hal pin name
+        input_pullup: true
+        pin_debounce: 50
+
+    digitalOutputs:
+      - pin_id: 6
+        pin_name: dout.6
+      - pin_id: 7
+        pin_name: dout.7 #hal pin name
+---
+mcu: 
   alias: M4 Grand Central
   component_name: arduinom4 # Name of component to use in HAL
   dev: /dev/ttyACM0
-  enabled: true
+  enabled: false
   io_map:
     digitalInputs:
       - pin_id: 2
@@ -222,7 +249,7 @@ mcu:
   #dev: /dev/cu.usbmodem14201  # Used for initial programming
   #dev: /dev/cu.usbmodemF412FA68D6802 
   dev: /dev/ttyUSB0
-  enabled: true
+  enabled: false
   #connection: 
   #  baudrate: 9600
   io_map:
@@ -242,3 +269,5 @@ mcu:
         pin_name: dout.51
       - pin_id: 13
         pin_name: dout.13 #hal pin name
+
+  
