@@ -1,0 +1,7 @@
+pyserial
+strenum
+crc8
+numpy
+msgpack
+cobs
+pyyaml
