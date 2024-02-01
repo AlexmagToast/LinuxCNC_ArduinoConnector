@@ -239,5 +239,5 @@ private:
 
 
 
-};
+}configManager;
 #endif
