@@ -175,7 +175,7 @@ void loop() {
       int v = digitalRead(atoi(pin.pinID.c_str()));
       if(pin.pinCurrentState != v && (currentMills - pin.t) >= pin.debounce)
       {
-        #ifdef DEBUG
+        #ifdef DEBUG_VERBOSE
         Serial.print("PIN CHANGE! ");
         Serial.print("PIN: ");
         Serial.print(pin.pinID);

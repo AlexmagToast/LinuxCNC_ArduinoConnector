@@ -961,12 +961,29 @@ class ArduinoConnection:
     
     def doFeaturePinUpdates(self):
         for k, v in self.settings.io_map.items():
+            logicalID = 0
             for v1 in v:
                 #if v1.halPinDirection == HalPinDirection.HAL_OUT:
                 r = v1.halPinConnection.Get()
                 if r != v1.halPinCurrentValue:
-                    print(f'VALUE CHANGED!!! Old Value {v1.halPinCurrentValue}, New Value {r}')
-                    pcm = PinChangeMessage(featureID=v1.featureID, seqID=0, responseReq=0, message='TEST')
+                    #print(f'VALUE CHANGED!!! Old Value {v1.halPinCurrentValue}, New Value {r}')
+                    ## Send with logical pin ID to avoid for loop of pins by arduino.
+                    '''
+                        Proposed JSON for message within PinChange
+                        {
+                        "pa": [
+                            {"lid": 0, "pid": 0, "v":1},
+                            {"lid": 1, "pid": 1, "v":0}
+                            ]
+                        }
+                    '''
+                    j = {
+                    "pa": [
+                        {"lid": logicalID, "pid": int(v1.pinID), "v":r}
+                    ]
+                    }
+                    #v1.halPinCurrentValue = r
+                    pcm = PinChangeMessage(featureID=v1.featureID, seqID=0, responseReq=0, message=json.dumps(j))
                     try:
                         self.serialConn.sendMessage(pcm.packetize())
                     except Exception as error:
@@ -976,6 +993,7 @@ class ArduinoConnection:
                         #return
                     time.sleep(.2)
                     v1.halPinCurrentValue = r
+                    logicalID += 1
                          #= HalPinConnection(component=self.component, pinName=v1.pinName, pinType=v1.halPinType, pinDirection=v1.halPinDirection) 
             
 

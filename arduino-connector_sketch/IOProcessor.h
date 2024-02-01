@@ -5,14 +5,74 @@
 namespace Callbacks
 {
   void onPinChange(const protocol::PinChangeMessage& pcm) {
-      #ifdef DEBUG
-        Serial.print("::onPinChange called, featureID = ");
+      #ifdef DEBUG_VERBOSE
+        Serial.print("ARDUINO DEBUG: Callbacks::onPinChange called, featureID = ");
         Serial.print(pcm.featureID);
-        Serial.print(" Response Req = ");
+        Serial.print("ARDUINO DEBUG: Response Req = ");
         Serial.print(pcm.responseReq);
-        Serial.print(" Message = ");
+        Serial.print("ARDUINO DEBUG: Message = ");
         Serial.println(pcm.message);
       #endif
+
+      switch (pcm.featureID)
+      {
+        #ifdef DOUTPUTS
+          case DOUTPUTS:
+          {
+            if(configManager.GetDigitalOutputsReady() == 0)
+            {
+              #ifdef DEBUG_VERBOSE
+                Serial.print("ARDUINO DEBUG: Callbacks::onPinChange: GetDigitalOutputsReady() returned FALSE");
+              #endif
+              return;
+            }
+
+            JsonDocument doc;
+
+            DeserializationError error = deserializeJson(doc, pcm.message);
+
+            if (error) {
+              #ifdef DEBUG_VERBOSE
+                Serial.print("ARDUINO DEBUG: Callbacks::onPinChange: deserializeJson() of message failed: ");
+                Serial.println(error.c_str());
+              #endif
+              return;
+            }
+
+            for (JsonObject pa_item : doc["pa"].as<JsonArray>()) {
+              
+              int lid = pa_item["lid"]; // 0, 1
+              int pid = pa_item["pid"]; // 0, 1
+              int v = pa_item["v"]; // 1, 0
+
+              if(lid > configManager.GetDigitalInputPinsLen())
+              {
+                #ifdef DEBUG_VERBOSE
+                Serial.print("ARDUINO DEBUG: Callbacks::onPinChange: Error. logical pin ID ");
+                Serial.print(lid);
+                Serial.println(" is invalid.");
+                #endif
+              }
+              else{
+                dpin & pin = configManager.getDigitalInputPins()[lid];
+                #ifdef DEBUG_VERBOSE
+                Serial.print("PIN CHANGE! ");
+                Serial.print("PIN: ");
+                Serial.print(pin.pinID);
+                Serial.print(" Current value: ");
+                Serial.print(pin.pinCurrentState);
+                Serial.print(" New value: ");
+                Serial.println(v);
+                #endif
+                pin.pinCurrentState = v;
+
+                digitalWrite(atoi(pin.pinID.c_str()), pid);
+              }
+            }
+
+          }
+        #endif
+      }
   }
 
   void onConfig(const protocol::ConfigMessage& cm) {
