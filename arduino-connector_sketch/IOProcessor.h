@@ -45,7 +45,7 @@ namespace Callbacks
               int pid = pa_item["pid"]; // 0, 1
               int v = pa_item["v"]; // 1, 0
 
-              if(lid > configManager.GetDigitalInputPinsLen())
+              if(lid > configManager.GetDigitalOutputPinsLen())
               {
                 #ifdef DEBUG_VERBOSE
                 Serial.print("ARDUINO DEBUG: Callbacks::onPinChange: Error. logical pin ID ");
@@ -54,7 +54,7 @@ namespace Callbacks
                 #endif
               }
               else{
-                dpin & pin = configManager.getDigitalInputPins()[lid];
+                dpin & pin = configManager.getDigitalOutputPins()[lid];
                 #ifdef DEBUG_VERBOSE
                 Serial.print("PIN CHANGE! ");
                 Serial.print("PIN: ");

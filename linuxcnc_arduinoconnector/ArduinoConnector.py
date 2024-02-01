@@ -582,6 +582,9 @@ class PinChangeMessage(ProtocolMessage):
         self.payload.append(seqID)
         self.payload.append(responseReq)
         self.payload.append(message)
+    def __init__(self, md:MessageDecoder):
+        super().__init__(messageType=MessageType.MT_PINCHANGE)
+        self.payload = md.payload
 
 class HandshakeMessage(ProtocolMessage):
     def __init__(self, md:MessageDecoder):
@@ -687,7 +690,24 @@ class Connection:
             self.lastMessageReceived = time.time()
             hb = MessageEncoder().encodeBytes(mt=MessageType.MT_HEARTBEAT, payload=m.payload)
             self.sendMessage(bytes(hb))
+            
+        if m.messageType == MessageType.MT_PINCHANGE:
+            if debug_comm:print(f'PYDEBUG onMessageRecv() - Received MT_PINCHANGE, Values = {m.payload}')
+            #bi = m.payload[0]-1 # board index is always sent over incremeented by one
+            if self.connectionState != ConnectionState.CONNECTED:
+                debugstr = f'PYDEBUG Error. Received message from arduino prior to completing handshake. Ignoring.'
+                if debug_comm:print(debugstr)
+                return
+            self.lastMessageReceived = time.time()
 
+            try:
+                pc = PinChangeMessage(m)
+            except Exception as ex:
+                just_the_string = traceback.format_exc()
+                print(just_the_string)
+                logging.debug(f'PYDEBUG: error: {str(ex)}')
+
+        '''
         if m.messageType == MessageType.MT_PINSTATUS:
             if debug_comm:print(f'PYDEBUG onMessageRecv() - Received MT_PINSTATUS, Values = {m.payload}')
             bi = m.payload[1]-1 # board index is always sent over incremeented by one
@@ -702,6 +722,8 @@ class Connection:
                 if debug_comm:print("PYDEBUG Error. Timed out waiting to gain access to RxQueue!")
             except Queue.Full:
                 if debug_comm:print("Error. RxQueue is full!")
+        '''
+
             #return None 
             #hb = MessageEncoder().encodeBytes(mt=MessageType.MT_HEARTBEAT, payload=m.payload)
             #self.sendMessage(bytes(hb))
