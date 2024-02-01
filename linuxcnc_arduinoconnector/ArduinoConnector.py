@@ -582,9 +582,9 @@ class PinChangeMessage(ProtocolMessage):
         self.payload.append(seqID)
         self.payload.append(responseReq)
         self.payload.append(message)
-    def __init__(self, md:MessageDecoder):
-        super().__init__(messageType=MessageType.MT_PINCHANGE)
-        self.payload = md.payload
+    #def __init__(self, md:MessageDecoder):
+    #    super().__init__(messageType=MessageType.MT_PINCHANGE)
+    #    self.payload = md.payload
 
 class HandshakeMessage(ProtocolMessage):
     def __init__(self, md:MessageDecoder):

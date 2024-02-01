@@ -198,12 +198,14 @@ void loop() {
         pa_0["pid"] = pin.pinID;
         pa_0["v"] = v;
         String output;
-        doc.shrinkToFit();  // optional
+        //doc.shrinkToFit();  // optional
         serializeJson(doc, output);
+        Serial.print("JSON = ");
+        Serial.println(output);
         uint8_t seqID = 0;
         uint8_t resp = 0; // Future TODO: Consider requiring ACK/NAK, maybe.
         uint8_t f = DINPUTS;
-        //serialClient.SendPinChangeMessage(f, seqID, resp, output);
+        serialClient.SendPinChangeMessage(f, seqID, resp, output);
       }
     }
   }
