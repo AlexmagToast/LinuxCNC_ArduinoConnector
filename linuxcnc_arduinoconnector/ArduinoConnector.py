@@ -423,7 +423,7 @@ class MessageType(IntEnum):
     MT_HEARTBEAT = 1,
     MT_RESPONSE = 2, 
     MT_HANDSHAKE = 3, 
-    MT_COMMAND = 4, 
+    MT_PINCHANGE = 4, 
     MT_PINSTATUS = 5, 
     MT_DEBUG = 6, 
     MT_CONFIG = 7
@@ -573,6 +573,15 @@ class ConfigMessage(ProtocolMessage):
         self.payload.append(seq)
         self.payload.append(total)
         self.payload.append(configJSON)
+
+class PinChangeMessage(ProtocolMessage):
+    def __init__(self, featureID:int, seqID:int, responseReq:int, message:str):
+        super().__init__(messageType=MessageType.MT_PINCHANGE)
+        self.payload = [] 
+        self.payload.append(featureID)
+        self.payload.append(seqID)
+        self.payload.append(responseReq)
+        self.payload.append(message)
 
 class HandshakeMessage(ProtocolMessage):
     def __init__(self, md:MessageDecoder):
@@ -957,6 +966,15 @@ class ArduinoConnection:
                 r = v1.halPinConnection.Get()
                 if r != v1.halPinCurrentValue:
                     print(f'VALUE CHANGED!!! Old Value {v1.halPinCurrentValue}, New Value {r}')
+                    pcm = PinChangeMessage(featureID=v1.featureID, seqID=0, responseReq=0, message='TEST')
+                    try:
+                        self.serialConn.sendMessage(pcm.packetize())
+                    except Exception as error:
+                        just_the_string = traceback.format_exc()
+                        logging.debug(f'PYDEBUG: ArduinoConnection::doFeaturePinUpdates, dev={self.settings.dev}, alias={self.settings.alias}, Exception: {str(error)}, Traceback = {just_the_string}')
+                        # Future TODO: Consider doing something intelligent and not just reporting an error. Maybe increment a hal pin that reflects error counts?
+                        #return
+                    time.sleep(.2)
                     v1.halPinCurrentValue = r
                          #= HalPinConnection(component=self.component, pinName=v1.pinName, pinType=v1.halPinType, pinDirection=v1.halPinDirection) 
             

@@ -41,131 +41,53 @@ SerialConnection serialClient(SERIAL_RX_TIMEOUT, fm.features);
 ConfigManager configManager;
 //std::map<String, int> mp;// {{"one", 1}, {"two", 2}, {"four", 4}};
 
+
+void onPinChange(const protocol::PinChangeMessage& pcm) {
+    #ifdef DEBUG
+      Serial.print("::onPinChange called, featureID = ");
+      Serial.print(pcm.featureID);
+      Serial.print(" Response Req = ");
+      Serial.print(pcm.responseReq);
+      Serial.print(" Message = ");
+      Serial.println(pcm.message);
+    #endif
+}
+
 void onConfig(const protocol::ConfigMessage& cm) {
-      #ifdef DEBUG
-        Serial.print("::onConfig called, featureID = ");
-        Serial.print(cm.featureID);
-        Serial.print(" Seq = ");
-        Serial.print(cm.seq);
-        Serial.print(" Total = ");
-        Serial.println(cm.total);
-        #ifdef DEBUG_VERBOSE
-          Serial.print("Config: ");
-          Serial.println(cm.configString);
-        #endif
+    #ifdef DEBUG
+      Serial.print("::onConfig called, featureID = ");
+      Serial.print(cm.featureID);
+      Serial.print(" Seq = ");
+      Serial.print(cm.seq);
+      Serial.print(" Total = ");
+      Serial.println(cm.total);
+      #ifdef DEBUG_VERBOSE
+        Serial.print("Config: ");
+        Serial.println(cm.configString);
       #endif
-      //Serial.print("Size of Config: ");
-      //Serial.println(strlen(conf));
-      switch (cm.featureID)
-      {
-        #ifdef DINPUTS
-        
-          case DINPUTS:
-          {
-            if(cm.seq == 0)
-            {
-              configManager.initDigitalInputPins(cm.total);
-            }
-            JsonDocument doc;
-
-            DeserializationError error = deserializeJson(doc, cm.configString);
-
-            if (error) {
-              Serial.print(F("deserializeJson() of DINPUTS failed: "));
-              Serial.println(error.f_str());
-              return;
-            }
-            
-              dpin d = (dpin){
-                .pinID =  doc["pinID"],
-                .pinInitialState =  doc["pinInitialState"],
-                .pinConnectState = doc["pinConnectState"],
-                .pinDisconnectState = doc["pinDisconnectState"],
-                .debounce = doc["pinDebounce"],
-                .inputPullup = doc["inputPullup"],
-                .logicalID = doc["logicalID"],
-                .pinCurrentState = 0,
-                .t = 0
-              };
-              if (d.inputPullup == 1)
-              {
-                pinMode(atoi(d.pinID.c_str()), INPUT_PULLUP);
-              }
-              else { pinMode(atoi(d.pinID.c_str()), INPUT); }
-              configManager.setDigitalInputPin(d, d.logicalID);
-              
-            
-          }
-        
-        #endif
-        #ifdef DOUTPUTS
-        
-          case DOUTPUTS:
-          {
-            if(cm.seq == 0)
-            {
-              configManager.initDigitalOutputPins(cm.total);
-            }
-            JsonDocument doc;
-
-            DeserializationError error = deserializeJson(doc, cm.configString);
-
-            if (error) {
-              Serial.print(F("deserializeJson() of DINPUTS failed: "));
-              Serial.println(error.f_str());
-              return;
-            }
-            
-              dpin d = (dpin){
-                .pinID =  doc["pinID"],
-                .pinInitialState =  doc["pinInitialState"],
-                .pinConnectState = doc["pinConnectState"],
-                .pinDisconnectState = doc["pinDisconnectState"],
-                .debounce = doc["pinDebounce"],
-                .inputPullup = doc["inputPullup"],
-                .logicalID = doc["logicalID"],
-                .pinCurrentState = 0,
-                .t = 0
-              };
-              pinMode(atoi(d.pinID.c_str()), OUTPUT); 
-              configManager.setDigitalOutputPin(d, d.logicalID);
-              
-            
-          }
-        
-        #endif
-      }
-      /*
+    #endif
+    //Serial.print("Size of Config: ");
+    //Serial.println(strlen(conf));
+    switch (cm.featureID)
+    {
       #ifdef DINPUTS
-        { 
-          
-          //din_storage_array = new dpin[]; //[ELEMENT_COUNT_MAX];
-          //Vector<dpin> * dinput_arr = NULL; //(din_storage_array);
-          //dinput_arr = new 
-          //dinput_arr.clear();
-          JsonDocument filter;
-          filter["DIGITAL_INPUTS"] = true;
-          //filter["DIGITAL_INPUTS_COUNT"] = true;
+      
+        case DINPUTS:
+        {
+          if(cm.seq == 0)
+          {
+            configManager.initDigitalInputPins(cm.total);
+          }
           JsonDocument doc;
-          DeserializationError error = deserializeJson(doc, conf, DeserializationOption::Filter(filter));
+
+          DeserializationError error = deserializeJson(doc, cm.configString);
+
           if (error) {
-            #ifdef DEBUG
-            Serial.print("deserializeJson() of DIGITAL_INPUTS failed: ");
-            Serial.println(error.c_str());
-            #endif
+            Serial.print(F("deserializeJson() of DINPUTS failed: "));
+            Serial.println(error.f_str());
             return;
           }
-          //int DIGITAL_INPUTS_COUNT = doc["DIGITAL_INPUTS_COUNT"];
-          //if( din_storage_array != NULL )
-          //{
-          //  delete din_storage_array;
-          //  delete dinput_arr;
-          //}
-          //dpin din_storage_array[DIGITAL_INPUTS_COUNT];
-          //Vector<dpin> dinput_arr();//din_storage_array);
-          //dinput_arr.setStorage(din_storage_array);
-
-          //for (JsonPair DIGITAL_INPUTS_item : doc["DIGITAL_INPUTS"].as<JsonObject>()) {
+          
             dpin d = (dpin){
               .pinID =  doc["pinID"],
               .pinInitialState =  doc["pinInitialState"],
@@ -173,6 +95,7 @@ void onConfig(const protocol::ConfigMessage& cm) {
               .pinDisconnectState = doc["pinDisconnectState"],
               .debounce = doc["pinDebounce"],
               .inputPullup = doc["inputPullup"],
+              .logicalID = doc["logicalID"],
               .pinCurrentState = 0,
               .t = 0
             };
@@ -181,47 +104,136 @@ void onConfig(const protocol::ConfigMessage& cm) {
               pinMode(atoi(d.pinID.c_str()), INPUT_PULLUP);
             }
             else { pinMode(atoi(d.pinID.c_str()), INPUT); }
-            //dinput_arr->push_back(d);
-          }
+            configManager.setDigitalInputPin(d, d.logicalID);
+            
           
         }
+      
       #endif
       #ifdef DOUTPUTS
-      {
+      
+        case DOUTPUTS:
+        {
+          if(cm.seq == 0)
+          {
+            configManager.initDigitalOutputPins(cm.total);
+          }
+          JsonDocument doc;
+
+          DeserializationError error = deserializeJson(doc, cm.configString);
+
+          if (error) {
+            Serial.print(F("deserializeJson() of DINPUTS failed: "));
+            Serial.println(error.f_str());
+            return;
+          }
+          
+            dpin d = (dpin){
+              .pinID =  doc["pinID"],
+              .pinInitialState =  doc["pinInitialState"],
+              .pinConnectState = doc["pinConnectState"],
+              .pinDisconnectState = doc["pinDisconnectState"],
+              .debounce = doc["pinDebounce"],
+              .inputPullup = doc["inputPullup"],
+              .logicalID = doc["logicalID"],
+              .pinCurrentState = 0,
+              .t = 0
+            };
+            pinMode(atoi(d.pinID.c_str()), OUTPUT); 
+            configManager.setDigitalOutputPin(d, d.logicalID);
+            
+          
+        }
+      
+      #endif
+    }
+    /*
+    #ifdef DINPUTS
+      { 
         
-        doutput_arr.clear();
-        
-        StaticJsonDocument<200> filter;
-        filter["DIGITAL_OUTPUTS"] = true;
-        StaticJsonDocument<1024> doc;
+        //din_storage_array = new dpin[]; //[ELEMENT_COUNT_MAX];
+        //Vector<dpin> * dinput_arr = NULL; //(din_storage_array);
+        //dinput_arr = new 
+        //dinput_arr.clear();
+        JsonDocument filter;
+        filter["DIGITAL_INPUTS"] = true;
+        //filter["DIGITAL_INPUTS_COUNT"] = true;
+        JsonDocument doc;
         DeserializationError error = deserializeJson(doc, conf, DeserializationOption::Filter(filter));
         if (error) {
           #ifdef DEBUG
-          Serial.print("deserializeJson() of DIGITAL_OUTPUTS  failed: ");
+          Serial.print("deserializeJson() of DIGITAL_INPUTS failed: ");
           Serial.println(error.c_str());
           #endif
           return;
         }
-        
-        for (JsonPair DIGITAL_OUTPUTS_item : doc["DIGITAL_OUTPUTS"].as<JsonObject>()) {
-          dpin d = (dpin){.pinName = DIGITAL_OUTPUTS_item.value()["pinName"],
-            .pinType = DIGITAL_OUTPUTS_item.value()["pinType"],
-            .pinID =  DIGITAL_OUTPUTS_item.value()["pinID"],
-            .pinInitialState =  DIGITAL_OUTPUTS_item.value()["pinInitialState"],
-            .pinConnectState = DIGITAL_OUTPUTS_item.value()["pinConnectState"],
-            .pinDisconnectState = DIGITAL_OUTPUTS_item.value()["pinDisconnectState"],
-            .halPinDirection = DIGITAL_OUTPUTS_item.value()["halPinDirection"]
+        //int DIGITAL_INPUTS_COUNT = doc["DIGITAL_INPUTS_COUNT"];
+        //if( din_storage_array != NULL )
+        //{
+        //  delete din_storage_array;
+        //  delete dinput_arr;
+        //}
+        //dpin din_storage_array[DIGITAL_INPUTS_COUNT];
+        //Vector<dpin> dinput_arr();//din_storage_array);
+        //dinput_arr.setStorage(din_storage_array);
+
+        //for (JsonPair DIGITAL_INPUTS_item : doc["DIGITAL_INPUTS"].as<JsonObject>()) {
+          dpin d = (dpin){
+            .pinID =  doc["pinID"],
+            .pinInitialState =  doc["pinInitialState"],
+            .pinConnectState = doc["pinConnectState"],
+            .pinDisconnectState = doc["pinDisconnectState"],
+            .debounce = doc["pinDebounce"],
+            .inputPullup = doc["inputPullup"],
+            .pinCurrentState = 0,
+            .t = 0
           };
-          
-          
-          doutput_arr.push_back(d);
-          
+          if (d.inputPullup == 1)
+          {
+            pinMode(atoi(d.pinID.c_str()), INPUT_PULLUP);
+          }
+          else { pinMode(atoi(d.pinID.c_str()), INPUT); }
+          //dinput_arr->push_back(d);
         }
         
+      }
+    #endif
+    #ifdef DOUTPUTS
+    {
+      
+      doutput_arr.clear();
+      
+      StaticJsonDocument<200> filter;
+      filter["DIGITAL_OUTPUTS"] = true;
+      StaticJsonDocument<1024> doc;
+      DeserializationError error = deserializeJson(doc, conf, DeserializationOption::Filter(filter));
+      if (error) {
+        #ifdef DEBUG
+        Serial.print("deserializeJson() of DIGITAL_OUTPUTS  failed: ");
+        Serial.println(error.c_str());
+        #endif
+        return;
+      }
+      
+      for (JsonPair DIGITAL_OUTPUTS_item : doc["DIGITAL_OUTPUTS"].as<JsonObject>()) {
+        dpin d = (dpin){.pinName = DIGITAL_OUTPUTS_item.value()["pinName"],
+          .pinType = DIGITAL_OUTPUTS_item.value()["pinType"],
+          .pinID =  DIGITAL_OUTPUTS_item.value()["pinID"],
+          .pinInitialState =  DIGITAL_OUTPUTS_item.value()["pinInitialState"],
+          .pinConnectState = DIGITAL_OUTPUTS_item.value()["pinConnectState"],
+          .pinDisconnectState = DIGITAL_OUTPUTS_item.value()["pinDisconnectState"],
+          .halPinDirection = DIGITAL_OUTPUTS_item.value()["halPinDirection"]
+        };
         
-      }  
-      #endif
-      */
+        
+        doutput_arr.push_back(d);
+        
+      }
+      
+      
+    }  
+    #endif
+    */
   }
 
 void onConnectionStageChange(int s) {
@@ -344,6 +356,7 @@ void setup() {
   serialClient.setUID("UNDEFINED");
   serialClient.RegisterConfigCallback(onConfig);
   serialClient.RegisterCSCallback(onConnectionStageChange);
+  serialClient.RegisterPinChangeCallback(onPinChange);
   digitalWrite(LED_BUILTIN, LOW);// Signal startup success to builtin LED
   serialClient.DoWork(); 
 }

@@ -72,13 +72,13 @@ namespace protocol
 {
   enum MessageTypes
   {
-    MT_HEARTBEAT      =   1,
-    MT_RESPONSE       =   2,
-    MT_HANDSHAKE      =   3, 
-    MT_COMMAND        =   4,
-    MT_PINSTATUS      =   5,
-    MT_DEBUG          =   6,
-    MT_CONFIG         =   7
+    MT_HEARTBEAT                =   1,
+    MT_RESPONSE                 =   2,
+    MT_HANDSHAKE                =   3, 
+    MT_PINCHANGE                =   4,
+    MT_PIN_CHANGE_RESPONSE      =   5,
+    MT_DEBUG                    =   6,
+    MT_CONFIG                   =   7
   };
 
   enum ResponseTypes
@@ -116,14 +116,22 @@ namespace protocol
   // in the ResponseMessage gets used by the Arduino when sending subsequent
   // messages to python, such as via UDP.  This avoids the need to send the full UID in each message to the python side.
 
-  struct ResponseMessage {
-      uint8_t arduinoIndex; // ID of Arduino
-      uint8_t messageType;  // The message type the Response is directed to
-      uint8_t seqNum;  // Usually zero, unless the response is during a sequence of messages, e.g., during config provisioning.   
-      uint8_t responseType;  // 1 ACK, 0 NAK
-      MSGPACK_DEFINE(arduinoIndex, messageType, seqNum, responseType); 
-  }rm;
-/*
+  struct PinChangeMessage {
+      uint8_t featureID;
+      uint8_t seqID;  
+      uint8_t responseReq; // Indicates if a response is required from recepient
+      String message;
+      MSGPACK_DEFINE(featureID, seqID, responseReq, message); 
+  }pcm;
+  
+  struct PinChangeResponseMessage {
+      uint8_t featureID;
+      uint8_t seqID;
+      uint8_t response; // 1 - success/ACK, 0 - error/NAK
+      String message;
+      MSGPACK_DEFINE(featureID, seqID, message); 
+  }pcrm;
+/*s
   struct ArduinoPropertiesMessage {
     String    uid;
     uint64_t  featureMap;
@@ -140,17 +148,19 @@ namespace protocol
       MSGPACK_DEFINE(boardIndex); 
   }hb;
 
+  /*
   // This message may be deprecated in the near future
   struct CommandMessage {
       String cmd;
       MSGPACK_DEFINE(cmd); 
   }cm;
-  
+  */
+  /*
   struct PinStatusMessage {
       String status;
       MSGPACK_DEFINE(status); 
   }pm;
-  
+  */
   struct ConfigMessage {
       uint64_t featureID;
       uint16_t seq;

@@ -18,7 +18,8 @@ enum ConnectionState
 
 class ConnectionBase {
 
-  using m_cb = void (*)(const protocol::ConfigMessage&);
+  using m_cmcb = void (*)(const protocol::ConfigMessage&);
+  using m_pcmcb = void (*)(const protocol::PinChangeMessage&);
   using m_cscb = void (*)(int);
 
 public:
@@ -27,9 +28,15 @@ public:
 
   }
 
-  void RegisterConfigCallback(m_cb act)
+  void RegisterConfigCallback(m_cmcb act)
   {
     _configAction = act;
+  
+  }
+
+  void RegisterPinChangeCallback(m_pcmcb act)
+  {
+    _pinChangeAction = act;
   }
 
   void RegisterCSCallback(m_cscb act)
@@ -56,6 +63,7 @@ public:
     _uid = uid;
   }
 
+/*
   virtual void SendPinStatusMessage(char sig, int pin, int state)
   {
     String status = String(sig);
@@ -66,16 +74,14 @@ public:
     protocol::pm.status += " ";
     _sendPinStatusMessage();
   }
-
-  virtual void SendPinStatusMessage(char sig, int pin, double state, int decimals)
+*/
+  virtual void SendPinChangeMessage(uint8_t& featureID, uint8_t& seqID, uint8_t& responseReq, String& message)
   {
-    String status = String(sig);
-    status += String(pin);
-    status += ":";
-    status += String(state, decimals);
-    protocol::pm.status = status;
-    protocol::pm.status += " ";
-    _sendPinStatusMessage();
+    protocol::pcm.featureID = featureID;
+    protocol::pcm.responseReq = responseReq;
+    protocol::pcm.message = message;
+    protocol::pcm.seqID = seqID;
+    _sendPinChangeMessage();
   }
 
 
@@ -188,7 +194,7 @@ public:
     }
   }
   #endif
-
+/*
   uint8_t CommandReceived()
   {
     return _commandReceived;
@@ -201,7 +207,7 @@ public:
       _commandReceived = 0; // Clear flag.  Crude, but works.
     return protocol::cm;
   }
-
+*/
 protected:
   virtual uint8_t _onInit();
   virtual void _onConnect();
@@ -214,7 +220,7 @@ protected:
 
   virtual void _sendHeartbeatMessage();
 
-  virtual void _sendPinStatusMessage();
+  virtual void _sendPinChangeMessage();
   #ifdef DEBUG
   virtual void _sendDebugMessage(String& message);
   #endif
@@ -245,6 +251,7 @@ protected:
       _heartbeatReceived = 1;
   }
 
+  /*
   void _onCommandMessage(const protocol::CommandMessage& n)
   {
       #ifdef DEBUG_VERBOSE
@@ -259,6 +266,7 @@ protected:
       //protocol::cm.boardIndex = n.boardIndex-1;
       _commandReceived = 1;
   }
+  */
   void _onConfigMessage(const protocol::ConfigMessage& n)
   {
       if(_configAction != NULL)
@@ -266,44 +274,27 @@ protected:
         _configAction(n);
       }
       _receiveTimer = millis(); // Don't let the heartbeat timeout elapse just because the arduino is busy processing config
-      /*
-      #ifdef DEBUG_VERBOSE
-      Serial.println("ARDUINO DEBUG: ---- RX CONFIG MESSAGE DUMP ----");
-      //Serial.print("ARDUINO DEBUG: Config String: ");
-      //Serial.println(n.configString);
-
-      
-      JsonDocument doc;
-        // Deserialize the JSON document
-      DeserializationError error = deserializeJson(doc, n.configString);
-
-      // Test if parsing succeeds.
-      if (error) {
-        #ifdef DEBUG
-        Serial.print(F("deserializeJson() failed: "));
-        Serial.println(error.f_str());
-        #endif
-        return;
-      }
-      // Generate the prettified JSON and send it to the Serial port.
-      serializeJsonPretty(doc, Serial);
-      //Serial.print("ARDUINO DEBUG: Board Index: ");
-      //Serial.println(n.boardIndex);
-      //Serial.println("ARDUINO DEBUG: ---- RX END CONFIG MESSAGE DUMP ----");
-      //serializeJson(doc, Serial);
-      // The above line prints:
-      // {"sensor":"gps","time":1351824120,"data":[48.756080,2.302038]}
-
-      // Start a new line
-      //Serial.println();
-      
-      
-      #endif
-      */
-      //protocol::cm.boardIndex = n.boardIndex-1;
-      //_commandReceived = 1;
   }
-
+  void _onPinChangeMessage(const protocol::PinChangeMessage& n)
+  {
+    #ifdef DEBUG_VERBOSE
+      Serial.println("ARDUINO DEBUG: ---- RX PINCHANGE MESSAGE DUMP ----");
+      Serial.print("ARDUINO DEBUG: FEATURE ID: ");
+      Serial.println(n.featureID);  
+      Serial.print("ARDUINO DEBUG: SEQ ID: ");
+      Serial.println(n.seqID);  
+      Serial.print("ARDUINO DEBUG: RESPONSE REQ: ");
+      Serial.println(n.responseReq);       
+      Serial.print("ARDUINO DEBUG: MESSAGE: ");
+      Serial.println(n.message);  
+      Serial.println("ARDUINO DEBUG: ---- RX END PINCHANGE MESSAGE DUMP ----");
+    #endif
+      if(_pinChangeAction != NULL)
+      {
+        _pinChangeAction(n);
+      }
+      _receiveTimer = millis(); // Don't let the heartbeat timeout elapse just because the arduino is busy processing messages like this one
+  }
   void _setState(int new_state)
   {
     #ifdef DEBUG
@@ -349,77 +340,7 @@ protected:
     #endif
     return protocol::hm;
   }
-  /*
-  size_t _packetizeMessage(MsgPack::Packer& packer, uint8_t type, byte* outBuffer)
-  {
-    uint8_t psize = packer.size();
-    _crc.add((uint8_t*)packer.data(), psize);
-    uint8_t crc = _crc.calc();
-    _crc.restart();
-    uint8_t t = type;
-    uint8_t eot = 0x00;
 
-    
-    memcpy(outBuffer, (void*)&psize, sizeof(byte));
-    memcpy(((byte*)outBuffer)+1, (void*)&t, sizeof(byte));
-    memcpy(((byte*)outBuffer)+2, (void*)packer.data(), psize);
-    memcpy(((byte*)outBuffer)+2+psize, (void*)&crc, sizeof(byte));
-    memcpy(((byte*)outBuffer)+2+psize+1, (void*)&eot, sizeof(byte));
-
-    return 4 + psize;
-  }
-
-  size_t _getHandshakeMessagePacked(byte* outBuffer)
-  {
-    MsgPack::Packer packer;
-    protocol::hm.featureMap = 0x1001;//this->_featureMap;
-    protocol::hm.timeout = _retryPeriod * 2;
-    packer.serialize(protocol::hm);
-    uint8_t size = packer.size();
-    size_t packetsize = _packetizeMessage(packer, protocol::MT_HANDSHAKE, outBuffer);
-    #ifdef DEBUG_PROTOCOL_VERBOSE
-      Serial.print("DEBUG: ---------START TX DUMP FOR MT_HANDSHAKE PAYLOAD: ");
-      for( int x = 0; x < packer.size(); x++ )
-      {
-        Serial.print("[0x");
-        Serial.print(packer.data()[x], HEX);
-        Serial.print("]");
-      }     
-      Serial.println(" --------END TX DUMP FOR MT_HANDSHAKE");
-    #endif
-
-    #ifdef DEBUG_PROTOCOL_VERBOSE
-      Serial.print("DEBUG: START TX DUMP FOR MT_HANDSHAKE");
-      for( int x = 0; x < packetsize; x++ )
-      {
-        Serial.print("[0x");
-        Serial.print(outBuffer[x], HEX);
-        Serial.print("]");
-      }     
-      Serial.println("END TX DUMP FOR MT_HANDSHAKE");
-    #endif
-    return packetsize;
-  }
-  size_t _getHeartbeatMessagePacked(byte* outBuffer)
-  {
-    MsgPack::Packer packer;
-    packer.serialize(protocol::hb);
-    uint8_t size = packer.size();
-    size_t packetsize = _packetizeMessage(packer, protocol::MT_HEARTBEAT, outBuffer);
-
-    #ifdef DEBUG_PROTOCOL_VERBOSE
-      Serial.print("DEBUG: START TX DUMP FOR MT_HEARTBEAT");
-      for( int x = 0; x < packetsize; x++ )
-      {
-        Serial.print("[0x");
-        Serial.print(_txBuffer[x], HEX);
-        Serial.print("]");
-      }     
-      Serial.println("END TX DUMP FOR MT_HEARTBEAT");
-    #endif
-    return packetsize;
-  }
-  */
   protocol::HeartbeatMessage& _getHeartbeatMessage()
   {
     #ifdef DEBUG_VERBOSE
@@ -431,6 +352,21 @@ protected:
     return protocol::hb;
   }
 
+  protocol::PinChangeMessage& _getPinChangeMessage()
+  {
+    #ifdef DEBUG_VERBOSE
+      Serial.println("ARDUINO DEBUG: ---- TX PINCHANGE MESSAGE DUMP ----");
+      Serial.print("ARDUINO DEBUG: FEATURE ID: ");
+      Serial.println(protocol::pcm.featureID);  
+      Serial.print("ARDUINO DEBUG: ACK REQ: ");
+      Serial.println(protocol::pcm.responseReq);       
+      Serial.print("ARDUINO DEBUG: MESSAGE: ");
+      Serial.println(protocol::pcm.message);  
+      Serial.println("ARDUINO DEBUG: ---- TX END PINCHANGE MESSAGE DUMP ----");
+    #endif
+    return protocol::pcm;
+  }
+/*
   protocol::PinStatusMessage& _getPinStatusMessage()
   {
     #ifdef DEBUG_VERBOSE
@@ -443,7 +379,7 @@ protected:
     #endif
     return protocol::pm;
   }
-
+*/
   #ifdef DEBUG
   protocol::DebugMessage& _getDebugMessage(String& message)
   {
@@ -491,8 +427,9 @@ protected:
   const char * _uid;
   
   private:
-    m_cb _configAction = NULL;
+    m_cmcb _configAction = NULL;
     m_cscb _csAction = NULL;
+    m_pcmcb _pinChangeAction = NULL;
 
 
 };

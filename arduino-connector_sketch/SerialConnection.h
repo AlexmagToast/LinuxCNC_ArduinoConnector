@@ -1,3 +1,4 @@
+#include "Protocol.h"
 /*
 SerialCient for Arduino
 
@@ -71,9 +72,9 @@ public:
           [&](const protocol::HeartbeatMessage& n) {
               _onHeartbeatMessage(n);
           });
-      MsgPacketizer::subscribe(Serial, MT_COMMAND,
-          [&](const protocol::CommandMessage& n) {
-              _onCommandMessage(n);
+      MsgPacketizer::subscribe(Serial, MT_PINCHANGE,
+          [&](const protocol::PinChangeMessage& n) {
+              _onPinChangeMessage(n);
           });
       MsgPacketizer::subscribe(Serial, MT_CONFIG,
           [&](const protocol::ConfigMessage& n) {
@@ -97,11 +98,17 @@ public:
     MsgPacketizer::send(Serial, MT_HEARTBEAT, _getHeartbeatMessage());
     //Serial.flush();
   }
+
+  virtual void _sendPinChangeMessage()
+  {
+    MsgPacketizer::send(Serial, MT_PINCHANGE, _getPinChangeMessage());
+  }
+  /*
   virtual void _sendPinStatusMessage()
   { 
     MsgPacketizer::send(Serial, MT_PINSTATUS, _getPinStatusMessage());
   }
-
+  */
   
   #ifdef DEBUG
   virtual void _sendDebugMessage(String& message)
