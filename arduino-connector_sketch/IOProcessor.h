@@ -56,20 +56,23 @@ namespace Callbacks
               else{
                 dpin & pin = configManager.getDigitalOutputPins()[lid];
                 #ifdef DEBUG_VERBOSE
-                Serial.print("PIN CHANGE! ");
-                Serial.print("PIN: ");
-                Serial.print(pin.pinID);
-                Serial.print(" Current value: ");
-                Serial.print(pin.pinCurrentState);
-                Serial.print(" New value: ");
+                Serial.print("DOUTPUTS PIN CHANGE!");
+                Serial.print("PIN ID: ");
+                Serial.println(pin.pinID);
+                Serial.print("PID: ");
+                Serial.println(pid);
+                Serial.print("LID: ");
+                Serial.println(lid);
+                Serial.print("Current value:");
+                Serial.println(pin.pinCurrentState);
+                Serial.print("New value:");
                 Serial.println(v);
                 #endif
                 pin.pinCurrentState = v;
-
-                digitalWrite(atoi(pin.pinID.c_str()), pid);
+                digitalWrite(atoi(pin.pinID.c_str()), v);
               }
             }
-
+            break;
           }
         #endif
       }
@@ -107,29 +110,29 @@ namespace Callbacks
             if (error) {
               Serial.print(F("deserializeJson() of DINPUTS failed: "));
               Serial.println(error.f_str());
-              return;
+              break;
             }
             
-              dpin d = (dpin){
-                .pinID =  doc["pinID"],
-                .pinInitialState =  doc["pinInitialState"],
-                .pinConnectState = doc["pinConnectState"],
-                .pinDisconnectState = doc["pinDisconnectState"],
-                .debounce = doc["pinDebounce"],
-                .inputPullup = doc["inputPullup"],
-                .logicalID = doc["logicalID"],
-                .pinCurrentState = 0,
-                .t = 0
-              };
-              if (d.inputPullup == 1)
-              {
-                pinMode(atoi(d.pinID.c_str()), INPUT_PULLUP);
-              }
-              else { pinMode(atoi(d.pinID.c_str()), INPUT); }
-              configManager.setDigitalInputPin(d, d.logicalID);
-              
+            dpin d = (dpin){
+              .pinID =  doc["pinID"],
+              .pinInitialState =  doc["pinInitialState"],
+              .pinConnectState = doc["pinConnectState"],
+              .pinDisconnectState = doc["pinDisconnectState"],
+              .debounce = doc["pinDebounce"],
+              .inputPullup = doc["inputPullup"],
+              .logicalID = doc["logicalID"],
+              .pinCurrentState = 0,
+              .t = 0
+            };
+            if (d.inputPullup == 1)
+            {
+              pinMode(atoi(d.pinID.c_str()), INPUT_PULLUP);
+            }
+            else { pinMode(atoi(d.pinID.c_str()), INPUT); }
+            configManager.setDigitalInputPin(d, d.logicalID);
             
           }
+          break;
         
         #endif
         #ifdef DOUTPUTS
@@ -145,27 +148,28 @@ namespace Callbacks
             DeserializationError error = deserializeJson(doc, cm.configString);
 
             if (error) {
-              Serial.print(F("deserializeJson() of DINPUTS failed: "));
+              Serial.print(F("deserializeJson() of DOUTPUTS failed: "));
               Serial.println(error.f_str());
-              return;
+              break;
             }
             
-              dpin d = (dpin){
-                .pinID =  doc["pinID"],
-                .pinInitialState =  doc["pinInitialState"],
-                .pinConnectState = doc["pinConnectState"],
-                .pinDisconnectState = doc["pinDisconnectState"],
-                .debounce = doc["pinDebounce"],
-                .inputPullup = doc["inputPullup"],
-                .logicalID = doc["logicalID"],
-                .pinCurrentState = 0,
-                .t = 0
-              };
-              pinMode(atoi(d.pinID.c_str()), OUTPUT); 
-              configManager.setDigitalOutputPin(d, d.logicalID);
+            dpin d = (dpin){
+              .pinID =  doc["pinID"],
+              .pinInitialState =  doc["pinInitialState"],
+              .pinConnectState = doc["pinConnectState"],
+              .pinDisconnectState = doc["pinDisconnectState"],
+              .debounce = doc["pinDebounce"],
+              .inputPullup = doc["inputPullup"],
+              .logicalID = doc["logicalID"],
+              .pinCurrentState = 0,
+              .t = 0
+            };
+            pinMode(atoi(d.pinID.c_str()), OUTPUT); 
+            configManager.setDigitalOutputPin(d, d.logicalID);
+           
               
-            
           }
+          break;
         
         #endif
       }

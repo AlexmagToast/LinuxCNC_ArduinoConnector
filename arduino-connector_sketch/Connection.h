@@ -77,12 +77,15 @@ public:
 */
   virtual void SendPinChangeMessage(uint8_t& featureID, uint8_t& seqID, uint8_t& responseReq, String& message)
   {
-    Serial.println("SENDING PIN MESSAGE!");
+    //Serial.println("SENDING PIN MESSAGE!");
+    
     protocol::pcm.featureID = featureID;
     protocol::pcm.responseReq = responseReq;
     protocol::pcm.message = message;
     protocol::pcm.seqID = seqID;
+    
     _sendPinChangeMessage();
+    
   }
 
 

@@ -94,7 +94,6 @@ public:
     }
     dinput_arr = new dpin[size];
     dinput_arr_len = size;
-
   }
 
   dpin * getDigitalInputPins()

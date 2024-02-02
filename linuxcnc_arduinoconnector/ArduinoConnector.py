@@ -185,6 +185,7 @@ class ArduinoPin:
         self.pinEnabled = PinConfigElement.PIN_ENABLED.value[DEFAULT_VALUE_KEY]
         self.halPinConnection = None
         self.halPinCurrentValue = 0
+        self.pinLogicalID = 0
         #if yaml != None: self.parseYAML(doc=yaml)
 
     def parseYAML(self, doc):
@@ -319,6 +320,7 @@ class ArduinoSettings:
             i = 0
             for pin in v:
                 if pin.pinEnabled == True:
+                    pin.logicalID = i
                     p = pin.toJson()
                     pc[k.value[FEATURE_INDEX_KEY]][i] = pin.toJson()
                     i += 1
@@ -575,13 +577,14 @@ class ConfigMessage(ProtocolMessage):
         self.payload.append(configJSON)
 
 class PinChangeMessage(ProtocolMessage):
-    def __init__(self, featureID:int, seqID:int, responseReq:int, message:str):
+    def __init__(self, featureID:int=0, seqID:int=0, responseReq:int=0, message:str=''):
         super().__init__(messageType=MessageType.MT_PINCHANGE)
         self.payload = [] 
         self.payload.append(featureID)
         self.payload.append(seqID)
         self.payload.append(responseReq)
         self.payload.append(message)
+
     #def __init__(self, md:MessageDecoder):
     #    super().__init__(messageType=MessageType.MT_PINCHANGE)
     #    self.payload = md.payload
@@ -701,7 +704,18 @@ class Connection:
             self.lastMessageReceived = time.time()
 
             try:
-                pc = PinChangeMessage(m)
+                #pc = PinChangeMessage()
+                #pc.parse(m)
+                fid = m.payload[0]
+                sid = m.payload[1]
+                rr = m.payload[2]
+                ms = m.payload[3]
+
+                j = json.loads(ms)
+                for v in j['pa']:
+                    
+                    #pass
+                pass
             except Exception as ex:
                 just_the_string = traceback.format_exc()
                 print(just_the_string)
@@ -983,11 +997,14 @@ class ArduinoConnection:
     
     def doFeaturePinUpdates(self):
         for k, v in self.settings.io_map.items():
-            logicalID = 0
+            
             for v1 in v:
                 #if v1.halPinDirection == HalPinDirection.HAL_OUT:
                 r = v1.halPinConnection.Get()
-                if r != v1.halPinCurrentValue:
+                if r == v1.halPinCurrentValue:
+                    
+                    continue
+                else:
                     #print(f'VALUE CHANGED!!! Old Value {v1.halPinCurrentValue}, New Value {r}')
                     ## Send with logical pin ID to avoid for loop of pins by arduino.
                     '''
@@ -1001,7 +1018,7 @@ class ArduinoConnection:
                     '''
                     j = {
                     "pa": [
-                        {"lid": logicalID, "pid": int(v1.pinID), "v":r}
+                        {"lid": v1.logicalID, "pid": int(v1.pinID), "v":r}
                     ]
                     }
                     #v1.halPinCurrentValue = r
@@ -1015,7 +1032,7 @@ class ArduinoConnection:
                         #return
                     time.sleep(.2)
                     v1.halPinCurrentValue = r
-                    logicalID += 1
+                    
                          #= HalPinConnection(component=self.component, pinName=v1.pinName, pinType=v1.halPinType, pinDirection=v1.halPinDirection) 
             
 

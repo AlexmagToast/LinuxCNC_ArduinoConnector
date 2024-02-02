@@ -160,6 +160,7 @@ void setup() {
   serialClient.DoWork(); 
 }
 
+
 void loop() {
   serialClient.DoWork(); 
   unsigned long currentMills = millis();
@@ -171,33 +172,37 @@ void loop() {
     //Serial.println("READY");
     for( int x = 0; x < configManager.GetDigitalInputPinsLen(); x++ )
     {
+      
       dpin & pin = configManager.getDigitalInputPins()[x];
       int v = digitalRead(atoi(pin.pinID.c_str()));
+  
       if(pin.pinCurrentState != v && (currentMills - pin.t) >= pin.debounce)
       {
         #ifdef DEBUG_VERBOSE
-        Serial.print("PIN CHANGE! ");
-        Serial.print("PIN: ");
-        Serial.print(pin.pinID);
-        Serial.print(" Current value: ");
-        Serial.print(pin.pinCurrentState);
-        Serial.print(" New value: ");
+        Serial.print("DINPUTS PIN CHANGE! ");
+        Serial.print("PIN:");
+        Serial.println(pin.pinID);
+        Serial.print("Current value: ");
+        Serial.println(pin.pinCurrentState);
+        Serial.print("New value: ");
         Serial.println(v);
         #endif
+        
         pin.pinCurrentState = v;
         pin.t = currentMills;
+        
         // send update out
         //serialClient
-
+        String output;
         JsonDocument doc;
-
+        doc.clear();
         JsonArray pa = doc["pa"].to<JsonArray>();
 
         JsonObject pa_0 = pa.add<JsonObject>();
         pa_0["lid"] = x;
-        pa_0["pid"] = pin.pinID;
+        pa_0["pid"] = atoi(pin.pinID.c_str());
         pa_0["v"] = v;
-        String output;
+        
         //doc.shrinkToFit();  // optional
         serializeJson(doc, output);
         Serial.print("JSON = ");
@@ -205,7 +210,9 @@ void loop() {
         uint8_t seqID = 0;
         uint8_t resp = 0; // Future TODO: Consider requiring ACK/NAK, maybe.
         uint8_t f = DINPUTS;
+        //String o = String(output.c_str());
         serialClient.SendPinChangeMessage(f, seqID, resp, output);
+        
       }
     }
   }
