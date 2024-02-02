@@ -972,41 +972,42 @@ class ArduinoConnection:
     
     def doFeaturePinUpdates(self):
         for k, v in self.settings.io_map.items():
-            
-            for v1 in v:
-                #if v1.halPinDirection == HalPinDirection.HAL_OUT:
-                r = v1.halPinConnection.Get()
-                if r == v1.halPinCurrentValue:
+            if k.name == ConfigPinTypes.DIGITAL_OUTPUTS.name:
+                for v1 in v:
                     
-                    continue
-                else:
-                    #print(f'VALUE CHANGED!!! Old Value {v1.halPinCurrentValue}, New Value {r}')
-                    ## Send with logical pin ID to avoid for loop of pins by arduino.
-                    '''
-                        Proposed JSON for message within PinChange
-                        {
+                    #if v1.halPinDirection == HalPinDirection.HAL_OUT:
+                    r = v1.halPinConnection.Get()
+                    if r == v1.halPinCurrentValue:
+                        
+                        continue
+                    else:
+                        #print(f'VALUE CHANGED!!! Old Value {v1.halPinCurrentValue}, New Value {r}')
+                        ## Send with logical pin ID to avoid for loop of pins by arduino.
+                        '''
+                            Proposed JSON for message within PinChange
+                            {
+                            "pa": [
+                                {"lid": 0, "pid": 0, "v":1},
+                                {"lid": 1, "pid": 1, "v":0}
+                                ]
+                            }
+                        '''
+                        j = {
                         "pa": [
-                            {"lid": 0, "pid": 0, "v":1},
-                            {"lid": 1, "pid": 1, "v":0}
-                            ]
+                            {"lid": v1.logicalID, "pid": int(v1.pinID), "v":r}
+                        ]
                         }
-                    '''
-                    j = {
-                    "pa": [
-                        {"lid": v1.logicalID, "pid": int(v1.pinID), "v":r}
-                    ]
-                    }
-                    #v1.halPinCurrentValue = r
-                    pcm = PinChangeMessage(featureID=v1.featureID, seqID=0, responseReq=0, message=json.dumps(j))
-                    try:
-                        self.serialConn.sendMessage(pcm.packetize())
-                    except Exception as error:
-                        just_the_string = traceback.format_exc()
-                        logging.debug(f'PYDEBUG: ArduinoConnection::doFeaturePinUpdates, dev={self.settings.dev}, alias={self.settings.alias}, Exception: {str(error)}, Traceback = {just_the_string}')
-                        # Future TODO: Consider doing something intelligent and not just reporting an error. Maybe increment a hal pin that reflects error counts?
-                        #return
-                    time.sleep(.2)
-                    v1.halPinCurrentValue = r
+                        #v1.halPinCurrentValue = r
+                        pcm = PinChangeMessage(featureID=v1.featureID, seqID=0, responseReq=0, message=json.dumps(j))
+                        try:
+                            self.serialConn.sendMessage(pcm.packetize())
+                        except Exception as error:
+                            just_the_string = traceback.format_exc()
+                            logging.debug(f'PYDEBUG: ArduinoConnection::doFeaturePinUpdates, dev={self.settings.dev}, alias={self.settings.alias}, Exception: {str(error)}, Traceback = {just_the_string}')
+                            # Future TODO: Consider doing something intelligent and not just reporting an error. Maybe increment a hal pin that reflects error counts?
+                            #return
+                        time.sleep(.2)
+                        v1.halPinCurrentValue = r
                     
                          #= HalPinConnection(component=self.component, pinName=v1.pinName, pinType=v1.halPinType, pinDirection=v1.halPinDirection) 
             

@@ -169,6 +169,9 @@ void loop() {
   
   if(configManager.GetDigitalInputsReady() == 1)
   {
+    String output;
+    JsonDocument doc;
+    JsonArray pa; //= doc["pa"].to<JsonArray>();
     //Serial.println("READY");
     for( int x = 0; x < configManager.GetDigitalInputPinsLen(); x++ )
     {
@@ -193,17 +196,24 @@ void loop() {
         
         // send update out
         //serialClient
-        String output;
-        JsonDocument doc;
-        doc.clear();
-        JsonArray pa = doc["pa"].to<JsonArray>();
 
+        //doc.clear();
+        
+        if(pa.isNull())
+        {
+          pa = doc["pa"].to<JsonArray>();
+        }
         JsonObject pa_0 = pa.add<JsonObject>();
         pa_0["lid"] = x;
         pa_0["pid"] = atoi(pin.pinID.c_str());
         pa_0["v"] = v;
         
         //doc.shrinkToFit();  // optional
+
+        
+      }
+      if(pa.size() > 0)
+      {
         serializeJson(doc, output);
         Serial.print("JSON = ");
         Serial.println(output);
@@ -212,8 +222,8 @@ void loop() {
         uint8_t f = DINPUTS;
         //String o = String(output.c_str());
         serialClient.SendPinChangeMessage(f, seqID, resp, output);
-        
       }
+
     }
   }
   //for (dpin & pin : configManager.getDigitalInputPins())
