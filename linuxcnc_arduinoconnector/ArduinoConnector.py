@@ -617,11 +617,11 @@ class Connection:
         self.timeout = 10
         self.configVersion = -1 # -1 initial state, this value changes once the arduino sends a handshake
         self.lastMessageReceived = time.time()
-        self._callbacks = []
         self.maxMsgSize = 512
         self.enabledFeatures = None
         self.uid = ''
         self.rxQueue = Queue(RX_MAX_QUEUE_SIZE)
+        self._messageReceivedCallbacks = {}
 
     def sendCommand(self, m:str):
         cm = MessageEncoder().encodeBytes(mt=MessageType.MT_COMMAND, payload=[m, 1])
@@ -653,36 +653,6 @@ class Connection:
                 print(just_the_string)
                 logging.debug(f'PYDEBUG: error: {str(ex)}')
                 
-            #pass
-            '''
-                struct HandshakeMessage {
-                    uint8_t protocolVersion = PROTOCOL_VERSION;
-                    uint64_t featureMap;
-                    uint32_t timeout;
-                    uint16_t configVersion; // 0 indicates no config, >0 indicates an existing config
-                    String uid;
-                    MSGPACK_DEFINE(protocolVersion, featureMap, timeout, configVersion, uid); 
-                }hm;
-            
-            # FUTURE TODO: Make a MT_HANDSHAKE decoder class rather than the following hard codes..
-            if m.payload[0] != protocol_ver:
-                debugstr = f'PYDEBUG Error. Protocol version mismatched. Expected {protocol_ver}, got {m.payload[0]}'
-                if debug_comm:print(debugstr)
-                raise Exception(debugstr)
-            
-            fmd = FeatureMapDecoder(m.payload[1])
-            if debug_comm:
-                ef = fmd.getEnabledFeatures()
-                print(f'PYDEBUG: Enabled Features : {ef}')
-            to = m.payload[2] # timeout value
-            self.maxMsgSize = m.payload[3]
-            self.configVersion = m.payload[4] # config version
-            self.setState(ConnectionState.CONNECTED)
-            self.lastMessageReceived = time.time()
-            self.timeout = to / 1000 # always delivered in ms, convert to seconds
-            hsr = MessageEncoder().encodeBytes(mt=MessageType.MT_HANDSHAKE, payload=m.payload)
-            self.sendMessage(bytes(hsr))
-            '''
         if m.messageType == MessageType.MT_HEARTBEAT:
             if debug_comm:print(f'PYDEBUG onMessageRecv() - Received MT_HEARTBEAT, Values = {m.payload}')
             #bi = m.payload[0]-1 # board index is always sent over incremeented by one
@@ -693,34 +663,9 @@ class Connection:
             self.lastMessageReceived = time.time()
             hb = MessageEncoder().encodeBytes(mt=MessageType.MT_HEARTBEAT, payload=m.payload)
             self.sendMessage(bytes(hb))
-            
-        if m.messageType == MessageType.MT_PINCHANGE:
-            if debug_comm:print(f'PYDEBUG onMessageRecv() - Received MT_PINCHANGE, Values = {m.payload}')
-            #bi = m.payload[0]-1 # board index is always sent over incremeented by one
-            if self.connectionState != ConnectionState.CONNECTED:
-                debugstr = f'PYDEBUG Error. Received message from arduino prior to completing handshake. Ignoring.'
-                if debug_comm:print(debugstr)
-                return
-            self.lastMessageReceived = time.time()
 
-            try:
-                #pc = PinChangeMessage()
-                #pc.parse(m)
-                fid = m.payload[0]
-                sid = m.payload[1]
-                rr = m.payload[2]
-                ms = m.payload[3]
-
-                j = json.loads(ms)
-                for v in j['pa']:
-                    
-                    #pass
-                pass
-            except Exception as ex:
-                just_the_string = traceback.format_exc()
-                print(just_the_string)
-                logging.debug(f'PYDEBUG: error: {str(ex)}')
-
+        if m.messageType in self._messageReceivedCallbacks.keys():
+            self._messageReceivedCallbacks[m.messageType](m)
         '''
         if m.messageType == MessageType.MT_PINSTATUS:
             if debug_comm:print(f'PYDEBUG onMessageRecv() - Received MT_PINSTATUS, Values = {m.payload}')
@@ -767,8 +712,8 @@ class Connection:
     def getConnectionState(self) -> ConnectionState:
         return self.connectionState
     
-    def subscribe(self, index: int, callback: callable):
-        self._callbacks[index] = callback
+    def messageReceivedSubscribe(self, mt:MessageType, callback: callable):
+        self._messageReceivedCallbacks[mt] = callback
   
  
 '''
@@ -990,10 +935,40 @@ class ArduinoConnection:
             for v1 in v:
                 v1.halPinConnection = HalPinConnection(component=self.component, pinName=v1.pinName, pinType=v1.halPinType, pinDirection=v1.halPinDirection)
         self.component.ready()
+        self.serialConn.messageReceivedSubscribe(mt=MessageType.MT_PINCHANGE, callback=lambda m: self.onMessage(m))
             
             
     def __str__(self) -> str:
         return f'Arduino Alias = {self.settings.alias}, Component Name = {self.settings.component_name}, Enabled = {self.settings.enabled}'
+    
+    def onMessage(self, m:MessageDecoder):
+        if debug_comm:print(f'PYDEBUG onMessageRecv() - Message Type {m.messageType}, Values = {m.payload}')
+        if m.messageType == MessageType.MT_PINCHANGE:
+            #if debug_comm:print(f'PYDEBUG onMessageRecv() - Received MT_PINCHANGE, Values = {m.payload}')
+
+            try:
+                #pc = PinChangeMessage()
+                #pc.parse(m)
+                fid = m.payload[0]
+                sid = m.payload[1]
+                rr = m.payload[2]
+                ms = m.payload[3]
+
+
+                for k, v in self.settings.io_map.items():
+                    if fid == k.value[FEATURE_INDEX_KEY]:
+                        j = json.loads(ms)
+                        for val in j['pa']:
+                            for pin in v:
+                                if pin.pinID == val['pid']:
+                                    self.component[pin.pinName] = val['v']
+                        break
+                
+            except Exception as ex:
+                just_the_string = traceback.format_exc()
+                print(just_the_string)
+                logging.debug(f'PYDEBUG: error: {str(ex)}') 
+         
     
     def doFeaturePinUpdates(self):
         for k, v in self.settings.io_map.items():
