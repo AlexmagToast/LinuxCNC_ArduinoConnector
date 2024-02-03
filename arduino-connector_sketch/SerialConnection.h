@@ -101,7 +101,7 @@ public:
 
   virtual void _sendPinChangeMessage()
   {
-    Serial.println("SENDING PING CHANGE MESSAGE!!!!");
+    //Serial.println("SENDING PING CHANGE MESSAGE!");
     MsgPacketizer::send(Serial, MT_PINCHANGE, _getPinChangeMessage());
   }
   /*
