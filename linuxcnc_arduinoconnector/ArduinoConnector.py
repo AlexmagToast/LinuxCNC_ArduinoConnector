@@ -320,7 +320,7 @@ class ArduinoSettings:
             i = 0
             for pin in v:
                 if pin.pinEnabled == True:
-                    pin.logicalID = i
+                    pin.pinLogicalID = i
                     p = pin.toJson()
                     pc[k.value[FEATURE_INDEX_KEY]][i] = pin.toJson()
                     i += 1
@@ -360,6 +360,8 @@ class ArduinoYamlParser:
                     new_arduino.component_name = doc[ConfigElement.ARDUINO_KEY][ConfigElement.COMPONENT_NAME]
                 if ConfigElement.ENABLED in doc[ConfigElement.ARDUINO_KEY].keys(): 
                     new_arduino.enabled = doc[ConfigElement.ARDUINO_KEY][ConfigElement.ENABLED]
+                    if new_arduino.enabled == False:
+                        new_arduino.component_name = f'{new_arduino.component_name}_DISABLED'
                 new_arduino.baud_rate = SerialConfigElement.BAUDRATE.value[DEFAULT_VALUE_KEY]
                 new_arduino.connection_timeout = ConnectionConfigElement.TIMEOUT.value[DEFAULT_VALUE_KEY]
 
@@ -629,12 +631,12 @@ class Connection:
 
     def setState(self, newState:ConnectionState):
         if newState != self.connectionState:
-            if debug_comm:print(f'PYDEBUG: changing state from {self.connectionState} to {newState}')
+            logging.debug(f'PYDEBUG: changing state from {self.connectionState} to {newState}')
             self.connectionState = newState
 
     def onMessageRecv(self, m:MessageDecoder):
         if m.messageType == MessageType.MT_HANDSHAKE:
-            if debug_comm:print(f'PYDEBUG: onMessageRecv() - Received MT_HANDSHAKE, Values = {m.payload}')
+            logging.debug(f'PYDEBUG: onMessageRecv() - Received MT_HANDSHAKE, Values = {m.payload}')
             try:
                 hsm = HandshakeMessage(m)
                 self.timeout = hsm.timeout / 1000
@@ -654,11 +656,11 @@ class Connection:
                 logging.debug(f'PYDEBUG: error: {str(ex)}')
                 
         if m.messageType == MessageType.MT_HEARTBEAT:
-            if debug_comm:print(f'PYDEBUG onMessageRecv() - Received MT_HEARTBEAT, Values = {m.payload}')
+            logging.debug(f'PYDEBUG onMessageRecv() - Received MT_HEARTBEAT, Values = {m.payload}')
             #bi = m.payload[0]-1 # board index is always sent over incremeented by one
             if self.connectionState != ConnectionState.CONNECTED:
                 debugstr = f'PYDEBUG Error. Received message from arduino prior to completing handshake. Ignoring.'
-                if debug_comm:print(debugstr)
+                logging.debug(debugstr)
                 return
             self.lastMessageReceived = time.time()
             hb = MessageEncoder().encodeBytes(mt=MessageType.MT_HEARTBEAT, payload=m.payload)
@@ -849,7 +851,7 @@ class SerialConnection(Connection):
 
                         if readDebug:
                             [chunk, self.rxBuffer] = self.rxBuffer.split(b'\r\n', maxsplit=1)
-                            print( f'{bytes(chunk).decode("utf8", errors="ignore")}')
+                            #print( f'{bytes(chunk).decode("utf8", errors="ignore")}')
                         elif readMessage:
                             [chunk, self.rxBuffer] = self.rxBuffer.split(b'\x00', maxsplit=1)
                             logging.debug(f'PYDEBUG: SerialConnection::rxTask, dev={self.dev}, chunk bytes: {chunk}')
@@ -994,7 +996,7 @@ class ArduinoConnection:
                         '''
                         j = {
                         "pa": [
-                            {"lid": v1.logicalID, "pid": int(v1.pinID), "v":r}
+                            {"lid": v1.pinLogicalID, "pid": int(v1.pinID), "v":r}
                         ]
                         }
                         #v1.halPinCurrentValue = r
@@ -1006,7 +1008,7 @@ class ArduinoConnection:
                             logging.debug(f'PYDEBUG: ArduinoConnection::doFeaturePinUpdates, dev={self.settings.dev}, alias={self.settings.alias}, Exception: {str(error)}, Traceback = {just_the_string}')
                             # Future TODO: Consider doing something intelligent and not just reporting an error. Maybe increment a hal pin that reflects error counts?
                             #return
-                        time.sleep(.2)
+                        #time.sleep(.2)
                         v1.halPinCurrentValue = r
                     
                          #= HalPinConnection(component=self.component, pinName=v1.pinName, pinType=v1.halPinType, pinDirection=v1.halPinDirection) 
@@ -1056,7 +1058,7 @@ class ArduinoConnection:
                         logging.debug(f'PYDEBUG: ArduinoConnection::doWork, dev={self.settings.dev}, alias={self.settings.alias}, Exception: {str(error)}, Traceback = {just_the_string}')
                         # Future TODO: Consider doing something intelligent and not just reporting an error. Maybe increment a hal pin that reflects error counts?
                         return
-                    time.sleep(.2)
+                    #time.sleep(.01)
 
             self.serialConn.configVersion = 1
 arduino_map = []
