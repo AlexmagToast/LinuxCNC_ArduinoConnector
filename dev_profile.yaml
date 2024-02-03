@@ -28,8 +28,8 @@ mcu:
 mcu: 
   alias: M4 Grand Central
   component_name: arduinom4 # Name of component to use in HAL
-  dev: /dev/ttyACM0
-  enabled: true
+  dev: /dev/serial/by-id/usb-Adafruit_Grand_Central_M4_AB5B58B75335353334202020FF184219-if00
+  enabled: false
   io_map:
     digitalOutputs:
       - pin_id: 2
@@ -331,5 +331,33 @@ mcu:
         pin_name: dout.51
       - pin_id: 13
         pin_name: dout.13 #hal pin name
+---
+mcu: 
+  alias: Arduino Nano RP2040
+  component_name: arduino2040 # Name of component to use in HAL
+  #dev: /dev/cu.usbmodem14201  # Used for initial programming
+  #dev: /dev/cu.usbmodemF412FA68D6802 
+  dev: /dev/serial/by-id/usb-Arduino_Nano_RP2040_Connect_06C6345008889442-if00
+  enabled: true
+  #connection: 
+  #  baudrate: 9600
+  io_map:
+        
+    digitalInputs:
+      - pin_id: 2
+        pin_name: din.2 #hal pin name
+        input_pullup: true
+        pin_debounce: 0
+      - pin_id: 3
+        pin_name: din.3 #hal pin name
+        input_pullup: true
+        pin_debounce: 0
 
+    digitalOutputs:
+      - pin_id: 4
+        pin_name: dout.4
+      - pin_id: 5
+        pin_name: dout.5 #hal pin name
+
+  
   

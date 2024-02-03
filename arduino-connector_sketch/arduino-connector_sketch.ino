@@ -26,6 +26,11 @@
 */
 #include <Arduino.h>
 #include "Config.h"
+
+//#define DEBUGLOG_DEFAULT_LOG_LEVEL_TRACE
+//#define MSGPACKETIZER_DEBUGLOG_ENABLE
+//#include <DebugLog.h>
+
 #include <MsgPacketizer.h>
 #include <ArduinoJson.h>
 #include "FeatureMap.h"
@@ -163,6 +168,7 @@ void setup() {
 
 
 void loop() {
+  
   serialClient.DoWork(); 
   unsigned long currentMills = millis();
   

@@ -851,7 +851,7 @@ class SerialConnection(Connection):
 
                         if readDebug:
                             [chunk, self.rxBuffer] = self.rxBuffer.split(b'\r\n', maxsplit=1)
-                            #print( f'{bytes(chunk).decode("utf8", errors="ignore")}')
+                            print( f'{bytes(chunk).decode("utf8", errors="ignore")}')
                         elif readMessage:
                             [chunk, self.rxBuffer] = self.rxBuffer.split(b'\x00', maxsplit=1)
                             logging.debug(f'PYDEBUG: SerialConnection::rxTask, dev={self.dev}, chunk bytes: {chunk}')
