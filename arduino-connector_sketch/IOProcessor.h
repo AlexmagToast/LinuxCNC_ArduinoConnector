@@ -81,7 +81,7 @@ namespace Callbacks
   void onConfig(const protocol::ConfigMessage& cm) {
       #ifdef DEBUG
         Serial.print("::onConfig called, featureID = ");
-        Serial.print(cm.featureID);
+        Serial.print((int)cm.featureID);
         Serial.print(" Seq = ");
         Serial.print(cm.seq);
         Serial.print(" Total = ");
@@ -93,7 +93,7 @@ namespace Callbacks
       #endif
       //Serial.print("Size of Config: ");
       //Serial.println(strlen(conf));
-      switch (cm.featureID)
+      switch ((int)cm.featureID)
       {
         #ifdef DINPUTS
         

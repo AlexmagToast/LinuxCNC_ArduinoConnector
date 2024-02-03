@@ -24,7 +24,7 @@ SOFTWARE.
 #pragma once
 #ifndef PROTOCOL_H_
 #define PROTOCOL_H_
-
+/*
 #define MSGPACKETIZER_MAX_PUBLISH_ELEMENT_SIZE 20
 #define MSGPACK_MAX_PACKET_BYTE_SIZE 2048
 #define PACKETIZER_MAX_PACKET_BINARY_SIZE 512
@@ -32,6 +32,7 @@ SOFTWARE.
 #define MSGPACK_MAX_OBJECT_SIZE 512
 #define MSGPACKETIZER_DEBUGLOG_ENABLE
 #define PACKETIZER_MAX_PACKET_QUEUE_SIZE 10
+*/
 //#define MSGPACKETIZER_ENABLE_STREAM
 /*
 // The following are otpomizations for low-memory boards such as Arduino Unos.\
@@ -65,7 +66,7 @@ define MSGPACKETIZER_MAX_PUBLISH_ELEMENT_SIZE 5
 //#define MSGPACKETIZER_ENABLE_ETHER
 #define MSGPACK_MAX_OBJECT_SIZE 64
 */
-#include <MsgPacketizer.h>
+//#include <MsgPacketizer.h>
 #define PROTOCOL_VERSION 1 // Server and client must agree on version during handshake
 
 namespace protocol

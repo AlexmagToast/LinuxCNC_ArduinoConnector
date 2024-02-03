@@ -236,8 +236,8 @@ protected:
       Serial.println("ARDUINO DEBUG: ---- RX HANDSHAKE MESSAGE DUMP ----");
       Serial.print("ARDUINO DEBUG: Protocol Version: 0x");
       Serial.println(n.protocolVersion, HEX);
-      Serial.print("ARDUINO DEBUG: Feature Map: 0x");
-      Serial.println(n.featureMap, HEX);
+      //Serial.print("ARDUINO DEBUG: Feature Map: 0x");
+      //Serial.println(n.featureMap);
       //Serial.print("ARDUINO DEBUG: Board Index: ");
       //Serial.println(n.boardIndex);
       Serial.println("ARDUINO DEBUG: ---- RX END HANDSHAKE MESSAGE DUMP ----");
@@ -329,8 +329,8 @@ protected:
       Serial.println("ARDUINO DEBUG: ---- TX HANDSHAKE MESSAGE DUMP ----");
       Serial.print("ARDUINO DEBUG: Protocol Version: 0x");
       Serial.println(protocol::hm.protocolVersion, HEX);
-      Serial.print("ARDUINO DEBUG: Feature Map: 0x");
-      Serial.println(protocol::hm.featureMap, HEX);
+//      Serial.print("ARDUINO DEBUG: Feature Map: 0x");
+//      Serial.println(protocol::hm.featureMap, HEX);
       Serial.print("ARDUINO DEBUG: Timeout: ");
       Serial.println(protocol::hm.timeout);
       Serial.print("ARDUINO DEBUG: MaxMsgSize: ");

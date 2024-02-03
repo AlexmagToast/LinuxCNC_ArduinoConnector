@@ -26,6 +26,7 @@
 */
 #include <Arduino.h>
 #include "Config.h"
+#include <MsgPacketizer.h>
 #include <ArduinoJson.h>
 #include "FeatureMap.h"
 //#include <EEPROM.h>

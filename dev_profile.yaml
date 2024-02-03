@@ -4,7 +4,7 @@ mcu:
   #dev: /dev/cu.usbmodem14201  # Used for initial programming
   #dev: /dev/cu.usbmodemF412FA68D6802 
   dev: /dev/ttyACM0
-  enabled: true
+  enabled: false
   #connection: 
   #  baudrate: 9600
   io_map:
@@ -28,7 +28,7 @@ mcu:
 mcu: 
   alias: M4 Grand Central
   component_name: arduinom4 # Name of component to use in HAL
-  dev: /dev/ttyACM1
+  dev: /dev/ttyACM0
   enabled: true
   io_map:
     digitalOutputs:
