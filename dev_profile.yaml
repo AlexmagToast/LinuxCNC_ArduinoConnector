@@ -29,7 +29,7 @@ mcu:
   alias: M4 Grand Central
   component_name: arduinom4 # Name of component to use in HAL
   dev: /dev/serial/by-id/usb-Adafruit_Grand_Central_M4_AB5B58B75335353334202020FF184219-if00
-  enabled: false
+  enabled: true
   io_map:
     digitalOutputs:
       - pin_id: 2
@@ -311,7 +311,7 @@ mcu:
   #dev: /dev/cu.usbmodem14201  # Used for initial programming
   #dev: /dev/cu.usbmodemF412FA68D6802 
   dev: /dev/ttyUSB0
-  enabled: true
+  enabled: false
   #connection: 
   #  baudrate: 9600
   io_map:

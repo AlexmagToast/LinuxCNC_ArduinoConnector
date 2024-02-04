@@ -785,7 +785,8 @@ class SerialConnection(Connection):
         self.rxBuffer = bytearray()
         self.shutdown = False
         self.dev = dev
-        self.daemon = None    
+        self.daemon = None
+        self.serial = ''    
         self.baudRate = baudRate
         self.timeout = timeout  
 
@@ -825,6 +826,9 @@ class SerialConnection(Connection):
             try:
                 if self.arduino == None:
                     self.arduino = serial.Serial(self.dev, baudrate=self.baudRate, timeout=self.timeout, xonxoff=False, rtscts=False, dsrdtr=True)
+                    for port in serial.tools.list_ports.comports():
+                        if self.dev in port.device or port.serial_number in self.dev:
+                            self.serial = port.serial_number
                 num_bytes = self.arduino.in_waiting
                 #logging.debug(f'SerialConnection::rxTask, dev={self.dev}, in_waiting={num_bytes}')
                 if num_bytes > 0:
@@ -1027,7 +1031,7 @@ class ArduinoConnection:
             # perhaps device was unplugged..
             found = False
             for port in serial.tools.list_ports.comports():
-                if self.settings.dev in port:
+                if self.settings.dev in port or self.serialConn.serial in port.serial_number:
                     found = True
             if found == False:
                 retry = 5
@@ -1035,7 +1039,7 @@ class ArduinoConnection:
                 time.sleep(retry) # TODO: Make retry settable via the yaml config?
 
             else:
-                logging.debug(f'PYDEBUG: ArduinoConnection::doWork, dev={self.settings.dev}, alias={self.settings.alias}, Serial deice found, restarting RX thread..')
+                logging.debug(f'PYDEBUG: ArduinoConnection::doWork, dev={self.settings.dev}, alias={self.settings.alias}, Serial device found, restarting RX thread..')
                 time.sleep(1) # TODO: Consider making this delay settable? Trying to avoid hammering the serial port when its in a strange state
                 self.serialConn.startRxTask()
             
