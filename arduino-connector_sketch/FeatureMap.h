@@ -2,7 +2,7 @@
 #ifndef FEATUREMAP_H_
 #define FEATUREMAP_H_
 
-
+#ifdef ENABLE_FEATUREMAP
 /**
  * Sets featureMap with currently enabled and disabled features.
  *
@@ -215,5 +215,6 @@ struct featureMap
     #endif
   }
 };
+#endif
 #endif //#define FEATUREMAP_H_
 

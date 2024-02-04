@@ -27,10 +27,32 @@
 #include <Arduino.h>
 #include "Config.h"
 
+/*
 //#define DEBUGLOG_DEFAULT_LOG_LEVEL_TRACE
 //#define MSGPACKETIZER_DEBUGLOG_ENABLE
 //#include <DebugLog.h>
+// max publishing elemtnt size in one destination
+#define MSGPACKETIZER_MAX_PUBLISH_ELEMENT_SIZE 5
+// max destinations to publish
+#define MSGPACKETIZER_MAX_PUBLISH_DESTINATION_SIZE 1
+// msgpack serialized binary size
+#define MSGPACK_MAX_PACKET_BYTE_SIZE 96
+// max size of MsgPack::arr_t
+#define MSGPACK_MAX_ARRAY_SIZE 3
+// max size of MsgPack::map_t
+#define MSGPACK_MAX_MAP_SIZE 3
+// msgpack objects size in one packet
+#define MSGPACK_MAX_OBJECT_SIZE 16
 
+// max number of decoded packet queues
+#define PACKETIZER_MAX_PACKET_QUEUE_SIZE 1
+// max data bytes in packet
+#define PACKETIZER_MAX_PACKET_BINARY_SIZE 96
+// max number of callback for one stream
+#define PACKETIZER_MAX_CALLBACK_QUEUE_SIZE 3
+// max number of streams
+#define PACKETIZER_MAX_STREAM_MAP_SIZE 1
+*/
 #include <MsgPacketizer.h>
 #include <ArduinoJson.h>
 #include "FeatureMap.h"
@@ -41,42 +63,52 @@
 #include "ConfigManager.h"
 #include "IOProcessor.h"
 
+String output; // Used below to output Io update messages
+JsonDocument doc;
+JsonArray pa; 
+
+#ifdef ENABLE_FEATUREMAP
 featureMap fm;
 SerialConnection serialClient(SERIAL_RX_TIMEOUT, fm.features);
+#else
+uint64_t f = 0;
+SerialConnection serialClient(SERIAL_RX_TIMEOUT, f);
+#endif
+
 
 
 void setup() {
   pinMode(LED_BUILTIN, OUTPUT); // Initialize builtin LED for error feedback/diagnostics 
 
-  Serial.begin(115200);
+  SERIAL_DEV.begin(115200);
   //while (!Serial) {
 
  //   ; // wait for serial port to connect. Needed for native USB port only
   //}
   delay(SERIAL_STARTUP_DELAY);
   #ifdef DEBUG
-    Serial.println("ARDUINO DEBUG: STARTING UP.. ");
+    SERIAL_DEV.println("ARDUINO DEBUG: STARTING UP.. ");
   #endif
   /*
   if( EEPROM.length() == 0 )
   {
     #ifdef DEBUG
-      Serial.println("EEPROM.length() reported zero bytes, setting to default of 1024 using .begin()..");
+      SERIAL_DEV.println("EEPROM.length() reported zero bytes, setting to default of 1024 using .begin()..");
     #endif
     EEPROM.begin(EEPROM_DEFAULT_SIZE);
   }
 
 
   #ifdef DEBUG
-    Serial.print("EEPROM length: ");
-    Serial.println(EEPROM.length());
+    SERIAL_DEV.print("EEPROM length: ");
+    SERIAL_DEV.println(EEPROM.length());
   #endif
 
 
   if( EEPROM.length() == 0 )
   {
       #ifdef DEBUG
-        Serial.println("Error. EEPROM.length() reported zero bytes.");
+        SERIAL_DEV.println("Error. EEPROM.length() reported zero bytes.");
       #endif
       while (true)
       {
@@ -90,7 +122,7 @@ void setup() {
   if(epd.header != EEPROM_HEADER)
   {
     #ifdef DEBUG
-      Serial.println("EEPROM HEADER MISSING, GENERATING NEW UID..");
+      SERIAL_DEV.println("EEPROM HEADER MISSING, GENERATING NEW UID..");
     #endif
 
     uuid.generate();
@@ -114,31 +146,31 @@ void setup() {
     
     
     #ifdef DEBUG
-    Serial.print("Wrote header value = 0x");
-    Serial.print(epd.header, HEX);
-    Serial.print(" to EEPROM and uid value = ");
-    Serial.print((char*)epd.uid);
-    Serial.print(" to EEPROM.");
+    SERIAL_DEV.print("Wrote header value = 0x");
+    SERIAL_DEV.print(epd.header, HEX);
+    SERIAL_DEV.print(" to EEPROM and uid value = ");
+    SERIAL_DEV.print((char*)epd.uid);
+    SERIAL_DEV.print(" to EEPROM.");
     #endif
     
   }
   else
   {
     #ifdef DEBUG
-      Serial.println("\nEEPROM HEADER DUMP");
-      Serial.print("Head = 0x");
-      Serial.println(epd.header, HEX);
-      Serial.print("Config Version = 0x");
-      Serial.println(epd.configVersion, HEX);
+      SERIAL_DEV.println("\nEEPROM HEADER DUMP");
+      SERIAL_DEV.print("Head = 0x");
+      SERIAL_DEV.println(epd.header, HEX);
+      SERIAL_DEV.print("Config Version = 0x");
+      SERIAL_DEV.println(epd.configVersion, HEX);
     #endif
 
     if(epd.configVersion != EEPROM_CONFIG_FORMAT_VERSION)
     {
       #ifdef DEBUG
-        Serial.print("Error. Expected EEPROM Config Version: 0x");
-        Serial.print(EEPROM_CONFIG_FORMAT_VERSION);
-        Serial.print(", got: 0x");
-        Serial.println(epd.configVersion);
+        SERIAL_DEV.print("Error. Expected EEPROM Config Version: 0x");
+        SERIAL_DEV.print(EEPROM_CONFIG_FORMAT_VERSION);
+        SERIAL_DEV.print(", got: 0x");
+        SERIAL_DEV.println(epd.configVersion);
       #endif
 
       while (true)
@@ -148,10 +180,10 @@ void setup() {
       }
     }
     #ifdef DEBUG
-      Serial.print("Config Length = 0x");
-      Serial.println(epd.configLen, HEX);
-      Serial.print("Config CRC = 0x");
-      Serial.println(epd.configCRC, HEX);
+      SERIAL_DEV.print("Config Length = 0x");
+      SERIAL_DEV.println(epd.configLen, HEX);
+      SERIAL_DEV.print("Config CRC = 0x");
+      SERIAL_DEV.println(epd.configCRC, HEX);
     #endif
 
     serialClient.setUID(epd.uid);
@@ -176,10 +208,10 @@ void loop() {
   
   if(configManager.GetDigitalInputsReady() == 1)
   {
-    String output;
-    JsonDocument doc;
-    JsonArray pa; //= doc["pa"].to<JsonArray>();
-    //Serial.println("READY");
+    //pa.clear();
+    doc.clear();
+    pa = doc["pa"].to<JsonArray>();
+
     for( int x = 0; x < configManager.GetDigitalInputPinsLen(); x++ )
     {
       
@@ -189,13 +221,13 @@ void loop() {
       if(pin.pinCurrentState != v && (currentMills - pin.t) >= pin.debounce)
       {
         #ifdef DEBUG_VERBOSE
-        Serial.print("DINPUTS PIN CHANGE! ");
-        Serial.print("PIN:");
-        Serial.println(pin.pinID);
-        Serial.print("Current value: ");
-        Serial.println(pin.pinCurrentState);
-        Serial.print("New value: ");
-        Serial.println(v);
+        SERIAL_DEV.print("DINPUTS PIN CHANGE! ");
+        SERIAL_DEV.print("PIN:");
+        SERIAL_DEV.println(pin.pinID);
+        SERIAL_DEV.print("Current value: ");
+        SERIAL_DEV.println(pin.pinCurrentState);
+        SERIAL_DEV.print("New value: ");
+        SERIAL_DEV.println(v);
         #endif
         
         pin.pinCurrentState = v;
@@ -205,11 +237,7 @@ void loop() {
         //serialClient
 
         //doc.clear();
-        
-        if(pa.isNull())
-        {
-          pa = doc["pa"].to<JsonArray>();
-        }
+
         JsonObject pa_0 = pa.add<JsonObject>();
         pa_0["lid"] = x;
         pa_0["pid"] = atoi(pin.pinID.c_str());
@@ -219,18 +247,20 @@ void loop() {
 
         
       }
-      if(pa.size() > 0)
-      {
-        serializeJson(doc, output);
-        Serial.print("JSON = ");
-        Serial.println(output);
-        uint8_t seqID = 0;
-        uint8_t resp = 0; // Future TODO: Consider requiring ACK/NAK, maybe.
-        uint8_t f = DINPUTS;
-        //String o = String(output.c_str());
-        serialClient.SendPinChangeMessage(f, seqID, resp, output);
-      }
 
+    }
+    if(pa.size() > 0)
+    {
+      output = "";
+      serializeJson(doc, output);
+      SERIAL_DEV.print("JSON = ");
+      SERIAL_DEV.println(output);
+      uint8_t seqID = 0;
+      uint8_t resp = 0; // Future TODO: Consider requiring ACK/NAK, maybe.
+      uint8_t f = DINPUTS;
+      //String o = String(output.c_str());
+      serialClient.SendPinChangeMessage(f, seqID, resp, output);
+      pa.clear();
     }
   }
   //for (dpin & pin : configManager.getDigitalInputPins())

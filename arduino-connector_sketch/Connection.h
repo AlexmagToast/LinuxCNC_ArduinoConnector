@@ -322,7 +322,7 @@ protected:
   {
     protocol::hm.featureMap = this->_featureMap;
     protocol::hm.timeout = _retryPeriod * 2;
-    protocol::hm.maxMsgSize = RX_BUFFER_SIZE;
+    protocol::hm.maxMsgSize = 512;//RX_BUFFER_SIZE;
     protocol::hm.configVersion = 0;
     protocol::hm.uid = _uid;
     #ifdef DEBUG_VERBOSE   
@@ -423,8 +423,8 @@ protected:
   uint8_t _initialized = false;
   uint32_t _featureMap = 1;
   int _myState = CS_DISCONNECTED;
-  char _rxBuffer[RX_BUFFER_SIZE];
-  byte _txBuffer[RX_BUFFER_SIZE];
+  //char _rxBuffer[RX_BUFFER_SIZE];
+  //byte _txBuffer[RX_BUFFER_SIZE];
   // Flip-flops used to signal the presence of received message types
   uint8_t _handshakeReceived = 0;
   uint8_t _heartbeatReceived = 0;

@@ -39,7 +39,7 @@ SOFTWARE.
 // See https://github.com/hideakitai/MsgPacketizer#memory-management-only-for-no-stl-boards
 // TODO: Board detect & set these dynamically based on detected board
 // max publishing element size in one destination
-define MSGPACKETIZER_MAX_PUBLISH_ELEMENT_SIZE 5
+#define MSGPACKETIZER_MAX_PUBLISH_ELEMENT_SIZE 5
 // max destinations to publish
 #define MSGPACKETIZER_MAX_PUBLISH_DESTINATION_SIZE 1
 
