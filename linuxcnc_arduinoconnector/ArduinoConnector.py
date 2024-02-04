@@ -1058,7 +1058,7 @@ class ArduinoConnection:
                         logging.debug(f'PYDEBUG: ArduinoConnection::doWork, dev={self.settings.dev}, alias={self.settings.alias}, Exception: {str(error)}, Traceback = {just_the_string}')
                         # Future TODO: Consider doing something intelligent and not just reporting an error. Maybe increment a hal pin that reflects error counts?
                         return
-                    #time.sleep(.01)
+                    time.sleep(.1)
 
             self.serialConn.configVersion = 1
 arduino_map = []
