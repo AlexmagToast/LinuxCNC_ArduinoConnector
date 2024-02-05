@@ -92,8 +92,8 @@ namespace protocol
       uint8_t protocolVersion = PROTOCOL_VERSION;
       uint64_t featureMap;
       uint32_t timeout;
-      uint16_t maxMsgSize;
-      uint16_t configVersion; // 0 indicates no config, >0 indicates an existing config
+      //uint16_t maxMsgSize;
+      uint32_t profileSignature = 0; // 0 indicates no config, >0 indicates an existing config
       String uid;
       #ifdef NUM_DIGITAL_PINS
       uint8_t   digitalPins = NUM_DIGITAL_PINS;
@@ -110,7 +110,7 @@ namespace protocol
       #else
       uint8_t   analogOutputs = 0;
       #endif
-      MSGPACK_DEFINE(protocolVersion, featureMap, timeout, maxMsgSize, configVersion, uid, digitalPins, analogInputs, analogOutputs); 
+      MSGPACK_DEFINE(protocolVersion, featureMap, timeout, profileSignature, uid, digitalPins, analogInputs, analogOutputs); 
   }hm;
 
   // First ResponseMessage received by the Arduino is in response to the Python side receiving the HandshakeMessage from the Arduiono.  The arduinoIndex value

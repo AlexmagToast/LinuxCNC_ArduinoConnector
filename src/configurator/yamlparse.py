@@ -92,8 +92,8 @@ class Features:
                 'pin_min_val': {'value': 0, 'ignore': 0, 'optional':1},
                 'pin_max_val': {'value': 1023, 'ignore': 0, 'optional':1},
                 'pin_init_state': {'value': -1, 'ignore': 0, 'optional':1},
-                'pin_connect_state': {'value': -1, 'ignore': 0, 'optional':1},   
-                'pin_disconnect_state': {'value': 0, 'ignore': 0, 'optional':1},
+                'pin_connected_state': {'value': -1, 'ignore': 0, 'optional':1},   
+                'pin_disconnected_state': {'value': 0, 'ignore': 0, 'optional':1},
                 'enabled': {'value': 'TRUE', 'ignore': 0, 'optional':1}
                 }
         }
@@ -107,8 +107,8 @@ class Features:
                 'pin_type': {'value': 'HAL_FLOAT', 'ignore': 0, 'optional':1},
                 'pin_debounce': {'value': 200, 'ignore': 0, 'optional':1},
                 'pin_init_state': {'value': -1, 'ignore': 0, 'optional':1},
-                'pin_connect_state': {'value': -1, 'ignore': 0, 'optional':1},   
-                'pin_disconnect_state': {'value': 0, 'ignore': 0, 'optional':1},
+                'pin_connected_state': {'value': -1, 'ignore': 0, 'optional':1},   
+                'pin_disconnected_state': {'value': 0, 'ignore': 0, 'optional':1},
                 'enabled': {'value': 'TRUE', 'ignore': 0, 'optional':1}
                 }
         }
@@ -121,8 +121,8 @@ class Features:
                 'pin_name': {'value': 'pwmout.', 'ignore': 0, 'optional':1},
                 'pin_type': {'value': 'HAL_FLOAT', 'ignore': 0, 'optional':1},
                 'pin_init_state': {'value': -1, 'ignore': 0, 'optional':1},
-                'pin_connect_state': {'value': -1, 'ignore': 0, 'optional':1},   
-                'pin_disconnect_state': {'value': 0, 'ignore': 0, 'optional':1},
+                'pin_connected_state': {'value': -1, 'ignore': 0, 'optional':1},   
+                'pin_disconnected_state': {'value': 0, 'ignore': 0, 'optional':1},
                 'enabled': {'value': 'TRUE', 'ignore': 0, 'optional':1}
                 }
         }
@@ -134,8 +134,8 @@ class Features:
                 'pin_name': {'value': 'dout.', 'ignore': 0, 'optional':1},
                 'pin_type': {'value': 'HAL_BIT', 'ignore': 0, 'optional':1},   
                 'pin_init_state': {'value': -1, 'ignore': 0, 'optional':1},
-                'pin_connect_state': {'value': -1, 'ignore': 0, 'optional':1},   
-                'pin_disconnect_state': {'value': 0, 'ignore': 0, 'optional':1},
+                'pin_connected_state': {'value': -1, 'ignore': 0, 'optional':1},   
+                'pin_disconnected_state': {'value': 0, 'ignore': 0, 'optional':1},
                 'enabled': {'value': 'TRUE', 'ignore': 0, 'optional':1}
                 }
         }
@@ -150,8 +150,8 @@ class Features:
                 'lpoti_latches': {'value': 9, 'ignore': 0, 'optional':1},
                 'value_replace': {'value': [40,50,60,70,80,90,100,110,120], 'ignore': 0, 'optional':1},
                 'pin_init_state': {'value': -1, 'ignore': 0, 'optional':1},
-                'pin_connect_state': {'value': -1, 'ignore': 0, 'optional':1},   
-                'pin_disconnect_state': {'value': 0, 'ignore': 0, 'optional':1},
+                'pin_connected_state': {'value': -1, 'ignore': 0, 'optional':1},   
+                'pin_disconnected_state': {'value': 0, 'ignore': 0, 'optional':1},
                 'enabled': {'value': 'TRUE', 'ignore': 0, 'optional':1}
                 }
         }
@@ -165,8 +165,8 @@ class Features:
             'pin_pins': {'value': [2,6,4,3,5], 'ignore': 0, 'optional':1},
             'value_replace': {'value': [180,190,200,0,0,0,0,0,0,0,0,0,0,0,0,10,20,30,40,50,60,70,80,90,100,110,120,130,140,150,160,170], 'ignore': 0, 'optional':1},
             'pin_init_state': {'value': -1, 'ignore': 0, 'optional':1},
-            'pin_connect_state': {'value': -1, 'ignore': 0, 'optional':1},   
-            'pin_disconnect_state': {'value': 0, 'ignore': 0, 'optional':1},
+            'pin_connected_state': {'value': -1, 'ignore': 0, 'optional':1},   
+            'pin_disconnected_state': {'value': 0, 'ignore': 0, 'optional':1},
             'enabled': {'value': 'TRUE', 'ignore': 0, 'optional':1}
             }
         }
@@ -187,8 +187,8 @@ class Features:
             'pin_type': {'value': 'FLOAT', 'ignore': 0, 'optional':0}, #hal pin type     #optional   HAL_BIT, HAL_S32 , HAL_FLOAT
             'value_replace': {'value': [0.001,0.01,0.1,1], 'ignore': 0, 'optional':0},
             'pin_init_state': {'value': -1, 'ignore': 0, 'optional':1},
-            'pin_connect_state': {'value': -1, 'ignore': 0, 'optional':1},   
-            'pin_disconnect_state': {'value': 0, 'ignore': 0, 'optional':1},
+            'pin_connected_state': {'value': -1, 'ignore': 0, 'optional':1},   
+            'pin_disconnected_state': {'value': 0, 'ignore': 0, 'optional':1},
             'enabled': {'value': 'TRUE', 'ignore': 0, 'optional':1}
             }   
         }
@@ -206,8 +206,8 @@ class Features:
             'pin_type': {'value': 'FLOAT', 'ignore': 0, 'optional':0}, #hal pin type     #optional   HAL_BIT, HAL_S32 , HAL_FLOAT
             'value_replace': {'value': [0.001,0.01,0.1,1], 'ignore': 0, 'optional':0},
             'pin_init_state': {'value': -1, 'ignore': 0, 'optional':1},
-            'pin_connect_state': {'value': -1, 'ignore': 0, 'optional':1},   
-            'pin_disconnect_state': {'value': 0, 'ignore': 0, 'optional':1},
+            'pin_connected_state': {'value': -1, 'ignore': 0, 'optional':1},   
+            'pin_disconnected_state': {'value': 0, 'ignore': 0, 'optional':1},
             'enabled': {'value': 'TRUE', 'ignore': 0, 'optional':1}
             }
         }
@@ -225,8 +225,8 @@ class Features:
             'pin_type': {'value': 'FLOAT', 'ignore': 0, 'optional':0}, #hal pin type     #optional   HAL_BIT, HAL_S32 , HAL_FLOAT
             'value_replace': {'value': [0.001,0.01,0.1,1], 'ignore': 0, 'optional':0},
             'pin_init_state': {'value': -1, 'ignore': 0, 'optional':1},
-            'pin_connect_state': {'value': -1, 'ignore': 0, 'optional':1},   
-            'pin_disconnect_state': {'value': 0, 'ignore': 0, 'optional':1},
+            'pin_connected_state': {'value': -1, 'ignore': 0, 'optional':1},   
+            'pin_disconnected_state': {'value': 0, 'ignore': 0, 'optional':1},
             'enabled': {'value': 'TRUE', 'ignore': 0, 'optional':1}
             }
         }

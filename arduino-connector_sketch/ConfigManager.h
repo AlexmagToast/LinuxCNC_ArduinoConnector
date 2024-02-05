@@ -8,8 +8,8 @@ struct dpin
 {
     String pinID;
     int8_t pinInitialState;
-    int8_t pinConnectState;
-    int8_t pinDisconnectState;
+    int8_t pinConnectedState;
+    int8_t pinDisconnectedState;
     uint16_t debounce;
     uint8_t inputPullup;
     uint8_t logicalID;
@@ -51,10 +51,10 @@ public:
         Serial.println(pin.pinID);
         Serial.print("pinInitialState=");
         Serial.println(pin.pinInitialState);
-        Serial.print("pinConnectState=");
-        Serial.println(pin.pinConnectState);    
-        Serial.print("pinDisconnectState=");
-        Serial.println(pin.pinDisconnectState); 
+        Serial.print("pinConnectedState=");
+        Serial.println(pin.pinConnectedState);    
+        Serial.print("pinDisconnectedState=");
+        Serial.println(pin.pinDisconnectedState); 
         Serial.print("debounce=");
         Serial.println(pin.debounce); 
         Serial.print("inputPullup=");
@@ -140,10 +140,10 @@ public:
         Serial.println(pin.pinID);
         Serial.print("pinInitialState=");
         Serial.println(pin.pinInitialState);
-        Serial.print("pinConnectState=");
-        Serial.println(pin.pinConnectState);    
-        Serial.print("pinDisconnectState=");
-        Serial.println(pin.pinDisconnectState); 
+        Serial.print("pinConnectedState=");
+        Serial.println(pin.pinConnectedState);    
+        Serial.print("pinDisconnectedState=");
+        Serial.println(pin.pinDisconnectedState); 
         Serial.print("debounce=");
         Serial.println(pin.debounce); 
         Serial.print("inputPullup=");

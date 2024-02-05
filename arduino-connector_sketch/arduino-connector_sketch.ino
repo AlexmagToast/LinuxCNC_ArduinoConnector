@@ -190,7 +190,7 @@ void setup() {
    
   }
   */
-  serialClient.setUID("UNDEFINED");
+  serialClient.setUID(uuid.c_str());
   serialClient.RegisterConfigCallback(Callbacks::onConfig);
   serialClient.RegisterCSCallback(Callbacks::onConnectionStageChange);
   serialClient.RegisterPinChangeCallback(Callbacks::onPinChange);

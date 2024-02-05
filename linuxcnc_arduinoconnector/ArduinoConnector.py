@@ -24,9 +24,11 @@
 # SOFTWARE.
 import json
 import os
+import random
 from re import T
 import getopt, sys
 import subprocess
+import zlib
 #import threading
 import serial
 import msgpack
@@ -43,7 +45,6 @@ import numpy
 from cobs import cobs
 import yaml
 from pathlib import Path
-
 #import linuxcnc
 import hal
 #from qtvcp.core import Info
@@ -180,8 +181,8 @@ class ArduinoPin:
         self.pinID = pinID
         self.featureID = featureID
         self.pinInitialState = PinConfigElement.PIN_INITIAL_STATE.value[DEFAULT_VALUE_KEY]
-        self.pinConnectState = PinConfigElement.PIN_CONNECTED_STATE.value[DEFAULT_VALUE_KEY]
-        self.pinDisconnectState = PinConfigElement.PIN_DISCONNECTED_STATE.value[DEFAULT_VALUE_KEY]
+        self.pinConnectedState = PinConfigElement.PIN_CONNECTED_STATE.value[DEFAULT_VALUE_KEY]
+        self.pinDisconnectedState = PinConfigElement.PIN_DISCONNECTED_STATE.value[DEFAULT_VALUE_KEY]
         self.pinEnabled = PinConfigElement.PIN_ENABLED.value[DEFAULT_VALUE_KEY]
         self.halPinConnection = None
         self.halPinCurrentValue = 0
@@ -203,19 +204,19 @@ class ArduinoPin:
         if PinConfigElement.PIN_INITIAL_STATE.value[0] in doc.keys():    
             self.pinInitialState = doc[PinConfigElement.PIN_INITIAL_STATE.value[0]]
         if PinConfigElement.PIN_DISCONNECTED_STATE.value[0] in doc.keys():    
-            self.pinDisconnectState = doc[PinConfigElement.PIN_DISCONNECTED_STATE.value[0]]
+            self.pinDisconnectedState = doc[PinConfigElement.PIN_DISCONNECTED_STATE.value[0]]
         if PinConfigElement.PIN_CONNECTED_STATE.value[0] in doc.keys():    
-            self.pinConnectState = doc[PinConfigElement.PIN_CONNECTED_STATE.value[0]]
+            self.pinConnectedState = doc[PinConfigElement.PIN_CONNECTED_STATE.value[0]]
 
     def __str__(self) -> str:
-        return f'pinName = {self.pinName}, pinType={self.pinType.name}, halPinType={self.halPinType}, pinEnabled={self.pinEnabled}, pinIniitalState={self.pinInitialState}, pinConnectState={self.pinConnectState}, pinDisconnectState={self.pinDisconnectState}'
+        return f'pinName = {self.pinName}, pinType={self.pinType.name}, halPinType={self.halPinType}, pinEnabled={self.pinEnabled}, pinIniitalState={self.pinInitialState}, pinConnectedState={self.pinConnectedState}, pinDisconnectedState={self.pinDisconnectedState}'
     
     def toJson(self): # This is the JSON sent to the Arduino during configuration.  Should only include the values needed by the Arduino to limit memory footprint/processing within the Arduino.
         return {'featureID' : self.featureID,
                 'pinID': self.pinID,
                 'pinInitialState': self.pinInitialState,
-                'pinConnectState': self.pinConnectState,
-                'pinDisconnectState': self.pinDisconnectState}
+                'pinConnectedState': self.pinConnectedState,
+                'pinDisconnectedState': self.pinDisconnectedState}
 
     
 class AnalogPin(ArduinoPin):
@@ -296,7 +297,7 @@ class ArduinoSettings:
         self.baud_rate = 19200
         self.connection_timeout = 10
         self.io_map = {}
-        
+        self.profileSignature = 0# CRC32 for now
         self.enabled = True
 
 
@@ -327,17 +328,20 @@ class ArduinoSettings:
         return pc
 
             
-
+# taken from https://stackoverflow.com/questions/1742866/compute-crc-of-file-in-python
+def forLoopCrc(fpath):
+    """With for loop and buffer."""
+    crc = 0
+    with open(fpath, 'rb', 65536) as ins:
+        for x in range(int((os.stat(fpath).st_size / 65536)) + 1):
+            crc = zlib.crc32(ins.read(65536), crc)
+    return (crc & 0xFFFFFFFF)
+    
 class ArduinoYamlParser:
-    #def __init__(self, path:str):
-    #    self.parseYaml(path=path)
-    #    pass
-    #def parsePin(self, doc: dict, pinType: PinTypes) -> ArduinoPin:
-    #    return ArduinoPin(pinName=pinName, pinType=pinType, halPinType=halPinType) 
-        
     def parseYaml(path:str) -> list[ArduinoSettings]: # parseYaml returns a list of ArduinoSettings objects. WILL throw exceptions on error
         if os.path.exists(path) == False:
             raise FileNotFoundError(f'Error. {path} not found.')
+        crcval = int(forLoopCrc(path))
         with open(path, 'r') as file:
             logging.debug(f'PYDEBUG: Loading config, path = {path}')
             docs = yaml.safe_load_all(file)
@@ -399,6 +403,7 @@ class ArduinoYamlParser:
                         if v != None:
                             for v1 in v:   
                                 new_arduino.io_map[a].append(c(v1, d)) # Here we just call the lamda function, which magically returns a correct object with all the settings
+                new_arduino.profileSignature = crcval
                 mcu_list.append(new_arduino)
                 logging.debug(f'PYDEBUG: Loaded Arduino from config:\n{new_arduino}')
         return mcu_list      
@@ -599,12 +604,12 @@ class HandshakeMessage(ProtocolMessage):
             raise Exception(f'Expected protocol version {protocol_ver}, got {self.protocolVersion}')
         self.enabledFeatures = FeatureMapDecoder(md.payload[1])
         self.timeout = md.payload[2]
-        self.maxMsgSize = md.payload[3]
-        self.configVersion = md.payload[4]
-        self.UID = md.payload[5]
-        self.digitalPins = md.payload[6]
-        self.analogInputs = md.payload[7]
-        self.analogOutputs = md.payload[8]
+        #self.maxMsgSize = md.payload[3]
+        self.profileSignature = md.payload[3]
+        self.UID = md.payload[4]
+        self.digitalPins = md.payload[5]
+        self.analogInputs = md.payload[6]
+        self.analogOutputs = md.payload[7]
         self.payload = md.payload
     
 
@@ -617,9 +622,9 @@ class Connection:
         self.connectionType = myType
         self.connectionState = ConnectionState.DISCONNECTED
         self.timeout = 10
-        self.configVersion = -1 # -1 initial state, this value changes once the arduino sends a handshake
+        self.arduinoProfileSignature = 0
         self.lastMessageReceived = time.time()
-        self.maxMsgSize = 512
+        #self.maxMsgSize = 512
         self.enabledFeatures = None
         self.uid = ''
         self.rxQueue = Queue(RX_MAX_QUEUE_SIZE)
@@ -640,8 +645,8 @@ class Connection:
             try:
                 hsm = HandshakeMessage(m)
                 self.timeout = hsm.timeout / 1000
-                self.configVersion = hsm.configVersion
-                self.maxMsgSize = hsm.maxMsgSize
+                self.arduinoProfileSignature = hsm.profileSignature
+                #self.maxMsgSize = hsm.maxMsgSize
                 self.enabledFeatures = hsm.enabledFeatures
                 self.uid = hsm.UID
                 self.setState(ConnectionState.CONNECTED)
@@ -779,7 +784,7 @@ class UDPConnection(Connection):
 '''
 		
 class SerialConnection(Connection):
-    def __init__(self, dev:str, myType = ConnectionType.SERIAL, baudRate:int = 115200, timeout:int=1):
+    def __init__(self, dev:str, myType = ConnectionType.SERIAL, profileSignature:int=0, baudRate:int = 115200, timeout:int=1):
         super().__init__(myType)
         logging.debug(f'PYDEBUG: SerialConnection __init__: dev={dev}, baudRate={baudRate}, timeout={timeout}')
         self.rxBuffer = bytearray()
@@ -789,7 +794,7 @@ class SerialConnection(Connection):
         self.serial = ''    
         self.baudRate = baudRate
         self.timeout = timeout  
-
+        self.profileSignature = profileSignature
         self.status = ThreadStatus.STOPPED
   
         self.arduino = None #serial.Serial(dev, baudrate=baudRate, timeout=timeout, xonxoff=False, rtscts=False, dsrdtr=True)
@@ -873,7 +878,7 @@ class SerialConnection(Connection):
                 
                 self.daemon = None
                 self.arduino = None
-                self.configVersion = 0 # Force config send on reconnect; TODO: Consider making this less janky
+                #self.configVersion = 0 # Force config send on reconnect; TODO: Consider making this less janky
                 self.setState(newState=ConnectionState.DISCONNECTED)
                 self.status = ThreadStatus.CRASHED
                 break #break out of while
@@ -883,7 +888,7 @@ class SerialConnection(Connection):
                 
                 self.daemon = None
                 self.arduino = None
-                self.configVersion = 0 # Force config send on reconnect; TODO: Consider making this less janky
+                #self.configVersion = 0 # Force config send on reconnect; TODO: Consider making this less janky
                 self.setState(newState=ConnectionState.DISCONNECTED)
                 self.status = ThreadStatus.CRASHED
                 break #break out of while
@@ -923,7 +928,7 @@ class HalPinConnection:
 class ArduinoConnection:
     def __init__(self, settings:ArduinoSettings):
         self.settings = settings
-        self.serialConn = SerialConnection(dev=settings.dev, baudRate=settings.baud_rate, timeout=settings.connection_timeout)
+        self.serialConn = SerialConnection(dev=settings.dev, baudRate=settings.baud_rate, profileSignature=self.settings.profileSignature, timeout=settings.connection_timeout)
         '''
                 while( True ):
             try:
@@ -1043,7 +1048,7 @@ class ArduinoConnection:
                 time.sleep(1) # TODO: Consider making this delay settable? Trying to avoid hammering the serial port when its in a strange state
                 self.serialConn.startRxTask()
             
-        if self.serialConn.getConnectionState() == ConnectionState.CONNECTED and self.serialConn.configVersion == 0:
+        if self.serialConn.getConnectionState() == ConnectionState.CONNECTED and self.settings.profileSignature is not self.serialConn.arduinoProfileSignature:
             j = self.settings.configJSON()
             #config_json = json.dumps(j)
             #h = int(hashlib.sha256(config_json.encode('utf-8')).hexdigest(), 16) % 10**8
@@ -1063,8 +1068,8 @@ class ArduinoConnection:
                         # Future TODO: Consider doing something intelligent and not just reporting an error. Maybe increment a hal pin that reflects error counts?
                         return
                     time.sleep(.1)
-
-            self.serialConn.configVersion = 1
+            #self.serialConn.
+            self.serialConn.arduinoProfileSignature = self.settings.profileSignature
 arduino_map = []
 
 def listDevices():

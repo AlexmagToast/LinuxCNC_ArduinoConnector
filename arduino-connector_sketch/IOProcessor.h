@@ -116,8 +116,8 @@ namespace Callbacks
             dpin d = (dpin){
               .pinID =  doc["pinID"],
               .pinInitialState =  doc["pinInitialState"],
-              .pinConnectState = doc["pinConnectState"],
-              .pinDisconnectState = doc["pinDisconnectState"],
+              .pinConnectedState = doc["pinConnectedState"],
+              .pinDisconnectedState = doc["pinDisconnectedState"],
               .debounce = doc["pinDebounce"],
               .inputPullup = doc["inputPullup"],
               .logicalID = doc["logicalID"],
@@ -156,8 +156,8 @@ namespace Callbacks
             dpin d = (dpin){
               .pinID =  doc["pinID"],
               .pinInitialState =  doc["pinInitialState"],
-              .pinConnectState = doc["pinConnectState"],
-              .pinDisconnectState = doc["pinDisconnectState"],
+              .pinConnectedState = doc["pinConnectedState"],
+              .pinDisconnectedState = doc["pinDisconnectedState"],
               .debounce = doc["pinDebounce"],
               .inputPullup = doc["inputPullup"],
               .logicalID = doc["logicalID"],
@@ -166,8 +166,10 @@ namespace Callbacks
             };
             pinMode(atoi(d.pinID.c_str()), OUTPUT); 
             configManager.setDigitalOutputPin(d, d.logicalID);
-           
-              
+            if(d.pinInitialState != -1)
+            {
+              digitalWrite(atoi(d.pinID.c_str()), d.pinInitialState);
+            }
           }
           break;
         
@@ -177,6 +179,29 @@ namespace Callbacks
     }
 
   void onConnectionStageChange(int s) {
+    #ifdef DOUTPUTS
+        if(configManager.GetDigitalOutputsReady() == 0)
+        {
+          #ifdef DEBUG_VERBOSE
+            Serial.print("ARDUINO DEBUG: Callbacks::onPinChange: GetDigitalOutputsReady() returned FALSE");
+          #endif
+          return;
+        }
+        for( int x = 0; x < configManager.GetDigitalOutputPinsLen(); x++)
+        {
+          dpin & pin = configManager.getDigitalOutputPins()[x];
+          if( s == CS_CONNECTED && pin.pinConnectedState != -1 )
+          {
+            digitalWrite(atoi(pin.pinID.c_str()), pin.pinConnectedState);
+          }
+          if( s == CS_DISCONNECTED && pin.pinDisconnectedState != -1 )
+          {
+            digitalWrite(atoi(pin.pinID.c_str()), pin.pinDisconnectedState);
+          }
+        }
+
+        
+    #endif
   }
 }
 

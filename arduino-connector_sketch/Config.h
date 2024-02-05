@@ -20,6 +20,10 @@
 //#define KEYPAD                    13
 //#define EEPROM_ENABLED              14
 
+#ifndef EEPROM_ENABLED
+String uuid("UNDEFINED");
+#endif
+
 #define DEBUG_VERBOSE
 const int SERIAL_STARTUP_DELAY = 5000; // In milliseconds
 const int SERIAL_RX_TIMEOUT = 10000;

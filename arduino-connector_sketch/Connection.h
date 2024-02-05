@@ -58,7 +58,7 @@ public:
     return _myState;
   }
 
-  void setUID(char* uid)
+  void setUID(const char* uid)
   {
     _uid = uid;
   }
@@ -236,8 +236,8 @@ protected:
       Serial.println("ARDUINO DEBUG: ---- RX HANDSHAKE MESSAGE DUMP ----");
       Serial.print("ARDUINO DEBUG: Protocol Version: 0x");
       Serial.println(n.protocolVersion, HEX);
-      //Serial.print("ARDUINO DEBUG: Feature Map: 0x");
-      //Serial.println(n.featureMap);
+      Serial.print("ARDUINO DEBUG: Profile Signature: ");
+      Serial.println(n.profileSignature);
       //Serial.print("ARDUINO DEBUG: Board Index: ");
       //Serial.println(n.boardIndex);
       Serial.println("ARDUINO DEBUG: ---- RX END HANDSHAKE MESSAGE DUMP ----");
@@ -322,8 +322,7 @@ protected:
   {
     protocol::hm.featureMap = this->_featureMap;
     protocol::hm.timeout = _retryPeriod * 2;
-    protocol::hm.maxMsgSize = 512;//RX_BUFFER_SIZE;
-    protocol::hm.configVersion = 0;
+
     protocol::hm.uid = _uid;
     #ifdef DEBUG_VERBOSE   
       Serial.println("ARDUINO DEBUG: ---- TX HANDSHAKE MESSAGE DUMP ----");
@@ -333,10 +332,10 @@ protected:
       //Serial.println(protocol::hm.featureMap, HEX);
       Serial.print("ARDUINO DEBUG: Timeout: ");
       Serial.println(protocol::hm.timeout);
-      Serial.print("ARDUINO DEBUG: MaxMsgSize: ");
-      Serial.println(protocol::hm.maxMsgSize);
-      Serial.print("ARDUINO DEBUG: ConfigVersion: ");
-      Serial.println(protocol::hm.configVersion);
+      //Serial.print("ARDUINO DEBUG: MaxMsgSize: ");
+      //Serial.println(protocol::hm.maxMsgSize);
+      Serial.print("ARDUINO DEBUG: ProfileSignature: ");
+      Serial.println(protocol::hm.profileSignature);
       //Serial.print("ARDUINO DEBUG: Board Index: ");
      //Serial.println(protocol::hm.boardIndex);
       Serial.print("ARDUINO DEBUG: Board UID: ");
