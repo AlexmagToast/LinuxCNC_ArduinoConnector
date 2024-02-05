@@ -28,29 +28,29 @@ namespace ConfigManager
   void SetDigitalInputPin(dpin pin, uint8_t index)
   {
     #ifdef DEBUG
-      Serial.print("ConfigManager::SetDigitalInputPin, Index=0x");
-      Serial.println(index, HEX);
+      SERIAL_DEV.print("ConfigManager::SetDigitalInputPin, Index=0x");
+      SERIAL_DEV.println(index, HEX);
       #ifdef DEBUG_VERBOSE
-        Serial.println("----------- START PIN CONFIG DUMP ------------");
-        Serial.print("pinID=");
-        Serial.println(pin.pinID);
-        Serial.print("pinInitialState=");
-        Serial.println(pin.pinInitialState);
-        Serial.print("pinConnectedState=");
-        Serial.println(pin.pinConnectedState);    
-        Serial.print("pinDisconnectedState=");
-        Serial.println(pin.pinDisconnectedState); 
-        Serial.print("debounce=");
-        Serial.println(pin.debounce); 
-        Serial.print("inputPullup=");
-        Serial.println(pin.inputPullup); 
-        Serial.print("logicalID=");
-        Serial.println(pin.logicalID); 
-        Serial.print("pinCurrentState=");
-        Serial.println(pin.pinCurrentState); 
-        Serial.print("t=");
-        Serial.println(pin.t);
-        Serial.println("----------- END PIN CONFIG DUMP ------------");
+        SERIAL_DEV.println("----------- START PIN CONFIG DUMP ------------");
+        SERIAL_DEV.print("pinID=");
+        SERIAL_DEV.println(pin.pinID);
+        SERIAL_DEV.print("pinInitialState=");
+        SERIAL_DEV.println(pin.pinInitialState);
+        SERIAL_DEV.print("pinConnectedState=");
+        SERIAL_DEV.println(pin.pinConnectedState);    
+        SERIAL_DEV.print("pinDisconnectedState=");
+        SERIAL_DEV.println(pin.pinDisconnectedState); 
+        SERIAL_DEV.print("debounce=");
+        SERIAL_DEV.println(pin.debounce); 
+        SERIAL_DEV.print("inputPullup=");
+        SERIAL_DEV.println(pin.inputPullup); 
+        SERIAL_DEV.print("logicalID=");
+        SERIAL_DEV.println(pin.logicalID); 
+        SERIAL_DEV.print("pinCurrentState=");
+        SERIAL_DEV.println(pin.pinCurrentState); 
+        SERIAL_DEV.print("t=");
+        SERIAL_DEV.println(pin.t);
+        SERIAL_DEV.println("----------- END PIN CONFIG DUMP ------------");
       #endif     
     #endif
     dinput_arr[index] = pin;
@@ -68,8 +68,8 @@ namespace ConfigManager
   void InitDigitalInputPins(size_t size)
   {
     #ifdef DEBUG
-      Serial.print("ConfigManager::initDigialInputPins, Size=0x");
-      Serial.println(size, HEX);
+      SERIAL_DEV.print("ConfigManager::initDigialInputPins, Size=0x");
+      SERIAL_DEV.println(size, HEX);
     #endif
     if( dinput_arr != NULL )
     {
@@ -104,8 +104,8 @@ namespace ConfigManager
       dpin d = GetDigitalInputPins()[x];
       if(d.pinID.length() == 0)
       {
-        //Serial.print("NOT READY PIN = ");
-        //Serial.println(x);
+        //SERIAL_DEV.print("NOT READY PIN = ");
+        //SERIAL_DEV.println(x);
         return 0;
       }
     }
@@ -122,29 +122,29 @@ namespace ConfigManager
   void SetDigitalOutputPin(dpin pin, uint8_t index)
   {
     #ifdef DEBUG
-      Serial.print("ConfigManager::SetDigitalOutputPin, Index=0x");
-      Serial.println(index, HEX);
+      SERIAL_DEV.print("ConfigManager::SetDigitalOutputPin, Index=0x");
+      SERIAL_DEV.println(index, HEX);
       #ifdef DEBUG_VERBOSE
-        Serial.println("----------- START PIN CONFIG DUMP ------------");
-        Serial.print("pinID=");
-        Serial.println(pin.pinID);
-        Serial.print("pinInitialState=");
-        Serial.println(pin.pinInitialState);
-        Serial.print("pinConnectedState=");
-        Serial.println(pin.pinConnectedState);    
-        Serial.print("pinDisconnectedState=");
-        Serial.println(pin.pinDisconnectedState); 
-        Serial.print("debounce=");
-        Serial.println(pin.debounce); 
-        Serial.print("inputPullup=");
-        Serial.println(pin.inputPullup); 
-        Serial.print("logicalID=");
-        Serial.println(pin.logicalID); 
-        Serial.print("pinCurrentState=");
-        Serial.println(pin.pinCurrentState); 
-        Serial.print("t=");
-        Serial.println(pin.t);
-        Serial.println("----------- END PIN CONFIG DUMP ------------");
+        SERIAL_DEV.println("----------- START PIN CONFIG DUMP ------------");
+        SERIAL_DEV.print("pinID=");
+        SERIAL_DEV.println(pin.pinID);
+        SERIAL_DEV.print("pinInitialState=");
+        SERIAL_DEV.println(pin.pinInitialState);
+        SERIAL_DEV.print("pinConnectedState=");
+        SERIAL_DEV.println(pin.pinConnectedState);    
+        SERIAL_DEV.print("pinDisconnectedState=");
+        SERIAL_DEV.println(pin.pinDisconnectedState); 
+        SERIAL_DEV.print("debounce=");
+        SERIAL_DEV.println(pin.debounce); 
+        SERIAL_DEV.print("inputPullup=");
+        SERIAL_DEV.println(pin.inputPullup); 
+        SERIAL_DEV.print("logicalID=");
+        SERIAL_DEV.println(pin.logicalID); 
+        SERIAL_DEV.print("pinCurrentState=");
+        SERIAL_DEV.println(pin.pinCurrentState); 
+        SERIAL_DEV.print("t=");
+        SERIAL_DEV.println(pin.t);
+        SERIAL_DEV.println("----------- END PIN CONFIG DUMP ------------");
       #endif     
     #endif
     doutput_arr[index] = pin;
@@ -162,8 +162,8 @@ namespace ConfigManager
   void InitDigitalOutputPins(size_t size)
   {
     #ifdef DEBUG
-      Serial.print("ConfigManager::InitDigitalOutputPins, Size=0x");
-      Serial.println(size, HEX);
+      SERIAL_DEV.print("ConfigManager::InitDigitalOutputPins, Size=0x");
+      SERIAL_DEV.println(size, HEX);
     #endif
     if( doutput_arr != NULL )
     {
@@ -199,8 +199,8 @@ namespace ConfigManager
       dpin d = GetDigitalOutputPins()[x];
       if(d.pinID.length() == 0)
       {
-        //Serial.print("NOT READY PIN = ");
-        //Serial.println(x);
+        //SERIAL_DEV.print("NOT READY PIN = ");
+        //SERIAL_DEV.println(x);
         return 0;
       }
     }

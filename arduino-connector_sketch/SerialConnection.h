@@ -89,19 +89,19 @@ public:
   { 
     //MsgPacketizer::send(this->_client, this->_mi, hm);
     MsgPacketizer::send(Serial, MT_HANDSHAKE, _getHandshakeMessage());
-    Serial.flush();
+    SERIAL_DEV.flush();
   }
 
   virtual void _sendHeartbeatMessage()
   { 
     //MsgPacketizer::send(this->_client, this->_mi, hm);
     MsgPacketizer::send(Serial, MT_HEARTBEAT, _getHeartbeatMessage());
-    //Serial.flush();
+    //SERIAL_DEV.flush();
   }
 
   virtual void _sendPinChangeMessage()
   {
-    //Serial.println("SENDING PING CHANGE MESSAGE!");
+    //SERIAL_DEV.println("SENDING PING CHANGE MESSAGE!");
     MsgPacketizer::send(Serial, MT_PINCHANGE, _getPinChangeMessage());
   }
   /*
@@ -115,7 +115,7 @@ public:
   virtual void _sendDebugMessage(String& message)
   {
     MsgPacketizer::send(Serial, MT_DEBUG, _getDebugMessage(message));
-    Serial.flush();
+    SERIAL_DEV.flush();
   }
   #endif
   

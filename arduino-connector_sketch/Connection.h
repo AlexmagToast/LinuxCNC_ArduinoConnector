@@ -77,7 +77,7 @@ public:
 */
   virtual void SendPinChangeMessage(uint8_t& featureID, uint8_t& seqID, uint8_t& responseReq, String& message)
   {
-    //Serial.println("SENDING PIN MESSAGE!");
+    //SERIAL_DEV.println("SENDING PIN MESSAGE!");
     
     protocol::pcm.featureID = featureID;
     protocol::pcm.responseReq = responseReq;
@@ -233,14 +233,14 @@ protected:
   void _onHandshakeMessage(const protocol::HandshakeMessage& n)
   {
       #ifdef DEBUG_VERBOSE
-      Serial.println("ARDUINO DEBUG: ---- RX HANDSHAKE MESSAGE DUMP ----");
-      Serial.print("ARDUINO DEBUG: Protocol Version: 0x");
-      Serial.println(n.protocolVersion, HEX);
-      Serial.print("ARDUINO DEBUG: Profile Signature: ");
-      Serial.println(n.profileSignature);
-      //Serial.print("ARDUINO DEBUG: Board Index: ");
-      //Serial.println(n.boardIndex);
-      Serial.println("ARDUINO DEBUG: ---- RX END HANDSHAKE MESSAGE DUMP ----");
+      SERIAL_DEV.println(" ---- RX HANDSHAKE MESSAGE DUMP ----");
+      SERIAL_DEV.print(" Protocol Version: 0x");
+      SERIAL_DEV.println(n.protocolVersion, HEX);
+      SERIAL_DEV.print(" Profile Signature: ");
+      SERIAL_DEV.println(n.profileSignature);
+      //SERIAL_DEV.print(" Board Index: ");
+      //SERIAL_DEV.println(n.boardIndex);
+      SERIAL_DEV.println(" ---- RX END HANDSHAKE MESSAGE DUMP ----");
       #endif
       _handshakeReceived = 1;
   }
@@ -248,10 +248,10 @@ protected:
   void _onHeartbeatMessage(const protocol::HeartbeatMessage& n)
   {
       #ifdef DEBUG_VERBOSE
-      Serial.println("ARDUINO DEBUG: ---- RX HEARTBEAT MESSAGE DUMP ----");
-      //Serial.print("ARDUINO DEBUG: Board Index: ");
-      //Serial.println(n.boardIndex);
-      Serial.println("ARDUINO DEBUG: ---- RX END HEARTBEAT MESSAGE DUMP ----");
+      SERIAL_DEV.println(" ---- RX HEARTBEAT MESSAGE DUMP ----");
+      //SERIAL_DEV.print(" Board Index: ");
+      //SERIAL_DEV.println(n.boardIndex);
+      SERIAL_DEV.println(" ---- RX END HEARTBEAT MESSAGE DUMP ----");
       #endif
       _heartbeatReceived = 1;
   }
@@ -260,12 +260,12 @@ protected:
   void _onCommandMessage(const protocol::CommandMessage& n)
   {
       #ifdef DEBUG_VERBOSE
-      Serial.println("ARDUINO DEBUG: ---- RX COMMAND MESSAGE DUMP ----");
-      Serial.print("ARDUINO DEBUG: Command: ");
-      Serial.println(n.cmd);
-      //Serial.print("ARDUINO DEBUG: Board Index: ");
-      //Serial.println(n.boardIndex);
-      Serial.println("ARDUINO DEBUG: ---- RX END COMMAND MESSAGE DUMP ----");
+      SERIAL_DEV.println(" ---- RX COMMAND MESSAGE DUMP ----");
+      SERIAL_DEV.print(" Command: ");
+      SERIAL_DEV.println(n.cmd);
+      //SERIAL_DEV.print(" Board Index: ");
+      //SERIAL_DEV.println(n.boardIndex);
+      SERIAL_DEV.println(" ---- RX END COMMAND MESSAGE DUMP ----");
       #endif
       protocol::cm.cmd = n.cmd;
       //protocol::cm.boardIndex = n.boardIndex-1;
@@ -283,16 +283,16 @@ protected:
   void _onPinChangeMessage(const protocol::PinChangeMessage& n)
   {
     #ifdef DEBUG_VERBOSE
-      Serial.println("ARDUINO DEBUG: ---- RX PINCHANGE MESSAGE DUMP ----");
-      Serial.print("ARDUINO DEBUG: FEATURE ID: ");
-      Serial.println(n.featureID);  
-      Serial.print("ARDUINO DEBUG: SEQ ID: ");
-      Serial.println(n.seqID);  
-      Serial.print("ARDUINO DEBUG: RESPONSE REQ: ");
-      Serial.println(n.responseReq);       
-      Serial.print("ARDUINO DEBUG: MESSAGE: ");
-      Serial.println(n.message);  
-      Serial.println("ARDUINO DEBUG: ---- RX END PINCHANGE MESSAGE DUMP ----");
+      SERIAL_DEV.println(" ---- RX PINCHANGE MESSAGE DUMP ----");
+      SERIAL_DEV.print(" FEATURE ID: ");
+      SERIAL_DEV.println(n.featureID);  
+      SERIAL_DEV.print(" SEQ ID: ");
+      SERIAL_DEV.println(n.seqID);  
+      SERIAL_DEV.print(" RESPONSE REQ: ");
+      SERIAL_DEV.println(n.responseReq);       
+      SERIAL_DEV.print(" MESSAGE: ");
+      SERIAL_DEV.println(n.message);  
+      SERIAL_DEV.println(" ---- RX END PINCHANGE MESSAGE DUMP ----");
     #endif
       if(_pinChangeAction != NULL)
       {
@@ -303,13 +303,13 @@ protected:
   void _setState(int new_state)
   {
     #ifdef DEBUG
-      Serial.flush();
-      Serial.print("ARDUINO DEBUG: Connection transitioning from current state of [");
-      Serial.print(this->stateToString(this->_myState));
-      Serial.print("] to [");
-      Serial.print(this->stateToString(new_state));
-      Serial.println("]");
-      Serial.flush();
+      SERIAL_DEV.flush();
+      SERIAL_DEV.print(" Connection transitioning from current state of [");
+      SERIAL_DEV.print(this->stateToString(this->_myState));
+      SERIAL_DEV.print("] to [");
+      SERIAL_DEV.print(this->stateToString(new_state));
+      SERIAL_DEV.println("]");
+      SERIAL_DEV.flush();
     #endif
     this->_myState = new_state;
     if( this->_csAction != NULL )
@@ -325,22 +325,22 @@ protected:
 
     protocol::hm.uid = _uid;
     #ifdef DEBUG_VERBOSE   
-      Serial.println("ARDUINO DEBUG: ---- TX HANDSHAKE MESSAGE DUMP ----");
-      Serial.print("ARDUINO DEBUG: Protocol Version: 0x");
-      Serial.println(protocol::hm.protocolVersion, HEX);
-      //Serial.print("ARDUINO DEBUG: Feature Map: 0x");
-      //Serial.println(protocol::hm.featureMap, HEX);
-      Serial.print("ARDUINO DEBUG: Timeout: ");
-      Serial.println(protocol::hm.timeout);
-      //Serial.print("ARDUINO DEBUG: MaxMsgSize: ");
-      //Serial.println(protocol::hm.maxMsgSize);
-      Serial.print("ARDUINO DEBUG: ProfileSignature: ");
-      Serial.println(protocol::hm.profileSignature);
-      //Serial.print("ARDUINO DEBUG: Board Index: ");
-     //Serial.println(protocol::hm.boardIndex);
-      Serial.print("ARDUINO DEBUG: Board UID: ");
-      Serial.println(protocol::hm.uid);
-      Serial.println("ARDUINO DEBUG: ---- TX END HANDSHAKE MESSAGE DUMP ----");
+      SERIAL_DEV.println(" ---- TX HANDSHAKE MESSAGE DUMP ----");
+      SERIAL_DEV.print(" Protocol Version: 0x");
+      SERIAL_DEV.println(protocol::hm.protocolVersion, HEX);
+      //SERIAL_DEV.print(" Feature Map: 0x");
+      //SERIAL_DEV.println(protocol::hm.featureMap, HEX);
+      SERIAL_DEV.print(" Timeout: ");
+      SERIAL_DEV.println(protocol::hm.timeout);
+      //SERIAL_DEV.print(" MaxMsgSize: ");
+      //SERIAL_DEV.println(protocol::hm.maxMsgSize);
+      SERIAL_DEV.print(" ProfileSignature: ");
+      SERIAL_DEV.println(protocol::hm.profileSignature);
+      //SERIAL_DEV.print(" Board Index: ");
+     //SERIAL_DEV.println(protocol::hm.boardIndex);
+      SERIAL_DEV.print(" Board UID: ");
+      SERIAL_DEV.println(protocol::hm.uid);
+      SERIAL_DEV.println(" ---- TX END HANDSHAKE MESSAGE DUMP ----");
     #endif
     return protocol::hm;
   }
@@ -348,10 +348,10 @@ protected:
   protocol::HeartbeatMessage& _getHeartbeatMessage()
   {
     #ifdef DEBUG_VERBOSE
-      Serial.println("ARDUINO DEBUG: ---- TX HEARTBEAT MESSAGE DUMP ----");
-      Serial.print("ARDUINO DEBUG: Board Index: ");
-      Serial.println(protocol::hb.boardIndex);
-      Serial.println("ARDUINO DEBUG: ---- TX END HEARTBEAT MESSAGE DUMP ----");
+      SERIAL_DEV.println(" ---- TX HEARTBEAT MESSAGE DUMP ----");
+      SERIAL_DEV.print(" Board Index: ");
+      SERIAL_DEV.println(protocol::hb.boardIndex);
+      SERIAL_DEV.println(" ---- TX END HEARTBEAT MESSAGE DUMP ----");
     #endif
     return protocol::hb;
   }
@@ -359,14 +359,14 @@ protected:
   protocol::PinChangeMessage& _getPinChangeMessage()
   {
     #ifdef DEBUG_VERBOSE
-      Serial.println("ARDUINO DEBUG: ---- TX PINCHANGE MESSAGE DUMP ----");
-      Serial.print("ARDUINO DEBUG: FEATURE ID: ");
-      Serial.println(protocol::pcm.featureID);  
-      Serial.print("ARDUINO DEBUG: ACK REQ: ");
-      Serial.println(protocol::pcm.responseReq);       
-      Serial.print("ARDUINO DEBUG: MESSAGE: ");
-      Serial.println(protocol::pcm.message);  
-      Serial.println("ARDUINO DEBUG: ---- TX END PINCHANGE MESSAGE DUMP ----");
+      SERIAL_DEV.println(" ---- TX PINCHANGE MESSAGE DUMP ----");
+      SERIAL_DEV.print(" FEATURE ID: ");
+      SERIAL_DEV.println(protocol::pcm.featureID);  
+      SERIAL_DEV.print(" ACK REQ: ");
+      SERIAL_DEV.println(protocol::pcm.responseReq);       
+      SERIAL_DEV.print(" MESSAGE: ");
+      SERIAL_DEV.println(protocol::pcm.message);  
+      SERIAL_DEV.println(" ---- TX END PINCHANGE MESSAGE DUMP ----");
     #endif
     return protocol::pcm;
   }
@@ -374,12 +374,12 @@ protected:
   protocol::PinStatusMessage& _getPinStatusMessage()
   {
     #ifdef DEBUG_VERBOSE
-      Serial.println("ARDUINO DEBUG: ---- TX PINSTATUS MESSAGE DUMP ----");
-      Serial.print("ARDUINO DEBUG: STATUS: ");
-      Serial.println(protocol::pm.status);      
-      //Serial.print("ARDUINO DEBUG: Board Index: ");
-      //Serial.println(protocol::pm.boardIndex);
-      Serial.println("ARDUINO DEBUG: ---- TX END PINSTATUS MESSAGE DUMP ----");
+      SERIAL_DEV.println(" ---- TX PINSTATUS MESSAGE DUMP ----");
+      SERIAL_DEV.print(" STATUS: ");
+      SERIAL_DEV.println(protocol::pm.status);      
+      //SERIAL_DEV.print(" Board Index: ");
+      //SERIAL_DEV.println(protocol::pm.boardIndex);
+      SERIAL_DEV.println(" ---- TX END PINSTATUS MESSAGE DUMP ----");
     #endif
     return protocol::pm;
   }
@@ -389,12 +389,12 @@ protected:
   {
     protocol::dm.message = message;
     // No need to wrap in DEBUG define as the entire method is only compiled in when DEBUG is defined
-    Serial.println("ARDUINO DEBUG: ---- TX DEBUG MESSAGE DUMP ----");
-    //Serial.print("ARDUINO DEBUG: Board Index: ");
-    //Serial.println(protocol::dm.boardIndex);
-    Serial.print("ARDUINO DEBUG: Message: ");
-    Serial.println(protocol::dm.message);
-    Serial.println("ARDUINO DEBUG: ---- TX END DEBUG MESSAGE DUMP ----");
+    SERIAL_DEV.println(" ---- TX DEBUG MESSAGE DUMP ----");
+    //SERIAL_DEV.print(" Board Index: ");
+    //SERIAL_DEV.println(protocol::dm.boardIndex);
+    SERIAL_DEV.print(" Message: ");
+    SERIAL_DEV.println(protocol::dm.message);
+    SERIAL_DEV.println(" ---- TX END DEBUG MESSAGE DUMP ----");
     return protocol::dm;
   }
   #endif

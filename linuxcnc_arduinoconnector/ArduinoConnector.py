@@ -98,7 +98,7 @@ class AnalogConfigElement(Enum):
         return self.value[0]
     
 class DigitalConfigElement(Enum):
-    PIN_DEBOUNCE = ['pin_debounce', 250]
+    PIN_DEBOUNCE = ['pin_debounce', 100]
     INPUT_PULLUP = ['input_pullup', False]
     def __str__(self) -> str:
         return self.value[0]
@@ -618,7 +618,7 @@ RX_MAX_QUEUE_SIZE = 10
 
 class Connection:
     # Constructor
-    def __init__(self, myType:ConnectionType):
+    def __init__(self, myType:ConnectionType, alias:str=''):
         self.connectionType = myType
         self.connectionState = ConnectionState.DISCONNECTED
         self.timeout = 10
@@ -627,6 +627,7 @@ class Connection:
         #self.maxMsgSize = 512
         self.enabledFeatures = None
         self.uid = ''
+        self.alias = ''
         self.rxQueue = Queue(RX_MAX_QUEUE_SIZE)
         self._messageReceivedCallbacks = {}
 
@@ -860,7 +861,7 @@ class SerialConnection(Connection):
 
                         if readDebug:
                             [chunk, self.rxBuffer] = self.rxBuffer.split(b'\r\n', maxsplit=1)
-                            print( f'{bytes(chunk).decode("utf8", errors="ignore")}')
+                            logging.debug( f'[{self.alias}]: {bytes(chunk).decode("utf8", errors="ignore")}')
                         elif readMessage:
                             [chunk, self.rxBuffer] = self.rxBuffer.split(b'\x00', maxsplit=1)
                             logging.debug(f'PYDEBUG: SerialConnection::rxTask, dev={self.dev}, chunk bytes: {chunk}')
@@ -929,6 +930,7 @@ class ArduinoConnection:
     def __init__(self, settings:ArduinoSettings):
         self.settings = settings
         self.serialConn = SerialConnection(dev=settings.dev, baudRate=settings.baud_rate, profileSignature=self.settings.profileSignature, timeout=settings.connection_timeout)
+        self.serialConn.alias = settings.alias
         '''
                 while( True ):
             try:

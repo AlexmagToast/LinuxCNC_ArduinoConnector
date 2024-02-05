@@ -93,125 +93,125 @@ struct featureMap
 
   void DumpFeatureMapToSerial()
   {
-    Serial.print("DEBUG: Feature Map = 0x");
-    Serial.println((uint32_t)this->features, HEX);
+    SERIAL_DEV.print("DEBUG: Feature Map = 0x");
+    SERIAL_DEV.println((uint32_t)this->features, HEX);
     int flag = 0;
     #ifdef DEBUG
-      Serial.println("------------------- Feature Map Decode Dump ------------------- ");
+      SERIAL_DEV.println("------------------- Feature Map Decode Dump ------------------- ");
       // Debug is obviously defined if we got here, but use the map for consistency.
       flag = bitRead(this->features, DEBUG);
-      Serial.print("[ID0");
-      Serial.print(DEBUG);
-      Serial.print("]");
-      Serial.print(" DEBUG = ");
-      Serial.println(flag);
+      SERIAL_DEV.print("[ID0");
+      SERIAL_DEV.print(DEBUG);
+      SERIAL_DEV.print("]");
+      SERIAL_DEV.print(" DEBUG = ");
+      SERIAL_DEV.println(flag);
       #ifdef DINPUTS
         flag = bitRead(this->features, DINPUTS);
-        Serial.print("[ID0");
-        Serial.print(DINPUTS);
-        Serial.print("]");
-        Serial.print(" INPUTS = ");
-        Serial.println(flag);
+        SERIAL_DEV.print("[ID0");
+        SERIAL_DEV.print(DINPUTS);
+        SERIAL_DEV.print("]");
+        SERIAL_DEV.print(" INPUTS = ");
+        SERIAL_DEV.println(flag);
       #endif
       #ifdef SINPUTS
         flag = bitRead(this->features, SINPUTS);
-        Serial.print("[ID0");
-        Serial.print(SINPUTS);
-        Serial.print("]");
-        Serial.print(" SINPUTS = ");
-        Serial.println(flag);
+        SERIAL_DEV.print("[ID0");
+        SERIAL_DEV.print(SINPUTS);
+        SERIAL_DEV.print("]");
+        SERIAL_DEV.print(" SINPUTS = ");
+        SERIAL_DEV.println(flag);
       #endif
       #ifdef DOUTPUTS
         flag = bitRead(this->features, DOUTPUTS);
-        Serial.print("[ID0");
-        Serial.print(DOUTPUTS);
-        Serial.print("]");
-        Serial.print(" OUTPUTS = ");
-        Serial.println(flag);
+        SERIAL_DEV.print("[ID0");
+        SERIAL_DEV.print(DOUTPUTS);
+        SERIAL_DEV.print("]");
+        SERIAL_DEV.print(" OUTPUTS = ");
+        SERIAL_DEV.println(flag);
       #endif
       #ifdef PWMOUTPUTS
         flag = bitRead(this->features, PWMOUTPUTS);
-        Serial.print("[ID0");
-        Serial.print(PWMOUTPUTS);
-        Serial.print("]");
-        Serial.print(" PWMOUTPUTS = ");
-        Serial.println(flag);
+        SERIAL_DEV.print("[ID0");
+        SERIAL_DEV.print(PWMOUTPUTS);
+        SERIAL_DEV.print("]");
+        SERIAL_DEV.print(" PWMOUTPUTS = ");
+        SERIAL_DEV.println(flag);
       #endif
       #ifdef AINPUTS
         flag = bitRead(this->features, AINPUTS);
-        Serial.print("[ID0");
-        Serial.print(AINPUTS);
-        Serial.print("]");
-        Serial.print(" AINPUTS = ");
-        Serial.println(flag);
+        SERIAL_DEV.print("[ID0");
+        SERIAL_DEV.print(AINPUTS);
+        SERIAL_DEV.print("]");
+        SERIAL_DEV.print(" AINPUTS = ");
+        SERIAL_DEV.println(flag);
       #endif
       #ifdef DALLAS_TEMP_SENSOR
         flag = bitRead(this->features, DALLAS_TEMP_SENSOR);
-        Serial.print("[ID0");
-        Serial.print(DALLAS_TEMP_SENSOR);
-        Serial.print("]");
-        Serial.print(" DALLAS_TEMP_SENSOR = ");
-        Serial.println(flag);
+        SERIAL_DEV.print("[ID0");
+        SERIAL_DEV.print(DALLAS_TEMP_SENSOR);
+        SERIAL_DEV.print("]");
+        SERIAL_DEV.print(" DALLAS_TEMP_SENSOR = ");
+        SERIAL_DEV.println(flag);
       #endif
       #ifdef LPOTIS
         flag = bitRead(this->features, LPOTIS);
-        Serial.print("[ID0");
-        Serial.print(LPOTIS);
-        Serial.print("]");
-        Serial.print(" LPOTIS = ");
-        Serial.println(flag);
+        SERIAL_DEV.print("[ID0");
+        SERIAL_DEV.print(LPOTIS);
+        SERIAL_DEV.print("]");
+        SERIAL_DEV.print(" LPOTIS = ");
+        SERIAL_DEV.println(flag);
       #endif
       #ifdef BINSEL
         flag = bitRead(this->features, BINSEL);
-        Serial.print("[ID0");
-        Serial.print(BINSEL);
-        Serial.print("]");
-        Serial.print(" BINSEL = ");
-        Serial.println(flag);
+        SERIAL_DEV.print("[ID0");
+        SERIAL_DEV.print(BINSEL);
+        SERIAL_DEV.print("]");
+        SERIAL_DEV.print(" BINSEL = ");
+        SERIAL_DEV.println(flag);
       #endif
       #ifdef QUADENC
         flag = bitRead(this->features, QUADENC);
-        Serial.print("[ID0");
-        Serial.print(QUADENC);
-        Serial.print("]");
-        Serial.print(" QUADENC = ");
-        Serial.println(flag);
+        SERIAL_DEV.print("[ID0");
+        SERIAL_DEV.print(QUADENC);
+        SERIAL_DEV.print("]");
+        SERIAL_DEV.print(" QUADENC = ");
+        SERIAL_DEV.println(flag);
       #endif
       #ifdef JOYSTICK
         flag = bitRead(this->features, JOYSTICK);
-        Serial.print("[ID");
-        Serial.print(JOYSTICK);
-        Serial.print("]");
-        Serial.print(" JOYSTICK = ");
-        Serial.println(flag);
+        SERIAL_DEV.print("[ID");
+        SERIAL_DEV.print(JOYSTICK);
+        SERIAL_DEV.print("]");
+        SERIAL_DEV.print(" JOYSTICK = ");
+        SERIAL_DEV.println(flag);
       #endif
       #ifdef STATUSLED
         flag = bitRead(this->features, STATUSLED);
-        Serial.print("[ID");
-        Serial.print(STATUSLED);
-        Serial.print("]");
-        Serial.print(" STATUSLED = ");
-        Serial.println(flag);
+        SERIAL_DEV.print("[ID");
+        SERIAL_DEV.print(STATUSLED);
+        SERIAL_DEV.print("]");
+        SERIAL_DEV.print(" STATUSLED = ");
+        SERIAL_DEV.println(flag);
       #endif
       #ifdef DLED
         flag = bitRead(this->features, DLED);
-        Serial.print("[ID");
-        Serial.print(DLED);
-        Serial.print("]");
-        Serial.print(" DLED = ");
-        Serial.println(flag);
+        SERIAL_DEV.print("[ID");
+        SERIAL_DEV.print(DLED);
+        SERIAL_DEV.print("]");
+        SERIAL_DEV.print(" DLED = ");
+        SERIAL_DEV.println(flag);
       #endif
       #ifdef KEYPAD
         flag = bitRead(this->features, KEYPAD);
-        Serial.print("[ID");
-        Serial.print(KEYPAD);
-        Serial.print("]");
-        Serial.print(" KEYPAD = ");
-        Serial.println(flag);
+        SERIAL_DEV.print("[ID");
+        SERIAL_DEV.print(KEYPAD);
+        SERIAL_DEV.print("]");
+        SERIAL_DEV.print(" KEYPAD = ");
+        SERIAL_DEV.println(flag);
       #endif
 
 
-      Serial.println("------------------- End Feature Map Decode Dump ------------------- ");
+      SERIAL_DEV.println("------------------- End Feature Map Decode Dump ------------------- ");
     #endif
   }
 };

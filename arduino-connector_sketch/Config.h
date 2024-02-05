@@ -2,7 +2,7 @@
 #ifndef CONFIG_H_
 #define CONFIG_H_
 #pragma once
-//#define ENABLE_FEATUREMAP
+#define ENABLE_FEATUREMAP
 #define DEBUG                       0
 #define DINPUTS                     1
 #define DOUTPUTS                    2                      

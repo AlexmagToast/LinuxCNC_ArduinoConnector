@@ -87,7 +87,7 @@ void setup() {
   //}
   delay(SERIAL_STARTUP_DELAY);
   #ifdef DEBUG
-    SERIAL_DEV.println("ARDUINO DEBUG: STARTING UP.. ");
+    SERIAL_DEV.println(" STARTING UP.. ");
   #endif
   /*
   if( EEPROM.length() == 0 )
@@ -253,8 +253,10 @@ void loop() {
     {
       output = "";
       serializeJson(doc, output);
+      #ifdef DEBUG_VERBOSE
       SERIAL_DEV.print("JSON = ");
       SERIAL_DEV.println(output);
+      #endif
       uint8_t seqID = 0;
       uint8_t resp = 0; // Future TODO: Consider requiring ACK/NAK, maybe.
       uint8_t f = DINPUTS;
