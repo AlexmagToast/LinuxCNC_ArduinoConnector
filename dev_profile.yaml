@@ -37,9 +37,10 @@ mcu:
         input_pullup: true
         pin_debounce: 0
         pin_enabled: true
-        pin_connected_state: 0
-        pin_disconnected_state: 0
-        pin_initial_state: 0
+        pin_connected_state: -1
+        pin_disconnected_state: -1
+        pin_initial_state: -1
+
     digitalInputs:
       - pin_id: 3
         pin_name: din.03 #hal pin name

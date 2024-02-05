@@ -2,7 +2,6 @@
 #define CONNECTION_H_
 #pragma once
 #include "Protocol.h"
-#include <ArduinoJson.h>
 
 
 enum ConnectionState

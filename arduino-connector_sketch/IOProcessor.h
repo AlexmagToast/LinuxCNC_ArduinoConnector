@@ -28,7 +28,6 @@ namespace Callbacks
             }
 
             JsonDocument doc;
-
             DeserializationError error = deserializeJson(doc, pcm.message);
 
             if (error) {
