@@ -24,7 +24,7 @@
   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
   SOFTWARE.
 */
-#include <Arduino.h>
+//#include <Arduino.h>
 #include "Config.h"
 
 /*
@@ -206,16 +206,16 @@ void loop() {
   
   #ifdef DINPUTS
   
-  if(configManager.GetDigitalInputsReady() == 1)
+  if(ConfigManager::GetDigitalInputsReady() == 1)
   {
     //pa.clear();
     doc.clear();
     pa = doc["pa"].to<JsonArray>();
 
-    for( int x = 0; x < configManager.GetDigitalInputPinsLen(); x++ )
+    for( int x = 0; x < ConfigManager::GetDigitalInputPinsLen(); x++ )
     {
       
-      dpin & pin = configManager.getDigitalInputPins()[x];
+      ConfigManager::dpin & pin = ConfigManager::GetDigitalInputPins()[x];
       int v = digitalRead(atoi(pin.pinID.c_str()));
   
       if(pin.pinCurrentState != v && (currentMills - pin.t) >= pin.debounce)
@@ -263,7 +263,7 @@ void loop() {
       pa.clear();
     }
   }
-  //for (dpin & pin : configManager.getDigitalInputPins())
+  //for (dpin & pin : ConfigManager.GetDigitalInputPins())
 
   #endif
   
@@ -276,7 +276,7 @@ void loop() {
   #endif
 */
 }
-
+/*
 // Causes builtin LED to blink in a defined sequence.
 // blinkCount: Total number of blinks to perform in the sequence
 // blinkPulsePeriod: Total amount of time to pulse LED HIGH
@@ -291,3 +291,4 @@ void do_blink_sequence(int blinkCount, int blinkPulsePeriod, int blinkPulseInter
     delay(blinkPulseInterval);
   }
 }
+*/

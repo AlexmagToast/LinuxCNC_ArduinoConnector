@@ -3,47 +3,32 @@
 #include "Config.h"
 //#include <ArxContainer.h>
 
-#if defined(DINPUTS) || defined(DOUTPUTS)
-struct dpin
+namespace ConfigManager
 {
-    String pinID;
-    int8_t pinInitialState;
-    int8_t pinConnectedState;
-    int8_t pinDisconnectedState;
-    uint16_t debounce;
-    uint8_t inputPullup;
-    uint8_t logicalID;
-    int8_t pinCurrentState;
-    unsigned long t;
-};
-
-//const int ELEMENT_COUNT_MAX = 30;
-//int storage_array[ELEMENT_COUNT_MAX];
-//Vector<int> vector(storage_array);
-//vector.push_back(77);
-
-
-//const int ELEMENT_COUNT_MAX = 15;
-//typedef Array<dpin,ELEMENT_COUNT_MAX> dpin_array_t;
-//typedef Vector<dpin> dpin_array_t(storage_array);
-#endif
-
-
-class ConfigManager {
-public:
-  ConfigManager()
+  #if defined(DINPUTS) || defined(DOUTPUTS)
+  struct dpin
   {
+      String pinID;
+      int8_t pinInitialState;
+      int8_t pinConnectedState;
+      int8_t pinDisconnectedState;
+      uint16_t debounce;
+      uint8_t inputPullup;
+      uint8_t logicalID;
+      int8_t pinCurrentState;
+      unsigned long t;
+  };
+  #endif
 
-  }
-  ~ConfigManager()
-  {
-
-  }
 #ifdef DINPUTS
-  void setDigitalInputPin(dpin pin, uint8_t index)
+    dpin * dinput_arr = NULL;//new dpin[100];// = NULL;
+    size_t dinput_arr_len = 0;
+    uint8_t dinput_arr_ready = 0;
+
+  void SetDigitalInputPin(dpin pin, uint8_t index)
   {
     #ifdef DEBUG
-      Serial.print("ConfigManager::setDigitalInputPin, Index=0x");
+      Serial.print("ConfigManager::SetDigitalInputPin, Index=0x");
       Serial.println(index, HEX);
       #ifdef DEBUG_VERBOSE
         Serial.println("----------- START PIN CONFIG DUMP ------------");
@@ -70,7 +55,7 @@ public:
     #endif
     dinput_arr[index] = pin;
   }
-  void clearDigitalInputPins()
+  void ClearDigitalInputPins()
   {
     if( dinput_arr != NULL )
     {
@@ -80,7 +65,7 @@ public:
     }
     dinput_arr = NULL;
   }
-  void initDigitalInputPins(size_t size)
+  void InitDigitalInputPins(size_t size)
   {
     #ifdef DEBUG
       Serial.print("ConfigManager::initDigialInputPins, Size=0x");
@@ -96,7 +81,7 @@ public:
     dinput_arr_len = size;
   }
 
-  dpin * getDigitalInputPins()
+  dpin * GetDigitalInputPins()
   {
     return dinput_arr;
   }
@@ -116,7 +101,7 @@ public:
     }
     for( int x = 0; x < GetDigitalInputPinsLen(); x++)
     {
-      dpin d = getDigitalInputPins()[x];
+      dpin d = GetDigitalInputPins()[x];
       if(d.pinID.length() == 0)
       {
         //Serial.print("NOT READY PIN = ");
@@ -128,11 +113,16 @@ public:
     return 1;
   }
 #endif
+
 #ifdef DOUTPUTS
-  void setDigitalOutputPin(dpin pin, uint8_t index)
+  dpin * doutput_arr = NULL;//new dpin[100];// = NULL;
+  size_t doutput_arr_len = 0;
+  uint8_t doutput_arr_ready = 0;
+
+  void SetDigitalOutputPin(dpin pin, uint8_t index)
   {
     #ifdef DEBUG
-      Serial.print("ConfigManager::setDigitalOutputPin, Index=0x");
+      Serial.print("ConfigManager::SetDigitalOutputPin, Index=0x");
       Serial.println(index, HEX);
       #ifdef DEBUG_VERBOSE
         Serial.println("----------- START PIN CONFIG DUMP ------------");
@@ -159,7 +149,7 @@ public:
     #endif
     doutput_arr[index] = pin;
   }
-  void clearDigitalOutputPins()
+  void ClearDigitalOutputPins()
   {
     if( doutput_arr != NULL )
     {
@@ -169,10 +159,10 @@ public:
     }
     doutput_arr = NULL;
   }
-  void initDigitalOutputPins(size_t size)
+  void InitDigitalOutputPins(size_t size)
   {
     #ifdef DEBUG
-      Serial.print("ConfigManager::initDigitalOutputPins, Size=0x");
+      Serial.print("ConfigManager::InitDigitalOutputPins, Size=0x");
       Serial.println(size, HEX);
     #endif
     if( doutput_arr != NULL )
@@ -186,7 +176,7 @@ public:
 
   }
 
-  dpin * getDigitalOutputPins()
+  dpin * GetDigitalOutputPins()
   {
     return doutput_arr;
   }
@@ -206,7 +196,7 @@ public:
     }
     for( int x = 0; x < GetDigitalOutputPinsLen(); x++)
     {
-      dpin d = getDigitalOutputPins()[x];
+      dpin d = GetDigitalOutputPins()[x];
       if(d.pinID.length() == 0)
       {
         //Serial.print("NOT READY PIN = ");
@@ -218,25 +208,5 @@ public:
     return 1;
   }
 #endif
-private:
-#ifdef DINPUTS
-  //dpin * din_storage_array = NULL; //[ELEMENT_COUNT_MAX];
-  //Vector<dpin> dinput_arr; //(din_storage_array);
-  //Array<dpin,ELEMENT_COUNT_MAX>  dinput_arr;
-  //std::map<String, dpin> dinput_arr;
-  //MsgPack::map_t<String, dpin> dinput_arr;
-  dpin * dinput_arr = NULL;//new dpin[100];// = NULL;
-  size_t dinput_arr_len = 0;
-  uint8_t dinput_arr_ready = 0;
-#endif
-
-#ifdef DOUTPUTS
-  dpin * doutput_arr = NULL;//new dpin[100];// = NULL;
-  size_t doutput_arr_len = 0;
-  uint8_t doutput_arr_ready = 0;
-#endif
-
-
-
-}configManager;
+}
 #endif

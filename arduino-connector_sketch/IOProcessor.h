@@ -19,7 +19,7 @@ namespace Callbacks
         #ifdef DOUTPUTS
           case DOUTPUTS:
           {
-            if(configManager.GetDigitalOutputsReady() == 0)
+            if(ConfigManager::GetDigitalOutputsReady() == 0)
             {
               #ifdef DEBUG_VERBOSE
                 Serial.print("ARDUINO DEBUG: Callbacks::onPinChange: GetDigitalOutputsReady() returned FALSE");
@@ -45,7 +45,7 @@ namespace Callbacks
               int pid = pa_item["pid"]; // 0, 1
               int v = pa_item["v"]; // 1, 0
 
-              if(lid > configManager.GetDigitalOutputPinsLen())
+              if(lid > ConfigManager::GetDigitalOutputPinsLen())
               {
                 #ifdef DEBUG_VERBOSE
                 Serial.print("ARDUINO DEBUG: Callbacks::onPinChange: Error. logical pin ID ");
@@ -54,7 +54,7 @@ namespace Callbacks
                 #endif
               }
               else{
-                dpin & pin = configManager.getDigitalOutputPins()[lid];
+                ConfigManager::dpin & pin = ConfigManager::GetDigitalOutputPins()[lid];
                 #ifdef DEBUG_VERBOSE
                 Serial.print("DOUTPUTS PIN CHANGE!");
                 Serial.print("PIN ID: ");
@@ -101,7 +101,7 @@ namespace Callbacks
           {
             if(cm.seq == 0)
             {
-              configManager.initDigitalInputPins(cm.total);
+              ConfigManager::InitDigitalInputPins(cm.total);
             }
             JsonDocument doc;
 
@@ -113,7 +113,7 @@ namespace Callbacks
               break;
             }
             
-            dpin d = (dpin){
+            ConfigManager::dpin d = (ConfigManager::dpin){
               .pinID =  doc["pinID"],
               .pinInitialState =  doc["pinInitialState"],
               .pinConnectedState = doc["pinConnectedState"],
@@ -129,7 +129,7 @@ namespace Callbacks
               pinMode(atoi(d.pinID.c_str()), INPUT_PULLUP);
             }
             else { pinMode(atoi(d.pinID.c_str()), INPUT); }
-            configManager.setDigitalInputPin(d, d.logicalID);
+            ConfigManager::SetDigitalInputPin(d, d.logicalID);
             
           }
           break;
@@ -141,7 +141,7 @@ namespace Callbacks
           {
             if(cm.seq == 0)
             {
-              configManager.initDigitalOutputPins(cm.total);
+              ConfigManager::InitDigitalOutputPins(cm.total);
             }
             JsonDocument doc;
 
@@ -153,7 +153,7 @@ namespace Callbacks
               break;
             }
             
-            dpin d = (dpin){
+            ConfigManager::dpin d = (ConfigManager::dpin){
               .pinID =  doc["pinID"],
               .pinInitialState =  doc["pinInitialState"],
               .pinConnectedState = doc["pinConnectedState"],
@@ -165,7 +165,7 @@ namespace Callbacks
               .t = 0
             };
             pinMode(atoi(d.pinID.c_str()), OUTPUT); 
-            configManager.setDigitalOutputPin(d, d.logicalID);
+            ConfigManager::SetDigitalOutputPin(d, d.logicalID);
             if(d.pinInitialState != -1)
             {
               digitalWrite(atoi(d.pinID.c_str()), d.pinInitialState);
@@ -180,16 +180,16 @@ namespace Callbacks
 
   void onConnectionStageChange(int s) {
     #ifdef DOUTPUTS
-        if(configManager.GetDigitalOutputsReady() == 0)
+        if(ConfigManager::GetDigitalOutputsReady() == 0)
         {
           #ifdef DEBUG_VERBOSE
             Serial.print("ARDUINO DEBUG: Callbacks::onPinChange: GetDigitalOutputsReady() returned FALSE");
           #endif
           return;
         }
-        for( int x = 0; x < configManager.GetDigitalOutputPinsLen(); x++)
+        for( int x = 0; x < ConfigManager::GetDigitalOutputPinsLen(); x++)
         {
-          dpin & pin = configManager.getDigitalOutputPins()[x];
+          ConfigManager::dpin & pin = ConfigManager::GetDigitalOutputPins()[x];
           if( s == CS_CONNECTED && pin.pinConnectedState != -1 )
           {
             digitalWrite(atoi(pin.pinID.c_str()), pin.pinConnectedState);
@@ -198,9 +198,7 @@ namespace Callbacks
           {
             digitalWrite(atoi(pin.pinID.c_str()), pin.pinDisconnectedState);
           }
-        }
-
-        
+        } 
     #endif
   }
 }
