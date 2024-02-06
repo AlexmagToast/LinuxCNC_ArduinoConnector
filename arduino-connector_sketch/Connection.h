@@ -166,7 +166,7 @@ public:
   }
   
   #ifdef DEBUG
-
+  /*
   String IpAddress2String(const IPAddress& ipAddress)
   {
     return String(ipAddress[0]) + String(".") +\
@@ -174,6 +174,7 @@ public:
     String(ipAddress[2]) + String(".") +\
     String(ipAddress[3]); 
   }
+  */
   String stateToString(int& state)
   {
     switch(state)
@@ -231,6 +232,8 @@ protected:
 
   void _onHandshakeMessage(const protocol::HandshakeMessage& n)
   {
+      Serial1.println("GOT HS MESSAGE");
+      Serial1.flush();
       #ifdef DEBUG_VERBOSE
       SERIAL_DEV.println(" ---- RX HANDSHAKE MESSAGE DUMP ----");
       SERIAL_DEV.print(" Protocol Version: 0x");

@@ -27,8 +27,9 @@ SOFTWARE.
 #pragma once
 #ifndef SERIALCONNECTION_H_
 #define SERIALCONNECTION_H_
-
+#ifdef ENABLE_MSGPACKETIZER
 #include <MsgPacketizer.h>
+#endif
 #include <string.h>
 #include "Connection.h"
 
@@ -61,48 +62,82 @@ public:
 
   virtual void _onDoWork()
   {
+    //#ifdef ENABLE_MSGPACKETIZER
     if(!subscribed)
     {
-      
-      MsgPacketizer::subscribe(Serial, MT_HANDSHAKE,
+      /*
+      MsgPacketizer::subscribe(COM_DEV, MT_HANDSHAKE,
           [&](const protocol::HandshakeMessage& n) {
-              _onHandshakeMessage(n);
+            SERIAL_DEV.print("GOT MESSAGE HS");
+            SERIAL_DEV.flush();
+            //Serial1.println(3);
+            //SERIAL_DEV.flush();
+            _onHandshakeMessage(n);
           });
-      MsgPacketizer::subscribe(Serial, MT_HEARTBEAT,
+      MsgPacketizer::subscribe(COM_DEV, MT_HEARTBEAT,
           [&](const protocol::HeartbeatMessage& n) {
               _onHeartbeatMessage(n);
           });
-      MsgPacketizer::subscribe(Serial, MT_PINCHANGE,
+      MsgPacketizer::subscribe(COM_DEV, MT_PINCHANGE,
           [&](const protocol::PinChangeMessage& n) {
               _onPinChangeMessage(n);
           });
-      MsgPacketizer::subscribe(Serial, MT_CONFIG,
+      MsgPacketizer::subscribe(COM_DEV, MT_CONFIG,
           [&](const protocol::ConfigMessage& n) {
               _onConfigMessage(n);
           });
+      */
+      MsgPacketizer::subscribe(COM_DEV,
+        [&](const uint8_t index, MsgPack::Unpacker& unpacker) {
+            // input to msgpack
+            //MsgPack::arr_size_t sz;
+            //int i = 0;
+            //float f = 0.f;
+            //String s = "";
+
+            // manually deserialize packet and modify
+            //unpacker.deserialize(sz, i, f, s);
+            //s = s + " " + index;
+            SERIAL_DEV.print("GOT MESSAGE index= ");
+            SERIAL_DEV.println(index);
+            SERIAL_DEV.flush();
+            
+
+            // send back data as array manually
+            //MsgPacketizer::send(Serial, send_index, sz, i, f, s);
+        });
+        
         subscribed = 1;
     }
     MsgPacketizer::update();
+    //#endif
   }
 
   virtual void _sendHandshakeMessage()
   { 
+    #ifdef ENABLE_MSGPACKETIZER
     //MsgPacketizer::send(this->_client, this->_mi, hm);
-    MsgPacketizer::send(Serial, MT_HANDSHAKE, _getHandshakeMessage());
-    SERIAL_DEV.flush();
+    MsgPacketizer::send(COM_DEV, MT_HANDSHAKE, _getHandshakeMessage());
+    COM_DEV.flush();
+    #endif
   }
 
   virtual void _sendHeartbeatMessage()
   { 
+    #ifdef ENABLE_MSGPACKETIZER
     //MsgPacketizer::send(this->_client, this->_mi, hm);
-    MsgPacketizer::send(Serial, MT_HEARTBEAT, _getHeartbeatMessage());
-    //SERIAL_DEV.flush();
+    MsgPacketizer::send(COM_DEV, MT_HEARTBEAT, _getHeartbeatMessage());
+    COM_DEV.flush();
+    #endif
   }
 
   virtual void _sendPinChangeMessage()
   {
+    #ifdef ENABLE_MSGPACKETIZER
     //SERIAL_DEV.println("SENDING PING CHANGE MESSAGE!");
-    MsgPacketizer::send(Serial, MT_PINCHANGE, _getPinChangeMessage());
+    MsgPacketizer::send(COM_DEV, MT_PINCHANGE, _getPinChangeMessage());
+    COM_DEV.flush();
+    #endif
   }
   /*
   virtual void _sendPinStatusMessage()
@@ -114,8 +149,10 @@ public:
   #ifdef DEBUG
   virtual void _sendDebugMessage(String& message)
   {
-    MsgPacketizer::send(Serial, MT_DEBUG, _getDebugMessage(message));
-    SERIAL_DEV.flush();
+    #ifdef ENABLE_MSGPACKETIZER
+    MsgPacketizer::send(COM_DEV, MT_DEBUG, _getDebugMessage(message));
+    COM_DEV.flush();
+    #endif
   }
   #endif
   

@@ -526,8 +526,15 @@ class MessageDecoder:
         
     def parseBytes(self, b:bytearray):
         logging.debug(f"PYDEBUG: cobs encoded: {b}")
+        strb = ''
+        for b1 in bytes(b):
+            strb += f'{hex(b1)}, '
+        print(strb)
         decoded = cobs.decode(b)
-        
+        strb = ''
+        for b1 in decoded:
+            strb += f'{hex(b1)}, '
+        print(strb)
         # divide into index, data, crc
         self.messageType = decoded[0]
         data = decoded[1:-1]
@@ -1049,7 +1056,9 @@ class ArduinoConnection:
                 logging.debug(f'PYDEBUG: ArduinoConnection::doWork, dev={self.settings.dev}, alias={self.settings.alias}, Serial device found, restarting RX thread..')
                 time.sleep(1) # TODO: Consider making this delay settable? Trying to avoid hammering the serial port when its in a strange state
                 self.serialConn.startRxTask()
-            
+        
+         
+         
         if self.serialConn.getConnectionState() == ConnectionState.CONNECTED and self.settings.profileSignature is not self.serialConn.arduinoProfileSignature:
             j = self.settings.configJSON()
             #config_json = json.dumps(j)
@@ -1072,6 +1081,7 @@ class ArduinoConnection:
                     time.sleep(.1)
             #self.serialConn.
             self.serialConn.arduinoProfileSignature = self.settings.profileSignature
+            
 arduino_map = []
 
 def listDevices():

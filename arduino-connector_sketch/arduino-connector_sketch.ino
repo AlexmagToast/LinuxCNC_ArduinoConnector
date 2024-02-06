@@ -26,33 +26,7 @@
 */
 //#include <Arduino.h>
 #include "Config.h"
-
-/*
-//#define DEBUGLOG_DEFAULT_LOG_LEVEL_TRACE
-//#define MSGPACKETIZER_DEBUGLOG_ENABLE
-//#include <DebugLog.h>
-// max publishing elemtnt size in one destination
-#define MSGPACKETIZER_MAX_PUBLISH_ELEMENT_SIZE 5
-// max destinations to publish
-#define MSGPACKETIZER_MAX_PUBLISH_DESTINATION_SIZE 1
-// msgpack serialized binary size
-#define MSGPACK_MAX_PACKET_BYTE_SIZE 96
-// max size of MsgPack::arr_t
-#define MSGPACK_MAX_ARRAY_SIZE 3
-// max size of MsgPack::map_t
-#define MSGPACK_MAX_MAP_SIZE 3
-// msgpack objects size in one packet
-#define MSGPACK_MAX_OBJECT_SIZE 16
-
-// max number of decoded packet queues
-#define PACKETIZER_MAX_PACKET_QUEUE_SIZE 1
-// max data bytes in packet
-#define PACKETIZER_MAX_PACKET_BINARY_SIZE 96
-// max number of callback for one stream
-#define PACKETIZER_MAX_CALLBACK_QUEUE_SIZE 3
-// max number of streams
-#define PACKETIZER_MAX_STREAM_MAP_SIZE 1
-*/
+//#define MSGPACKETIZER_ENABLE_STREAM
 #include <MsgPacketizer.h>
 #include <ArduinoJson.h>
 #include "FeatureMap.h"
@@ -81,7 +55,9 @@ SerialConnection serialClient(SERIAL_RX_TIMEOUT, f);
 void setup() {
   pinMode(LED_BUILTIN, OUTPUT); // Initialize builtin LED for error feedback/diagnostics 
 
-  SERIAL_DEV.begin(115200);
+  //SERIAL_DEV.begin(19200);
+  COM_DEV.begin(19200);
+  SERIAL_DEV.begin(19200);
   //while (!Serial) {
 
  //   ; // wait for serial port to connect. Needed for native USB port only
@@ -89,6 +65,8 @@ void setup() {
   delay(SERIAL_STARTUP_DELAY);
   #ifdef DEBUG
     SERIAL_DEV.println(" STARTING UP.. ");
+    SERIAL_DEV.println("HERE WE GO");
+    SERIAL_DEV.flush();
   #endif
   /*
   if( EEPROM.length() == 0 )

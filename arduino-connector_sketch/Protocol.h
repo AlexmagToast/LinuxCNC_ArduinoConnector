@@ -95,22 +95,24 @@ namespace protocol
       //uint16_t maxMsgSize;
       uint32_t profileSignature = 0; // 0 indicates no config, >0 indicates an existing config
       String uid;
-      #ifdef NUM_DIGITAL_PINS
-      uint8_t   digitalPins = NUM_DIGITAL_PINS;
-      #else
+      //#ifdef NUM_DIGITAL_PINS
+      //uint8_t   digitalPins = NUM_DIGITAL_PINS;
+      //#else
       uint8_t   digitalPins = 0;
-      #endif
-      #ifdef NUM_ANALOG_INPUTS
-      uint8_t   analogInputs = NUM_ANALOG_INPUTS;
-      #else
+      //#endif
+      //#ifdef NUM_ANALOG_INPUTS
+      //uint8_t   analogInputs = NUM_ANALOG_INPUTS;
+      //#else
       uint8_t analogInputs = 0;
-      #endif
-      #ifdef NUM_ANALOG_OUTPUTS
-      uint8_t   analogOutputs = NUM_ANALOG_OUTPUTS;
-      #else
+      //#endif
+      //#ifdef NUM_ANALOG_OUTPUTS
+      //uint8_t   analogOutputs = NUM_ANALOG_OUTPUTS;
+      //#else
       uint8_t   analogOutputs = 0;
-      #endif
-      MSGPACK_DEFINE(protocolVersion, featureMap, timeout, profileSignature, uid, digitalPins, analogInputs, analogOutputs); 
+      //#endif
+      #ifdef ENABLE_MSGPACKETIZER
+      MSGPACK_DEFINE(protocolVersion, featureMap, timeout, profileSignature, uid, digitalPins, analogInputs, analogOutputs);
+      #endif 
   }hm;
 
   // First ResponseMessage received by the Arduino is in response to the Python side receiving the HandshakeMessage from the Arduiono.  The arduinoIndex value
@@ -122,7 +124,9 @@ namespace protocol
       uint8_t seqID;  
       uint8_t responseReq; // Indicates if a response is required from recepient
       String message;
+      #ifdef ENABLE_MSGPACKETIZER
       MSGPACK_DEFINE(featureID, seqID, responseReq, message); 
+      #endif
   }pcm;
   
   struct PinChangeResponseMessage {
@@ -130,7 +134,9 @@ namespace protocol
       uint8_t seqID;
       uint8_t response; // 1 - success/ACK, 0 - error/NAK
       String message;
+      #ifdef ENABLE_MSGPACKETIZER
       MSGPACK_DEFINE(featureID, seqID, message); 
+      #endif
   }pcrm;
 /*s
   struct ArduinoPropertiesMessage {
@@ -146,7 +152,9 @@ namespace protocol
 */
   struct HeartbeatMessage {
       uint8_t boardIndex;
+      #ifdef ENABLE_MSGPACKETIZER
       MSGPACK_DEFINE(boardIndex); 
+      #endif
   }hb;
 
   /*
@@ -167,14 +175,18 @@ namespace protocol
       uint16_t seq;
       uint16_t total;
       String configString; 
+      #ifdef ENABLE_MSGPACKETIZER
       MSGPACK_DEFINE(featureID, seq, total, configString); 
+      #endif
   }cfg;
 
   #ifdef DEBUG
   struct DebugMessage {
       //uint8_t boardIndex = BOARD_INDEX+1;
       String message;
+      #ifdef ENABLE_MSGPACKETIZER
       MSGPACK_DEFINE(message); 
+      #endif
   }dm;
   #endif
 

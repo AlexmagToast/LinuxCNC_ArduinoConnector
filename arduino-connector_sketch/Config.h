@@ -3,6 +3,8 @@
 #define CONFIG_H_
 #pragma once
 #define ENABLE_FEATUREMAP
+#define ENABLE_MSGPACKETIZER
+
 #define DEBUG                       0
 #define DINPUTS                     1
 #define DOUTPUTS                    2                      
@@ -31,5 +33,6 @@ const int SERIAL_RX_TIMEOUT = 10000;
 //const int RX_BUFFER_SIZE = 512;
 
 #define SERIAL_DEV Serial
+#define COM_DEV Serial1
 
 #endif
