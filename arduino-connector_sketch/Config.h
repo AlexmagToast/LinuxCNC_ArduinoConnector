@@ -33,6 +33,6 @@ const int SERIAL_RX_TIMEOUT = 10000;
 //const int RX_BUFFER_SIZE = 512;
 
 #define SERIAL_DEV Serial
-#define COM_DEV Serial1
+#define COM_DEV Serial
 
 #endif

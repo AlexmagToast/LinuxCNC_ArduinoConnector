@@ -65,7 +65,7 @@ public:
     //#ifdef ENABLE_MSGPACKETIZER
     if(!subscribed)
     {
-      /*
+      
       MsgPacketizer::subscribe(COM_DEV, MT_HANDSHAKE,
           [&](const protocol::HandshakeMessage& n) {
             SERIAL_DEV.print("GOT MESSAGE HS");
@@ -86,7 +86,7 @@ public:
           [&](const protocol::ConfigMessage& n) {
               _onConfigMessage(n);
           });
-      */
+      /*
       MsgPacketizer::subscribe(COM_DEV,
         [&](const uint8_t index, MsgPack::Unpacker& unpacker) {
             // input to msgpack
@@ -106,7 +106,7 @@ public:
             // send back data as array manually
             //MsgPacketizer::send(Serial, send_index, sz, i, f, s);
         });
-        
+        */
         subscribed = 1;
     }
     MsgPacketizer::update();
