@@ -1073,6 +1073,7 @@ class ArduinoConnection:
                     seq += 1
                     try:
                         self.serialConn.sendMessage(cf.packetize())
+                        self.serialConn.arduino.flush()
                     except Exception as error:
                         just_the_string = traceback.format_exc()
                         logging.debug(f'PYDEBUG: ArduinoConnection::doWork, dev={self.settings.dev}, alias={self.settings.alias}, Exception: {str(error)}, Traceback = {just_the_string}')

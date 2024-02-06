@@ -27,6 +27,8 @@
 //#include <Arduino.h>
 #include "Config.h"
 //#define MSGPACKETIZER_ENABLE_STREAM
+//#define PACKETIZER_MAX_CALLBACK_QUEUE_SIZE 7
+//#define PACKETIZER_MAX_PACKET_QUEUE_SIZE 5
 #include <MsgPacketizer.h>
 #include <ArduinoJson.h>
 #include "FeatureMap.h"
@@ -56,8 +58,8 @@ void setup() {
   pinMode(LED_BUILTIN, OUTPUT); // Initialize builtin LED for error feedback/diagnostics 
 
   //SERIAL_DEV.begin(19200);
-  COM_DEV.begin(19200);
-  SERIAL_DEV.begin(19200);
+  COM_DEV.begin(115200);
+  SERIAL_DEV.begin(115200);
   //while (!Serial) {
 
  //   ; // wait for serial port to connect. Needed for native USB port only

@@ -68,8 +68,8 @@ public:
       
       MsgPacketizer::subscribe(COM_DEV, MT_HANDSHAKE,
           [&](const protocol::HandshakeMessage& n) {
-            SERIAL_DEV.print("GOT MESSAGE HS");
-            SERIAL_DEV.flush();
+            //SERIAL_DEV.print("GOT MESSAGE HS");
+            //SERIAL_DEV.flush();
             //Serial1.println(3);
             //SERIAL_DEV.flush();
             _onHandshakeMessage(n);
@@ -78,12 +78,14 @@ public:
           [&](const protocol::HeartbeatMessage& n) {
               _onHeartbeatMessage(n);
           });
+          
       MsgPacketizer::subscribe(COM_DEV, MT_PINCHANGE,
           [&](const protocol::PinChangeMessage& n) {
               _onPinChangeMessage(n);
           });
       MsgPacketizer::subscribe(COM_DEV, MT_CONFIG,
           [&](const protocol::ConfigMessage& n) {
+            SERIAL_DEV.print("GOT CONFIG MSG");
               _onConfigMessage(n);
           });
       /*

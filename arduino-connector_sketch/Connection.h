@@ -232,8 +232,8 @@ protected:
 
   void _onHandshakeMessage(const protocol::HandshakeMessage& n)
   {
-      Serial1.println("GOT HS MESSAGE");
-      Serial1.flush();
+      //Serial1.println("GOT HS MESSAGE");
+      //Serial1.flush();
       #ifdef DEBUG_VERBOSE
       SERIAL_DEV.println(" ---- RX HANDSHAKE MESSAGE DUMP ----");
       SERIAL_DEV.print(" Protocol Version: 0x");
@@ -280,7 +280,7 @@ protected:
       {
         _configAction(n);
       }
-      _receiveTimer = millis(); // Don't let the heartbeat timeout elapse just because the arduino is busy processing config
+      _receiveTimer = millis(); // Don';t let the heartbeat timeout elapse just because the arduino is busy processing config
   }
   void _onPinChangeMessage(const protocol::PinChangeMessage& n)
   {
