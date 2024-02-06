@@ -110,7 +110,7 @@ namespace protocol
       //#else
       uint8_t   analogOutputs = 0;
       //#endif
-      #ifdef ENABLE_MSGPACKETIZER
+      #ifdef ENABLE_MSGPACKETIZER_CALLBACKS
       MSGPACK_DEFINE(protocolVersion, featureMap, timeout, profileSignature, uid, digitalPins, analogInputs, analogOutputs);
       #endif 
   }hm;
@@ -124,7 +124,7 @@ namespace protocol
       uint8_t seqID;  
       uint8_t responseReq; // Indicates if a response is required from recepient
       String message;
-      #ifdef ENABLE_MSGPACKETIZER
+      #ifdef ENABLE_MSGPACKETIZER_CALLBACKS
       MSGPACK_DEFINE(featureID, seqID, responseReq, message); 
       #endif
   }pcm;
@@ -134,7 +134,7 @@ namespace protocol
       uint8_t seqID;
       uint8_t response; // 1 - success/ACK, 0 - error/NAK
       String message;
-      #ifdef ENABLE_MSGPACKETIZER
+      #ifdef ENABLE_MSGPACKETIZER_CALLBACKS
       MSGPACK_DEFINE(featureID, seqID, message); 
       #endif
   }pcrm;
@@ -152,7 +152,7 @@ namespace protocol
 */
   struct HeartbeatMessage {
       uint8_t boardIndex;
-      #ifdef ENABLE_MSGPACKETIZER
+      #ifdef ENABLE_MSGPACKETIZER_CALLBACKS
       MSGPACK_DEFINE(boardIndex); 
       #endif
   }hb;
@@ -175,7 +175,7 @@ namespace protocol
       uint16_t seq;
       uint16_t total;
       String configString; 
-      #ifdef ENABLE_MSGPACKETIZER
+      #ifdef ENABLE_MSGPACKETIZER_CALLBACKS
       MSGPACK_DEFINE(featureID, seq, total, configString); 
       #endif
   }cfg;
@@ -184,7 +184,7 @@ namespace protocol
   struct DebugMessage {
       //uint8_t boardIndex = BOARD_INDEX+1;
       String message;
-      #ifdef ENABLE_MSGPACKETIZER
+      #ifdef ENABLE_MSGPACKETIZER_CALLBACKS
       MSGPACK_DEFINE(message); 
       #endif
   }dm;

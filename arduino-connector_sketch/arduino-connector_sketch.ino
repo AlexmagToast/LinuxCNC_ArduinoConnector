@@ -26,6 +26,11 @@
 */
 //#include <Arduino.h>
 #include "Config.h"
+
+#ifdef INTEGRATED_CALLBACKS
+#include "RXBuffer.h"
+#endif
+
 //#define MSGPACKETIZER_ENABLE_STREAM
 //#define PACKETIZER_MAX_CALLBACK_QUEUE_SIZE 7
 //#define PACKETIZER_MAX_PACKET_QUEUE_SIZE 5
@@ -46,10 +51,10 @@ JsonArray pa;
 
 #ifdef ENABLE_FEATUREMAP
 featureMap fm;
-SerialConnection serialClient(SERIAL_RX_TIMEOUT, fm.features);
+SerialConnection serialClient(SERIAL_RX_TIMEOUT, fm.features, RX_BUFFER_SIZE);
 #else
 uint64_t f = 0;
-SerialConnection serialClient(SERIAL_RX_TIMEOUT, f);
+SerialConnection serialClient(SERIAL_RX_TIMEOUT, f, RX_BUFFER_SIZE);
 #endif
 
 
@@ -175,6 +180,9 @@ void setup() {
   serialClient.RegisterConfigCallback(Callbacks::onConfig);
   serialClient.RegisterCSCallback(Callbacks::onConnectionStageChange);
   serialClient.RegisterPinChangeCallback(Callbacks::onPinChange);
+  //#ifdef INTEGRATED_CALLBACKS
+  //RXBuffer::init(RX_BUFFER_SIZE);
+  //#endif
   digitalWrite(LED_BUILTIN, LOW);// Signal startup success to builtin LED
   serialClient.DoWork(); 
 }

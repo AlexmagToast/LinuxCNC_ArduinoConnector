@@ -27,18 +27,20 @@ SOFTWARE.
 #pragma once
 #ifndef SERIALCONNECTION_H_
 #define SERIALCONNECTION_H_
-#ifdef ENABLE_MSGPACKETIZER
-#include <MsgPacketizer.h>
-#endif
+
+
 #include <string.h>
 #include "Connection.h"
+
+
 
 using namespace protocol;
 class SerialConnection : public ConnectionBase {
 public:
+
     // Future TODO: Support selection of a different Serial interface other than just the default 'Serial'
-    SerialConnection(uint16_t retryPeriod, uint64_t& fm)
-  : ConnectionBase(retryPeriod, fm)
+    SerialConnection(uint16_t retryPeriod, uint64_t& fm, const size_t& size)
+  : ConnectionBase(retryPeriod, fm, size)
   {
 
   }
@@ -60,9 +62,32 @@ public:
 
   protected:
 
+  #ifdef INTEGRATED_CALLBACKS
+  void onMessage(uint8_t* d, const size_t& size)
+  {
+
+  }
+  void _doSerialRecv()
+  {
+    const size_t size = Serial.available();
+    if (size) {
+        uint8_t* data = new uint8_t[size];
+        Serial.readBytes((char*)data, size);
+
+        // feed your binary data to MsgPacketizer manually
+        // if data has successfully received and decoded,
+        // subscribed callback will be called
+        //MsgPacketizer::feed(data, size);
+        //RXBuffer::feed(data, size);
+
+        delete[] data;
+    }
+  }
+  #endif
+
   virtual void _onDoWork()
   {
-    //#ifdef ENABLE_MSGPACKETIZER
+    #ifdef ENABLE_MSGPACKETIZER_CALLBACKS
     if(!subscribed)
     {
       
@@ -112,12 +137,12 @@ public:
         subscribed = 1;
     }
     MsgPacketizer::update();
-    //#endif
+    #endif
   }
 
   virtual void _sendHandshakeMessage()
   { 
-    #ifdef ENABLE_MSGPACKETIZER
+    #ifdef ENABLE_MSGPACKETIZER_CALLBACKS
     //MsgPacketizer::send(this->_client, this->_mi, hm);
     MsgPacketizer::send(COM_DEV, MT_HANDSHAKE, _getHandshakeMessage());
     COM_DEV.flush();
@@ -126,7 +151,7 @@ public:
 
   virtual void _sendHeartbeatMessage()
   { 
-    #ifdef ENABLE_MSGPACKETIZER
+    #ifdef ENABLE_MSGPACKETIZER_CALLBACKS
     //MsgPacketizer::send(this->_client, this->_mi, hm);
     MsgPacketizer::send(COM_DEV, MT_HEARTBEAT, _getHeartbeatMessage());
     COM_DEV.flush();
@@ -135,7 +160,7 @@ public:
 
   virtual void _sendPinChangeMessage()
   {
-    #ifdef ENABLE_MSGPACKETIZER
+    #ifdef ENABLE_MSGPACKETIZER_CALLBACKS
     //SERIAL_DEV.println("SENDING PING CHANGE MESSAGE!");
     MsgPacketizer::send(COM_DEV, MT_PINCHANGE, _getPinChangeMessage());
     COM_DEV.flush();
@@ -151,7 +176,7 @@ public:
   #ifdef DEBUG
   virtual void _sendDebugMessage(String& message)
   {
-    #ifdef ENABLE_MSGPACKETIZER
+    #ifdef ENABLE_MSGPACKETIZER_CALLBACKS
     MsgPacketizer::send(COM_DEV, MT_DEBUG, _getDebugMessage(message));
     COM_DEV.flush();
     #endif

@@ -2,6 +2,9 @@
 #define CONNECTION_H_
 #pragma once
 #include "Protocol.h"
+#ifdef INTEGRATED_CALLBACKS
+#include "RXBuffer.h"
+#endif
 
 
 enum ConnectionState
@@ -15,17 +18,29 @@ enum ConnectionState
   CS_ERROR
 };
 
+#ifdef INTEGRATED_CALLBACKS
+class ConnectionBase : public RXBuffer {
+#else
 class ConnectionBase {
+#endif
 
   using m_cmcb = void (*)(const protocol::ConfigMessage&);
   using m_pcmcb = void (*)(const protocol::PinChangeMessage&);
   using m_cscb = void (*)(int);
 
 public:
-  ConnectionBase(uint16_t retryPeriod, uint64_t& fm) : _retryPeriod(retryPeriod), _featureMap(fm)
+#ifdef INTEGRATED_CALLBACKS
+  ConnectionBase(uint16_t retryPeriod, uint64_t& fm, const size_t& size) : RXBuffer(size), _retryPeriod(retryPeriod), _featureMap(fm)
   {
 
   }
+  virtual void onMessage(uint8_t* d, const size_t& size){}
+#else
+  ConnectionBase(uint16_t retryPeriod, uint64_t& fm, const size_t& size) : _retryPeriod(retryPeriod), _featureMap(fm)
+  {
+
+  }
+#endif
 
   void RegisterConfigCallback(m_cmcb act)
   {

@@ -3,7 +3,9 @@
 #define CONFIG_H_
 #pragma once
 #define ENABLE_FEATUREMAP
-#define ENABLE_MSGPACKETIZER
+
+#define ENABLE_MSGPACKETIZER_CALLBACKS
+//#define INTEGRATED_CALLBACKS
 
 #define DEBUG                       0
 #define DINPUTS                     1
@@ -30,7 +32,7 @@ String uuid("UNDEFINED");
 const int SERIAL_STARTUP_DELAY = 5000; // In milliseconds
 const int SERIAL_RX_TIMEOUT = 10000;
 
-//const int RX_BUFFER_SIZE = 512;
+const int RX_BUFFER_SIZE = 512;
 
 #define SERIAL_DEV Serial
 #define COM_DEV Serial
