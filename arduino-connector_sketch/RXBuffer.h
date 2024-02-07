@@ -14,7 +14,7 @@ class RXBuffer
   }
   protected:
 
-  virtual void onMessage(uint8_t* d, const size_t& size){}
+  virtual void onMessage(uint8_t* d, const size_t& size)=0;
 
   void reset()
   {
@@ -22,10 +22,8 @@ class RXBuffer
   }
 
 
-
-  void feed(uint8_t * d, const size_t& size)
+  int getpos(uint8_t * d, const size_t& size)
   {
-    // loop through bytes to be written and determine if there is a terminator/delimitor, i.e., 0x00
     int fi = 0; // index the delim was found at 
     for( int x = 1; x < size+1; x++)
     {
@@ -36,6 +34,13 @@ class RXBuffer
         break;
       }
     }
+    return fi;
+  }
+
+  void feed(uint8_t * d, const size_t& size)
+  {
+    // loop through bytes to be written and determine if there is a terminator/delimitor, i.e., 0x00
+    int fi = getpos(d, size);
     //Serial.println(fi);
 
     if( fi != 0 && (_bytesWritten + fi) > _size)
@@ -46,10 +51,13 @@ class RXBuffer
       // write remainder of bytes into the buffer that we just reset
       //Serial.print("Copying remaining bytes, length =");
       //Serial.println((size - fi));
-      
+
       memcpy(_rxBuffer, (void*)&d[fi], (size - fi));
-      //_wptr += (size - fi);
       _bytesWritten = (size - fi);
+      
+      //memcpy(_rxBuffer, (void*)&d[fi], (size - fi));
+      //_wptr += (size - fi);
+      //_bytesWritten = (size - fi);
     }
     else if( fi != 0 && (_bytesWritten + fi) <= _size )
     {
@@ -57,20 +65,25 @@ class RXBuffer
       memcpy((void*)&_rxBuffer[_bytesWritten], d, fi);
       _bytesWritten += fi;
       // CALLBACK HERE..
-
+      onMessage(_rxBuffer, _bytesWritten);
       reset();
       // do we have remaining bytes?
       
       if( size - fi > 0)
       {
-        //Serial.print("Copying remaining bytes, lenth =");
-        //Serial.println((size - fi));
-        // Copy those bytes into the reset buffer
+        //if (getpos((uint8_t*)&d[fi], (size-fi)))
+        //{
+        //  memcpy(_rxBuffer, (void*)&d[fi], (size - fi));
+        //  _bytesWritten = (size - fi);
+        //  onMessage(_rxBuffer, _bytesWritten);
+        //  reset();
+        //}
+        //else
+        //{
         memcpy(_rxBuffer, (void*)&d[fi], (size - fi));
-        //_wptr += (size - fi);
         _bytesWritten = (size - fi);
+        //}
       }
-      
     }
     else if( fi == 0 && (_bytesWritten + size) > _size)
     {

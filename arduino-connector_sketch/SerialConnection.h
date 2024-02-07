@@ -58,21 +58,65 @@ public:
     return 1;
   }
 
-
-
   protected:
 
   #ifdef INTEGRATED_CALLBACKS
   void onMessage(uint8_t* d, const size_t& size)
   {
-
+    //const auto& d = Packetizer::decode(MT_HANDSHAKE, d, size);//_getHandshakeMessage());
+    //const auto& p_out = Packetizer::decode(d, size);
+    //if(p_out.data.size() > 0)
+    //{
+    //  MsgPacketizer::feed(p_out.data.data(), p_out.data.size());
+    //}
+    
+    /*
+    switch(p_out.index)
+    {
+      case MT_HANDSHAKE:
+      {
+        HandshakeMessage hmt;
+        //hmt.protocolVersion = p_out.data
+        MsgPack::Unpacker unpacker;//(buffer+1, decodedLength);
+        unpacker.feed(p_out.data.data(), p_out.data.size());
+        // manually deserialize packet and modify
+        MsgPack::arr_size_t sz;
+        unpacker.deserialize(sz, hmt.protocolVersion, hmt.featureMap );//sz, pv, fm, t, ps, uid, dp, ai, ao);
+        //_onHandshakeMessage(hmt);
+        break;
+      }
+    }
+    */
+    /*
+    Serial.print("INDEX: ");
+    Serial.println(p_out.index);    
+    Serial.print("DECODED SIZE: ");
+    Serial.println(p_out.data.size());
+    Serial.println();
+    Serial.print("decoded = ");
+    for (const auto& p : p_out.data) {
+        Serial.print(p, HEX);
+        Serial.print(" ");
+    }
+    Serial.println();
+    //SERIAL_DEV.println("CALLBACK!");
+    //SERIAL_DEV.flush();
+    */
   }
+
+  #endif
+
+  #ifdef ENABLE_MSGPACKETIZER_CALLBACKS
   void _doSerialRecv()
   {
-    const size_t size = Serial.available();
+    const size_t size = COM_DEV.available();
     if (size) {
+        //COM_DEV.print("ON READ, SIZE=");
+        //COM_DEV.println(size);
+
         uint8_t* data = new uint8_t[size];
-        Serial.readBytes((char*)data, size);
+        COM_DEV.readBytes((char*)data, size);
+        MsgPacketizer::feed(data, size);
 
         // feed your binary data to MsgPacketizer manually
         // if data has successfully received and decoded,
@@ -88,9 +132,40 @@ public:
   virtual void _onDoWork()
   {
     #ifdef ENABLE_MSGPACKETIZER_CALLBACKS
+      _doSerialRecv();
+    #endif
+    
+
+    
+    
     if(!subscribed)
     {
-      
+      #ifdef ENABLE_MSGPACKETIZER_CALLBACKS
+      MsgPacketizer::subscribe_manual((uint8_t)MT_HANDSHAKE,
+          [&](const protocol::HandshakeMessage& n) {
+              _onHandshakeMessage(n);
+          });
+
+       MsgPacketizer::subscribe_manual((uint8_t)MT_CONFIG,
+          [&](const protocol::ConfigMessage& n) {
+           // SERIAL_DEV.print("GOT CONFIG MSG");
+              _onConfigMessage(n);
+          });
+             
+      MsgPacketizer::subscribe_manual((uint8_t)MT_HEARTBEAT,
+          [&](const protocol::HeartbeatMessage& n) {
+              _onHeartbeatMessage(n);
+          });
+         
+      MsgPacketizer::subscribe_manual((uint8_t)MT_PINCHANGE,
+          [&](const protocol::PinChangeMessage& n) {
+              _onPinChangeMessage(n);
+          });
+          
+
+      #endif
+      /*
+      #ifdef ENABLE_MSGPACKETIZER_CALLBACKS
       MsgPacketizer::subscribe(COM_DEV, MT_HANDSHAKE,
           [&](const protocol::HandshakeMessage& n) {
             //SERIAL_DEV.print("GOT MESSAGE HS");
@@ -113,6 +188,7 @@ public:
             SERIAL_DEV.print("GOT CONFIG MSG");
               _onConfigMessage(n);
           });
+      */
       /*
       MsgPacketizer::subscribe(COM_DEV,
         [&](const uint8_t index, MsgPack::Unpacker& unpacker) {
@@ -134,37 +210,59 @@ public:
             //MsgPacketizer::send(Serial, send_index, sz, i, f, s);
         });
         */
+        //#endif
         subscribed = 1;
     }
     MsgPacketizer::update();
-    #endif
+    
   }
-
+/*
+  struct HandshakeMessage {
+      uint8_t protocolVersion = PROTOCOL_VERSION;
+      uint64_t featureMap;
+      uint32_t timeout;
+      //uint16_t maxMsgSize;
+      uint32_t profileSignature = 0; // 0 indicates no config, >0 indicates an existing config
+      String uid;
+      uint8_t   digitalPins = 0;
+      uint8_t analogInputs = 0;
+      uint8_t   analogOutputs = 0;
+  }hm;
+*/
   virtual void _sendHandshakeMessage()
   { 
-    #ifdef ENABLE_MSGPACKETIZER_CALLBACKS
+    //#ifdef ENABLE_MSGPACKETIZER_CALLBACKS
     //MsgPacketizer::send(this->_client, this->_mi, hm);
-    MsgPacketizer::send(COM_DEV, MT_HANDSHAKE, _getHandshakeMessage());
-    COM_DEV.flush();
+      MsgPacketizer::send(COM_DEV, MT_HANDSHAKE, _getHandshakeMessage());
+      COM_DEV.flush();
+    //#endif
+    /*
+    #ifdef INTEGRATED_CALLBACKS
+      //HandshakeMessage& hmm = _getHandshakeMessage();
+      //const auto& packet = MsgPacketizer::encode(MT_HANDSHAKE, hmm.protocolVersion, hmm.featureMap, hmm.timeout);
+      const auto& packet = MsgPacketizer::encode(MT_HANDSHAKE, _getHandshakeMessage());
+      COM_DEV.write(packet.data.data(), packet.data.size());
+      COM_DEV.flush();
     #endif
+    */
   }
 
   virtual void _sendHeartbeatMessage()
   { 
-    #ifdef ENABLE_MSGPACKETIZER_CALLBACKS
+    //#ifdef ENABLE_MSGPACKETIZER_CALLBACKS
     //MsgPacketizer::send(this->_client, this->_mi, hm);
     MsgPacketizer::send(COM_DEV, MT_HEARTBEAT, _getHeartbeatMessage());
     COM_DEV.flush();
-    #endif
+    //#endif
   }
 
   virtual void _sendPinChangeMessage()
   {
-    #ifdef ENABLE_MSGPACKETIZER_CALLBACKS
+    //#ifdef ENABLE_MSGPACKETIZER_CALLBACKS
     //SERIAL_DEV.println("SENDING PING CHANGE MESSAGE!");
     MsgPacketizer::send(COM_DEV, MT_PINCHANGE, _getPinChangeMessage());
     COM_DEV.flush();
-    #endif
+    //#endif
   }
   /*
   virtual void _sendPinStatusMessage()
@@ -176,10 +274,10 @@ public:
   #ifdef DEBUG
   virtual void _sendDebugMessage(String& message)
   {
-    #ifdef ENABLE_MSGPACKETIZER_CALLBACKS
+    //#ifdef ENABLE_MSGPACKETIZER_CALLBACKS
     MsgPacketizer::send(COM_DEV, MT_DEBUG, _getDebugMessage(message));
     COM_DEV.flush();
-    #endif
+    //#endif
   }
   #endif
   

@@ -5,7 +5,7 @@
 #define ENABLE_FEATUREMAP
 
 #define ENABLE_MSGPACKETIZER_CALLBACKS
-//#define INTEGRATED_CALLBACKS
+//#define INTEGRATED_CALLBACKS *DO NOT USE, EXPIREMENTAL*
 
 #define DEBUG                       0
 #define DINPUTS                     1
@@ -27,7 +27,6 @@
 
 #ifndef EEPROM_ENABLED
   String uuid("ND");
-
 #endif
 
 
@@ -36,7 +35,7 @@ const uint16_t SERIAL_STARTUP_DELAY = 5000; // In milliseconds
 const uint16_t SERIAL_RX_TIMEOUT = 10000;
 
 #ifdef INTEGRATED_CALLBACKS
-const uint16_t RX_BUFFER_SIZE = 128;
+const uint16_t RX_BUFFER_SIZE = 1024;
 #endif
 
 #define SERIAL_DEV Serial

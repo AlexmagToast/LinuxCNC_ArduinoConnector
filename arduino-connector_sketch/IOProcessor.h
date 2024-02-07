@@ -22,7 +22,7 @@ namespace Callbacks
             if(ConfigManager::GetDigitalOutputsReady() == 0)
             {
               #ifdef DEBUG_VERBOSE
-                SERIAL_DEV.print(F(" Callbacks::onPinChange: GetDigitalOutputsReady() returned FALSE"));
+                SERIAL_DEV.println(F(" Callbacks::onPinChange: GetDigitalOutputsReady() returned FALSE"));
               #endif
               return;
             }
@@ -186,7 +186,7 @@ namespace Callbacks
         if(ConfigManager::GetDigitalOutputsReady() == 0)
         {
           #ifdef DEBUG_VERBOSE
-            SERIAL_DEV.print(F("Callbacks::onPinChange: GetDigitalOutputsReady() returned FALSE"));
+            SERIAL_DEV.println(F("Callbacks::onPinChange: GetDigitalOutputsReady() returned FALSE"));
           #endif
           return;
         }

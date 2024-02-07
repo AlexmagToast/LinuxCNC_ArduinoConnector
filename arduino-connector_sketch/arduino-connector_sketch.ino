@@ -32,8 +32,26 @@
 #endif
 
 //#define MSGPACKETIZER_ENABLE_STREAM
-//#define PACKETIZER_MAX_CALLBACK_QUEUE_SIZE 7
-//#define PACKETIZER_MAX_PACKET_QUEUE_SIZE 5
+#define PACKETIZER_MAX_CALLBACK_QUEUE_SIZE 7
+#define PACKETIZER_MAX_PACKET_QUEUE_SIZE 5
+// msgpack serialized binary size
+#define MSGPACK_MAX_PACKET_BYTE_SIZE 512
+// max size of MsgPack::arr_t
+#define MSGPACK_MAX_ARRAY_SIZE 7
+// max size of MsgPack::map_t
+#define MSGPACK_MAX_MAP_SIZE 7
+// msgpack objects size in one packet
+#define MSGPACK_MAX_OBJECT_SIZE 64
+
+// max number of decoded packet queues
+//#define PACKETIZER_MAX_PACKET_QUEUE_SIZE 1
+// max data bytes in packet
+#define PACKETIZER_MAX_PACKET_BINARY_SIZE 512
+// max number of callback for one stream
+#define PACKETIZER_MAX_CALLBACK_QUEUE_SIZE 3
+// max number of streams
+#define PACKETIZER_MAX_STREAM_MAP_SIZE 1
+
 #include <MsgPacketizer.h>
 #include <ArduinoJson.h>
 #ifdef ENABLE_FEATUREMAP

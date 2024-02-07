@@ -858,7 +858,7 @@ class SerialConnection(Connection):
                             if newlinepos < termpos:
                                 readDebug = True
                             else:
-                                readMessage = True
+                               readMessage = True
                         elif newlinepos != -1:
                             readDebug = True
                         elif termpos != -1:
@@ -1058,8 +1058,10 @@ class ArduinoConnection:
                 self.serialConn.startRxTask()
         
          
-         
+        
         if self.serialConn.getConnectionState() == ConnectionState.CONNECTED and self.settings.profileSignature is not self.serialConn.arduinoProfileSignature:
+            
+        
             j = self.settings.configJSON()
             #config_json = json.dumps(j)
             #h = int(hashlib.sha256(config_json.encode('utf-8')).hexdigest(), 16) % 10**8

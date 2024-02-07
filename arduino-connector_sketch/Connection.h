@@ -4,6 +4,7 @@
 #include "Protocol.h"
 #ifdef INTEGRATED_CALLBACKS
 #include "RXBuffer.h"
+#include "Cobs.h"
 #endif
 
 
@@ -34,7 +35,7 @@ public:
   {
 
   }
-  virtual void onMessage(uint8_t* d, const size_t& size){}
+  virtual void onMessage(uint8_t* d, const size_t& size)=0;
 #else
   ConnectionBase(uint16_t retryPeriod, uint64_t& fm) : _retryPeriod(retryPeriod), _featureMap(fm)
   {
@@ -340,7 +341,7 @@ protected:
     protocol::hm.featureMap = this->_featureMap;
     protocol::hm.timeout = _retryPeriod * 2;
 
-    protocol::hm.uid = _uid;
+    //protocol::hm.uid = _uid;
     #ifdef DEBUG_VERBOSE   
       SERIAL_DEV.println(F("- TX HANDSHAKE MESSAGE DUMP -"));
       SERIAL_DEV.print(F("Protocol Version: 0x"));
@@ -355,8 +356,8 @@ protected:
       SERIAL_DEV.println(protocol::hm.profileSignature);
       //SERIAL_DEV.print(" Board Index: ");
      //SERIAL_DEV.println(protocol::hm.boardIndex);
-      SERIAL_DEV.print(F("Board UID:"));
-      SERIAL_DEV.println(protocol::hm.uid);
+      //SERIAL_DEV.print(F("Board UID:"));
+      //SERIAL_DEV.println(protocol::hm.uid);
       SERIAL_DEV.println(F("- TX END HANDSHAKE MESSAGE DUMP -"));
     #endif
     return protocol::hm;
