@@ -341,7 +341,7 @@ protected:
     protocol::hm.featureMap = this->_featureMap;
     protocol::hm.timeout = _retryPeriod * 2;
 
-    //protocol::hm.uid = _uid;
+    protocol::hm.uid = _uid;
     #ifdef DEBUG_VERBOSE   
       SERIAL_DEV.println(F("- TX HANDSHAKE MESSAGE DUMP -"));
       SERIAL_DEV.print(F("Protocol Version: 0x"));
@@ -356,8 +356,8 @@ protected:
       SERIAL_DEV.println(protocol::hm.profileSignature);
       //SERIAL_DEV.print(" Board Index: ");
      //SERIAL_DEV.println(protocol::hm.boardIndex);
-      //SERIAL_DEV.print(F("Board UID:"));
-      //SERIAL_DEV.println(protocol::hm.uid);
+      SERIAL_DEV.print(F("Board UID:"));
+      SERIAL_DEV.println(protocol::hm.uid);
       SERIAL_DEV.println(F("- TX END HANDSHAKE MESSAGE DUMP -"));
     #endif
     return protocol::hm;

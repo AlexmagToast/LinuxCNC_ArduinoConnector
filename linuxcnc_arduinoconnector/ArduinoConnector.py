@@ -633,7 +633,7 @@ class Connection:
         self.lastMessageReceived = time.time()
         #self.maxMsgSize = 512
         self.enabledFeatures = None
-        self.uid = ''
+        self.uid = 'UD'
         self.alias = ''
         self.rxQueue = Queue(RX_MAX_QUEUE_SIZE)
         self._messageReceivedCallbacks = {}
@@ -1061,7 +1061,7 @@ class ArduinoConnection:
         
         if self.serialConn.getConnectionState() == ConnectionState.CONNECTED and self.settings.profileSignature is not self.serialConn.arduinoProfileSignature:
             
-        
+            
             j = self.settings.configJSON()
             #config_json = json.dumps(j)
             #h = int(hashlib.sha256(config_json.encode('utf-8')).hexdigest(), 16) % 10**8
@@ -1082,8 +1082,9 @@ class ArduinoConnection:
                         # Future TODO: Consider doing something intelligent and not just reporting an error. Maybe increment a hal pin that reflects error counts?
                         return
                     time.sleep(.1)
-            #self.serialConn.
             self.serialConn.arduinoProfileSignature = self.settings.profileSignature
+    
+
             
 arduino_map = []
 

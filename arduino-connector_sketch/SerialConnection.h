@@ -249,6 +249,8 @@ public:
 
   virtual void _sendHeartbeatMessage()
   { 
+    //COM_DEV.println("SEND HB!");
+    //COM_DEV.flush();
     //#ifdef ENABLE_MSGPACKETIZER_CALLBACKS
     //MsgPacketizer::send(this->_client, this->_mi, hm);
     MsgPacketizer::send(COM_DEV, MT_HEARTBEAT, _getHeartbeatMessage());
