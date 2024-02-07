@@ -39,8 +39,8 @@ class SerialConnection : public ConnectionBase {
 public:
 
     // Future TODO: Support selection of a different Serial interface other than just the default 'Serial'
-    SerialConnection(uint16_t retryPeriod, uint64_t& fm, const size_t& size)
-  : ConnectionBase(retryPeriod, fm, size)
+    SerialConnection(uint16_t retryPeriod, uint64_t& fm)
+  : ConnectionBase(retryPeriod, fm)
   {
 
   }

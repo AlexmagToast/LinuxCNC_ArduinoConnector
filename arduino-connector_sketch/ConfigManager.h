@@ -28,7 +28,7 @@ namespace ConfigManager
   void SetDigitalInputPin(dpin pin, uint8_t index)
   {
     #ifdef DEBUG
-      SERIAL_DEV.print("ConfigManager::SetDigitalInputPin, Index=0x");
+      SERIAL_DEV.print(F("ConfigManager::SetDigitalInputPin, Index=0x"));
       SERIAL_DEV.println(index, HEX);
       #ifdef DEBUG_VERBOSE
         SERIAL_DEV.println("----------- START PIN CONFIG DUMP ------------");
@@ -68,7 +68,7 @@ namespace ConfigManager
   void InitDigitalInputPins(size_t size)
   {
     #ifdef DEBUG
-      SERIAL_DEV.print("ConfigManager::initDigialInputPins, Size=0x");
+      SERIAL_DEV.print(F("ConfigManager::initDigialInputPins, Size=0x"));
       SERIAL_DEV.println(size, HEX);
     #endif
     if( dinput_arr != NULL )
@@ -122,7 +122,7 @@ namespace ConfigManager
   void SetDigitalOutputPin(dpin pin, uint8_t index)
   {
     #ifdef DEBUG
-      SERIAL_DEV.print("ConfigManager::SetDigitalOutputPin, Index=0x");
+      SERIAL_DEV.print(F("ConfigManager::SetDigitalOutputPin, Index=0x"));
       SERIAL_DEV.println(index, HEX);
       #ifdef DEBUG_VERBOSE
         SERIAL_DEV.println("----------- START PIN CONFIG DUMP ------------");
@@ -162,7 +162,7 @@ namespace ConfigManager
   void InitDigitalOutputPins(size_t size)
   {
     #ifdef DEBUG
-      SERIAL_DEV.print("ConfigManager::InitDigitalOutputPins, Size=0x");
+      SERIAL_DEV.print(F("ConfigManager::InitDigitalOutputPins, Size=0x"));
       SERIAL_DEV.println(size, HEX);
     #endif
     if( doutput_arr != NULL )

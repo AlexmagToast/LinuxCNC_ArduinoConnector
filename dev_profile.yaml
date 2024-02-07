@@ -70,15 +70,16 @@ mcu:
         pin_connected_state: 0
         pin_disconnected_state: 1
         pin_initial_state: -1
+
+    digitalInputs:
       - pin_id: 3
-        pin_name: dout.03 #hal pin name
+        pin_name: din.03 #hal pin name
         input_pullup: true
         pin_debounce: 0
         pin_enabled: true
         pin_connected_state: 0
         pin_disconnected_state: 1
         pin_initial_state: -1
-    digitalInputs:
 
       - pin_id: 4
         pin_name: din.04 #hal pin name
@@ -456,5 +457,4 @@ mcu:
       - pin_id: 3
         pin_name: dout.3 #hal pin name
 
-  
-  
+

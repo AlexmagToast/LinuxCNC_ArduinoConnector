@@ -294,7 +294,7 @@ class ArduinoSettings:
         self.alias = alias
         self.component_name = component_name
         self.dev = dev
-        self.baud_rate = 19200
+        self.baud_rate = 115200
         self.connection_timeout = 10
         self.io_map = {}
         self.profileSignature = 0# CRC32 for now
@@ -826,7 +826,7 @@ class SerialConnection(Connection):
     def sendMessage(self, b: bytes):
         logging.debug(f'PYDEBUG: SerialConnection::sendMessage, dev={self.dev}, Message={b}')
         self.arduino.write(b)
-        self.arduino.flush()
+        #self.arduino.flush()
     
     def sendCommand(self, m:str):
         cm = MessageEncoder().encodeBytes(mt=MessageType.MT_COMMAND, payload=[m, 1])

@@ -30,13 +30,13 @@ class ConnectionBase {
 
 public:
 #ifdef INTEGRATED_CALLBACKS
-  ConnectionBase(uint16_t retryPeriod, uint64_t& fm, const size_t& size) : RXBuffer(size), _retryPeriod(retryPeriod), _featureMap(fm)
+  ConnectionBase(uint16_t retryPeriod, uint64_t& fm) : RXBuffer(), _retryPeriod(retryPeriod), _featureMap(fm)
   {
 
   }
   virtual void onMessage(uint8_t* d, const size_t& size){}
 #else
-  ConnectionBase(uint16_t retryPeriod, uint64_t& fm, const size_t& size) : _retryPeriod(retryPeriod), _featureMap(fm)
+  ConnectionBase(uint16_t retryPeriod, uint64_t& fm) : _retryPeriod(retryPeriod), _featureMap(fm)
   {
 
   }
@@ -195,21 +195,21 @@ public:
     switch(state)
     {
       case CS_DISCONNECTED:
-        return String("CS_DISCONNECTED");
+        return String(F("CS_DISCONNECTED"));
       case CS_CONNECTING:
-        return String("CS_CONNECTING");
+        return String(F("CS_CONNECTING"));
       case CS_CONNECTED:
-        return String("CS_CONNECTED");
+        return String(F("CS_CONNECTED"));
       case CS_RECONNECTED:
-        return String("CS_RECONNECTED");
+        return String(F("CS_RECONNECTED"));
       case CS_DISCONNECTING:
-        return String("CS_DISCONNECTING");
+        return String(F("CS_DISCONNECTING"));
       case CS_ERROR:
-        return String("CS_ERROR");
+        return String(F("CS_ERROR"));
       case CS_CONNECTION_TIMEOUT:
-        return String("CS_CONNECTION_TIMEOUT");
+        return String(F("CS_CONNECTION_TIMEOUT"));
       default:
-        return String("CS_UNKNOWN_STATE");
+        return String(F("CS_UNKNOWN_STATE"));
     }
   }
   #endif
@@ -250,14 +250,14 @@ protected:
       //Serial1.println("GOT HS MESSAGE");
       //Serial1.flush();
       #ifdef DEBUG_VERBOSE
-      SERIAL_DEV.println(" ---- RX HANDSHAKE MESSAGE DUMP ----");
-      SERIAL_DEV.print(" Protocol Version: 0x");
+      SERIAL_DEV.println(F(" - RX HANDSHAKE MESSAGE DUMP -"));
+      SERIAL_DEV.print(F("Protocol Version: 0x"));
       SERIAL_DEV.println(n.protocolVersion, HEX);
-      SERIAL_DEV.print(" Profile Signature: ");
+      SERIAL_DEV.print(F("Profile Signature:"));
       SERIAL_DEV.println(n.profileSignature);
       //SERIAL_DEV.print(" Board Index: ");
       //SERIAL_DEV.println(n.boardIndex);
-      SERIAL_DEV.println(" ---- RX END HANDSHAKE MESSAGE DUMP ----");
+      SERIAL_DEV.println(F(" - RX END HANDSHAKE MESSAGE DUMP -"));
       #endif
       _handshakeReceived = 1;
   }
@@ -265,10 +265,10 @@ protected:
   void _onHeartbeatMessage(const protocol::HeartbeatMessage& n)
   {
       #ifdef DEBUG_VERBOSE
-      SERIAL_DEV.println(" ---- RX HEARTBEAT MESSAGE DUMP ----");
+      SERIAL_DEV.println(F(" - RX HEARTBEAT MESSAGE DUMP -"));
       //SERIAL_DEV.print(" Board Index: ");
       //SERIAL_DEV.println(n.boardIndex);
-      SERIAL_DEV.println(" ---- RX END HEARTBEAT MESSAGE DUMP ----");
+      SERIAL_DEV.println(F(" - RX END HEARTBEAT MESSAGE DUMP -"));
       #endif
       _heartbeatReceived = 1;
   }
@@ -300,16 +300,16 @@ protected:
   void _onPinChangeMessage(const protocol::PinChangeMessage& n)
   {
     #ifdef DEBUG_VERBOSE
-      SERIAL_DEV.println(" ---- RX PINCHANGE MESSAGE DUMP ----");
-      SERIAL_DEV.print(" FEATURE ID: ");
+      SERIAL_DEV.println(F(" - RX PINCHANGE MESSAGE DUMP -"));
+      SERIAL_DEV.print(F("FEATURE ID:"));
       SERIAL_DEV.println(n.featureID);  
-      SERIAL_DEV.print(" SEQ ID: ");
+      SERIAL_DEV.print(F("SEQ ID:"));
       SERIAL_DEV.println(n.seqID);  
-      SERIAL_DEV.print(" RESPONSE REQ: ");
+      SERIAL_DEV.print(F("RESPONSE REQ:"));
       SERIAL_DEV.println(n.responseReq);       
-      SERIAL_DEV.print(" MESSAGE: ");
+      SERIAL_DEV.print(F("MESSAGE:"));
       SERIAL_DEV.println(n.message);  
-      SERIAL_DEV.println(" ---- RX END PINCHANGE MESSAGE DUMP ----");
+      SERIAL_DEV.println(F(" - RX END PINCHANGE MESSAGE DUMP -"));
     #endif
       if(_pinChangeAction != NULL)
       {
@@ -320,12 +320,12 @@ protected:
   void _setState(int new_state)
   {
     #ifdef DEBUG
-      SERIAL_DEV.flush();
-      SERIAL_DEV.print(" Connection transitioning from current state of [");
+      //SERIAL_DEV.flush();
+      SERIAL_DEV.print(F("Connection transitioning from current state of ["));
       SERIAL_DEV.print(this->stateToString(this->_myState));
-      SERIAL_DEV.print("] to [");
+      SERIAL_DEV.print(F("] to ["));
       SERIAL_DEV.print(this->stateToString(new_state));
-      SERIAL_DEV.println("]");
+      SERIAL_DEV.println(F("]"));
       SERIAL_DEV.flush();
     #endif
     this->_myState = new_state;
@@ -342,22 +342,22 @@ protected:
 
     protocol::hm.uid = _uid;
     #ifdef DEBUG_VERBOSE   
-      SERIAL_DEV.println(" ---- TX HANDSHAKE MESSAGE DUMP ----");
-      SERIAL_DEV.print(" Protocol Version: 0x");
+      SERIAL_DEV.println(F("- TX HANDSHAKE MESSAGE DUMP -"));
+      SERIAL_DEV.print(F("Protocol Version: 0x"));
       SERIAL_DEV.println(protocol::hm.protocolVersion, HEX);
       //SERIAL_DEV.print(" Feature Map: 0x");
       //SERIAL_DEV.println(protocol::hm.featureMap, HEX);
-      SERIAL_DEV.print(" Timeout: ");
+      SERIAL_DEV.print(F("Timeout:"));
       SERIAL_DEV.println(protocol::hm.timeout);
       //SERIAL_DEV.print(" MaxMsgSize: ");
       //SERIAL_DEV.println(protocol::hm.maxMsgSize);
-      SERIAL_DEV.print(" ProfileSignature: ");
+      SERIAL_DEV.print(F("ProfileSignature:"));
       SERIAL_DEV.println(protocol::hm.profileSignature);
       //SERIAL_DEV.print(" Board Index: ");
      //SERIAL_DEV.println(protocol::hm.boardIndex);
-      SERIAL_DEV.print(" Board UID: ");
+      SERIAL_DEV.print(F("Board UID:"));
       SERIAL_DEV.println(protocol::hm.uid);
-      SERIAL_DEV.println(" ---- TX END HANDSHAKE MESSAGE DUMP ----");
+      SERIAL_DEV.println(F("- TX END HANDSHAKE MESSAGE DUMP -"));
     #endif
     return protocol::hm;
   }
@@ -365,10 +365,10 @@ protected:
   protocol::HeartbeatMessage& _getHeartbeatMessage()
   {
     #ifdef DEBUG_VERBOSE
-      SERIAL_DEV.println(" ---- TX HEARTBEAT MESSAGE DUMP ----");
-      SERIAL_DEV.print(" Board Index: ");
+      SERIAL_DEV.println(F("- TX HEARTBEAT MESSAGE DUMP -"));
+      SERIAL_DEV.print(F("Board Index:"));
       SERIAL_DEV.println(protocol::hb.boardIndex);
-      SERIAL_DEV.println(" ---- TX END HEARTBEAT MESSAGE DUMP ----");
+      SERIAL_DEV.println(F("- TX END HEARTBEAT MESSAGE DUMP -"));
     #endif
     return protocol::hb;
   }
@@ -376,14 +376,14 @@ protected:
   protocol::PinChangeMessage& _getPinChangeMessage()
   {
     #ifdef DEBUG_VERBOSE
-      SERIAL_DEV.println(" ---- TX PINCHANGE MESSAGE DUMP ----");
-      SERIAL_DEV.print(" FEATURE ID: ");
+      SERIAL_DEV.println(F("-TX PINCHANGE MESSAGE DUMP -"));
+      SERIAL_DEV.print(F("FEATURE ID:"));
       SERIAL_DEV.println(protocol::pcm.featureID);  
-      SERIAL_DEV.print(" ACK REQ: ");
+      SERIAL_DEV.print(F("ACK REQ:"));
       SERIAL_DEV.println(protocol::pcm.responseReq);       
-      SERIAL_DEV.print(" MESSAGE: ");
+      SERIAL_DEV.print(F("MESSAGE:"));
       SERIAL_DEV.println(protocol::pcm.message);  
-      SERIAL_DEV.println(" ---- TX END PINCHANGE MESSAGE DUMP ----");
+      SERIAL_DEV.println(F("- TX END PINCHANGE MESSAGE DUMP -"));
     #endif
     return protocol::pcm;
   }
@@ -406,12 +406,12 @@ protected:
   {
     protocol::dm.message = message;
     // No need to wrap in DEBUG define as the entire method is only compiled in when DEBUG is defined
-    SERIAL_DEV.println(" ---- TX DEBUG MESSAGE DUMP ----");
+    SERIAL_DEV.println(F("- TX DEBUG MESSAGE DUMP -"));
     //SERIAL_DEV.print(" Board Index: ");
     //SERIAL_DEV.println(protocol::dm.boardIndex);
-    SERIAL_DEV.print(" Message: ");
+    SERIAL_DEV.print(F(" Message: "));
     SERIAL_DEV.println(protocol::dm.message);
-    SERIAL_DEV.println(" ---- TX END DEBUG MESSAGE DUMP ----");
+    SERIAL_DEV.println(F("- TX END DEBUG MESSAGE DUMP -"));
     return protocol::dm;
   }
   #endif

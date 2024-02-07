@@ -24,15 +24,20 @@
 //#define KEYPAD                    13
 //#define EEPROM_ENABLED              14
 
+
 #ifndef EEPROM_ENABLED
-String uuid("UNDEFINED");
+  String uuid("ND");
+
 #endif
 
-#define DEBUG_VERBOSE
-const int SERIAL_STARTUP_DELAY = 5000; // In milliseconds
-const int SERIAL_RX_TIMEOUT = 10000;
 
-const int RX_BUFFER_SIZE = 512;
+#define DEBUG_VERBOSE
+const uint16_t SERIAL_STARTUP_DELAY = 5000; // In milliseconds
+const uint16_t SERIAL_RX_TIMEOUT = 10000;
+
+#ifdef INTEGRATED_CALLBACKS
+const uint16_t RX_BUFFER_SIZE = 128;
+#endif
 
 #define SERIAL_DEV Serial
 #define COM_DEV Serial

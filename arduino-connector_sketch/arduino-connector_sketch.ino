@@ -36,7 +36,9 @@
 //#define PACKETIZER_MAX_PACKET_QUEUE_SIZE 5
 #include <MsgPacketizer.h>
 #include <ArduinoJson.h>
+#ifdef ENABLE_FEATUREMAP
 #include "FeatureMap.h"
+#endif
 //#include <EEPROM.h>
 //#include <FastCRC.h>
 //#include <UUID.h>
@@ -45,16 +47,13 @@
 #include "IOProcessor.h"
 
 
-String output; // Used below to output Io update messages
-JsonDocument doc;
-JsonArray pa; 
 
 #ifdef ENABLE_FEATUREMAP
 featureMap fm;
-SerialConnection serialClient(SERIAL_RX_TIMEOUT, fm.features, RX_BUFFER_SIZE);
+SerialConnection serialClient(SERIAL_RX_TIMEOUT, fm.features);
 #else
 uint64_t f = 0;
-SerialConnection serialClient(SERIAL_RX_TIMEOUT, f, RX_BUFFER_SIZE);
+SerialConnection serialClient(SERIAL_RX_TIMEOUT, f);
 #endif
 
 
@@ -71,8 +70,8 @@ void setup() {
   //}
   delay(SERIAL_STARTUP_DELAY);
   #ifdef DEBUG
-    SERIAL_DEV.println(" STARTING UP.. ");
-    SERIAL_DEV.println("HERE WE GO");
+    SERIAL_DEV.println(F("STARTING UP"));
+    //SERIAL_DEV.println("HERE WE GO");
     SERIAL_DEV.flush();
   #endif
   /*
@@ -176,7 +175,12 @@ void setup() {
    
   }
   */
-  serialClient.setUID(uuid.c_str());
+  #ifndef EEPROM_ENABLED
+    //String uuid("ND");
+    serialClient.setUID(uuid.c_str());
+  #endif
+
+  
   serialClient.RegisterConfigCallback(Callbacks::onConfig);
   serialClient.RegisterCSCallback(Callbacks::onConnectionStageChange);
   serialClient.RegisterPinChangeCallback(Callbacks::onPinChange);
@@ -197,8 +201,12 @@ void loop() {
   
   if(ConfigManager::GetDigitalInputsReady() == 1)
   {
+    String output; // Used below to output Io update messages
+    JsonDocument doc;
+    JsonArray pa; 
+
     //pa.clear();
-    doc.clear();
+    //doc.clear();
     pa = doc["pa"].to<JsonArray>();
 
     for( int x = 0; x < ConfigManager::GetDigitalInputPinsLen(); x++ )
@@ -210,12 +218,12 @@ void loop() {
       if(pin.pinCurrentState != v && (currentMills - pin.t) >= pin.debounce)
       {
         #ifdef DEBUG_VERBOSE
-        SERIAL_DEV.print("DINPUTS PIN CHANGE! ");
-        SERIAL_DEV.print("PIN:");
+        SERIAL_DEV.print(F("DINPUTS PIN CHANGE!"));
+        SERIAL_DEV.print(F("PIN:"));
         SERIAL_DEV.println(pin.pinID);
-        SERIAL_DEV.print("Current value: ");
+        SERIAL_DEV.print(F("Current value: "));
         SERIAL_DEV.println(pin.pinCurrentState);
-        SERIAL_DEV.print("New value: ");
+        SERIAL_DEV.print(F("New value: "));
         SERIAL_DEV.println(v);
         #endif
         
@@ -243,7 +251,7 @@ void loop() {
       output = "";
       serializeJson(doc, output);
       #ifdef DEBUG_VERBOSE
-      SERIAL_DEV.print("JSON = ");
+      SERIAL_DEV.print(F("JSON = "));
       SERIAL_DEV.println(output);
       #endif
       uint8_t seqID = 0;

@@ -22,7 +22,7 @@ namespace Callbacks
             if(ConfigManager::GetDigitalOutputsReady() == 0)
             {
               #ifdef DEBUG_VERBOSE
-                SERIAL_DEV.print(" Callbacks::onPinChange: GetDigitalOutputsReady() returned FALSE");
+                SERIAL_DEV.print(F(" Callbacks::onPinChange: GetDigitalOutputsReady() returned FALSE"));
               #endif
               return;
             }
@@ -32,7 +32,7 @@ namespace Callbacks
 
             if (error) {
               #ifdef DEBUG_VERBOSE
-                SERIAL_DEV.print(" Callbacks::onPinChange: deserializeJson() of message failed: ");
+                SERIAL_DEV.print(F(" Callbacks::onPinChange: deserializeJson() of message failed: "));
                 SERIAL_DEV.println(error.c_str());
               #endif
               return;
@@ -79,11 +79,11 @@ namespace Callbacks
 
   void onConfig(const protocol::ConfigMessage& cm) {
       #ifdef DEBUG
-        SERIAL_DEV.print("::onConfig called, featureID = ");
+        SERIAL_DEV.print(F("::onConfig called, featureID = "));
         SERIAL_DEV.print((int)cm.featureID);
-        SERIAL_DEV.print(" Seq = ");
+        SERIAL_DEV.print(F(" Seq = "));
         SERIAL_DEV.print(cm.seq);
-        SERIAL_DEV.print(" Total = ");
+        SERIAL_DEV.print(F(" Total = "));
         SERIAL_DEV.println(cm.total);
         #ifdef DEBUG_VERBOSE
           SERIAL_DEV.print("Config: ");
@@ -107,8 +107,10 @@ namespace Callbacks
             DeserializationError error = deserializeJson(doc, cm.configString);
 
             if (error) {
+              #ifdef DEBUG
               SERIAL_DEV.print(F("deserializeJson() of DINPUTS failed: "));
               SERIAL_DEV.println(error.f_str());
+              #endif
               break;
             }
             
@@ -147,8 +149,10 @@ namespace Callbacks
             DeserializationError error = deserializeJson(doc, cm.configString);
 
             if (error) {
+              #ifdef DEBUG
               SERIAL_DEV.print(F("deserializeJson() of DOUTPUTS failed: "));
               SERIAL_DEV.println(error.f_str());
+              #endif
               break;
             }
             
@@ -182,7 +186,7 @@ namespace Callbacks
         if(ConfigManager::GetDigitalOutputsReady() == 0)
         {
           #ifdef DEBUG_VERBOSE
-            SERIAL_DEV.print(" Callbacks::onPinChange: GetDigitalOutputsReady() returned FALSE");
+            SERIAL_DEV.print(F("Callbacks::onPinChange: GetDigitalOutputsReady() returned FALSE"));
           #endif
           return;
         }

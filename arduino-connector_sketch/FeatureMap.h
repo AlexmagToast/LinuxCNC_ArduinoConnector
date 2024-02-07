@@ -93,125 +93,127 @@ struct featureMap
 
   void DumpFeatureMapToSerial()
   {
-    SERIAL_DEV.print("DEBUG: Feature Map = 0x");
-    SERIAL_DEV.println((uint32_t)this->features, HEX);
-    int flag = 0;
     #ifdef DEBUG
-      SERIAL_DEV.println("------------------- Feature Map Decode Dump ------------------- ");
+    SERIAL_DEV.print(F("DEBUG: Feature Map = 0x"));
+    SERIAL_DEV.println((uint32_t)this->features, HEX);
+    #endif
+    int flag = 0;
+    #ifdef DEBUG_VERBOSE
+      SERIAL_DEV.println(F("- Feature Map Decode Dump -"));
       // Debug is obviously defined if we got here, but use the map for consistency.
       flag = bitRead(this->features, DEBUG);
-      SERIAL_DEV.print("[ID0");
+      SERIAL_DEV.print(F("[ID0"));
       SERIAL_DEV.print(DEBUG);
-      SERIAL_DEV.print("]");
-      SERIAL_DEV.print(" DEBUG = ");
+      SERIAL_DEV.print(F("]"));
+      SERIAL_DEV.print(F(" DEBUG = "));
       SERIAL_DEV.println(flag);
       #ifdef DINPUTS
         flag = bitRead(this->features, DINPUTS);
-        SERIAL_DEV.print("[ID0");
+        SERIAL_DEV.print(F("[ID0"));
         SERIAL_DEV.print(DINPUTS);
-        SERIAL_DEV.print("]");
-        SERIAL_DEV.print(" INPUTS = ");
+        SERIAL_DEV.print(F("]"));
+        SERIAL_DEV.print(F(" INPUTS = "));
         SERIAL_DEV.println(flag);
       #endif
       #ifdef SINPUTS
         flag = bitRead(this->features, SINPUTS);
-        SERIAL_DEV.print("[ID0");
+        SERIAL_DEV.print(F("[ID0"));
         SERIAL_DEV.print(SINPUTS);
-        SERIAL_DEV.print("]");
-        SERIAL_DEV.print(" SINPUTS = ");
+        SERIAL_DEV.print(F("]"));
+        SERIAL_DEV.print(F(" SINPUTS = "));
         SERIAL_DEV.println(flag);
       #endif
       #ifdef DOUTPUTS
         flag = bitRead(this->features, DOUTPUTS);
-        SERIAL_DEV.print("[ID0");
+        SERIAL_DEV.print(F("[ID0"));
         SERIAL_DEV.print(DOUTPUTS);
-        SERIAL_DEV.print("]");
-        SERIAL_DEV.print(" OUTPUTS = ");
+        SERIAL_DEV.print(F("]"));
+        SERIAL_DEV.print(F(" OUTPUTS = "));
         SERIAL_DEV.println(flag);
       #endif
       #ifdef PWMOUTPUTS
         flag = bitRead(this->features, PWMOUTPUTS);
-        SERIAL_DEV.print("[ID0");
+        SERIAL_DEV.print(F("[ID0"));
         SERIAL_DEV.print(PWMOUTPUTS);
-        SERIAL_DEV.print("]");
-        SERIAL_DEV.print(" PWMOUTPUTS = ");
+        SERIAL_DEV.print(F("]"));
+        SERIAL_DEV.print(F(" PWMOUTPUTS = "));
         SERIAL_DEV.println(flag);
       #endif
       #ifdef AINPUTS
         flag = bitRead(this->features, AINPUTS);
-        SERIAL_DEV.print("[ID0");
+        SERIAL_DEV.print(F("[ID0"));
         SERIAL_DEV.print(AINPUTS);
-        SERIAL_DEV.print("]");
-        SERIAL_DEV.print(" AINPUTS = ");
+        SERIAL_DEV.print(F("]"));
+        SERIAL_DEV.print(F(" AINPUTS = "));
         SERIAL_DEV.println(flag);
       #endif
       #ifdef DALLAS_TEMP_SENSOR
         flag = bitRead(this->features, DALLAS_TEMP_SENSOR);
-        SERIAL_DEV.print("[ID0");
+        SERIAL_DEV.print(F("[ID0"));
         SERIAL_DEV.print(DALLAS_TEMP_SENSOR);
-        SERIAL_DEV.print("]");
-        SERIAL_DEV.print(" DALLAS_TEMP_SENSOR = ");
+        SERIAL_DEV.print(F("]"));
+        SERIAL_DEV.print(F(" DALLAS_TEMP_SENSOR = "));
         SERIAL_DEV.println(flag);
       #endif
       #ifdef LPOTIS
         flag = bitRead(this->features, LPOTIS);
-        SERIAL_DEV.print("[ID0");
+        SERIAL_DEV.print(F("[ID0"));
         SERIAL_DEV.print(LPOTIS);
-        SERIAL_DEV.print("]");
-        SERIAL_DEV.print(" LPOTIS = ");
+        SERIAL_DEV.print(F("]"));
+        SERIAL_DEV.print(F(" LPOTIS = "));
         SERIAL_DEV.println(flag);
       #endif
       #ifdef BINSEL
         flag = bitRead(this->features, BINSEL);
-        SERIAL_DEV.print("[ID0");
+        SERIAL_DEV.print(F("[ID0"));
         SERIAL_DEV.print(BINSEL);
-        SERIAL_DEV.print("]");
-        SERIAL_DEV.print(" BINSEL = ");
+        SERIAL_DEV.print(F("]"));
+        SERIAL_DEV.print(F(" BINSEL = "));
         SERIAL_DEV.println(flag);
       #endif
       #ifdef QUADENC
         flag = bitRead(this->features, QUADENC);
-        SERIAL_DEV.print("[ID0");
+        SERIAL_DEV.print(F("[ID0"));
         SERIAL_DEV.print(QUADENC);
-        SERIAL_DEV.print("]");
-        SERIAL_DEV.print(" QUADENC = ");
+        SERIAL_DEV.print(F("]"));
+        SERIAL_DEV.print(F(" QUADENC = "));
         SERIAL_DEV.println(flag);
       #endif
       #ifdef JOYSTICK
         flag = bitRead(this->features, JOYSTICK);
-        SERIAL_DEV.print("[ID");
+        SERIAL_DEV.print(F("[ID"));
         SERIAL_DEV.print(JOYSTICK);
-        SERIAL_DEV.print("]");
-        SERIAL_DEV.print(" JOYSTICK = ");
+        SERIAL_DEV.print(F("]"));
+        SERIAL_DEV.print(F(" JOYSTICK = "));
         SERIAL_DEV.println(flag);
       #endif
       #ifdef STATUSLED
         flag = bitRead(this->features, STATUSLED);
-        SERIAL_DEV.print("[ID");
+        SERIAL_DEV.print(F("[ID");
         SERIAL_DEV.print(STATUSLED);
-        SERIAL_DEV.print("]");
-        SERIAL_DEV.print(" STATUSLED = ");
+        SERIAL_DEV.print(F("]"));
+        SERIAL_DEV.print(F(" STATUSLED = ");
         SERIAL_DEV.println(flag);
       #endif
       #ifdef DLED
         flag = bitRead(this->features, DLED);
-        SERIAL_DEV.print("[ID");
+        SERIAL_DEV.print(F("[ID"));
         SERIAL_DEV.print(DLED);
-        SERIAL_DEV.print("]");
-        SERIAL_DEV.print(" DLED = ");
+        SERIAL_DEV.print(F("]"));
+        SERIAL_DEV.print(F(" DLED = "));
         SERIAL_DEV.println(flag);
       #endif
       #ifdef KEYPAD
         flag = bitRead(this->features, KEYPAD);
-        SERIAL_DEV.print("[ID");
-        SERIAL_DEV.print(KEYPAD);
-        SERIAL_DEV.print("]");
-        SERIAL_DEV.print(" KEYPAD = ");
+        SERIAL_DEV.print(F("[ID"));
+        SERIAL_DEV.print(KEYPAD));
+        SERIAL_DEV.print(F("]"));
+        SERIAL_DEV.print(F(" KEYPAD = "));
         SERIAL_DEV.println(flag);
       #endif
 
 
-      SERIAL_DEV.println("------------------- End Feature Map Decode Dump ------------------- ");
+      SERIAL_DEV.println(F("- End Feature Map Decode Dump -"));
     #endif
   }
 };

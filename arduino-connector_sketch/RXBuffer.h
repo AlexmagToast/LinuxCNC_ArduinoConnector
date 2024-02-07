@@ -4,9 +4,9 @@
 class RXBuffer
 {
   public:
-  RXBuffer(const size_t& size)
+  RXBuffer()
   {
-    init(size);
+    
   }
   ~RXBuffer()
   {
@@ -18,13 +18,7 @@ class RXBuffer
 
   void reset()
   {
-    if(_rxBuffer != NULL)
-    {
-      delete [] _rxBuffer;
-    }
-    _rxBuffer = new uint8_t[_size];
     _bytesWritten = 0;
-
   }
 
 
@@ -105,16 +99,10 @@ class RXBuffer
   }
 private:
 
-  void init(const size_t& size)
-  {
-    _size = size;
-    reset(); 
-  }
 
-  uint8_t * _rxBuffer = NULL;
-  uint8_t * _wptr = NULL;
+  uint8_t _rxBuffer[RX_BUFFER_SIZE];
   size_t _bytesWritten = 0; // Current number of bytes written to buffer
-  size_t _size = 0; // Total size of buffer
+  size_t _size = sizeof(_rxBuffer); // Total size of buffer
   uint8_t _delim = 0x00;
 };
 
