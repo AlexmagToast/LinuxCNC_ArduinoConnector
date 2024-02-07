@@ -31,7 +31,7 @@
 #include "RXBuffer.h"
 #endif
 
-//#define MSGPACKETIZER_ENABLE_STREAM
+#define MSGPACKETIZER_ENABLE_STREAM
 #define PACKETIZER_MAX_CALLBACK_QUEUE_SIZE 7
 #define PACKETIZER_MAX_PACKET_QUEUE_SIZE 1
 // msgpack serialized binary size
@@ -48,7 +48,7 @@
 // max data bytes in packet
 #define PACKETIZER_MAX_PACKET_BINARY_SIZE 512
 // max number of callback for one stream
-#define PACKETIZER_MAX_CALLBACK_QUEUE_SIZE 5
+#define PACKETIZER_MAX_CALLBACK_QUEUE_SIZE 7
 // max number of streams
 #define PACKETIZER_MAX_STREAM_MAP_SIZE 1
 
