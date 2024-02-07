@@ -1,0 +1,34 @@
+mcu: 
+  alias: Arduino R4
+  component_name: arduinoR4 # Name of component to use in HAL
+  #dev: /dev/cu.usbmodem14201  # Used for initial programming
+  #dev: /dev/cu.usbmodemF412FA68D6802 
+  #dev: /dev/serial/by-id/usb-Arduino_UNO_R4_Minima_3702190E58313330640933324B572D98-if00
+  dev: /dev/ttyACM0
+  #dev: /dev/serial/by-id/usb-Arduino__www.arduino.cc__Arduino_Mega_2560_55632313438351509070-if00
+  enabled: true
+  #connection: 
+  #  baudrate: 9600
+  io_map:
+        
+    digitalInputs:
+      - pin_id: 2
+        pin_name: din.2 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+        pin_enabled: false
+      - pin_id: 3
+        pin_name: din.3 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+        pin_enabled: false
+
+    digitalOutputs:
+      - pin_id: 13
+        pin_name: dout.13
+        pin_enabled: false
+      - pin_id: 7
+        pin_name: dout.7 #hal pin name
+        pin_enabled: false
+
+  
