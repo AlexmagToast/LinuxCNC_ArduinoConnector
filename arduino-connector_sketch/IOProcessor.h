@@ -6,12 +6,12 @@ namespace Callbacks
 {
   void onPinChange(const protocol::PinChangeMessage& pcm) {
       #ifdef DEBUG_VERBOSE
-        SERIAL_DEV.print(" Callbacks::onPinChange called, featureID = ");
-        SERIAL_DEV.print(pcm.featureID);
-        SERIAL_DEV.print(" Response Req = ");
-        SERIAL_DEV.print(pcm.responseReq);
-        SERIAL_DEV.print(" Message = ");
-        SERIAL_DEV.println(pcm.message);
+        DEBUG_DEV.print(" Callbacks::onPinChange called, featureID = ");
+        DEBUG_DEV.print(pcm.featureID);
+        DEBUG_DEV.print(" Response Req = ");
+        DEBUG_DEV.print(pcm.responseReq);
+        DEBUG_DEV.print(" Message = ");
+        DEBUG_DEV.println(pcm.message);
       #endif
 
       switch (pcm.featureID)
@@ -22,7 +22,7 @@ namespace Callbacks
             if(ConfigManager::GetDigitalOutputsReady() == 0)
             {
               #ifdef DEBUG_VERBOSE
-                SERIAL_DEV.println(F(" Callbacks::onPinChange: GetDigitalOutputsReady() returned FALSE"));
+                DEBUG_DEV.println(F(" Callbacks::onPinChange: GetDigitalOutputsReady() returned FALSE"));
               #endif
               return;
             }
@@ -32,8 +32,8 @@ namespace Callbacks
 
             if (error) {
               #ifdef DEBUG_VERBOSE
-                SERIAL_DEV.print(F(" Callbacks::onPinChange: deserializeJson() of message failed: "));
-                SERIAL_DEV.println(error.c_str());
+                DEBUG_DEV.print(F(" Callbacks::onPinChange: deserializeJson() of message failed: "));
+                DEBUG_DEV.println(error.c_str());
               #endif
               return;
             }
@@ -47,25 +47,25 @@ namespace Callbacks
               if(lid > ConfigManager::GetDigitalOutputPinsLen())
               {
                 #ifdef DEBUG_VERBOSE
-                SERIAL_DEV.print(" Callbacks::onPinChange: Error. logical pin ID ");
-                SERIAL_DEV.print(lid);
-                SERIAL_DEV.println(" is invalid.");
+                DEBUG_DEV.print(" Callbacks::onPinChange: Error. logical pin ID ");
+                DEBUG_DEV.print(lid);
+                DEBUG_DEV.println(" is invalid.");
                 #endif
               }
               else{
                 ConfigManager::dpin & pin = ConfigManager::GetDigitalOutputPins()[lid];
                 #ifdef DEBUG_VERBOSE
-                SERIAL_DEV.print("DOUTPUTS PIN CHANGE!");
-                SERIAL_DEV.print("PIN ID: ");
-                SERIAL_DEV.println(pin.pinID);
-                SERIAL_DEV.print("PID: ");
-                SERIAL_DEV.println(pid);
-                SERIAL_DEV.print("LID: ");
-                SERIAL_DEV.println(lid);
-                SERIAL_DEV.print("Current value:");
-                SERIAL_DEV.println(pin.pinCurrentState);
-                SERIAL_DEV.print("New value:");
-                SERIAL_DEV.println(v);
+                DEBUG_DEV.print("DOUTPUTS PIN CHANGE!");
+                DEBUG_DEV.print("PIN ID: ");
+                DEBUG_DEV.println(pin.pinID);
+                DEBUG_DEV.print("PID: ");
+                DEBUG_DEV.println(pid);
+                DEBUG_DEV.print("LID: ");
+                DEBUG_DEV.println(lid);
+                DEBUG_DEV.print("Current value:");
+                DEBUG_DEV.println(pin.pinCurrentState);
+                DEBUG_DEV.print("New value:");
+                DEBUG_DEV.println(v);
                 #endif
                 pin.pinCurrentState = v;
                 digitalWrite(atoi(pin.pinID.c_str()), v);
@@ -79,19 +79,19 @@ namespace Callbacks
 
   void onConfig(const protocol::ConfigMessage& cm) {
       #ifdef DEBUG
-        SERIAL_DEV.print(F("::onConfig called, featureID = "));
-        SERIAL_DEV.print((int)cm.featureID);
-        SERIAL_DEV.print(F(" Seq = "));
-        SERIAL_DEV.print(cm.seq);
-        SERIAL_DEV.print(F(" Total = "));
-        SERIAL_DEV.println(cm.total);
+        DEBUG_DEV.print(F("::onConfig called, featureID = "));
+        DEBUG_DEV.print((int)cm.featureID);
+        DEBUG_DEV.print(F(" Seq = "));
+        DEBUG_DEV.print(cm.seq);
+        DEBUG_DEV.print(F(" Total = "));
+        DEBUG_DEV.println(cm.total);
         #ifdef DEBUG_VERBOSE
-          SERIAL_DEV.print("Config: ");
-          SERIAL_DEV.println(cm.configString);
+          DEBUG_DEV.print("Config: ");
+          DEBUG_DEV.println(cm.configString);
         #endif
       #endif
-      //SERIAL_DEV.print("Size of Config: ");
-      //SERIAL_DEV.println(strlen(conf));
+      //DEBUG_DEV.print("Size of Config: ");
+      //DEBUG_DEV.println(strlen(conf));
       switch ((int)cm.featureID)
       {
         #ifdef DINPUTS
@@ -108,8 +108,8 @@ namespace Callbacks
 
             if (error) {
               #ifdef DEBUG
-              SERIAL_DEV.print(F("deserializeJson() of DINPUTS failed: "));
-              SERIAL_DEV.println(error.f_str());
+              DEBUG_DEV.print(F("deserializeJson() of DINPUTS failed: "));
+              DEBUG_DEV.println(error.f_str());
               #endif
               break;
             }
@@ -150,8 +150,8 @@ namespace Callbacks
 
             if (error) {
               #ifdef DEBUG
-              SERIAL_DEV.print(F("deserializeJson() of DOUTPUTS failed: "));
-              SERIAL_DEV.println(error.f_str());
+              DEBUG_DEV.print(F("deserializeJson() of DOUTPUTS failed: "));
+              DEBUG_DEV.println(error.f_str());
               #endif
               break;
             }
@@ -186,7 +186,7 @@ namespace Callbacks
         if(ConfigManager::GetDigitalOutputsReady() == 0)
         {
           #ifdef DEBUG_VERBOSE
-            SERIAL_DEV.println(F("Callbacks::onPinChange: GetDigitalOutputsReady() returned FALSE"));
+            DEBUG_DEV.println(F("Callbacks::onPinChange: GetDigitalOutputsReady() returned FALSE"));
           #endif
           return;
         }

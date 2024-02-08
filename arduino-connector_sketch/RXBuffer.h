@@ -71,18 +71,18 @@ class RXBuffer
       
       if( size - fi > 0)
       {
-        //if (getpos((uint8_t*)&d[fi], (size-fi)))
-        //{
-        //  memcpy(_rxBuffer, (void*)&d[fi], (size - fi));
-        //  _bytesWritten = (size - fi);
-        //  onMessage(_rxBuffer, _bytesWritten);
-        //  reset();
-        //}
-        //else
-        //{
-        memcpy(_rxBuffer, (void*)&d[fi], (size - fi));
-        _bytesWritten = (size - fi);
-        //}
+        if (getpos((uint8_t*)&d[fi], (size-fi)))
+        {
+          memcpy(_rxBuffer, (void*)&d[fi], (size - fi));
+          _bytesWritten = (size - fi);
+          onMessage(_rxBuffer, _bytesWritten);
+          reset();
+        }
+        else
+        {
+          memcpy(_rxBuffer, (void*)&d[fi], (size - fi));
+          _bytesWritten = (size - fi);
+        }
       }
     }
     else if( fi == 0 && (_bytesWritten + size) > _size)

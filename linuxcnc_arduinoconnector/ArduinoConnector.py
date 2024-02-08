@@ -125,11 +125,11 @@ class SerialConfigElement(Enum):
 # enum + lamda enables some dark magic elegance.
     
 class ConfigPinTypes(Enum):
-    DIGITAL_INPUTS = ['digitalInputs', lambda yaml, featureID : DigitalPin(yaml=yaml, featureID=featureID, halPinDirection=HalPinDirection.HAL_OUT), 1]
-    DIGITAL_OUTPUTS = ['digitalOutputs', lambda yaml, featureID : DigitalPin(yaml=yaml, featureID=featureID, halPinDirection=HalPinDirection.HAL_IN), 2]
-    ANALOG_INPUTS = ['analogInputs', lambda yaml, featureID : AnalogPin(yaml=yaml,featureID=featureID, halPinDirection=HalPinDirection.HAL_OUT), 3]
-    ANALOG_OUTPUTS = ['analogOutputs',  lambda yaml, featureID : AnalogPin(yaml=yaml, featureID=featureID, halPinDirection=HalPinDirection.HAL_IN), 4]
-    PWM_OUTPUTS = ['pwmOutputs',  lambda yaml, featureID : ArduinoPin(yaml=yaml, featureID=featureID, pinType=ConfigPinTypes.PWM_OUTPUTS, halPinDirection=HalPinDirection.HAL_IN), 5]
+    DIGITAL_INPUTS = ['digitalInputs', lambda yaml, featureID : DigitalPin(yaml=yaml, featureID=featureID, halPinDirection=HalPinDirection.HAL_OUT), 4] # TODO: Dont hardcode feature ID, dumbass.
+    DIGITAL_OUTPUTS = ['digitalOutputs', lambda yaml, featureID : DigitalPin(yaml=yaml, featureID=featureID, halPinDirection=HalPinDirection.HAL_IN), 5]
+    ANALOG_INPUTS = ['analogInputs', lambda yaml, featureID : AnalogPin(yaml=yaml,featureID=featureID, halPinDirection=HalPinDirection.HAL_OUT), 6]
+    ANALOG_OUTPUTS = ['analogOutputs',  lambda yaml, featureID : AnalogPin(yaml=yaml, featureID=featureID, halPinDirection=HalPinDirection.HAL_IN), 7]
+    PWM_OUTPUTS = ['pwmOutputs',  lambda yaml, featureID : ArduinoPin(yaml=yaml, featureID=featureID, pinType=ConfigPinTypes.PWM_OUTPUTS, halPinDirection=HalPinDirection.HAL_IN), 8]
 
     def __str__(self) -> str:
         return self.value[0]
@@ -440,21 +440,13 @@ class MessageType(IntEnum):
 
 FeatureTypes = {
     'DEBUG': 0,
-    'DIGITAL_INPUTS':1,
-    'DIGIAL_OUTPUTS':2,
-    'ANALOG_INPUTS':3,
-    'ANALOG_OUTPUTS':4,
-    
-    #'PWMOUTPUTS:':4,
-    #'AINPUTS':5,
-    #'DALLAS_TEMPERATURE_SENSOR':6,
-    #'LPOTIS':7,
-    #'BINSEL':8,
-    #'QUADENC':9,
-    #'JOYSTICK':10,
-    #'STATUSLED':11,
-    #'DLED':12,
-    #'KEYPAD':13
+    'DEBUG_VERBOSE': 1,
+    'FEATUREMAP': 2,
+    'LOWMEM': 3,
+    'DIGITAL_INPUTS':4,
+    'DIGIAL_OUTPUTS':5,
+    'ANALOG_INPUTS':6,
+    'ANALOG_OUTPUTS':7
 }
 ConnectionFeatureTypes = {
     'SERIAL_TO_LINUXCNC':1,
@@ -514,18 +506,24 @@ class FeatureMapDecoder:
 class MessageDecoder:
     def __init__(self, b:bytearray):
         self.parseBytes(b)
-
-    def validateCRC(self, data:bytearray, crc:bytes):
-        hash = crc8.crc8()
-        hash.update(data)
-        #d = hash.digest()#.to_bytes(1, 'big')
-        if hash.digest() == crc:#.to_bytes(1,'big'):
-            return True
-        else:
-            return False
         
     def parseBytes(self, b:bytearray):
         logging.debug(f"PYDEBUG: cobs encoded: {b}")
+        decoded = cobs.decode(b)#[:-1]
+        logging.debug(f"PYDEBUG: cobs decoded: {decoded}")
+        #strb = ''
+        #for b1 in decoded:
+        #    strb += f'{hex(b1)}, '
+        #print(strb)
+        self.payload = msgpack.loads(decoded)
+        #self.messageType = 
+        logging.debug(f"PYDEBUG: msgpack json decoded: {self.payload}")
+        if 'mt' not in self.payload:
+            raise Exception("PYDEBUG: Message type undefined.")
+        self.messageType = self.payload['mt']
+        #self.payload = msgpack.unpackb(decoded, use_list=True, raw=False)
+        #pass
+        '''
         strb = ''
         for b1 in bytes(b):
             strb += f'{hex(b1)}, '
@@ -545,16 +543,33 @@ class MessageDecoder:
             raise Exception(f"PYDEBUG: Error. CRC validation failed for received message. Bytes = {b}")
         self.payload = msgpack.unpackb(data, use_list=True, raw=False)
 
+        '''
+
 class MessageEncoder:
+
     #def __init__(self):
         #self.encodeBytes()
 
-    def getCRC(self, data:bytes) -> bytes:
-        hash = crc8.crc8()
-        hash.update(data)
-        return hash.digest()
-        
-    def encodeBytes(self, mt:MessageType, payload:list) -> bytes:
+    def encodeBytes(self, payload) -> bytes:
+        packed = msgpack.dumps(payload)
+        encoded = cobs.encode(packed)
+        return encoded
+        #logging.debug(f"PYDEBUG: cobs encoded: {b}")
+        '''
+        decoded = cobs.decode(b)#[:-1]
+        logging.debug(f"PYDEBUG: cobs decoded: {decoded}")
+        #strb = ''
+        #for b1 in decoded:
+        #    strb += f'{hex(b1)}, '
+        #print(strb)
+        self.payload = msgpack.loads(decoded)
+        #self.messageType = 
+        logging.debug(f"PYDEBUG: msgpack json decoded: {self.payload}")
+        if 'mt' not in self.payload:
+            raise Exception("PYDEBUG: Message type undefined.")
+        self.messageType = self.payload['mt']
+    
+
         #mt_enc = msgpack.packb(mt)
         data_enc = msgpack.packb(payload)  
         #print(f'DATA = {data_enc}')
@@ -568,6 +583,7 @@ class MessageEncoder:
         #    strb += f'[{hex(b)}]'
         #print(strb)
         return encoded
+        '''
 
 class ProtocolMessage:
     def __init__(self, messageType:MessageType):
@@ -576,7 +592,7 @@ class ProtocolMessage:
     
     def packetize(self):
         me = MessageEncoder()
-        return me.encodeBytes(self.mt, self.payload)
+        return me.encodeBytes(self.payload) + b'\x00'
         
     def depacketize(self):
         pass
@@ -584,21 +600,26 @@ class ProtocolMessage:
 class ConfigMessage(ProtocolMessage):
     def __init__(self, configJSON, seq:int, total:int, featureID:str):
         super().__init__(messageType=MessageType.MT_CONFIG)
-        self.payload = [] 
-        self.payload.append(featureID)
-        self.payload.append(seq)
-        self.payload.append(total)
-        self.payload.append(configJSON)
+        self.payload = {}
+        self.payload['mt'] = MessageType.MT_CONFIG
+        self.payload['fi'] = featureID
+        self.payload['se'] = seq
+        self.payload['to'] = total
+        self.payload['cs'] = configJSON
+        #self.payload.append(featureID)
+        #self.payload.append(seq)
+        #self.payload.append(total)
+        #self.payload.append(configJSON)
 
 class PinChangeMessage(ProtocolMessage):
     def __init__(self, featureID:int=0, seqID:int=0, responseReq:int=0, message:str=''):
         super().__init__(messageType=MessageType.MT_PINCHANGE)
-        self.payload = [] 
-        self.payload.append(featureID)
-        self.payload.append(seqID)
-        self.payload.append(responseReq)
-        self.payload.append(message)
-
+        self.payload = {}
+        self.payload['mt'] = MessageType.MT_PINCHANGE
+        self.payload['fi'] = featureID
+        self.payload['si'] = seqID
+        self.payload['rr'] = responseReq
+        self.payload['ms'] = message
     #def __init__(self, md:MessageDecoder):
     #    super().__init__(messageType=MessageType.MT_PINCHANGE)
     #    self.payload = md.payload
@@ -606,6 +627,40 @@ class PinChangeMessage(ProtocolMessage):
 class HandshakeMessage(ProtocolMessage):
     def __init__(self, md:MessageDecoder):
         super().__init__(messageType=MessageType.MT_HANDSHAKE)
+        #{'mt': 3, 'pv': 1, 'fm': 1, 'to': 20000, 'ps': 0, 'ui': 'ND', 'dp': 53, 'ai': 19, 'ao': 2}
+        if 'pv' not in md.payload:
+            raise Exception(f'Protocol version undefined')
+        self.protocolVersion = md.payload['pv']
+        if self.protocolVersion != protocol_ver:
+            raise Exception(f'Expected protocol version {protocol_ver}, got {self.protocolVersion}')
+        if 'fm' not in md.payload:
+            raise Exception(f'Enabled features undefined')
+        self.enabledFeatures = FeatureMapDecoder(md.payload['fm'])
+        if 'to' not in md.payload:
+            raise Exception(f'Timeout undefined')
+        self.timeout = md.payload['to']
+        if 'ps' not in md.payload:
+            raise Exception(f'Profile signature undefined')
+        self.profileSignature = md.payload['ps']
+        if 'ui' in md.payload:
+            self.UID = md.payload['ui']
+        else:
+            self.UID = 'UNDEFINED'
+        if 'dp' in md.payload:
+            self.digitalPins = md.payload['dp']
+        else:
+            self.digitalPins = 0
+        if 'ai' in md.payload:
+            self.analogInputs = md.payload['ai']
+        else:
+            self.analogInputs = 0
+        if 'ao' in md.payload:
+            self.analogOutputs = md.payload['ao']
+        else:
+            self.analogOutputs = 0
+        
+        self.payload = md.payload
+        '''
         self.protocolVersion = md.payload[0]
         if self.protocolVersion != protocol_ver:
             raise Exception(f'Expected protocol version {protocol_ver}, got {self.protocolVersion}')
@@ -618,7 +673,7 @@ class HandshakeMessage(ProtocolMessage):
         self.analogInputs = md.payload[6]
         self.analogOutputs = md.payload[7]
         self.payload = md.payload
-    
+        '''
 
 
 RX_MAX_QUEUE_SIZE = 10
@@ -676,7 +731,7 @@ class Connection:
                 logging.debug(debugstr)
                 return
             self.lastMessageReceived = time.time()
-            hb = MessageEncoder().encodeBytes(mt=MessageType.MT_HEARTBEAT, payload=m.payload)
+            hb = MessageEncoder().encodeBytes(payload=m.payload) + b'\x00'
             self.sendMessage(bytes(hb))
 
         if m.messageType in self._messageReceivedCallbacks.keys():
@@ -873,6 +928,7 @@ class SerialConnection(Connection):
                             [chunk, self.rxBuffer] = self.rxBuffer.split(b'\x00', maxsplit=1)
                             logging.debug(f'PYDEBUG: SerialConnection::rxTask, dev={self.dev}, chunk bytes: {chunk}')
                             try:
+                                pass
                                 md = MessageDecoder(chunk)
                                 self.onMessageRecv(m=md)
                             except Exception as ex:
@@ -964,15 +1020,15 @@ class ArduinoConnection:
     def onMessage(self, m:MessageDecoder):
         if debug_comm:print(f'PYDEBUG onMessageRecv() - Message Type {m.messageType}, Values = {m.payload}')
         if m.messageType == MessageType.MT_PINCHANGE:
-            #if debug_comm:print(f'PYDEBUG onMessageRecv() - Received MT_PINCHANGE, Values = {m.payload}')
+            if debug_comm:print(f'PYDEBUG onMessageRecv() - Received MT_PINCHANGE, Values = {m.payload}')
 
             try:
                 #pc = PinChangeMessage()
                 #pc.parse(m)
-                fid = m.payload[0]
-                sid = m.payload[1]
-                rr = m.payload[2]
-                ms = m.payload[3]
+                fid = m.payload['fi']
+                sid = m.payload['si']
+                rr = m.payload['rr']
+                ms = m.payload['ms']
 
 
                 for k, v in self.settings.io_map.items():
@@ -1001,6 +1057,7 @@ class ArduinoConnection:
                         
                         continue
                     else:
+                        
                         #print(f'VALUE CHANGED!!! Old Value {v1.halPinCurrentValue}, New Value {r}')
                         ## Send with logical pin ID to avoid for loop of pins by arduino.
                         '''
@@ -1014,7 +1071,7 @@ class ArduinoConnection:
                         '''
                         j = {
                         "pa": [
-                            {"lid": v1.pinLogicalID, "pid": int(v1.pinID), "v":r}
+                            {"lid": v1.pinLogicalID, "pid": int(v1.pinID), "v":int(r)}
                         ]
                         }
                         #v1.halPinCurrentValue = r

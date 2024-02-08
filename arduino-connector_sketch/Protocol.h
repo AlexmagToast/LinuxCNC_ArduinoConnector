@@ -89,30 +89,65 @@ namespace protocol
   };
 
   struct HandshakeMessage {
+      
       uint8_t protocolVersion = PROTOCOL_VERSION;
-      uint64_t featureMap;
+      uint32_t featureMap;
       uint32_t timeout;
-      //uint16_t maxMsgSize;
       uint32_t profileSignature = 0; // 0 indicates no config, >0 indicates an existing config
-      String uid;
-      //#ifdef NUM_DIGITAL_PINS
-      //uint8_t   digitalPins = NUM_DIGITAL_PINS;
-      //#else
-      uint8_t   digitalPins = 0;
-      //#endif
-      //#ifdef NUM_ANALOG_INPUTS
-      //uint8_t   analogInputs = NUM_ANALOG_INPUTS;
-      //#else
-      uint8_t analogInputs = 0;
-      //#endif
-      //#ifdef NUM_ANALOG_OUTPUTS
-      //uint8_t   analogOutputs = NUM_ANALOG_OUTPUTS;
-      //#else
-      uint8_t   analogOutputs = 0;
-      //#endif
-      //#ifdef ENABLE_MSGPACKETIZER_CALLBACKS
+      #if !defined(INTEGRATED_CALLBACKS_LOWMEMORY)
+        String uid;
+        #ifdef NUM_DIGITAL_PINS
+        uint8_t   digitalPins = NUM_DIGITAL_PINS;
+        #else
+        uint8_t   digitalPins = 0;
+        #endif
+        #ifdef NUM_ANALOG_INPUTS
+        uint8_t   analogInputs = NUM_ANALOG_INPUTS;
+        #else
+        uint8_t analogInputs = 0;
+        #endif
+        #ifdef NUM_ANALOG_OUTPUTS
+        uint8_t   analogOutputs = NUM_ANALOG_OUTPUTS;
+        #else
+        uint8_t   analogOutputs = 0;
+        #endif
+      #endif
+
+      #ifdef ENABLE_MSGPACKETIZER_CALLBACKS
       MSGPACK_DEFINE(protocolVersion, featureMap, timeout, profileSignature, uid, digitalPins, analogInputs, analogOutputs);
-      //#endif 
+      #endif 
+      #ifdef INTEGRATED_CALLBACKS
+      void toJSON(JsonDocument& doc)
+      {
+        //JsonDocument doc;
+        doc[F("mt")] = MessageTypes::MT_HANDSHAKE;
+        doc[F("pv")] = protocolVersion;
+        doc[F("fm")] = featureMap;
+        doc[F("to")] = timeout;
+        doc[F("ps")] = profileSignature;
+        #if !defined(INTEGRATED_CALLBACKS_LOWMEMORY)
+          doc[F("ui")] = uid;
+          doc[F("dp")] = digitalPins;
+          doc[F("ai")] = analogInputs;
+          doc[F("ao")] = analogOutputs;
+        #endif
+        //return doc;
+      }
+      void fromJSON(const JsonDocument& doc)
+      {
+        protocolVersion = doc[F("pv")];
+        featureMap = doc[F("fm")];
+        timeout = doc[F("to")];
+        profileSignature = doc[F("ps")];
+        #if !defined(INTEGRATED_CALLBACKS_LOWMEMORY)
+          uid = doc[F("ui")];
+          digitalPins = doc[F("dp")];
+          analogInputs = doc[F("ai")];
+          analogOutputs = doc[F("ao")];
+        #endif
+        //return doc;
+      }
+      #endif
   }hm;
 
   // First ResponseMessage received by the Arduino is in response to the Python side receiving the HandshakeMessage from the Arduiono.  The arduinoIndex value
@@ -124,9 +159,28 @@ namespace protocol
       uint8_t seqID;  
       uint8_t responseReq; // Indicates if a response is required from recepient
       String message;
-      //#ifdef ENABLE_MSGPACKETIZER_CALLBACKS
+      #ifdef ENABLE_MSGPACKETIZER_CALLBACKS
       MSGPACK_DEFINE(featureID, seqID, responseReq, message); 
-      //#endif
+      #endif
+      #ifdef INTEGRATED_CALLBACKS
+      void toJSON(JsonDocument& doc)
+      {
+        //JsonDocument doc;
+        doc[F("mt")] = MessageTypes::MT_PINCHANGE;
+        doc[F("fi")] = featureID;
+        doc[F("si")] = seqID;
+        doc[F("rr")] = responseReq;
+        doc[F("ms")] = message;
+      }
+      void fromJSON(const JsonDocument& doc)
+      {
+        featureID = doc[F("fi")];
+        seqID = doc[F("si")];
+        responseReq = doc[F("rs")];
+        String m = doc[F("ms")];
+        message = m;
+      }
+      #endif
   }pcm;
   
   struct PinChangeResponseMessage {
@@ -134,14 +188,14 @@ namespace protocol
       uint8_t seqID;
       uint8_t response; // 1 - success/ACK, 0 - error/NAK
       String message;
-      //#ifdef ENABLE_MSGPACKETIZER_CALLBACKS
+      #ifdef ENABLE_MSGPACKETIZER_CALLBACKS
       MSGPACK_DEFINE(featureID, seqID, message); 
-      //#endif
+      #endif
   }pcrm;
 /*s
   struct ArduinoPropertiesMessage {
     String    uid;
-    uint64_t  featureMap;
+    uint32_t  featureMap;
     uint8_t   digitalPins;
     uint8_t   analogInputs;
     uint8_t   analogOutputs;
@@ -151,10 +205,18 @@ namespace protocol
   }apm;
 */
   struct HeartbeatMessage {
-      uint8_t boardIndex;
-      //#ifdef ENABLE_MSGPACKETIZER_CALLBACKS
+      uint8_t boardIndex = 0;
+    #ifdef ENABLE_MSGPACKETIZER_CALLBACKS
       MSGPACK_DEFINE(boardIndex); 
-      //#endif
+    #endif
+    #ifdef INTEGRATED_CALLBACKS
+      void toJSON(JsonDocument& doc)
+      {
+        //JsonDocument doc;
+        doc[F("mt")] = MessageTypes::MT_HEARTBEAT;
+        doc[F("bi")] = 0;
+      }
+    #endif
   }hb;
 
   /*
@@ -171,22 +233,42 @@ namespace protocol
   }pm;
   */
   struct ConfigMessage {
-      uint64_t featureID;
+      uint32_t featureID;
       uint16_t seq;
       uint16_t total;
       String configString; 
-      //#ifdef ENABLE_MSGPACKETIZER_CALLBACKS
+      #ifdef ENABLE_MSGPACKETIZER_CALLBACKS
       MSGPACK_DEFINE(featureID, seq, total, configString); 
-      //#endif
+      #endif
+      #ifdef INTEGRATED_CALLBACKS
+      void toJSON(JsonDocument& doc)
+      {
+        //JsonDocument doc;
+        doc[F("mt")] = MessageTypes::MT_CONFIG;
+        doc[F("fi")] = featureID;
+        doc[F("se")] = seq;
+        doc[F("to")] = total;
+        doc[F("cs")] = configString;
+      }
+      void fromJSON(const JsonDocument& doc)
+      {
+        //doc[F("mt")] = MessageTypes::MT_PINCONFIG;
+        featureID = doc[F("fi")];//= featureID;
+        seq = doc[F("se")];// = sequence;
+        total = doc[F("to")];// = total;
+        String s = doc[F("cs")];
+        configString = s;
+      }
+      #endif
   }cfg;
 
   #ifdef DEBUG
   struct DebugMessage {
       //uint8_t boardIndex = BOARD_INDEX+1;
       String message;
-      //#ifdef ENABLE_MSGPACKETIZER_CALLBACKS
+      #ifdef ENABLE_MSGPACKETIZER_CALLBACKS
       MSGPACK_DEFINE(message); 
-      //#endif
+      #endif
   }dm;
   #endif
 
