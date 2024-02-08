@@ -1118,7 +1118,7 @@ class ArduinoConnection:
         
         if self.serialConn.getConnectionState() == ConnectionState.CONNECTED and self.settings.profileSignature is not self.serialConn.arduinoProfileSignature:
             
-            time.sleep(1)
+            #time.sleep(5)
             j = self.settings.configJSON()
             #config_json = json.dumps(j)
             #h = int(hashlib.sha256(config_json.encode('utf-8')).hexdigest(), 16) % 10**8
@@ -1133,12 +1133,14 @@ class ArduinoConnection:
                     try:
                         self.serialConn.sendMessage(cf.packetize())
                         self.serialConn.arduino.flush()
+                        #if seq == 1:
+                        #    time.sleep(5)
                     except Exception as error:
                         just_the_string = traceback.format_exc()
                         logging.debug(f'PYDEBUG: ArduinoConnection::doWork, dev={self.settings.dev}, alias={self.settings.alias}, Exception: {str(error)}, Traceback = {just_the_string}')
                         # Future TODO: Consider doing something intelligent and not just reporting an error. Maybe increment a hal pin that reflects error counts?
                         return
-                    time.sleep(.250)
+                    time.sleep(.01)
             self.serialConn.arduinoProfileSignature = self.settings.profileSignature
     
 

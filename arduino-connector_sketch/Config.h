@@ -5,7 +5,7 @@
 
 
 #define DEBUG                       0
-#define DEBUG_VERBOSE               1
+//#define DEBUG_VERBOSE               1
 #define FEATUREMAP                  2
 #define LOWMEM                      3
 
