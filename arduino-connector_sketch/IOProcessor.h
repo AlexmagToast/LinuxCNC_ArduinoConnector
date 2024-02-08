@@ -115,13 +115,13 @@ namespace Callbacks
             }
             
             ConfigManager::dpin d = (ConfigManager::dpin){
-              .pinID =  doc["pinID"],
-              .pinInitialState =  doc["pinInitialState"],
-              .pinConnectedState = doc["pinConnectedState"],
-              .pinDisconnectedState = doc["pinDisconnectedState"],
-              .debounce = doc["pinDebounce"],
-              .inputPullup = doc["inputPullup"],
-              .logicalID = doc["logicalID"],
+              .pinID =  doc["id"],
+              .pinInitialState =  doc["is"],
+              .pinConnectedState = doc["cs"],
+              .pinDisconnectedState = doc["ds"],
+              .debounce = doc["pd"],
+              .inputPullup = doc["ip"],
+              .logicalID = doc["li"],
               .pinCurrentState = 0,
               .t = 0
             };
@@ -157,13 +157,13 @@ namespace Callbacks
             }
             
             ConfigManager::dpin d = (ConfigManager::dpin){
-              .pinID =  doc["pinID"],
-              .pinInitialState =  doc["pinInitialState"],
-              .pinConnectedState = doc["pinConnectedState"],
-              .pinDisconnectedState = doc["pinDisconnectedState"],
-              .debounce = doc["pinDebounce"],
-              .inputPullup = doc["inputPullup"],
-              .logicalID = doc["logicalID"],
+              .pinID =  doc["id"],
+              .pinInitialState =  doc["is"],
+              .pinConnectedState = doc["cs"],
+              .pinDisconnectedState = doc["ds"],
+              .debounce = doc["pd"],
+              .inputPullup = doc["ip"],
+              .logicalID = doc["li"],
               .pinCurrentState = 0,
               .t = 0
             };
@@ -172,6 +172,86 @@ namespace Callbacks
             if(d.pinInitialState != -1)
             {
               digitalWrite(atoi(d.pinID.c_str()), d.pinInitialState);
+            }
+          }
+          break;
+        
+        #endif
+        #ifdef AINPUTS
+        
+          case AINPUTS:
+          {
+            if(cm.seq == 0)
+            {
+              ConfigManager::InitAnalogInputPins(cm.total);
+            }
+            JsonDocument doc;
+
+            DeserializationError error = deserializeJson(doc, cm.configString);
+
+            if (error) {
+              #ifdef DEBUG
+              DEBUG_DEV.print(F("deserializeJson() of AINPUTS failed: "));
+              DEBUG_DEV.println(error.f_str());
+              #endif
+              break;
+            }
+
+            ConfigManager::apin a = (ConfigManager::apin){
+              .pinID =  doc["id"],
+              .pinInitialState =  doc["is"],
+              .pinConnectedState = doc["cs"],
+              .pinDisconnectedState = doc["ds"],
+              .pinSmoothing = doc["ps"],
+              .pinMaxValue = doc["pm"],
+              .pinMinValue = doc["pn"],
+              .logicalID = doc["li"],
+              .pinCurrentState = 0,
+              .t = 0
+            };
+            pinMode(atoi(a.pinID.c_str()), INPUT);
+            ConfigManager::SetAnalogInputPin(a, a.logicalID);
+          }
+          break;
+        
+        #endif
+        #ifdef AOUTPUTS
+        
+          case AOUTPUTS:
+          {
+            if(cm.seq == 0)
+            {
+              ConfigManager::InitAnalogOutputPins(cm.total);
+            }
+            JsonDocument doc;
+
+            DeserializationError error = deserializeJson(doc, cm.configString);
+
+            if (error) {
+              #ifdef DEBUG
+              DEBUG_DEV.print(F("deserializeJson() of AOUTPUTS failed: "));
+              DEBUG_DEV.println(error.f_str());
+              #endif
+              break;
+            }
+            
+            ConfigManager::apin a = (ConfigManager::apin){
+              .pinID =  doc["pinID"],
+              .pinInitialState =  doc["is"],
+              .pinConnectedState = doc["cs"],
+              .pinDisconnectedState = doc["ds"],
+              .pinSmoothing = doc["ps"],
+              .pinMaxValue = doc["pm"],
+              .pinMinValue = doc["pn"],
+              .logicalID = doc["li"],
+              .pinCurrentState = 0,
+              .t = 0
+            };
+            pinMode(atoi(a.pinID.c_str()), OUTPUT); 
+            ConfigManager::SetAnalogOutputPin(a, a.logicalID);
+            if(a.pinInitialState != -1)
+            {
+              analogWrite(atoi(a.pinID.c_str()), a.pinInitialState);
             }
           }
           break;

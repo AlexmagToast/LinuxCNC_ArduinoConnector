@@ -285,7 +285,75 @@ void loop() {
   //for (dpin & pin : ConfigManager.GetDigitalInputPins())
 
   #endif
+  #ifdef AINPUTS
   
+  if(ConfigManager::GetAnalogInputsReady() == 1)
+  {
+    String output; // Used below to output Io update messages
+    JsonDocument doc;
+    JsonArray pa; 
+
+    //pa.clear();
+    //doc.clear();
+    pa = doc["pa"].to<JsonArray>();
+
+    for( int x = 0; x < ConfigManager::GetAnalogInputPinsLen(); x++ )
+    {
+      
+      ConfigManager::apin & pin = ConfigManager::GetAnalogInputPins()[x];
+      int v = analogRead(atoi(pin.pinID.c_str()));
+  
+      if(pin.pinCurrentState != v)
+      {
+        #ifdef DEBUG_VERBOSE
+        DEBUG_DEV.print(F("AINPUTS PIN CHANGE!"));
+        DEBUG_DEV.print(F("PIN:"));
+        DEBUG_DEV.println(pin.pinID);
+        DEBUG_DEV.print(F("Current value: "));
+        DEBUG_DEV.println(pin.pinCurrentState);
+        DEBUG_DEV.print(F("New value: "));
+        DEBUG_DEV.println(v);
+        #endif
+        
+        pin.pinCurrentState = v;
+        pin.t = currentMills;
+        
+        // send update out
+        //serialClient
+
+        //doc.clear();
+
+        JsonObject pa_0 = pa.add<JsonObject>();
+        pa_0["lid"] = x;
+        pa_0["pid"] = atoi(pin.pinID.c_str());
+        pa_0["v"] = v;
+        
+        //doc.shrinkToFit();  // optional
+        if(pa.size() > 0)
+        {
+          output = "";
+          serializeJson(doc, output);
+          #ifdef DEBUG_VERBOSE
+          DEBUG_DEV.print(F("JSON = "));
+          DEBUG_DEV.println(output);
+          #endif
+          uint8_t seqID = 0;
+          uint8_t resp = 0; // Future TODO: Consider requiring ACK/NAK, maybe.
+          uint8_t f = AINPUTS;
+          //String o = String(output.c_str());
+          serialClient.SendPinChangeMessage(f, seqID, resp, output);
+          pa.clear();
+        }
+        
+      }
+
+
+    }
+
+  }
+  //for (dpin & pin : ConfigManager.GetDigitalInputPins())
+
+  #endif
 /*
   #ifdef DOUTPUTS
   for (dpin pin : doutput_arr)

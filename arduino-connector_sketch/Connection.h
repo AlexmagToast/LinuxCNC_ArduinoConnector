@@ -433,7 +433,7 @@ protected:
   size_t _jsonToMsgPack(JsonDocument& doc, uint8_t * buffer, size_t s)
   {
     size_t sz = serializeMsgPack(doc, (uint8_t*)&buffer[1], s-1);
-    COM_DEV.println(sz);
+    //COM_DEV.println(sz);
     sz = cobs::encode(buffer, sz+1);
     buffer[sz] = 0x00;
     return sz+1;
