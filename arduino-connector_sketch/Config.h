@@ -12,7 +12,7 @@
 #define DINPUTS                     4
 #define DOUTPUTS                    5 
 #define AINPUTS                     6
-#define AOUTPUTS                    8                     
+#define AOUTPUTS                    7                    
 //#define SINPUTS                   3                     
 
 //#define PWMOUTPUTS                4
@@ -56,7 +56,7 @@ const uint16_t SERIAL_STARTUP_DELAY = 5000; // In milliseconds
 const uint16_t SERIAL_RX_TIMEOUT = 10000;
 
 #ifdef INTEGRATED_CALLBACKS
-const uint16_t RX_BUFFER_SIZE = 512;
+const uint16_t RX_BUFFER_SIZE = 256;
 #endif
 
 #define DEBUG_DEV Serial

@@ -1044,13 +1044,14 @@ class ArduinoConnection:
 
 
                 for k, v in self.settings.io_map.items():
-                    if v.pinEnabled == False:
-                        logging.debug(f'PYDEBUG: Error. Cannot update PIN that is disabled by the yaml profile.') 
-                        break
+
                     if fid == k.value[FEATURE_INDEX_KEY]:
                         j = json.loads(ms)
                         for val in j['pa']:
                             for pin in v:
+                                if pin.pinEnabled == False:
+                                    logging.debug(f'PYDEBUG: Error. Cannot update PIN that is disabled by the yaml profile.') 
+                                    return
                                 if pin.pinID == val['pid']:
                                     self.component[pin.pinName] = val['v']
                         break
@@ -1141,7 +1142,7 @@ class ArduinoConnection:
                 total = len(v)
                 seq = 0
                 for k1, v1 in v.items():
-                    v1['logicalID'] = k1
+                    v1['li'] = k1
                     #print(v1)
                     cf = ConfigMessage(configJSON=json.dumps(v1), seq=seq, total=total, featureID=v1['fi'])
                     print(json.dumps(v1))

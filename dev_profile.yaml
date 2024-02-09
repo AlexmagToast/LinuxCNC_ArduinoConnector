@@ -5,7 +5,7 @@ mcu:
   #dev: /dev/cu.usbmodemF412FA68D6802 
   dev: /dev/serial/by-id/usb-Arduino__www.arduino.cc__0042_55739323037351E04120-if00
   #dev: /dev/serial/by-id/usb-FTDI_FT232R_USB_UART_B001AYY4-if00-port0
-  enabled: true
+  enabled: false
 
   connection: 
     baudrate: 115200
@@ -109,7 +109,7 @@ mcu:
   alias: M4 Grand Central
   component_name: arduinom4 # Name of component to use in HAL
   dev: /dev/serial/by-id/usb-Adafruit_Grand_Central_M4_AB5B58B75335353334202020FF184219-if00
-  enabled: false
+  enabled: true
   io_map:
     digitalOutputs:
       - pin_id: 2
