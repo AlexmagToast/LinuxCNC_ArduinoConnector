@@ -212,11 +212,13 @@ class ArduinoPin:
         return f'pinName = {self.pinName}, pinType={self.pinType.name}, halPinType={self.halPinType}, pinEnabled={self.pinEnabled}, pinIniitalState={self.pinInitialState}, pinConnectedState={self.pinConnectedState}, pinDisconnectedState={self.pinDisconnectedState}'
     
     def toJson(self): # This is the JSON sent to the Arduino during configuration.  Should only include the values needed by the Arduino to limit memory footprint/processing within the Arduino.
-        return {'featureID' : self.featureID,
-                'pinID': self.pinID,
-                'pinInitialState': self.pinInitialState,
-                'pinConnectedState': self.pinConnectedState,
-                'pinDisconnectedState': self.pinDisconnectedState}
+        return {'fi' : self.featureID,
+                'id': self.pinID,
+                'is': self.pinInitialState,
+                'cs': self.pinConnectedState,
+                'ds': self.pinDisconnectedState}
+    
+
 
     
 class AnalogPin(ArduinoPin):
@@ -231,6 +233,7 @@ class AnalogPin(ArduinoPin):
                         yaml=yaml)
         
         # set the defaults, which can be overriden through the yaml profile
+        
         self.pinSmoothing = AnalogConfigElement.PIN_SMOOTHING.value[DEFAULT_VALUE_KEY] #smoothing const   #optional
         self.pinMinVal = AnalogConfigElement.PIN_MIN_VALUE.value[DEFAULT_VALUE_KEY] #minimum value         #optional     these could be used to convert the value to 0-10 for example
         self.pinMaxVal = AnalogConfigElement.PIN_MAX_VALUE.value[DEFAULT_VALUE_KEY] #maximum value      #optional
@@ -251,6 +254,14 @@ class AnalogPin(ArduinoPin):
             self.pinMinVal = int(doc[AnalogConfigElement.PIN_MIN_VALUE.value[0]])
         if AnalogConfigElement.PIN_MAX_VALUE.value[0] in doc.keys():
             self.pinMaxVal = int(doc[AnalogConfigElement.PIN_MAX_VALUE.value[0]])
+
+    def toJson(self):
+        s = ArduinoPin.toJson(self)
+        s['ps'] = self.pinSmoothing
+        s['pm'] = self.pinMaxVal
+        s['pn'] = self.pinMinVal
+
+        return s
 
 class DigitalPin(ArduinoPin):
     def __init__(self,  halPinDirection:HalPinDirection,featureID:int=0, yaml:dict = None):
@@ -283,8 +294,8 @@ class DigitalPin(ArduinoPin):
         
     def toJson(self):
         s = ArduinoPin.toJson(self)
-        s['pinDebounce'] = self.pinDebounce
-        s['inputPullup'] = self.inputPullup 
+        s['pd'] = self.pinDebounce
+        s['ip'] = self.inputPullup 
         return s
 
 
@@ -1009,7 +1020,8 @@ class ArduinoConnection:
 
         for k, v in settings.io_map.items():
             for v1 in v:
-                v1.halPinConnection = HalPinConnection(component=self.component, pinName=v1.pinName, pinType=v1.halPinType, pinDirection=v1.halPinDirection)
+                if v1.pinEnabled == True: 
+                    v1.halPinConnection = HalPinConnection(component=self.component, pinName=v1.pinName, pinType=v1.halPinType, pinDirection=v1.halPinDirection)
         self.component.ready()
         self.serialConn.messageReceivedSubscribe(mt=MessageType.MT_PINCHANGE, callback=lambda m: self.onMessage(m))
             
@@ -1032,6 +1044,9 @@ class ArduinoConnection:
 
 
                 for k, v in self.settings.io_map.items():
+                    if v.pinEnabled == False:
+                        logging.debug(f'PYDEBUG: Error. Cannot update PIN that is disabled by the yaml profile.') 
+                        break
                     if fid == k.value[FEATURE_INDEX_KEY]:
                         j = json.loads(ms)
                         for val in j['pa']:
@@ -1128,7 +1143,8 @@ class ArduinoConnection:
                 for k1, v1 in v.items():
                     v1['logicalID'] = k1
                     #print(v1)
-                    cf = ConfigMessage(configJSON=json.dumps(v1), seq=seq, total=total, featureID=v1['featureID'])
+                    cf = ConfigMessage(configJSON=json.dumps(v1), seq=seq, total=total, featureID=v1['fi'])
+                    print(json.dumps(v1))
                     seq += 1
                     try:
                         self.serialConn.sendMessage(cf.packetize())
@@ -1140,7 +1156,7 @@ class ArduinoConnection:
                         logging.debug(f'PYDEBUG: ArduinoConnection::doWork, dev={self.settings.dev}, alias={self.settings.alias}, Exception: {str(error)}, Traceback = {just_the_string}')
                         # Future TODO: Consider doing something intelligent and not just reporting an error. Maybe increment a hal pin that reflects error counts?
                         return
-                    time.sleep(.01)
+                    time.sleep(.250)
             self.serialConn.arduinoProfileSignature = self.settings.profileSignature
     
 
