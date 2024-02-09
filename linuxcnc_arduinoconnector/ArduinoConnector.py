@@ -906,8 +906,10 @@ class SerialConnection(Connection):
                 if self.arduino == None:
                     self.arduino = serial.Serial(self.dev, baudrate=self.baudRate, timeout=self.timeout, xonxoff=False, rtscts=False, dsrdtr=True)
                     for port in serial.tools.list_ports.comports():
-                        if self.dev in port.device or port.serial_number in self.dev:
-                            self.serial = port.serial_number
+                        if port.serial_number != None:
+                            if self.dev in port.device or port.serial_number in self.dev:
+                                self.serial = port.serial_number
+
                 num_bytes = self.arduino.in_waiting
                 #logging.debug(f'SerialConnection::rxTask, dev={self.dev}, in_waiting={num_bytes}')
                 if num_bytes > 0:
