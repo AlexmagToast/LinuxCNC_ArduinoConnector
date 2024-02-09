@@ -56,7 +56,7 @@ const uint16_t SERIAL_STARTUP_DELAY = 5000; // In milliseconds
 const uint16_t SERIAL_RX_TIMEOUT = 10000;
 
 #ifdef INTEGRATED_CALLBACKS
-const uint16_t RX_BUFFER_SIZE = 1024;
+const uint16_t RX_BUFFER_SIZE = 512;
 #endif
 
 #define DEBUG_DEV Serial
