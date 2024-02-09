@@ -303,7 +303,7 @@ void loop() {
       ConfigManager::apin & pin = ConfigManager::GetAnalogInputPins()[x];
       int v = analogRead(atoi(pin.pinID.c_str()));
   
-      if(pin.pinCurrentState != v)
+      if(pin.pinCurrentState != v && (currentMills - pin.t) > 500)
       {
         #ifdef DEBUG_VERBOSE
         DEBUG_DEV.print(F("AINPUTS PIN CHANGE!"));

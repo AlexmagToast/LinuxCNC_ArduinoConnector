@@ -1044,7 +1044,6 @@ class ArduinoConnection:
 
 
                 for k, v in self.settings.io_map.items():
-
                     if fid == k.value[FEATURE_INDEX_KEY]:
                         j = json.loads(ms)
                         for val in j['pa']:
@@ -1064,7 +1063,7 @@ class ArduinoConnection:
     
     def doFeaturePinUpdates(self):
         for k, v in self.settings.io_map.items():
-            if k.name == ConfigPinTypes.DIGITAL_OUTPUTS.name:
+            if k.name == ConfigPinTypes.DIGITAL_OUTPUTS.name or k.name == ConfigPinTypes.ANALOG_OUTPUTS.name:
                 for v1 in v:
                     
                     #if v1.halPinDirection == HalPinDirection.HAL_OUT:
@@ -1157,7 +1156,7 @@ class ArduinoConnection:
                         logging.debug(f'PYDEBUG: ArduinoConnection::doWork, dev={self.settings.dev}, alias={self.settings.alias}, Exception: {str(error)}, Traceback = {just_the_string}')
                         # Future TODO: Consider doing something intelligent and not just reporting an error. Maybe increment a hal pin that reflects error counts?
                         return
-                    time.sleep(.250)
+                    time.sleep(.05)
             self.serialConn.arduinoProfileSignature = self.settings.profileSignature
     
 

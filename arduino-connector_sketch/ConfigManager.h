@@ -249,8 +249,6 @@ namespace ConfigManager
         DEBUG_DEV.println(pin.pinMaxValue); 
         DEBUG_DEV.print("pinMinValue=");
         DEBUG_DEV.println(pin.pinMinValue); 
-        DEBUG_DEV.print("debounce=");
-        DEBUG_DEV.println(pin.debounce); 
         DEBUG_DEV.print("logicalID=");
         DEBUG_DEV.println(pin.logicalID); 
         DEBUG_DEV.print("pinCurrentState=");
@@ -347,8 +345,6 @@ namespace ConfigManager
         DEBUG_DEV.println(pin.pinMaxValue); 
         DEBUG_DEV.print("pinMinValue=");
         DEBUG_DEV.println(pin.pinMinValue); 
-        DEBUG_DEV.print("debounce=");
-        DEBUG_DEV.println(pin.debounce); 
         DEBUG_DEV.print("logicalID=");
         DEBUG_DEV.println(pin.logicalID); 
         DEBUG_DEV.print("pinCurrentState=");

@@ -121,7 +121,30 @@ mcu:
         pin_disconnected_state: 1
         pin_initial_state: -1
 
-    digitalInputs:
+    analogInputs:
+      - pin_id: 69
+        pin_name: ain.2
+        pin_initial_state: 0
+      - pin_id: 70
+        pin_name: ain.3
+        pin_initial_state: 0
+    analogOutputs:
+      - pin_id: 67
+        pin_name: aout.0 #hal pin name           #optional
+        pin_type: HAL_FLOAT #hal pin type     #optional     #does anything else make sense?
+        pin_smoothing: 200 #smoothing const   #optional
+        pin_min_val: 10 #minimum value         #optional     these could be used to convert the value to 0-10 for example
+        pin_max_val: 4096 #maximum value      #optional
+        pin_initial_state: 0
+      - pin_id: 68
+        pin_name: aout.1 #hal pin name           #optional
+        pin_type: HAL_FLOAT #hal pin type     #optional     #does anything else make sense?
+        pin_smoothing: 200 #smoothing const   #optional
+        pin_min_val: 10 #minimum value         #optional     these could be used to convert the value to 0-10 for example
+        pin_max_val: 4096 #maximum value      #optional
+        pin_initial_state: 0
+
+    digitalInputsdisabled:
       - pin_id: 3
         pin_name: din.03 #hal pin name
         input_pullup: true

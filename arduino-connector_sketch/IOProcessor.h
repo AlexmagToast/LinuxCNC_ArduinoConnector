@@ -74,6 +74,64 @@ namespace Callbacks
             break;
           }
         #endif
+        #ifdef AOUTPUTS
+          case AOUTPUTS:
+          {
+            if(ConfigManager::GetAnalogOutputsReady() == 0)
+            {
+              #ifdef DEBUG_VERBOSE
+                DEBUG_DEV.println(F(" Callbacks::onPinChange: GetAnalogOutputsReady() returned FALSE"));
+              #endif
+              return;
+            }
+
+            JsonDocument doc;
+            DeserializationError error = deserializeJson(doc, pcm.message);
+
+            if (error) {
+              #ifdef DEBUG_VERBOSE
+                DEBUG_DEV.print(F(" Callbacks::onPinChange: deserializeJson() of message failed: "));
+                DEBUG_DEV.println(error.c_str());
+              #endif
+              return;
+            }
+
+            for (JsonObject pa_item : doc["pa"].as<JsonArray>()) {
+              
+              int lid = pa_item["lid"]; // 0, 1
+              int pid = pa_item["pid"]; // 0, 1
+              int v = pa_item["v"]; // 1, 0
+
+              if(lid > ConfigManager::GetAnalogOutputPinsLen())
+              {
+                #ifdef DEBUG_VERBOSE
+                DEBUG_DEV.print(" Callbacks::onPinChange: Error. logical pin ID ");
+                DEBUG_DEV.print(lid);
+                DEBUG_DEV.println(" is invalid.");
+                #endif
+              }
+              else{
+                ConfigManager::apin & pin = ConfigManager::GetAnalogOutputPins()[lid];
+                #ifdef DEBUG_VERBOSE
+                DEBUG_DEV.print("AOUTPUTS PIN CHANGE!");
+                DEBUG_DEV.print("PIN ID: ");
+                DEBUG_DEV.println(pin.pinID);
+                DEBUG_DEV.print("PID: ");
+                DEBUG_DEV.println(pid);
+                DEBUG_DEV.print("LID: ");
+                DEBUG_DEV.println(lid);
+                DEBUG_DEV.print("Current value:");
+                DEBUG_DEV.println(pin.pinCurrentState);
+                DEBUG_DEV.print("New value:");
+                DEBUG_DEV.println(v);
+                #endif
+                pin.pinCurrentState = v;
+                analogWrite(atoi(pin.pinID.c_str()), v);
+              }
+            }
+            break;
+          }
+        #endif
       }
   }
 
@@ -236,7 +294,7 @@ namespace Callbacks
             }
             
             ConfigManager::apin a = (ConfigManager::apin){
-              .pinID =  doc["pinID"],
+              .pinID =  doc["id"],
               .pinInitialState =  doc["is"],
               .pinConnectedState = doc["cs"],
               .pinDisconnectedState = doc["ds"],
