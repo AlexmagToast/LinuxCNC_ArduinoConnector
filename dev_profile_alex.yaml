@@ -1,11 +1,42 @@
 mcu: 
   alias: Arduino R4
   component_name: arduinoR4 # Name of component to use in HAL
-  #dev: /dev/cu.usbmodem14201  # Used for initial programming
-  #dev: /dev/cu.usbmodemF412FA68D6802 
-  #dev: /dev/serial/by-id/usb-Arduino_UNO_R4_Minima_3702190E58313330640933324B572D98-if00
-  dev: /dev/ttyACM0
-  #dev: /dev/serial/by-id/usb-Arduino__www.arduino.cc__Arduino_Mega_2560_55632313438351509070-if00
+  dev: /dev/serial/by-id/usb-Arduino_UNO_R4_Minima_3702190E58313330640933324B572D98-if00
+  enabled: false
+  #connection: 
+  #  baudrate: 9600
+  io_map:
+        
+    digitalInputs:
+      - pin_id: 2
+        pin_name: din.2 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+        pin_enabled: true
+      - pin_id: 3
+        pin_name: din.3 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+        pin_enabled: true
+
+    digitalOutputs:
+      - pin_id: 6
+        pin_name: dout.6
+        pin_enabled: true
+      - pin_id: 7
+        pin_name: dout.7 #hal pin name
+        pin_enabled: true
+      - pin_id: 13
+        pin_name: dout.13 #hal pin name
+        pin_enabled: true
+        
+---
+
+mcu: 
+  alias: ArduinoUno
+  component_name: arduinoUno # Name of component to use in HAL
+  #dev: /dev/serial/by-id/usb-1a86_USB2.0-Ser_-if00-port0
+  dev: /dev/ttyUSB0
   enabled: true
   #connection: 
   #  baudrate: 9600
@@ -16,19 +47,21 @@ mcu:
         pin_name: din.2 #hal pin name
         input_pullup: true
         pin_debounce: 5
-        pin_enabled: false
+        pin_enabled: true
       - pin_id: 3
         pin_name: din.3 #hal pin name
         input_pullup: true
         pin_debounce: 5
-        pin_enabled: false
+        pin_enabled: true
 
     digitalOutputs:
-      - pin_id: 13
-        pin_name: dout.13
-        pin_enabled: false
+      - pin_id: 6
+        pin_name: dout.6
+        pin_enabled: true
       - pin_id: 7
         pin_name: dout.7 #hal pin name
-        pin_enabled: false
-
-  
+        pin_enabled: true
+      - pin_id: 13
+        pin_name: dout.13 #hal pin name
+        pin_enabled: true
+    
