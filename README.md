@@ -24,8 +24,8 @@ It also supports Digital LEDs such as WS2812 or PL9823. This way you can have as
 | Currently the Software Supports:              | Arduino Mega | Ardunio Micro  | Ardunio Uno |
 | --------------------------------------------- | ------------ | -------------  | ----------- |
 | Analog Inputs                                 | Up to 16     | Up to 12       | Up to 6     |
-| Digital Inputs                                | Up to 54     | Up to 20       | Up to 14    |
-| Digital Outputs                               | Up to 54     | Up to 20       | Up to 14    |
+| Digital Inputs                                | Up to 52     | Up to 20       | Up to 12    |
+| Digital Outputs                               | Up to 52     | Up to 20       | Up to 12    |
 | PWM Outputs                                   | Up to 15     | Up to 7        | Up to 6     |
 | Digital RGB LEDs like WS2812 or PL9823        | ~ 1000       | ~ 1000         | ~ 1000      |
 | latching Potentiometers / Selector Switches   | Up to 16     | Up to 12       | Up to 6     |
@@ -65,7 +65,7 @@ Just return ```E0:0``` to it. You can now communicate with the Arduino. Further 
 3. install python-serial  
     ```sudo apt-get install python-serial```  
 4. edit arduino.py to match your arduino settings. If you're running 2.8 change  
-  #!/usr/bin/python3.9 in the first line of arduino.py to #!/usr/bin/python2.7.
+ #!/usr/bin/env python3 in the first line of arduino.py to #!/usr/bin/python2.7.
 5. also check if the Serial adress is correct for your Arduino. I found it easyest to run  
   ```sudo   dmesg | grep tty``` in Terminal while plugging and unplugging the arduino a couple of times and whatch which entry is changing. 
 6. make arduino.py executable with chmod +x, delete the suffix .py and copy
