@@ -1,5 +1,7 @@
 
-# LinuxCNC_ArduinoConnector
+# You are in the Alpha Branch of V2 of Arduino-connector, it is not working and still in early development! 
+
+## LinuxCNC_ArduinoConnector V2
 
 <img src="/ArduinoChip.svg" width="250" align="right">
 
@@ -11,13 +13,12 @@ Website: https://theartoftinkering.com
 Youtube: https://youtube.com/@theartoftinkering
 
 and 
-Ken Thompson (not THAT Ken Thompson), https://github.com/KennethThompson
+Ken Thompson (not THAT Ken Thompson)  
+https://github.com/KennethThompson
 
 Copyright (c) 2023 Alexander Richter & Ken Thompson
 
 
-
-## You are in the Alpha Branch of V2 of Arduino-connector, it is not working and still in early development! 
 
 # What's new? 
 With this new Version the configuration and communcation between Arduino and the receiving Python script is completely reworked.
