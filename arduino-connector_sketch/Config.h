@@ -63,3 +63,7 @@ const uint16_t RX_BUFFER_SIZE = 256;
 #define COM_DEV Serial
 
 #endif
+/*
+  EXPIREMENTAL
+*/
+//#define ENABLE_RAPIDCHANGE

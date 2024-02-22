@@ -13,7 +13,7 @@ mcu:
     
   io_map:     
     digitalOutputs:
-      - pin_id: 2
+      - pin_id: 10
         pin_name: dout.02 #hal pin name
         input_pullup: true
         pin_debounce: 0
@@ -109,7 +109,7 @@ mcu:
   alias: M4 Grand Central
   component_name: arduinom4 # Name of component to use in HAL
   dev: /dev/serial/by-id/usb-Adafruit_Grand_Central_M4_AB5B58B75335353334202020FF184219-if00
-  enabled: true
+  enabled: false
   io_map:
     digitalOutputs:
       - pin_id: 2
@@ -466,41 +466,39 @@ mcu:
         pin_name: din.24 #hal pin name
         input_pullup: true
         pin_debounce: 0
+
+---
+mcu: 
+  alias: Arduino ESP8266IR
+  component_name: arduino8266IR # Name of component to use in HAL
+  #dev: /dev/cu.usbmodem14201  # Used for initial programming
+  #dev: /dev/cu.usbmodemF412FA68D6802 
+  #dev: /dev/ttyUSB0
+  dev: /dev/ttyUSB0
+  enabled: true
+  #connection: 
+  #  baudrate: 9600
+  io_map:           
+    digitalInputs:
+      - pin_id: 0
+        pin_name: ir-sensor-in #hal pin name
+        input_pullup: true
 ---
 mcu: 
   alias: Arduino ESP8266
   component_name: arduino8266 # Name of component to use in HAL
   #dev: /dev/cu.usbmodem14201  # Used for initial programming
   #dev: /dev/cu.usbmodemF412FA68D6802 
-  #dev: /dev/ttyUSB0
-  dev: /dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_0001-if00-port0
-  enabled: false
+  dev: /dev/ttyUSB1
+  #dev: /dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_0001-if00-port0
+  enabled: true
   #connection: 
   #  baudrate: 9600
-  io_map:    
-    digitalInputs:
-      - pin_id: 13
-        pin_name: din.07 #hal pin name
-        input_pullup: true
-        pin_debounce: 0
-      - pin_id: 15
-        pin_name: din.08 #hal pin name
-        input_pullup: true
-        pin_debounce: 0
-        pin_enabled: false
-      - pin_id: 3
-        pin_name: din.09 #hal pin name
-        input_pullup: true
-        pin_debounce: 0
-        pin_enabled: false
-      - pin_id: 1
-        pin_name: din.10 #hal pin name
-        input_pullup: true
-        pin_debounce: 0
-        pin_enabled: false
+  io_map:           
     digitalOutputs:
-      - pin_id: 12
-        pin_name: dout.06 #hal pin name
+      - pin_id: 0
+        pin_name: dust-cover-out #hal pin name
+        input_pullup: true
 ---
 mcu: 
   alias: Arduino Nano RP2040

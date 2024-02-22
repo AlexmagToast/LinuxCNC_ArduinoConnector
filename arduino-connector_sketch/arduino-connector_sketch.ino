@@ -30,6 +30,9 @@
 #ifdef INTEGRATED_CALLBACKS
 #include "RXBuffer.h"
 #endif
+#ifdef ENABLE_RAPIDCHANGE
+#include "RapidChange.h"
+#endif
 /*
 #define MSGPACKETIZER_ENABLE_STREAM
 #define PACKETIZER_MAX_CALLBACK_QUEUE_SIZE 7
@@ -199,6 +202,10 @@ void setup() {
     serialClient.setUID(uuid.c_str());
   #endif
 
+  #ifdef ENABLE_RAPIDCHANGE
+    rc_setup();
+  #endif
+
   
   serialClient.RegisterConfigCallback(Callbacks::onConfig);
   serialClient.RegisterCSCallback(Callbacks::onConnectionStageChange);
@@ -215,6 +222,10 @@ void loop() {
   
   serialClient.DoWork(); 
   unsigned long currentMills = millis();
+
+  #ifdef ENABLE_RAPIDCHANGE
+    rc_loop();
+  #endif
   
   #ifdef DINPUTS
   

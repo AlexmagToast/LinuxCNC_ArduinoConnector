@@ -24,10 +24,10 @@
 # SOFTWARE.
 import json
 import os
-import random
+#import random
 from re import T
 import getopt, sys
-import subprocess
+#import subprocess
 import zlib
 #import threading
 import serial
@@ -51,33 +51,35 @@ import hal
 
 logging.basicConfig(level=logging.DEBUG)
 
-DEFAULT_VALUE_KEY = 1 # List position for default values
-YAML_PARSER_KEY = 1
-FEATURE_INDEX_KEY = 2
-DEFAULT_PIN_NAME_KEY = 3
-
+# Filename of default yaml profile.
 DEFAULT_PROFILE = "config.yaml"
 
 #INFO = Info()
 
+'''
+    YAML Parsing Objects
+'''
+
+# ConfigElement keys are the values which can be included in a YAML profile.
 class ConfigElement(StrEnum):
-    ARDUINO_KEY = 'mcu'
-    ALIAS = 'alias'
-    COMPONENT_NAME = 'component_name'
+    ARDUINO_KEY = 'mcu' 
+    ALIAS = 'alias' 
+    COMPONENT_NAME = 'component_name' 
     DEV = 'dev'
     CONNECTION = 'connection'
     ENABLED = 'enabled'
     IO_MAP = 'io_map'
     def __str__(self) -> str:
         return self.value
-    
-class ThreadStatus(StrEnum):
-    RUNNING = "RUNNING"
-    FINISHED_OK = "FINISHED_OK"
-    STOPPED = "STOPPED"
-    CRASHED = "CRASHED"
-    def __str__(self) -> str:
-        return self.value
+
+'''
+    Index constants
+
+    Constants for accessing ConfigElement objects.
+'''
+DEFAULT_VALUE_KEY = 1 # List position for default values
+FEATURE_INDEX_KEY = 2
+DEFAULT_PIN_NAME_KEY = 3
 
 class PinConfigElement(Enum):
     PIN_ID = ['pin_id', None]
@@ -123,7 +125,7 @@ class SerialConfigElement(Enum):
 # the associated settings for a given feature get auto-magically parsed from the YAML.
 # See the YAML parsing method in the YamlArduinoParser class below for an example of how this
 # enum + lamda enables some dark magic elegance.
-    
+#YAML_PARSER_KEY = 1
 class ConfigPinTypes(Enum):
     DIGITAL_INPUTS = ['digitalInputs', lambda yaml, featureID : DigitalPin(yaml=yaml, featureID=featureID, halPinDirection=HalPinDirection.HAL_OUT), 4] # TODO: Dont hardcode feature ID, dumbass.
     DIGITAL_OUTPUTS = ['digitalOutputs', lambda yaml, featureID : DigitalPin(yaml=yaml, featureID=featureID, halPinDirection=HalPinDirection.HAL_IN), 5]
@@ -133,6 +135,9 @@ class ConfigPinTypes(Enum):
 
     def __str__(self) -> str:
         return self.value[0]
+    
+    def parser(self):
+        return self.value[1]
     
 class ConfigConnectionTypes(Enum):
     SERIAL = ['Serial', lambda yaml : None]
@@ -408,7 +413,7 @@ class ArduinoYamlParser:
                             
                         a = [e for e in ConfigPinTypes if e.value[0] == k][0] # object reference from enum
                         #b = [e.value[0] for e in ConfigPinTypes if e.value[0] == k][0] # String of enum
-                        c = [e.value[YAML_PARSER_KEY] for e in ConfigPinTypes if e.value[0] == k][0] # Parser lamda from enum
+                        c = [e.parser() for e in ConfigPinTypes if e.value[0] == k][0] # Parser lamda from enum
                         d = [e.value[FEATURE_INDEX_KEY] for e in ConfigPinTypes if e.value[0] == k][0] # Feature ID
                         new_arduino.io_map[a] = []
                         if v != None:
@@ -1191,6 +1196,16 @@ def locateProfile() -> list[ArduinoConnection]:
     for a in arduino_profiles:
         arduino_map.append(ArduinoConnection(a))
     return arduino_profiles
+
+    
+class ThreadStatus(StrEnum):
+    RUNNING = "RUNNING"
+    FINISHED_OK = "FINISHED_OK"
+    STOPPED = "STOPPED"
+    CRASHED = "CRASHED"
+    def __str__(self) -> str:
+        return self.value
+
 
 def main():
     # Remove 1st argument from the
