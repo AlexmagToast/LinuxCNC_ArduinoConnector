@@ -116,7 +116,7 @@ mcu:
         pin_name: dout.02 #hal pin name
         input_pullup: true
         pin_debounce: 0
-        pin_enabled: true
+        pin_enabled: false
         pin_connected_state: 0
         pin_disconnected_state: 1
         pin_initial_state: -1
@@ -379,17 +379,18 @@ mcu:
   component_name: arduinoesp32 # Name of component to use in HAL
   #dev: /dev/cu.usbmodem14201  # Used for initial programming
   #dev: /dev/cu.usbmodemF412FA68D6802 
-  dev: /dev/cu.usbmodem3485187ABE842
+  #dev: /dev/cu.usbmodem3485187ABE842
+  dev: /dev/serial/by-id/usb-Arduino_Nano_ESP32_3485187ABE84-if01
   enabled: false
   
   io_map:
-        
-    digitalInputs:
+    digitalOutputs:
       - pin_id: 2
-        pin_name: din.2 #hal pin name
+        pin_name: dout.2 #hal pin name
         input_pullup: true
         pin_debounce: 0
-        pin_enabled: false
+        pin_enabled: true       
+    digitalInputs:
       - pin_id: 3
         pin_name: din.3 #hal pin name
         input_pullup: true
@@ -475,7 +476,7 @@ mcu:
   #dev: /dev/cu.usbmodemF412FA68D6802 
   #dev: /dev/ttyUSB0
   dev: /dev/ttyUSB0
-  enabled: true
+  enabled: false
   #connection: 
   #  baudrate: 9600
   io_map:           
@@ -491,7 +492,7 @@ mcu:
   #dev: /dev/cu.usbmodemF412FA68D6802 
   dev: /dev/ttyUSB1
   #dev: /dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_0001-if00-port0
-  enabled: true
+  enabled: false
   #connection: 
   #  baudrate: 9600
   io_map:           
@@ -528,3 +529,30 @@ mcu:
         pin_name: dout.3 #hal pin name
 
 
+---
+mcu: 
+  alias: Arduino R4 Wifi
+  component_name: arduinoR4wifi # Name of component to use in HAL
+  #dev: /dev/cu.usbmodem14201  # Used for initial programming
+  #dev: /dev/cu.usbmodemF412FA68D6802 
+  dev: /dev/serial/by-id/usb-Arduino_UNO_WiFi_R4_CMSIS-DAP_F412FA68D680-if01
+  enabled: true
+  #connection: 
+  #  baudrate: 9600
+  io_map:
+        
+    digitalInputs:
+      - pin_id: 2
+        pin_name: din.2 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 3
+        pin_name: din.3 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+
+    digitalOutputs:
+      - pin_id: 6
+        pin_name: dout.6
+      - pin_id: 7
+        pin_name: dout.7 #hal pin name
