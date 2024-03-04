@@ -24,8 +24,10 @@
   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
   SOFTWARE.
 */
-//#include <Arduino.h>
+#include <Arduino.h>
 #include "Config.h"
+#include "FeatureController.h"
+#include "Features.h"
 
 #ifdef INTEGRATED_CALLBACKS
 #include "RXBuffer.h"
@@ -210,9 +212,7 @@ void setup() {
   serialClient.RegisterConfigCallback(Callbacks::onConfig);
   serialClient.RegisterCSCallback(Callbacks::onConnectionStageChange);
   serialClient.RegisterPinChangeCallback(Callbacks::onPinChange);
-  //#ifdef INTEGRATED_CALLBACKS
-  //RXBuffer::init(RX_BUFFER_SIZE);
-  //#endif
+  featureController.ExcecuteFeatureSetups();
   digitalWrite(LED_BUILTIN, LOW);// Signal startup success to builtin LED
   serialClient.DoWork(); 
 }
@@ -222,6 +222,11 @@ void loop() {
   
   serialClient.DoWork(); 
   unsigned long currentMills = millis();
+
+  //Serial.print("REGISTERED FEATURES COUNT = ");
+  //Serial.println(featureController.GetRegisteredFeatureCount());
+  featureController.ExecuteFeatureLoops();
+  //delay(5000);
 
   #ifdef ENABLE_RAPIDCHANGE
     rc_loop();
@@ -286,12 +291,8 @@ void loop() {
           serialClient.SendPinChangeMessage(f, seqID, resp, output);
           pa.clear();
         }
-        
       }
-
-
     }
-
   }
   //for (dpin & pin : ConfigManager.GetDigitalInputPins())
 

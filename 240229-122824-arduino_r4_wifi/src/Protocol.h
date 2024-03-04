@@ -89,7 +89,6 @@ namespace protocol
   };
 
   struct HandshakeMessage {
-      
       uint8_t protocolVersion = PROTOCOL_VERSION;
       uint32_t featureMap;
       uint32_t timeout;

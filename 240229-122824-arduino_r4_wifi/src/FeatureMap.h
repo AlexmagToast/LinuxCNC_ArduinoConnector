@@ -216,6 +216,7 @@ struct featureMap
       DEBUG_DEV.println(F("- End Feature Map Decode Dump -"));
     #endif
   }
+
 };
 #endif
 #endif //#define FEATUREMAP_H_
