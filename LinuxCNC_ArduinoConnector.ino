@@ -932,14 +932,14 @@ void readKeypad(){
         // A button has been pressed
         sendData('M',keys[row][col],1);
         lastKey = keys[row][col];
-        row = numRows;
+        break;
 
       }
       if (digitalRead(rowPins[row]) == HIGH && lastKey == keys[row][col]) {
         // The Last Button has been unpressed
         sendData('M',keys[row][col],0);
         lastKey = -1; //reset Key pressed
-        row = numRows;
+        break;
       }
     }
 
