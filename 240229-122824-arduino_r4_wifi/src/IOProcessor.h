@@ -136,6 +136,7 @@ namespace Callbacks
       }
   }
 
+/*
   void onConfig(const protocol::ConfigMessage& cm) {
       #ifdef DEBUG
         DEBUG_DEV.print(F("::onConfig called, featureID = "));
@@ -149,6 +150,9 @@ namespace Callbacks
           DEBUG_DEV.println(cm.configString);
         #endif
       #endif
+
+      
+      
       //DEBUG_DEV.print("Size of Config: ");
       //DEBUG_DEV.println(strlen(conf));
       switch ((int)cm.featureID)
@@ -317,9 +321,9 @@ namespace Callbacks
         
         #endif
       }
-
+      
     }
-
+*/
   void onConnectionStageChange(int s) {
     #ifdef DOUTPUTS
         if(ConfigManager::GetDigitalOutputsReady() == 0)

@@ -78,6 +78,7 @@ public:
     _uid = uid;
   }
 
+  virtual void SendMessage( protocol::IMessage& m) = 0;
 /*
   virtual void SendPinStatusMessage(char sig, int pin, int state)
   {
@@ -469,7 +470,7 @@ protected:
     
     #endif
 
-    JsonDocument doc; 
+    JsonDocument doc;  
     protocol::hm.toJSON(doc);
     size_t sz = _jsonToMsgPack(doc, buffer, size);
     return sz;
@@ -483,7 +484,7 @@ protected:
       DEBUG_DEV.println(protocol::hb.boardIndex);
       DEBUG_DEV.println(F("- TX END HEARTBEAT MESSAGE DUMP -"));
     #endif
-    JsonDocument doc; 
+    JsonDocument doc;
     protocol::hb.toJSON(doc);
     size_t sz = _jsonToMsgPack(doc, buffer, size);
     return sz;
@@ -501,7 +502,7 @@ protected:
       DEBUG_DEV.println(protocol::pcm.message);  
       DEBUG_DEV.println(F("- TX END PINCHANGE MESSAGE DUMP -"));
     #endif
-    JsonDocument doc; 
+    JsonDocument doc;
     protocol::pcm.toJSON(doc);
     size_t sz = _jsonToMsgPack(doc, buffer, size);
     return sz;

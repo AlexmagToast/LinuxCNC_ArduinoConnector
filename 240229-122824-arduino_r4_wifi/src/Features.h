@@ -11,14 +11,17 @@ namespace Features
         public:
         DigitalInputs() : Feature(DINPUTS, DEFAULT_LOOP_FREQUENCY)
         {
+            
         }
 
         virtual void loop()
         {
+
         }
 
         virtual void setup()
         {
+
         }
 
         protected:
@@ -27,16 +30,19 @@ namespace Features
         {
             return true;
         }
+
         // onConnected gets called when the python host has connected and completed handshaking
         virtual void onConnected()
         {
 
         }
+
         // onDisconnected gets called when the python host has disconnected
         virtual void onDisconnected()
         {
 
         }
+
     }din;
     #endif
 }

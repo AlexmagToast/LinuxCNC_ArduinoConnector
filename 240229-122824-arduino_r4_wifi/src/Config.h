@@ -5,7 +5,7 @@
 
 
 #define DEBUG                       0
-//#define DEBUG_VERBOSE               1
+#define DEBUG_VERBOSE               1
 #define FEATUREMAP                  2
 #define LOWMEM                      3
 
@@ -61,6 +61,17 @@ const uint16_t RX_BUFFER_SIZE = 256;
 
 #define DEBUG_DEV Serial
 #define COM_DEV Serial
+#include "ArduinoJson.h"
+#include "SerialConnection.h"
+#include "FeatureMap.h"
+
+#ifdef ENABLE_FEATUREMAP
+featureMap fm;
+SerialConnection serialClient(SERIAL_RX_TIMEOUT, fm.features);
+#else
+uint32_t f = 0;
+SerialConnection serialClient(SERIAL_RX_TIMEOUT, f);
+#endif
 
 #endif
 /*

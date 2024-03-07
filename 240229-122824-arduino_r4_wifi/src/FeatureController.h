@@ -102,6 +102,16 @@ public:
         }
     }
 
+    void OnConfig(const protocol::ConfigMessage& cm)
+    {
+        protocol::ConfigMessageNak nak;
+        nak.featureID = cm.featureID;
+        nak.seq = cm.seq;
+        nak.errorCode = 10;
+        nak.errorString = "TEST FAIL";
+        serialClient.SendMessage(nak);
+    }
+
 
 private:
     FeaturePtr * _features = NULL;
@@ -198,8 +208,6 @@ protected:
         return _pins[index];
     }
 
-    uint8_t _featureArrayIndex = 0;
-
     virtual bool FeatureReady()
     {
         return _featureReady;
@@ -210,6 +218,11 @@ protected:
         _featureReady = b;
     }
 
+    uint8_t GetFeatureArrayIndex()
+    {
+        return _featureArrayIndex;
+    }
+
 private:
     // How often loop should be called for feature
     int _loopFrequency = 5000;
@@ -217,5 +230,25 @@ private:
     uint8_t _featureID = 0;
     PinPtr * _pins = NULL;
     bool _featureReady = false;
+    uint8_t _featureArrayIndex = 0;
 };
+
+namespace Callbacks
+{
+    void onConfig(const protocol::ConfigMessage& cm) {
+        #ifdef DEBUG
+        DEBUG_DEV.print(F("::onConfig called, featureID = "));
+        DEBUG_DEV.print((int)cm.featureID);
+        DEBUG_DEV.print(F(" Seq = "));
+        DEBUG_DEV.print(cm.seq);
+        DEBUG_DEV.print(F(" Total = "));
+        DEBUG_DEV.println(cm.total);
+        #ifdef DEBUG_VERBOSE
+            DEBUG_DEV.print("Config: ");
+            DEBUG_DEV.println(cm.configString);
+        #endif
+        #endif
+        featureController.OnConfig(cm);
+    }
+}
 #endif

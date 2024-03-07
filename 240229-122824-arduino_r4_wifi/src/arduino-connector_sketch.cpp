@@ -66,12 +66,12 @@
 //#include <EEPROM.h>
 //#include <FastCRC.h>
 //#include <UUID.h>
-#include "SerialConnection.h"
+//#include "SerialConnection.h"
 #include "ConfigManager.h"
 #include "IOProcessor.h"
 
 
-
+/*
 #ifdef ENABLE_FEATUREMAP
 featureMap fm;
 SerialConnection serialClient(SERIAL_RX_TIMEOUT, fm.features);
@@ -79,6 +79,7 @@ SerialConnection serialClient(SERIAL_RX_TIMEOUT, fm.features);
 uint32_t f = 0;
 SerialConnection serialClient(SERIAL_RX_TIMEOUT, f);
 #endif
+*/
 
 
 

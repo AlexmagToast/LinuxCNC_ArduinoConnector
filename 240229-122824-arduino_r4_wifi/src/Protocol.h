@@ -79,7 +79,9 @@ namespace protocol
     MT_PINCHANGE                =   4,
     MT_PIN_CHANGE_RESPONSE      =   5,
     MT_DEBUG                    =   6,
-    MT_CONFIG                   =   7
+    MT_CONFIG                   =   7,
+    MT_CONFIG_ACK               =   8,
+    MT_CONFIG_NAK               =   9
   };
 
   enum ResponseTypes
@@ -88,7 +90,13 @@ namespace protocol
     MT_NAK  = 2
   };
 
-  struct HandshakeMessage {
+  struct IMessage
+  {
+    virtual void fromJSON(const JsonDocument& doc) = 0;
+    virtual void toJSON(JsonDocument& doc) = 0;
+  };
+
+  struct HandshakeMessage : public IMessage {
       uint8_t protocolVersion = PROTOCOL_VERSION;
       uint32_t featureMap;
       uint32_t timeout;
@@ -153,14 +161,11 @@ namespace protocol
   // in the ResponseMessage gets used by the Arduino when sending subsequent
   // messages to python, such as via UDP.  This avoids the need to send the full UID in each message to the python side.
 
-  struct PinChangeMessage {
+  struct PinChangeMessage : IMessage {
       uint8_t featureID;
       uint8_t seqID;  
       uint8_t responseReq; // Indicates if a response is required from recepient
       String message;
-      #ifdef ENABLE_MSGPACKETIZER_CALLBACKS
-      MSGPACK_DEFINE(featureID, seqID, responseReq, message); 
-      #endif
       #ifdef INTEGRATED_CALLBACKS
       void toJSON(JsonDocument& doc)
       {
@@ -170,6 +175,7 @@ namespace protocol
         doc[F("si")] = seqID;
         doc[F("rr")] = responseReq;
         doc[F("ms")] = message;
+       // return doc;
       }
       void fromJSON(const JsonDocument& doc)
       {
@@ -181,16 +187,14 @@ namespace protocol
       }
       #endif
   }pcm;
-  
+  /*
   struct PinChangeResponseMessage {
       uint8_t featureID;
       uint8_t seqID;
       uint8_t response; // 1 - success/ACK, 0 - error/NAK
       String message;
-      #ifdef ENABLE_MSGPACKETIZER_CALLBACKS
-      MSGPACK_DEFINE(featureID, seqID, message); 
-      #endif
   }pcrm;
+*/
 /*s
   struct ArduinoPropertiesMessage {
     String    uid;
@@ -203,17 +207,19 @@ namespace protocol
     MSGPACK_DEFINE(uid, featureMap, digitalPins, analogInputs, analogOutputs, eepromSize, eepromCRC); 
   }apm;
 */
-  struct HeartbeatMessage {
-      uint8_t boardIndex = 0;
-    #ifdef ENABLE_MSGPACKETIZER_CALLBACKS
-      MSGPACK_DEFINE(boardIndex); 
-    #endif
+  struct HeartbeatMessage : public IMessage {
+    uint8_t boardIndex = 0;
     #ifdef INTEGRATED_CALLBACKS
       void toJSON(JsonDocument& doc)
       {
         //JsonDocument doc;
         doc[F("mt")] = MessageTypes::MT_HEARTBEAT;
         doc[F("bi")] = 0;
+        //return doc;
+      }
+      void fromJSON(const JsonDocument& doc)
+      {
+        
       }
     #endif
   }hb;
@@ -231,14 +237,61 @@ namespace protocol
       MSGPACK_DEFINE(status); 
   }pm;
   */
-  struct ConfigMessage {
-      uint32_t featureID;
+  struct ConfigMessageAck : public IMessage{
+    uint8_t featureID;
+    uint16_t seq;
+    uint8_t featureArrIndex;
+    #ifdef INTEGRATED_CALLBACKS
+    void toJSON(JsonDocument& doc)
+    {
+      //JsonDocument doc;
+      doc[F("mt")] = MessageTypes::MT_CONFIG_ACK;
+      doc[F("fi")] = featureID;
+      doc[F("se")] = seq;
+      doc[F("fa")] = featureArrIndex;
+      //return doc;
+    }
+    void fromJSON(const JsonDocument& doc)
+    {
+      featureID = doc[F("fi")];
+      seq = doc[F("se")];
+      featureArrIndex = doc[F("fa")];
+    }
+    #endif
+  };
+
+  struct ConfigMessageNak : public IMessage {
+    uint8_t featureID;
+    uint16_t seq;
+    uint8_t errorCode;
+    String errorString;
+    #ifdef INTEGRATED_CALLBACKS
+    void toJSON(JsonDocument& doc)
+    {
+      //JsonDocument doc;
+      doc[F("mt")] = MessageTypes::MT_CONFIG_NAK;
+      doc[F("fi")] = featureID;
+      doc[F("se")] = seq;
+      doc[F("ec")] = errorCode;
+      doc[F("es")] = errorString;
+      //return doc;
+    }
+    void fromJSON(const JsonDocument& doc)
+    {
+      featureID = doc[F("fi")];
+      seq = doc[F("se")];
+      errorCode = doc[F("ec")];
+      String s = doc[F("es")];
+      errorString = s;
+    }
+    #endif
+  };
+
+  struct ConfigMessage : public IMessage {
+      uint8_t featureID;
       uint16_t seq;
       uint16_t total;
       String configString; 
-      #ifdef ENABLE_MSGPACKETIZER_CALLBACKS
-      MSGPACK_DEFINE(featureID, seq, total, configString); 
-      #endif
       #ifdef INTEGRATED_CALLBACKS
       void toJSON(JsonDocument& doc)
       {
@@ -248,6 +301,7 @@ namespace protocol
         doc[F("se")] = seq;
         doc[F("to")] = total;
         doc[F("cs")] = configString;
+        //return doc;
       }
       void fromJSON(const JsonDocument& doc)
       {
@@ -262,12 +316,21 @@ namespace protocol
   }cfg;
 
   #ifdef DEBUG
-  struct DebugMessage {
+  struct DebugMessage : public IMessage {
+    String message;
+    void toJSON(JsonDocument& doc)
+    {
+      //JsonDocument doc;
+      doc[F("mt")] = MessageTypes::MT_DEBUG;
+      doc[F("ds")] = message;
+      //return doc;
+    }
+    void fromJSON(const JsonDocument& doc)
+    {
+    }
+
       //uint8_t boardIndex = BOARD_INDEX+1;
-      String message;
-      #ifdef ENABLE_MSGPACKETIZER_CALLBACKS
-      MSGPACK_DEFINE(message); 
-      #endif
+      
   }dm;
   #endif
 

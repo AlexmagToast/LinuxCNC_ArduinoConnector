@@ -34,6 +34,7 @@ SOFTWARE.
 
 
 
+
 using namespace protocol;
 class SerialConnection : public ConnectionBase {
 public:
@@ -56,6 +57,18 @@ public:
   uint8_t _onInit(){
         // Future TODO: Support selection of a different Serial interface other than just the default 'Serial'
     return 1;
+  }
+
+  void SendMessage( protocol::IMessage& m)
+  {
+    Serial.println("SEND MESSAGE");
+    JsonDocument doc;
+    m.toJSON(doc);
+    uint8_t buffer[128];
+    size_t size = sizeof(buffer);
+    size_t sz = _jsonToMsgPack(doc, buffer, size);
+    COM_DEV.write(buffer, sz);
+    COM_DEV.flush();
   }
 
   protected:
@@ -178,18 +191,9 @@ public:
   }
 
 
-  #ifdef INTEGRATED_CALLBACKS
-
-
-  #endif
 
   virtual void _sendHandshakeMessage()
   { 
-    #ifdef ENABLE_MSGPACKETIZER_CALLBACKS
-    //MsgPacketizer::send(this->_client, this->_mi, hm);
-      MsgPacketizer::send(COM_DEV, MT_HANDSHAKE, _getHandshakeMessage());
-      COM_DEV.flush();
-    #endif
     #ifdef INTEGRATED_CALLBACKS
     /*
       //COM_DEV.println("HANDSHAKE SEND");

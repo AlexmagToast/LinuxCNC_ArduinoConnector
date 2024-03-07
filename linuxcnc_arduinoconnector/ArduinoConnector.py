@@ -451,7 +451,9 @@ class MessageType(IntEnum):
     MT_PINCHANGE = 4, 
     MT_PINSTATUS = 5, 
     MT_DEBUG = 6, 
-    MT_CONFIG = 7
+    MT_CONFIG = 7,
+    MT_CONFIG_ACK = 8,
+    MT_CONFIG_NAK = 9,
     UNKNOWN = -1
 
 FeatureTypes = {
@@ -533,7 +535,7 @@ class MessageDecoder:
         #print(strb)
         self.payload = msgpack.loads(decoded)
         #self.messageType = 
-        logging.debug(f"PYDEBUG: msgpack json decoded: {self.payload}")
+        logging.debug(f"PYDEBUG: msgpack ≈json decoded: {self.payload}")
         if 'mt' not in self.payload:
             raise Exception("PYDEBUG: Message type undefined.")
         self.messageType = self.payload['mt']
@@ -622,10 +624,11 @@ class ConfigMessage(ProtocolMessage):
         self.payload['se'] = seq
         self.payload['to'] = total
         self.payload['cs'] = configJSON
-        #self.payload.append(featureID)
-        #self.payload.append(seq)
-        #self.payload.append(total)
-        #self.payload.append(configJSON)
+
+class ConfigMessageAck(ProtocolMessage):
+    def __init__(self, md:MessageDecoder):
+        super().__init__(messageType=MessageType.MT_HANDSHAKE)
+        pass
 
 class PinChangeMessage(ProtocolMessage):
     def __init__(self, featureID:int=0, seqID:int=0, responseReq:int=0, message:str=''):
@@ -749,9 +752,13 @@ class Connection:
             self.lastMessageReceived = time.time()
             hb = MessageEncoder().encodeBytes(payload=m.payload) + b'\x00'
             self.sendMessage(bytes(hb))
-
+        if m.messageType == MessageType.MT_CONFIG_ACK:
+            pass
+        if m.messageType == MessageType.MT_CONFIG_NAK:
+            pass
         if m.messageType in self._messageReceivedCallbacks.keys():
             self._messageReceivedCallbacks[m.messageType](m)
+        
         '''
         if m.messageType == MessageType.MT_PINSTATUS:
             if debug_comm:print(f'PYDEBUG onMessageRecv() - Received MT_PINSTATUS, Values = {m.payload}')
