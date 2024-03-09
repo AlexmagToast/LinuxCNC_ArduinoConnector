@@ -298,11 +298,11 @@ class Features(Enum):
     DEBUG_VERBOSE = ['DEBUG_VERBOSE', '', 1]
     FEATUREMAP = ['FEATURE_MAP', '', 2]
     LOWMEM = ['LOWMEM', '', 3]
-    DIGITAL_INPUTS = ['DIGITAL_INPUTS', '', 4]
-    DIGITAL_OUTPUTS = ['DIGITAL_OUTPUTS', '', 5]
-    ANALOG_INPUTS  = ['ANALOG_INPUTS', '', 6]
-    ANALOG_OUTPUTS = ['ANALOG_OUTPUTS', '', 7]
-    PWM_OUTPUTS = ['PWM_OUTPUTS', '', 8]
+    DIGITAL_INPUTS = ['DIGITAL_INPUTS', 'digitalInputs', 4]
+    DIGITAL_OUTPUTS = ['DIGITAL_OUTPUTS', 'digitalOutputs', 5]
+    ANALOG_INPUTS  = ['ANALOG_INPUTS', 'analogInputs', 6]
+    ANALOG_OUTPUTS = ['ANALOG_OUTPUTS', 'analogOutputs', 7]
+    PWM_OUTPUTS = ['PWM_OUTPUTS', 'pwmOutputs', 8]
     
     def __str__(self) -> str:
         return self.value[0]
@@ -324,6 +324,7 @@ class IOFeature(metaclass=ABCMeta):
         self.featureConfigName = featureConfigName
         self.featureReady = False # Indicates if Feature is ready for IO processing
         self.configComplete = False # Indicates if the Arduino has the Feature config applied
+        self.pinList = []
         
     def FeatureName(self):
         return self.featureName
@@ -347,6 +348,10 @@ class IOFeature(metaclass=ABCMeta):
     @abstractmethod
     def OnDisconnected(self):
         pass
+
+    @abstractmethod
+    def OnConfig(self):
+        pass
     
     @abstractmethod
     def Loop(self):
@@ -355,6 +360,8 @@ class IOFeature(metaclass=ABCMeta):
     @abstractmethod
     def Setup(self):
         pass
+    
+
 '''
     DigitalInputs
 '''
@@ -364,6 +371,23 @@ class DigitalInputs(IOFeature):
     
     def YamlParser(self):
         return lambda yaml, featureID : DigitalPin(yaml=yaml, featureID=featureID, halPinDirection=HalPinDirection.HAL_OUT)
+    
+    def OnConfig(self):
+        return super().OnConfig()
+    
+    def OnConnected(self):
+        return super().OnConnected()
+    
+    def OnDisconnected(self):
+        return super().OnDisconnected()
+    
+    def Loop(self):
+        return super().Loop()
+    
+    def Setup(self):
+        return super().Setup()
+    
+
 '''
     DigitalOutputs
 '''
@@ -397,15 +421,15 @@ class AnalogOutputs(IOFeature):
 # logic can be executed as needed for Config updates, pin updates, etc.
  
 di = DigitalInputs()
-do = DigitalOutputs()
-ai = AnalogInputs()
-ao = AnalogOutputs()
+#do = DigitalOutputs()
+#ai = AnalogInputs()
+#ao = AnalogOutputs()
 
 # the featureList holds the IOFeature object copies for reference during yaml parsing.
 featureList = [ di, 
-                do,
-                ai,
-                ao
+                #do,
+                #ai,
+                #ao
               ]
 
 '''
@@ -531,9 +555,11 @@ class ArduinoYamlParser:
                         d = [e.featureID for e in featureList if e.featureConfigName == k][0] #d = [e.value[FEATURE_INDEX_KEY] for e in ConfigPinTypes if e.value[0] == k][0] # Feature ID
                         copy_f = copy.deepcopy(f) # Creates a copy of the feature object so each arduino can utilize the logic independent of each other
                         new_arduino.io_map[copy_f] = []
+                        copy_f.pinList = new_arduino.io_map[copy_f] 
                         if v != None:
                             for v1 in v:   
                                 new_arduino.io_map[copy_f].append(c(v1, d)) # Here we just call the lamda function, which magically returns a correct object with all the settings
+                                pass
                         
                 new_arduino.profileSignature = crcval
                 mcu_list.append(new_arduino)
