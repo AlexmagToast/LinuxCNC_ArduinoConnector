@@ -54,6 +54,9 @@ logging.basicConfig(level=logging.DEBUG)
 # Filename of default yaml profile.
 DEFAULT_PROFILE = "config.yaml"
 
+
+
+
 #INFO = Info()
 
 '''
@@ -77,9 +80,9 @@ class ConfigElement(StrEnum):
 
     Constants for accessing ConfigElement objects.
 '''
-DEFAULT_VALUE_KEY = 1 # List position for default values
-FEATURE_INDEX_KEY = 2
-DEFAULT_PIN_NAME_KEY = 3
+#DEFAULT_VALUE_KEY = 1 # List position for default values
+#FEATURE_INDEX_KEY = 2
+#DEFAULT_PIN_NAME_KEY = 3
 
 class PinConfigElement(Enum):
     PIN_ID = ['pin_id', None]
@@ -92,6 +95,9 @@ class PinConfigElement(Enum):
     def __str__(self) -> str:
         return self.value[0]
     
+    def defaultValue(self):
+        return self.value[1]
+    
 class AnalogConfigElement(Enum):
     PIN_SMOOTHING = ['pin_smoothing', 200]
     PIN_MIN_VALUE = ['pin_min_val', 0]
@@ -99,15 +105,22 @@ class AnalogConfigElement(Enum):
     def __str__(self) -> str:
         return self.value[0]
     
+    def defaultValue(self):
+        return self.value[1]
+    
 class DigitalConfigElement(Enum):
     PIN_DEBOUNCE = ['pin_debounce', 100]
     INPUT_PULLUP = ['input_pullup', False]
     def __str__(self) -> str:
         return self.value[0]
+    def defaultValue(self):
+        return self.value[1]
 
 class ConnectionConfigElement(Enum):
     TIMEOUT = ['timeout', 5000]
     TYPE = ['type', None]
+    def defaultValue(self):
+        return self.value[1]
 
 class UDPConfigElement(Enum):
     ARDUINO_IP = ['arduino_ip', None]
@@ -115,29 +128,111 @@ class UDPConfigElement(Enum):
     LISTEN_PORT: ['listen_port', 54321] # optional, default is set to arduino_port  
     def __str__(self) -> str:
         return self.value[0]
+    def defaultValue(self):
+        return self.value[1]
 
 class SerialConfigElement(Enum):
     BAUDRATE = ['baudrate', 115200]
     def __str__(self) -> str:
         return self.value[0]
+    def defaultValue(self):
+        return self.value[1]
 # ConfigPinTypes enum now includes both a string constant and a parsing lamda for each IO/feature type
 # As shown below, the YAML can be read in and the lamda for the feature can be called so all of
 # the associated settings for a given feature get auto-magically parsed from the YAML.
 # See the YAML parsing method in the YamlArduinoParser class below for an example of how this
 # enum + lamda enables some dark magic elegance.
 #YAML_PARSER_KEY = 1
+
+
+class Features(Enum):
+    DEBUG = ['DEBUG', 0]
+    DEBUG_VERBOSE = ['DEBUG_VERBOSE', 1]
+    FEATUREMAP = ['FEATURE_MAP', 2]
+    LOWMEM = ['LOWMEM', 3]
+    DIGITAL_INPUTS = ['DIGITAL_INPUTS', 4]
+    DIGITAL_OUTPUTS = ['DIGITAL_OUTPUTS', 5]
+    ANALOG_INPUTS  = ['ANALOG_INPUTS', 6]
+    ANALOG_OUTPUTS = ['ANALOG_OUTPUTS', 7]
+    PWM_OUTPUTS = ['PWM_OUTPUTS', 8]
+    def __str__(self) -> str:
+        return self.value[0]
+    def __int__(self) -> int:
+        return self.value[1]
+    
+class Feature:
+    def __init__(self, featureName:str, featureConfigName:str, featureID:int) -> None:
+        self.featureID = featureID
+        self.featureName = featureName
+        self.featureConfigName = featureConfigName
+        
+    def FeatureName(self):
+        return self.featureName
+    
+    def FeatureID(self):
+        return self.featureID
+    
+    def FeatureConfigName(self):
+        return self.featureConfigName
+    
+class DigitalInputs(Feature):
+    def __init__(self) -> None:
+        Feature.__init__(self, featureName='DIGITAL_INPUTS', featureConfigName='digitalInputs', featureID=4)
+    
+    def YamlParser(self):
+        return lambda yaml, featureID : DigitalPin(yaml=yaml, featureID=featureID, halPinDirection=HalPinDirection.HAL_OUT)
+
+class DigitalOutputs(Feature):
+    def __init__(self) -> None:
+        Feature.__init__(self, featureName='DIGITAL_OUTPUTS', featureConfigName='digitalOutputs', featureID=5)
+    
+    def YamlParser(self):
+        return lambda yaml, featureID : DigitalPin(yaml=yaml, featureID=featureID, halPinDirection=HalPinDirection.HAL_IN) 
+    
+class AnalogInputs(Feature):
+    def __init__(self) -> None:
+        Feature.__init__(self, featureName='ANALOG_INPUTS', featureConfigName='analogInputs', featureID=6)
+    
+    def YamlParser(self):
+        return lambda yaml, featureID : AnalogPin(yaml=yaml, featureID=featureID, halPinDirection=HalPinDirection.HAL_OUT)
+
+class AnalogOutputs(Feature):
+    def __init__(self) -> None:
+        Feature.__init__(self, featureName='ANALOG_OUTPUTS', featureConfigName='analogOutputs', featureID=7)
+    
+    def YamlParser(self):
+        return lambda yaml, featureID : AnalogPin(yaml=yaml, featureID=featureID, halPinDirection=HalPinDirection.HAL_IN)
+    
+di = DigitalInputs()
+do = DigitalOutputs()
+ai = AnalogInputs()
+ao = AnalogOutputs()
+
+
+featureList = [ di, 
+                do,
+                ai,
+                ao
+              ]
+'''
 class ConfigPinTypes(Enum):
-    DIGITAL_INPUTS = ['digitalInputs', lambda yaml, featureID : DigitalPin(yaml=yaml, featureID=featureID, halPinDirection=HalPinDirection.HAL_OUT), 4] # TODO: Dont hardcode feature ID, dumbass.
-    DIGITAL_OUTPUTS = ['digitalOutputs', lambda yaml, featureID : DigitalPin(yaml=yaml, featureID=featureID, halPinDirection=HalPinDirection.HAL_IN), 5]
-    ANALOG_INPUTS = ['analogInputs', lambda yaml, featureID : AnalogPin(yaml=yaml,featureID=featureID, halPinDirection=HalPinDirection.HAL_OUT), 6]
-    ANALOG_OUTPUTS = ['analogOutputs',  lambda yaml, featureID : AnalogPin(yaml=yaml, featureID=featureID, halPinDirection=HalPinDirection.HAL_IN), 7]
-    PWM_OUTPUTS = ['pwmOutputs',  lambda yaml, featureID : ArduinoPin(yaml=yaml, featureID=featureID, pinType=ConfigPinTypes.PWM_OUTPUTS, halPinDirection=HalPinDirection.HAL_IN), 8]
+    DIGITAL_INPUTS = di.ConfigProperties()#['digitalInputs', lambda yaml, featureID : DigitalPin(yaml=yaml, featureID=featureID, halPinDirection=HalPinDirection.HAL_OUT), int(Features.DIGITAL_INPUTS)] 
+    DIGITAL_OUTPUTS = do.ConfigProperties()#['digitalOutputs', lambda yaml, featureID : DigitalPin(yaml=yaml, featureID=featureID, halPinDirection=HalPinDirection.HAL_IN), int(Features.DIGITAL_OUTPUTS)]
+    ANALOG_INPUTS = ['analogInputs', lambda yaml, featureID : AnalogPin(yaml=yaml,featureID=featureID, halPinDirection=HalPinDirection.HAL_OUT), int(Features.ANALOG_INPUTS)]
+    ANALOG_OUTPUTS = ['analogOutputs',  lambda yaml, featureID : AnalogPin(yaml=yaml, featureID=featureID, halPinDirection=HalPinDirection.HAL_IN), int(Features.ANALOG_OUTPUTS)]
+    PWM_OUTPUTS = ['pwmOutputs',  lambda yaml, featureID : ArduinoPin(yaml=yaml, featureID=featureID, pinType=ConfigPinTypes.PWM_OUTPUTS, halPinDirection=HalPinDirection.HAL_IN), int(Features.PWM_OUTPUTS)]
 
     def __str__(self) -> str:
         return self.value[0]
     
+    def __int__(self) -> int:
+        return self.value[2]
+    
     def parser(self):
         return self.value[1]
+'''
+
+    
     
 class ConfigConnectionTypes(Enum):
     SERIAL = ['Serial', lambda yaml : None]
@@ -185,10 +280,10 @@ class ArduinoPin:
         self.halPinDirection = halPinDirection
         self.pinID = pinID
         self.featureID = featureID
-        self.pinInitialState = PinConfigElement.PIN_INITIAL_STATE.value[DEFAULT_VALUE_KEY]
-        self.pinConnectedState = PinConfigElement.PIN_CONNECTED_STATE.value[DEFAULT_VALUE_KEY]
-        self.pinDisconnectedState = PinConfigElement.PIN_DISCONNECTED_STATE.value[DEFAULT_VALUE_KEY]
-        self.pinEnabled = PinConfigElement.PIN_ENABLED.value[DEFAULT_VALUE_KEY]
+        self.pinInitialState = PinConfigElement.PIN_INITIAL_STATE.defaultValue() #.value[DEFAULT_VALUE_KEY]
+        self.pinConnectedState = PinConfigElement.PIN_CONNECTED_STATE.defaultValue() #.value[DEFAULT_VALUE_KEY]
+        self.pinDisconnectedState = PinConfigElement.PIN_DISCONNECTED_STATE.defaultValue() #.value[DEFAULT_VALUE_KEY]
+        self.pinEnabled = PinConfigElement.PIN_ENABLED.defaultValue()#.value[DEFAULT_VALUE_KEY]
         self.halPinConnection = None
         self.halPinCurrentValue = 0
         self.pinLogicalID = 0
@@ -239,9 +334,9 @@ class AnalogPin(ArduinoPin):
         
         # set the defaults, which can be overriden through the yaml profile
         
-        self.pinSmoothing = AnalogConfigElement.PIN_SMOOTHING.value[DEFAULT_VALUE_KEY] #smoothing const   #optional
-        self.pinMinVal = AnalogConfigElement.PIN_MIN_VALUE.value[DEFAULT_VALUE_KEY] #minimum value         #optional     these could be used to convert the value to 0-10 for example
-        self.pinMaxVal = AnalogConfigElement.PIN_MAX_VALUE.value[DEFAULT_VALUE_KEY] #maximum value      #optional
+        self.pinSmoothing = AnalogConfigElement.PIN_SMOOTHING.defaultValue()#.value[DEFAULT_VALUE_KEY] #smoothing const   #optional
+        self.pinMinVal = AnalogConfigElement.PIN_MIN_VALUE.defaultValue()#.value[DEFAULT_VALUE_KEY] #minimum value         #optional     these could be used to convert the value to 0-10 for example
+        self.pinMaxVal = AnalogConfigElement.PIN_MAX_VALUE.defaultValue()#.value[DEFAULT_VALUE_KEY] #maximum value      #optional
         
         if yaml != None: 
             self.parseYAML(doc=yaml)
@@ -280,8 +375,8 @@ class DigitalPin(ArduinoPin):
                         yaml=yaml)
         
         # set the defaults, which can be overriden through the yaml profile
-        self.pinDebounce = DigitalConfigElement.PIN_DEBOUNCE.value[DEFAULT_VALUE_KEY]
-        self.inputPullup = DigitalConfigElement.INPUT_PULLUP.value[DEFAULT_VALUE_KEY] 
+        self.pinDebounce = DigitalConfigElement.PIN_DEBOUNCE.defaultValue()#.value[DEFAULT_VALUE_KEY]
+        self.inputPullup = DigitalConfigElement.INPUT_PULLUP.defaultValue()#.value[DEFAULT_VALUE_KEY] 
         if yaml != None: 
             self.parseYAML(doc=yaml)
             ArduinoPin.parseYAML(self, doc=yaml)
@@ -332,14 +427,14 @@ class ArduinoSettings:
     def configJSON(self):
         pc = {}
         for k, v in self.io_map.items():
-            pc[k.value[FEATURE_INDEX_KEY]] = {}
+            pc[k.featureID] = {}  #k.value[FEATURE_INDEX_KEY]] = {}
             #pc[k.name + '_COUNT'] = len(v)
             i = 0
             for pin in v:
                 if pin.pinEnabled == True:
                     pin.pinLogicalID = i
                     p = pin.toJson()
-                    pc[k.value[FEATURE_INDEX_KEY]][i] = pin.toJson()
+                    pc[k.featureID][i] = pin.toJson() # pc[k.value[FEATURE_INDEX_KEY]][i] = pin.toJson()
                     i += 1
         return pc
 
@@ -382,8 +477,8 @@ class ArduinoYamlParser:
                     new_arduino.enabled = doc[ConfigElement.ARDUINO_KEY][ConfigElement.ENABLED]
                     if new_arduino.enabled == False:
                         new_arduino.component_name = f'{new_arduino.component_name}_DISABLED'
-                new_arduino.baud_rate = SerialConfigElement.BAUDRATE.value[DEFAULT_VALUE_KEY]
-                new_arduino.connection_timeout = ConnectionConfigElement.TIMEOUT.value[DEFAULT_VALUE_KEY]
+                new_arduino.baud_rate = SerialConfigElement.BAUDRATE.defaultValue()#.value[DEFAULT_VALUE_KEY]
+                new_arduino.connection_timeout = ConnectionConfigElement.TIMEOUT.defaultValue() #.TIMEOUT.value[DEFAULT_VALUE_KEY]
 
                 if ConfigElement.CONNECTION in doc[ConfigElement.ARDUINO_KEY].keys():
                     
@@ -406,15 +501,19 @@ class ArduinoYamlParser:
                         # here is the promised dark magic elegance referenced above.
                         # The key 'k', e.g., 'analogInputs' is cast to the corresponding enum object as 'a', the string value 'b',
                         # and the YAML parsing lamda function 'c'.
-                        if len([e for e in ConfigPinTypes if e.value[0] == k]) == 0:
+                        #for ff in featureList:
+                        #    pass
+                        #f = list(filter(lambda a: str(a.featureConfigName) == k, featureList))
+                        
+                        if len([e for e in featureList if e.featureConfigName == k]) == 0:
                             # This logic skips unsupported features that happen to be included in the YAML.
                             # Future TODO: throw an exception. For now, just ignore as more developmet is needed to finish the feature parsers.
                             continue
                             
-                        a = [e for e in ConfigPinTypes if e.value[0] == k][0] # object reference from enum
+                        a = [e for e in featureList if e.featureConfigName == k][0] # object reference from enum
                         #b = [e.value[0] for e in ConfigPinTypes if e.value[0] == k][0] # String of enum
-                        c = [e.parser() for e in ConfigPinTypes if e.value[0] == k][0] # Parser lamda from enum
-                        d = [e.value[FEATURE_INDEX_KEY] for e in ConfigPinTypes if e.value[0] == k][0] # Feature ID
+                        c = [e.YamlParser() for e in featureList if e.featureConfigName == k][0] # Parser lamda from enum
+                        d = [e.featureID for e in featureList if e.featureConfigName == k][0] #d = [e.value[FEATURE_INDEX_KEY] for e in ConfigPinTypes if e.value[0] == k][0] # Feature ID
                         new_arduino.io_map[a] = []
                         if v != None:
                             for v1 in v:   
@@ -456,16 +555,8 @@ class MessageType(IntEnum):
     MT_CONFIG_NAK = 9,
     UNKNOWN = -1
 
-FeatureTypes = {
-    'DEBUG': 0,
-    'DEBUG_VERBOSE': 1,
-    'FEATUREMAP': 2,
-    'LOWMEM': 3,
-    'DIGITAL_INPUTS':4,
-    'DIGIAL_OUTPUTS':5,
-    'ANALOG_INPUTS':6,
-    'ANALOG_OUTPUTS':7
-}
+
+
 ConnectionFeatureTypes = {
     'SERIAL_TO_LINUXCNC':1,
     'ETHERNET_UDP_TO_LINUXCNC':2,
@@ -868,7 +959,20 @@ class UDPConnection(Connection):
                 just_the_string = traceback.format_exc()
                 print(just_the_string)
 '''
-		
+'''
+class Feature:
+    def __init__(self, ft):
+        self.ft = ft
+        pass
+    
+class DigitalInputFeauture(Feature):
+    def __init__(self):
+        Feature.__init__(self, ft=FeatureTypes['DIGITAL_INPUTS'])
+
+di = DigitalInputFeauture()
+'''
+
+        
 class SerialConnection(Connection):
     def __init__(self, dev:str, myType = ConnectionType.SERIAL, profileSignature:int=0, baudRate:int = 115200, timeout:int=1):
         super().__init__(myType)
@@ -1058,7 +1162,7 @@ class ArduinoConnection:
 
 
                 for k, v in self.settings.io_map.items():
-                    if fid == k.value[FEATURE_INDEX_KEY]:
+                    if fid == int(k):#k.value[FEATURE_INDEX_KEY]:
                         j = json.loads(ms)
                         for val in j['pa']:
                             for pin in v:
@@ -1076,6 +1180,7 @@ class ArduinoConnection:
          
     
     def doFeaturePinUpdates(self):
+        '''
         for k, v in self.settings.io_map.items():
             if k.name == ConfigPinTypes.DIGITAL_OUTPUTS.name or k.name == ConfigPinTypes.ANALOG_OUTPUTS.name:
                 for v1 in v:
@@ -1089,15 +1194,6 @@ class ArduinoConnection:
                         
                         #print(f'VALUE CHANGED!!! Old Value {v1.halPinCurrentValue}, New Value {r}')
                         ## Send with logical pin ID to avoid for loop of pins by arduino.
-                        '''
-                            Proposed JSON for message within PinChange
-                            {
-                            "pa": [
-                                {"lid": 0, "pid": 0, "v":1},
-                                {"lid": 1, "pid": 1, "v":0}
-                                ]
-                            }
-                        '''
                         j = {
                         "pa": [
                             {"lid": v1.pinLogicalID, "pid": int(v1.pinID), "v":int(r)}
@@ -1117,6 +1213,8 @@ class ArduinoConnection:
                     
                          #= HalPinConnection(component=self.component, pinName=v1.pinName, pinType=v1.halPinType, pinDirection=v1.halPinDirection) 
             
+        '''
+        
 
     def doWork(self):
         if self.settings.enabled == False:
