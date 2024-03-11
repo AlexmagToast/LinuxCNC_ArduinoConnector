@@ -46,9 +46,9 @@ from cobs import cobs
 import yaml
 from pathlib import Path
 #import linuxcnc
-import hal
+#import hal
 import copy
-from abc import ABC, ABCMeta, abstractmethod
+from abc import ABCMeta, abstractmethod
 #from qtvcp.core import Info
 
 logging.basicConfig(level=logging.DEBUG)
@@ -66,7 +66,8 @@ DEFAULT_PROFILE = "config.yaml"
 class ConfigElement(StrEnum):
     ARDUINO_KEY = 'mcu' 
     ALIAS = 'alias' 
-    COMPONENT_NAME = 'component_name' 
+    COMPONENT_NAME = 'component_name'
+    HAL_EMULATION = 'hal_emulation' 
     DEV = 'dev'
     CONNECTION = 'connection'
     ENABLED = 'enabled'
@@ -181,6 +182,7 @@ class ArduinoPin:
         self.halPinConnection = None
         self.halPinCurrentValue = 0
         self.pinLogicalID = 0
+        self.pinConfigSynced = False
         #if yaml != None: self.parseYAML(doc=yaml)
 
     def parseYAML(self, doc):
@@ -292,280 +294,9 @@ class DigitalPin(ArduinoPin):
 '''
     End YAML Parser Objects
 '''   
-# The Features enum is used by the Feature objects to set the Feature properties such as the corresponding constant name, config string name, and feature ID
-class Features(Enum):
-    DEBUG = ['DEBUG', '', 0]
-    DEBUG_VERBOSE = ['DEBUG_VERBOSE', '', 1]
-    FEATUREMAP = ['FEATURE_MAP', '', 2]
-    LOWMEM = ['LOWMEM', '', 3]
-    DIGITAL_INPUTS = ['DIGITAL_INPUTS', 'digitalInputs', 4]
-    DIGITAL_OUTPUTS = ['DIGITAL_OUTPUTS', 'digitalOutputs', 5]
-    ANALOG_INPUTS  = ['ANALOG_INPUTS', 'analogInputs', 6]
-    ANALOG_OUTPUTS = ['ANALOG_OUTPUTS', 'analogOutputs', 7]
-    PWM_OUTPUTS = ['PWM_OUTPUTS', 'pwmOutputs', 8]
-    
-    def __str__(self) -> str:
-        return self.value[0]
-    
-    def __int__(self) -> int:
-        return self.value[2]
-    
-    def configName(self) -> str:
-        return self.value[1]
-    
 '''
-IO FEATURE OBJECTS
+    Message/Protcol Objects and Helpers
 '''
-# Each Feature derives from the IOFeature Class
-class IOFeature(metaclass=ABCMeta):
-    def __init__(self, featureName:str, featureConfigName:str, featureID:int) -> None:
-        self.featureID = featureID
-        self.featureName = featureName
-        self.featureConfigName = featureConfigName
-        self.featureReady = False # Indicates if Feature is ready for IO processing
-        self.configComplete = False # Indicates if the Arduino has the Feature config applied
-        self.pinList = []
-        
-    def FeatureName(self):
-        return self.featureName
-    
-    def FeatureID(self):
-        return self.featureID
-    
-    def FeatureConfigName(self):
-        return self.featureConfigName
-    
-    def FeatureReady(self) -> bool:
-        return self.featureReady
-    
-    def ConfigComplete(self) -> bool:
-        return self.configComplete
-    
-    @abstractmethod
-    def OnConnected(self):
-        pass
-    
-    @abstractmethod
-    def OnDisconnected(self):
-        pass
-
-    @abstractmethod
-    def OnConfig(self):
-        pass
-    
-    @abstractmethod
-    def Loop(self):
-        pass
-    
-    @abstractmethod
-    def Setup(self):
-        pass
-    
-
-'''
-    DigitalInputs
-'''
-class DigitalInputs(IOFeature):
-    def __init__(self) -> None:
-        IOFeature.__init__(self, featureName=str(Features.DIGITAL_INPUTS), featureConfigName=Features.DIGITAL_INPUTS.configName(), featureID=int(Features.DIGITAL_INPUTS))
-    
-    def YamlParser(self):
-        return lambda yaml, featureID : DigitalPin(yaml=yaml, featureID=featureID, halPinDirection=HalPinDirection.HAL_OUT)
-    
-    def OnConfig(self):
-        return super().OnConfig()
-    
-    def OnConnected(self):
-        return super().OnConnected()
-    
-    def OnDisconnected(self):
-        return super().OnDisconnected()
-    
-    def Loop(self):
-        return super().Loop()
-    
-    def Setup(self):
-        return super().Setup()
-    
-
-'''
-    DigitalOutputs
-'''
-class DigitalOutputs(IOFeature):
-    def __init__(self) -> None:
-        IOFeature.__init__(self, featureName=str(Features.DIGITAL_OUTPUTS), featureConfigName=Features.DIGITAL_OUTPUTS.configName(), featureID=int(Features.DIGITAL_OUTPUTS))
-    
-    def YamlParser(self):
-        return lambda yaml, featureID : DigitalPin(yaml=yaml, featureID=featureID, halPinDirection=HalPinDirection.HAL_IN) 
-'''
-    AnalogInputs
-'''
-class AnalogInputs(IOFeature):
-    def __init__(self) -> None:
-        IOFeature.__init__(self, featureName=str(Features.ANALOG_INPUTS), featureConfigName=Features.ANALOG_INPUTS.configName(), featureID=int(Features.ANALOG_INPUTS))
-    
-    def YamlParser(self):
-        return lambda yaml, featureID : AnalogPin(yaml=yaml, featureID=featureID, halPinDirection=HalPinDirection.HAL_OUT)
-'''
-    AnalogOutputs
-'''
-class AnalogOutputs(IOFeature):
-    def __init__(self) -> None:
-        IOFeature.__init__(self, featureName=str(Features.ANALOG_OUTPUTS), featureConfigName=Features.ANALOG_OUTPUTS.configName(), featureID=int(Features.ANALOG_OUTPUTS))
-    
-    def YamlParser(self):
-        return lambda yaml, featureID : AnalogPin(yaml=yaml, featureID=featureID, halPinDirection=HalPinDirection.HAL_IN)
-
-# Create an instance of each feature for YAML processing purposes.
-# When the yaml config is parsed, the objects get copied/duplicated and assigned to a particular MCU.  Each MCU has its own copy of a feature object so
-# logic can be executed as needed for Config updates, pin updates, etc.
- 
-di = DigitalInputs()
-#do = DigitalOutputs()
-#ai = AnalogInputs()
-#ao = AnalogOutputs()
-
-# the featureList holds the IOFeature object copies for reference during yaml parsing.
-featureList = [ di, 
-                #do,
-                #ai,
-                #ao
-              ]
-
-'''
-END IO FEATURE OBJECTS
-'''
-
-'''
-    MCU state control objects and helper classes
-'''
-class ArduinoSettings:
-    def __init__(self, alias='undefined', component_name='arduino', dev='undefined'):
-        self.alias = alias
-        self.component_name = component_name
-        self.dev = dev
-        self.baud_rate = 115200
-        self.connection_timeout = 10
-        self.io_map = {}
-        self.profileSignature = 0# CRC32 for now
-        self.enabled = True
-
-
-    def printIOMap(self) -> str:
-        s = ''
-        for k,v in self.io_map.items():
-            s += f'\nPin Type = {k}, values: ['
-            for p in v:
-                s += str(p)
-            s += ']'
-        return s
-            
-    def __str__(self) -> str:
-        return f'alias = {self.alias}, component_name={self.component_name}, dev={self.dev}, io_map = {self.printIOMap()}'
-    
-    def configJSON(self):
-        pc = {}
-        for k, v in self.io_map.items():
-            pc[k.featureID] = {}  #k.value[FEATURE_INDEX_KEY]] = {}
-            #pc[k.name + '_COUNT'] = len(v)
-            i = 0
-            for pin in v:
-                if pin.pinEnabled == True:
-                    pin.pinLogicalID = i
-                    p = pin.toJson()
-                    pc[k.featureID][i] = pin.toJson() # pc[k.value[FEATURE_INDEX_KEY]][i] = pin.toJson()
-                    i += 1
-        return pc
-
-            
-# taken from https://stackoverflow.com/questions/1742866/compute-crc-of-file-in-python
-def forLoopCrc(fpath):
-    """With for loop and buffer."""
-    crc = 0
-    with open(fpath, 'rb', 65536) as ins:
-        for x in range(int((os.stat(fpath).st_size / 65536)) + 1):
-            crc = zlib.crc32(ins.read(65536), crc)
-    return (crc & 0xFFFFFFFF)
-    
-class ArduinoYamlParser:
-    def parseYaml(path:str) -> list[ArduinoSettings]: # parseYaml returns a list of ArduinoSettings objects. WILL throw exceptions on error
-        if os.path.exists(path) == False:
-            raise FileNotFoundError(f'Error. {path} not found.')
-        crcval = int(forLoopCrc(path))
-        with open(path, 'r') as file:
-            logging.debug(f'PYDEBUG: Loading config, path = {path}')
-            docs = yaml.safe_load_all(file)
-            mcu_list = []
-            for doc in docs:
-                new_arduino = ArduinoSettings() # create a new arduino config object
-                if ConfigElement.ARDUINO_KEY not in doc.keys():
-                    raise Exception(f'Error. {ConfigElement.ALIAS} undefined in config file ({str})')
-                if ConfigElement.ALIAS not in doc[ConfigElement.ARDUINO_KEY].keys(): # TODO: Make this optional
-                    raise Exception(f'Error. {ConfigElement.ALIAS} undefined in config file ({str})')
-                else:
-                    new_arduino.alias = doc[ConfigElement.ARDUINO_KEY][ConfigElement.ALIAS]
-                if ConfigElement.DEV not in doc[ConfigElement.ARDUINO_KEY].keys(): # TODO: Make this optional
-                    raise Exception(f'Error. {ConfigElement.DEV} undefined in config file ({str})')
-                else:
-                    new_arduino.dev = doc[ConfigElement.ARDUINO_KEY][ConfigElement.DEV]
-                if ConfigElement.COMPONENT_NAME not in doc[ConfigElement.ARDUINO_KEY].keys(): # TODO: Make this optional
-                    raise Exception(f'Error. {ConfigElement.COMPONENT_NAME} undefined in config file ({str})')
-                else:
-                    new_arduino.component_name = doc[ConfigElement.ARDUINO_KEY][ConfigElement.COMPONENT_NAME]
-                if ConfigElement.ENABLED in doc[ConfigElement.ARDUINO_KEY].keys(): 
-                    new_arduino.enabled = doc[ConfigElement.ARDUINO_KEY][ConfigElement.ENABLED]
-                    if new_arduino.enabled == False:
-                        new_arduino.component_name = f'{new_arduino.component_name}_DISABLED'
-                new_arduino.baud_rate = SerialConfigElement.BAUDRATE.defaultValue()#.value[DEFAULT_VALUE_KEY]
-                new_arduino.connection_timeout = ConnectionConfigElement.TIMEOUT.defaultValue() #.TIMEOUT.value[DEFAULT_VALUE_KEY]
-
-                if ConfigElement.CONNECTION in doc[ConfigElement.ARDUINO_KEY].keys():
-                    
-                    #lc = [x.lower() for x in doc[ConfigElement.ARDUINO_KEY][ConfigElement.CONNECTION].keys()]
-                    if ConnectionConfigElement.TYPE.value[0] in doc[ConfigElement.ARDUINO_KEY][ConfigElement.CONNECTION].keys():
-                        type = doc[ConfigElement.ARDUINO_KEY][ConfigElement.CONNECTION][ConnectionConfigElement.TYPE.value[0]].lower()
-                        if type == ConfigConnectionTypes.SERIAL.value[0].lower():
-                            if SerialConfigElement.BAUDRATE.value[0] in doc[ConfigElement.ARDUINO_KEY][ConfigElement.CONNECTION].keys():
-                                new_arduino.baud_rate = doc[ConfigElement.ARDUINO_KEY][ConfigElement.CONNECTION][SerialConfigElement.BAUDRATE.value[0]]
-                        #elif type == ConfigConnectionTypes.UDP.value[0].lower():
-                        #    pass
-                        else:
-                            raise Exception(f'Error. Connection type of {type} is unsupported')
-                    else:
-                        raise Exception(f'Error. Connection type undefined in config file')
-
-                        
-                if ConfigElement.IO_MAP in doc[ConfigElement.ARDUINO_KEY].keys():
-                    for k, v in doc[ConfigElement.ARDUINO_KEY][ConfigElement.IO_MAP].items():
-                        # here is the promised dark magic elegance referenced above.
-                        # The key 'k', e.g., 'analogInputs' is cast to the corresponding enum object as 'a', the string value 'b',
-                        # and the YAML parsing lamda function 'c'.
-                        #for ff in featureList:
-                        #    pass
-                        #f = list(filter(lambda a: str(a.featureConfigName) == k, featureList))
-                        
-                        if len([e for e in featureList if e.featureConfigName == k]) == 0:
-                            # This logic skips unsupported features that happen to be included in the YAML.
-                            # Future TODO: throw an exception. For now, just ignore as more developmet is needed to finish the feature parsers.
-                            continue
-                            
-                        f = [e for e in featureList if e.featureConfigName == k][0] # object reference from feature
-                        #b = [e.value[0] for e in ConfigPinTypes if e.value[0] == k][0] # String of enum
-                        c = [e.YamlParser() for e in featureList if e.featureConfigName == k][0] # Parser lamda from feature object
-                        d = [e.featureID for e in featureList if e.featureConfigName == k][0] #d = [e.value[FEATURE_INDEX_KEY] for e in ConfigPinTypes if e.value[0] == k][0] # Feature ID
-                        copy_f = copy.deepcopy(f) # Creates a copy of the feature object so each arduino can utilize the logic independent of each other
-                        new_arduino.io_map[copy_f] = []
-                        copy_f.pinList = new_arduino.io_map[copy_f] 
-                        if v != None:
-                            for v1 in v:   
-                                new_arduino.io_map[copy_f].append(c(v1, d)) # Here we just call the lamda function, which magically returns a correct object with all the settings
-                                pass
-                        
-                new_arduino.profileSignature = crcval
-                mcu_list.append(new_arduino)
-                logging.debug(f'PYDEBUG: Loaded Arduino from config:\n{new_arduino}')
-        return mcu_list      
-
 
 class ConnectionType(StrEnum):
     SERIAL = 'SERIAL'
@@ -609,106 +340,8 @@ ConnectionFeatureTypes = {
     'WIFI_UDP_ASYNC_TO_LINUXCNC':6
 }
 
-debug_comm = True
-
-#serial_dev = '/dev/ttyACM0' 
-#serial_dev = '/dev/tty.usbmodemF412FA68D6802'
-
-#arduino = None #serial.Serial(serial_dev, 115200, timeout=1, xonxoff=False, rtscts=False, dsrdtr=True)
-
-protocol_ver = 1
 
 
-class FeatureMapDecoder:
-    def __init__(self, b:bytes):
-        self.features = b
-        self.bits = self.unpackbits(b)
-        #self.bits = numpy.unpackbits(numpy.arange(b.astype(numpy.uint64), dtype=numpy.uint64))
-  
-    def unpackbits(self, x):
-        z_as_uint64 = numpy.uint64(x)#int64(x)
-        xshape = list(z_as_uint64.shape)
-        z_as_uint64 = z_as_uint64.reshape([-1, 1])
-        mask = 2**numpy.arange(64, dtype=z_as_uint64.dtype).reshape([1, 64])
-        return (z_as_uint64 & mask).astype(bool).astype(int).reshape(xshape + [64])
-
-    def isFeatureEnabledByInt(self, index:int):
-        return self.bits[index] == 1
-    
-    '''
-        def getIndexOfFeature(self, str:str):
-        if str.upper() not in FeatureTypes.keys():
-            raise Exception(f'PYDEBUG Error, key {str} not found in FeatureTypes map.')
-        t = FeatureTypes[str.upper()]
-        return FeatureTypes[str.upper()]
-    '''
-
-
-    def isFeatureEnabledByString(self, str:str):
-        return self.bits[self.getIndexOfFeature(str)] == 1 
-    '''
-        def getFeatureString(self, index:int):
-        return list(FeatureTypes.keys())[list(FeatureTypes.values()).index(index)][0]
-    '''
-
-    '''
-        def getEnabledFeatures(self):
-        ret = {}
-        for k,v in FeatureTypes.items():
-            if self.isFeatureEnabledByInt(v) == True:
-                ret[k] = v
-        return ret
-    '''
-
-
-'''
-    End MCU state control objects and helper classes
-'''
-
-'''
-    Message/Protcol Objects and Helpers
-'''
-class MessageDecoder:
-    def __init__(self, b:bytearray):
-        self.parseBytes(b)
-        
-    def parseBytes(self, b:bytearray):
-        logging.debug(f"PYDEBUG: cobs encoded: {b}")
-        decoded = cobs.decode(b)#[:-1]
-        logging.debug(f"PYDEBUG: cobs decoded: {decoded}")
-        #strb = ''
-        #for b1 in decoded:
-        #    strb += f'{hex(b1)}, '
-        #print(strb)
-        self.payload = msgpack.loads(decoded)
-        #self.messageType = 
-        logging.debug(f"PYDEBUG: msgpack ≈json decoded: {self.payload}")
-        if 'mt' not in self.payload:
-            raise Exception("PYDEBUG: Message type undefined.")
-        self.messageType = self.payload['mt']
-        #self.payload = msgpack.unpackb(decoded, use_list=True, raw=False)
-        #pass
-        '''
-        strb = ''
-        for b1 in bytes(b):
-            strb += f'{hex(b1)}, '
-        print(strb)
-        decoded = cobs.decode(b)
-        strb = ''
-        for b1 in decoded:
-            strb += f'{hex(b1)}, '
-        print(strb)
-        # divide into index, data, crc
-        self.messageType = decoded[0]
-        data = decoded[1:-1]
-        self.crc = decoded[-1].to_bytes(1, byteorder="big")
-        logging.debug(f"PYDEBUG: message type: {self.messageType}, data: {data}, crc: {self.crc}")
-        # check crc8
-        if self.validateCRC( data=data, crc=self.crc) == False:
-            raise Exception(f"PYDEBUG: Error. CRC validation failed for received message. Bytes = {b}")
-        self.payload = msgpack.unpackb(data, use_list=True, raw=False)
-
-        '''
 
 class MessageEncoder:
 
@@ -772,10 +405,10 @@ class ConfigMessage(ProtocolMessage):
         self.payload['to'] = total
         self.payload['cs'] = configJSON
 
-class ConfigMessageAck(ProtocolMessage):
-    def __init__(self, md:MessageDecoder):
-        super().__init__(messageType=MessageType.MT_HANDSHAKE)
-        pass
+#class ConfigMessageAck(ProtocolMessage):
+#    def __init__(self, md:MessageDecoder):
+#        super().__init__(messageType=MessageType.MT_HANDSHAKE)
+#        pass
 
 class PinChangeMessage(ProtocolMessage):
     def __init__(self, featureID:int=0, seqID:int=0, responseReq:int=0, message:str=''):
@@ -789,9 +422,13 @@ class PinChangeMessage(ProtocolMessage):
     #def __init__(self, md:MessageDecoder):
     #    super().__init__(messageType=MessageType.MT_PINCHANGE)
     #    self.payload = md.payload
-
+class HeartbeatMessage(ProtocolMessage):
+    def __init__(self, md):
+        super().__init__(messageType=MessageType.MT_HEARTBEAT)
+        self.payload = md.payload
+        
 class HandshakeMessage(ProtocolMessage):
-    def __init__(self, md:MessageDecoder):
+    def __init__(self, md):
         super().__init__(messageType=MessageType.MT_HANDSHAKE)
         #{'mt': 3, 'pv': 1, 'fm': 1, 'to': 20000, 'ps': 0, 'ui': 'ND', 'dp': 53, 'ai': 19, 'ao': 2}
         if 'pv' not in md.payload:
@@ -840,17 +477,432 @@ class HandshakeMessage(ProtocolMessage):
         self.analogOutputs = md.payload[7]
         self.payload = md.payload
         '''
+class MessageDecoder:
+    #def __init__(self, b:bytearray):
+    #    self.parseBytes(b)
+        
+    def parseBytes(self, b:bytearray) -> ProtocolMessage:
+        logging.debug(f"PYDEBUG: cobs encoded: {b}")
+        decoded = cobs.decode(b)#[:-1]
+        logging.debug(f"PYDEBUG: cobs decoded: {decoded}")
+        self.payload = msgpack.loads(decoded)
+        logging.debug(f"PYDEBUG: msgpack json decoded: {self.payload}")
+        if 'mt' not in self.payload:
+            raise Exception("PYDEBUG: Message type undefined.")
+        self.messageType = self.payload['mt']
+        if self.messageType == MessageType.MT_HANDSHAKE:
+            hm = HandshakeMessage(md=self)
+            return hm
+        elif self.messageType == MessageType.MT_HEARTBEAT:
+            hb = HeartbeatMessage(md=self)
+            return hb
+        else:
+            raise Exception(f"Error. Message Type Unsupported, type = {self.messageType}");
+
 
 '''
     End Message/Protcol Objects and Helpers
 '''
+# The Features enum is used by the Feature objects to set the Feature properties such as the corresponding constant name, config string name, and feature ID
+class Features(Enum):
+    DEBUG = ['DEBUG', '', 0]
+    DEBUG_VERBOSE = ['DEBUG_VERBOSE', '', 1]
+    FEATUREMAP = ['FEATURE_MAP', '', 2]
+    LOWMEM = ['LOWMEM', '', 3]
+    DIGITAL_INPUTS = ['DIGITAL_INPUTS', 'digitalInputs', 4]
+    DIGITAL_OUTPUTS = ['DIGITAL_OUTPUTS', 'digitalOutputs', 5]
+    ANALOG_INPUTS  = ['ANALOG_INPUTS', 'analogInputs', 6]
+    ANALOG_OUTPUTS = ['ANALOG_OUTPUTS', 'analogOutputs', 7]
+    PWM_OUTPUTS = ['PWM_OUTPUTS', 'pwmOutputs', 8]
+    
+    def __str__(self) -> str:
+        return self.value[0]
+    
+    def __int__(self) -> int:
+        return self.value[2]
+    
+    def configName(self) -> str:
+        return self.value[1]
+    
+'''
+IO FEATURE OBJECTS
+'''
+   
+'''
+    Helpful information.
+    Since a Yaml config can define multiple MCUs, each
+    MCU gets its own copies of IOFeature objects based on what pins have been defined.  For instance, each MCU defined in the YAML
+    that has digitalInput pins defined will have its own DigitalInputs objects created during runtime.
+
+    With that said, each IOFeature-deriving object is meant to be Arduino sketch-esque. The 'Setup' method gets called automatically at runtime to allow for custom initialization of properties.
+    The 'Loop' method gets called at a regular interval (Todo: Make the interval definable), and tasks such as looking for HAL pin changes can be performed.
+
+    However, certain tasks such as processing of recevied messages directed to a IOFeature (e.g., a pin change reported by the Arduino) should be handled
+    based on associated callbacks.
+'''
+
+class IOFeature(metaclass=ABCMeta):
+    def __init__(self, featureName:str, featureConfigName:str, featureID:int) -> None:
+        self.featureID = featureID
+        self.featureName = featureName
+        self.featureConfigName = featureConfigName
+        self.featureReady = False # Indicates if Feature is ready for IO processing
+        self.pinList = [] # Holds a list of pins which were parsed from the Yaml config
+        self.configComplete = False # Indicates if the Arduino has the Feature config applied
+        self.pinConfigSyncMap = {}
+        
+    def FeatureName(self):
+        return self.featureName
+    
+    def FeatureID(self):
+        return self.featureID
+    
+    def FeatureConfigName(self):
+        return self.featureConfigName
+    
+    def FeatureReady(self) -> bool:
+        return self.featureReady
+    
+    def ConfigComplete(self) -> bool:
+        return self.configComplete
+    '''
+                    #time.sleep(5)
+            j = self.settings.configJSON()
+            #config_json = json.dumps(j)
+            #h = int(hashlib.sha256(config_json.encode('utf-8')).hexdigest(), 16) % 10**8
+            for k, v in j.items():
+                total = len(v)
+                seq = 0
+                for k1, v1 in v.items():
+                    v1['li'] = k1
+                    #print(v1)
+                    cf = ConfigMessage(configJSON=json.dumps(v1), seq=seq, total=total, featureID=v1['fi'])
+                    print(json.dumps(v1))
+                    seq += 1
+                    try:
+                        self.serialConn.sendMessage(cf.packetize())
+                        self.serialConn.arduino.flush()
+                        #if seq == 1:
+                        #    time.sleep(5)
+                    except Exception as error:
+                        just_the_string = traceback.format_exc()
+                        logging.debug(f'PYDEBUG: ArduinoConnection::doWork, dev={self.settings.dev}, alias={self.settings.alias}, Exception: {str(error)}, Traceback = {just_the_string}')
+                        # Future TODO: Consider doing something intelligent and not just reporting an error. Maybe increment a hal pin that reflects error counts?
+                        return
+                    time.sleep(.05)
+            self.serialConn.arduinoProfileSignature = self.settings.profileSignature
+    '''
+
+            
+    @abstractmethod
+    def OnConnected(self):
+        for p in self.pinList:
+            if p.pinConfigSynced == False:
+                self.pinConfigSyncMap[p.pinID] = p
+                
+    @abstractmethod
+    def OnDisconnected(self):
+        for p in self.pinList:
+            p.pinConfigSynced = False
+
+    @abstractmethod
+    def OnMessageRecv(self, pm:ProtocolMessage):
+        pass
+    
+    @abstractmethod
+    def Loop(self):
+        pass
+    
+    @abstractmethod
+    def Setup(self):
+        for i in range(0, len(self.pinList)):
+            self.pinList[i].pinConfigSynced = False
+            self.pinList[i].pinLogicalID = i # set the logical ID. 
+
+'''
+    DigitalInputs
+'''
+class DigitalInputs(IOFeature):
+    def __init__(self) -> None:
+        '''
+            All IOFeature objects must call the IOFeature.__init__ method to establish base properties including the featureName (also the constant defined on the Config.h, e.g., 'DIGITAL_INPUTS'),
+            the featureConfigName (how the feature name appears in yaml, e.g., 'digitalInputs'), and the featureID (e.g., also the INT constant defined in the Config.h and the python script)
+        ''' 
+        IOFeature.__init__(self, featureName=str(Features.DIGITAL_INPUTS), featureConfigName=Features.DIGITAL_INPUTS.configName(), featureID=int(Features.DIGITAL_INPUTS))
+    
+    '''
+        All IOFeature objects must also define a YamlParser method which returns a lambda.  The lamdda method is what gets called when parsing properties from the Yaml profile.
+        DigitalPin and AnalogPin have been predefined in this python script to provide a uinform way of parsing out required properties, optional properties, and default values.
+        Some future features may require more complex logic, and additional Yaml helpers will need to be defined.
+    '''
+    def YamlParser(self):
+        return lambda yaml, featureID : DigitalPin(yaml=yaml, featureID=featureID, halPinDirection=HalPinDirection.HAL_OUT)
+    
+    def OnMessageRecv(self, pm:ProtocolMessage):
+        return super().OnMessageRecv(pm)
+    
+    def OnConnected(self):
+        return super().OnConnected()
+    
+    def OnDisconnected(self):
+        return super().OnDisconnected()
+    
+    def Setup(self):
+        return super().Setup()
+    
+    def Loop(self):
+        return super().Loop()
+    
+
+    
+
+'''
+    DigitalOutputs
+'''
+class DigitalOutputs(IOFeature):
+    def __init__(self) -> None:
+        IOFeature.__init__(self, featureName=str(Features.DIGITAL_OUTPUTS), featureConfigName=Features.DIGITAL_OUTPUTS.configName(), featureID=int(Features.DIGITAL_OUTPUTS))
+    
+    def YamlParser(self):
+        return lambda yaml, featureID : DigitalPin(yaml=yaml, featureID=featureID, halPinDirection=HalPinDirection.HAL_IN) 
+'''
+    AnalogInputs
+'''
+class AnalogInputs(IOFeature):
+    def __init__(self) -> None:
+        IOFeature.__init__(self, featureName=str(Features.ANALOG_INPUTS), featureConfigName=Features.ANALOG_INPUTS.configName(), featureID=int(Features.ANALOG_INPUTS))
+    
+    def YamlParser(self):
+        return lambda yaml, featureID : AnalogPin(yaml=yaml, featureID=featureID, halPinDirection=HalPinDirection.HAL_OUT)
+'''
+    AnalogOutputs
+'''
+class AnalogOutputs(IOFeature):
+    def __init__(self) -> None:
+        IOFeature.__init__(self, featureName=str(Features.ANALOG_OUTPUTS), featureConfigName=Features.ANALOG_OUTPUTS.configName(), featureID=int(Features.ANALOG_OUTPUTS))
+    
+    def YamlParser(self):
+        return lambda yaml, featureID : AnalogPin(yaml=yaml, featureID=featureID, halPinDirection=HalPinDirection.HAL_IN)
+
+# Create an instance of each feature for YAML processing purposes.
+# When the yaml config is parsed, the objects get copied/duplicated and assigned to a particular MCU.  Each MCU has its own copy of a feature object so
+# logic can be executed as needed for Config updates, pin updates, etc.
+ 
+di = DigitalInputs()
+#do = DigitalOutputs()
+#ai = AnalogInputs()
+#ao = AnalogOutputs()
+
+# the featureList holds the IOFeature object copies for reference during yaml parsing.
+featureList = [ di, 
+                #do,
+                #ai,
+                #ao
+              ]
+
+'''
+END IO FEATURE OBJECTS
+'''
+
+'''
+    MCU state control objects and helper classes
+'''
+class ArduinoSettings:
+    def __init__(self, alias='undefined', component_name='arduino', dev='undefined', hal_emulation=False):
+        self.alias = alias
+        self.component_name = component_name
+        self.dev = dev
+        self.baud_rate = 115200
+        self.connection_timeout = 10
+        self.io_map = {}
+        self.yamlProfileSignature = 0# CRC32 for now
+        self.enabled = True
+        self.hal_emulation = hal_emulation
+
+
+    def printIOMap(self) -> str:
+        s = ''
+        for k,v in self.io_map.items():
+            s += f'\nPin Type = {k}, values: ['
+            for p in v:
+                s += str(p)
+            s += ']'
+        return s
+            
+    def __str__(self) -> str:
+        return f'alias = {self.alias}, component_name={self.component_name}, dev={self.dev}, hal_emulation={self.hal_emulation}, io_map = {self.printIOMap()}'
+    
+    def configJSON(self):
+        pc = {}
+        for k, v in self.io_map.items():
+            pc[k.featureID] = {}  #k.value[FEATURE_INDEX_KEY]] = {}
+            #pc[k.name + '_COUNT'] = len(v)
+            i = 0
+            for pin in v:
+                if pin.pinEnabled == True:
+                    pin.pinLogicalID = i
+                    p = pin.toJson()
+                    pc[k.featureID][i] = pin.toJson() # pc[k.value[FEATURE_INDEX_KEY]][i] = pin.toJson()
+                    i += 1
+        return pc
+
+            
+# taken from https://stackoverflow.com/questions/1742866/compute-crc-of-file-in-python
+def forLoopCrc(fpath):
+    """With for loop and buffer."""
+    crc = 0
+    with open(fpath, 'rb', 65536) as ins:
+        for x in range(int((os.stat(fpath).st_size / 65536)) + 1):
+            crc = zlib.crc32(ins.read(65536), crc)
+    return (crc & 0xFFFFFFFF)
+    
+class ArduinoYamlParser:
+    def parseYaml(path:str) -> list[ArduinoSettings]: # parseYaml returns a list of ArduinoSettings objects. WILL throw exceptions on error
+        if os.path.exists(path) == False:
+            raise FileNotFoundError(f'Error. {path} not found.')
+        crcval = int(forLoopCrc(path))
+        with open(path, 'r') as file:
+            logging.debug(f'PYDEBUG: Loading config, path = {path}')
+            docs = yaml.safe_load_all(file)
+            mcu_list = []
+            for doc in docs:
+                new_arduino = ArduinoSettings() # create a new arduino config object
+                if ConfigElement.ARDUINO_KEY not in doc.keys():
+                    raise Exception(f'Error. {ConfigElement.ALIAS} undefined in config file ({str})')
+                if ConfigElement.ALIAS not in doc[ConfigElement.ARDUINO_KEY].keys(): # TODO: Make this optional
+                    raise Exception(f'Error. {ConfigElement.ALIAS} undefined in config file ({str})')
+                else:
+                    new_arduino.alias = doc[ConfigElement.ARDUINO_KEY][ConfigElement.ALIAS]
+                if ConfigElement.DEV not in doc[ConfigElement.ARDUINO_KEY].keys(): # TODO: Make this optional
+                    raise Exception(f'Error. {ConfigElement.DEV} undefined in config file ({str})')
+                else:
+                    new_arduino.dev = doc[ConfigElement.ARDUINO_KEY][ConfigElement.DEV]
+                if ConfigElement.COMPONENT_NAME not in doc[ConfigElement.ARDUINO_KEY].keys(): # TODO: Make this optional
+                    raise Exception(f'Error. {ConfigElement.COMPONENT_NAME} undefined in config file ({str})')
+                else:
+                    new_arduino.component_name = doc[ConfigElement.ARDUINO_KEY][ConfigElement.COMPONENT_NAME]
+                if ConfigElement.HAL_EMULATION in doc[ConfigElement.ARDUINO_KEY].keys(): 
+                    new_arduino.hal_emulation = doc[ConfigElement.ARDUINO_KEY][ConfigElement.HAL_EMULATION]
+                if ConfigElement.ENABLED in doc[ConfigElement.ARDUINO_KEY].keys(): 
+                    new_arduino.enabled = doc[ConfigElement.ARDUINO_KEY][ConfigElement.ENABLED]
+                    if new_arduino.enabled == False:
+                        new_arduino.component_name = f'{new_arduino.component_name}_DISABLED'
+                new_arduino.baud_rate = SerialConfigElement.BAUDRATE.defaultValue()#.value[DEFAULT_VALUE_KEY]
+                new_arduino.connection_timeout = ConnectionConfigElement.TIMEOUT.defaultValue() #.TIMEOUT.value[DEFAULT_VALUE_KEY]
+
+                if ConfigElement.CONNECTION in doc[ConfigElement.ARDUINO_KEY].keys():
+                    #lc = [x.lower() for x in doc[ConfigElement.ARDUINO_KEY][ConfigElement.CONNECTION].keys()]
+                    if ConnectionConfigElement.TYPE.value[0] in doc[ConfigElement.ARDUINO_KEY][ConfigElement.CONNECTION].keys():
+                        type = doc[ConfigElement.ARDUINO_KEY][ConfigElement.CONNECTION][ConnectionConfigElement.TYPE.value[0]].lower()
+                        if type == ConfigConnectionTypes.SERIAL.value[0].lower():
+                            if SerialConfigElement.BAUDRATE.value[0] in doc[ConfigElement.ARDUINO_KEY][ConfigElement.CONNECTION].keys():
+                                new_arduino.baud_rate = doc[ConfigElement.ARDUINO_KEY][ConfigElement.CONNECTION][SerialConfigElement.BAUDRATE.value[0]]
+                        #elif type == ConfigConnectionTypes.UDP.value[0].lower():
+                        #    pass
+                        else:
+                            raise Exception(f'Error. Connection type of {type} is unsupported')
+                    else:
+                        raise Exception(f'Error. Connection type undefined in config file')
+
+                        
+                if ConfigElement.IO_MAP in doc[ConfigElement.ARDUINO_KEY].keys():
+                    for k, v in doc[ConfigElement.ARDUINO_KEY][ConfigElement.IO_MAP].items():
+                        # here is the promised dark magic elegance referenced above.
+                        # The key 'k', e.g., 'analogInputs' is cast to the corresponding enum object as 'a', the string value 'b',
+                        # and the YAML parsing lamda function 'c'.
+                        #for ff in featureList:
+                        #    pass
+                        #f = list(filter(lambda a: str(a.featureConfigName) == k, featureList))
+                        
+                        if len([e for e in featureList if e.featureConfigName == k]) == 0:
+                            # This logic skips unsupported features that happen to be included in the YAML.
+                            # Future TODO: throw an exception. For now, just ignore as more developmet is needed to finish the feature parsers.
+                            continue
+                            
+                        f = [e for e in featureList if e.featureConfigName == k][0] # object reference from feature
+                        #b = [e.value[0] for e in ConfigPinTypes if e.value[0] == k][0] # String of enum
+                        c = [e.YamlParser() for e in featureList if e.featureConfigName == k][0] # Parser lamda from feature object
+                        d = [e.featureID for e in featureList if e.featureConfigName == k][0] #d = [e.value[FEATURE_INDEX_KEY] for e in ConfigPinTypes if e.value[0] == k][0] # Feature ID
+                        copy_f = copy.deepcopy(f) # Creates a copy of the feature object so each arduino can utilize the logic independent of each other
+                        new_arduino.io_map[copy_f] = []
+                        copy_f.pinList = new_arduino.io_map[copy_f] 
+                        if v != None:
+                            for v1 in v:   
+                                new_arduino.io_map[copy_f].append(c(v1, d)) # Here we just call the lamda function, which magically returns a correct object with all the settings
+                                pass
+                        
+                new_arduino.yamlProfileSignature = crcval
+                mcu_list.append(new_arduino)
+                logging.debug(f'PYDEBUG: Loaded Arduino from config:\n{new_arduino}')
+        return mcu_list      
+
+
+
+
+debug_comm = True
+
+#serial_dev = '/dev/ttyACM0' 
+#serial_dev = '/dev/tty.usbmodemF412FA68D6802'
+
+#arduino = None #serial.Serial(serial_dev, 115200, timeout=1, xonxoff=False, rtscts=False, dsrdtr=True)
+
+protocol_ver = 1
+
+
+class FeatureMapDecoder:
+    def __init__(self, b:bytes):
+        self.features = b
+        self.bits = self.unpackbits(b)
+        #self.bits = numpy.unpackbits(numpy.arange(b.astype(numpy.uint64), dtype=numpy.uint64))
+  
+    def unpackbits(self, x):
+        z_as_uint64 = numpy.uint64(x)#int64(x)
+        xshape = list(z_as_uint64.shape)
+        z_as_uint64 = z_as_uint64.reshape([-1, 1])
+        mask = 2**numpy.arange(64, dtype=z_as_uint64.dtype).reshape([1, 64])
+        return (z_as_uint64 & mask).astype(bool).astype(int).reshape(xshape + [64])
+
+    def isFeatureEnabledByInt(self, index:int):
+        return self.bits[index] == 1
+    
+    '''
+        def getIndexOfFeature(self, str:str):
+        if str.upper() not in FeatureTypes.keys():
+            raise Exception(f'PYDEBUG Error, key {str} not found in FeatureTypes map.')
+        t = FeatureTypes[str.upper()]
+        return FeatureTypes[str.upper()]
+    '''
+
+
+    def isFeatureEnabledByString(self, str:str):
+        return self.bits[self.getIndexOfFeature(str)] == 1 
+    '''
+        def getFeatureString(self, index:int):
+        return list(FeatureTypes.keys())[list(FeatureTypes.values()).index(index)][0]
+    '''
+
+    '''
+        def getEnabledFeatures(self):
+        ret = {}
+        for k,v in FeatureTypes.items():
+            if self.isFeatureEnabledByInt(v) == True:
+                ret[k] = v
+        return ret
+    '''
+
+
+'''
+    End MCU state control objects and helper classes
+'''
+
+
 
 '''
     Connection Objects and Helpers
 '''
 RX_MAX_QUEUE_SIZE = 10
 
-class Connection:
+class Connection(MessageDecoder):
     # Constructor
     def __init__(self, myType:ConnectionType, alias:str=''):
         self.connectionType = myType
@@ -864,6 +916,7 @@ class Connection:
         self.alias = ''
         self.rxQueue = Queue(RX_MAX_QUEUE_SIZE)
         self._messageReceivedCallbacks = {}
+        self._connectionStateCallbacks = []
 
     def sendCommand(self, m:str):
         cm = MessageEncoder().encodeBytes(mt=MessageType.MT_COMMAND, payload=[m, 1])
@@ -873,29 +926,35 @@ class Connection:
         if newState != self.connectionState:
             logging.debug(f'PYDEBUG: changing state from {self.connectionState} to {newState}')
             self.connectionState = newState
+            for o in self._connectionStateCallbacks:
+                o(newState) # Send callback to any listener who wants to react to connection state changes
 
-    def onMessageRecv(self, m:MessageDecoder):
-        if m.messageType == MessageType.MT_HANDSHAKE:
+    def onMessageRecv(self, m:ProtocolMessage):
+        if m.mt == MessageType.MT_HANDSHAKE:
             logging.debug(f'PYDEBUG: onMessageRecv() - Received MT_HANDSHAKE, Values = {m.payload}')
             try:
-                hsm = HandshakeMessage(m)
-                self.timeout = hsm.timeout / 1000
-                self.arduinoProfileSignature = hsm.profileSignature
+                
+                #hsm = HandshakeMessage(m)
+                self.timeout = m.timeout / 1000
+                self.arduinoProfileSignature = m.profileSignature
                 #self.maxMsgSize = hsm.maxMsgSize
-                self.enabledFeatures = hsm.enabledFeatures
-                self.uid = hsm.UID
+                self.enabledFeatures = m.enabledFeatures
+                self.uid = m.UID
                 self.setState(ConnectionState.CONNECTED)
                 self.lastMessageReceived = time.time()
 
-                resp = hsm.packetize()
+                resp = m.packetize()
                 self.sendMessage(resp)
+                
+                #pass
+
                 
             except Exception as ex:
                 just_the_string = traceback.format_exc()
                 print(just_the_string)
                 logging.debug(f'PYDEBUG: error: {str(ex)}')
                 
-        if m.messageType == MessageType.MT_HEARTBEAT:
+        if m.mt == MessageType.MT_HEARTBEAT:
             logging.debug(f'PYDEBUG onMessageRecv() - Received MT_HEARTBEAT, Values = {m.payload}')
             #bi = m.payload[0]-1 # board index is always sent over incremeented by one
             if self.connectionState != ConnectionState.CONNECTED:
@@ -905,12 +964,12 @@ class Connection:
             self.lastMessageReceived = time.time()
             hb = MessageEncoder().encodeBytes(payload=m.payload) + b'\x00'
             self.sendMessage(bytes(hb))
-        if m.messageType == MessageType.MT_CONFIG_ACK:
-            pass
-        if m.messageType == MessageType.MT_CONFIG_NAK:
-            pass
-        if m.messageType in self._messageReceivedCallbacks.keys():
-            self._messageReceivedCallbacks[m.messageType](m)
+        #if m.messageType == MessageType.MT_CONFIG_ACK:    
+        #    pass
+        #if m.messageType == MessageType.MT_CONFIG_NAK:
+        #    pass
+        if m.mt in self._messageReceivedCallbacks.keys():
+            self._messageReceivedCallbacks[m.mt](m)
         
         '''
         if m.messageType == MessageType.MT_PINSTATUS:
@@ -961,6 +1020,8 @@ class Connection:
     def messageReceivedSubscribe(self, mt:MessageType, callback: callable):
         self._messageReceivedCallbacks[mt] = callback
   
+    def connectionStateSubscribe(self, callback: callable):
+        self._connectionStateCallbacks.append(callback)
  
 '''
 class UDPConnection(Connection):
@@ -1119,8 +1180,8 @@ class SerialConnection(Connection):
                             [chunk, self.rxBuffer] = self.rxBuffer.split(b'\x00', maxsplit=1)
                             logging.debug(f'PYDEBUG: SerialConnection::rxTask, dev={self.dev}, chunk bytes: {chunk}')
                             try:
-                                pass
-                                md = MessageDecoder(chunk)
+                                #pass
+                                md = self.parseBytes(chunk)
                                 self.onMessageRecv(m=md)
                             except Exception as ex:
                                 just_the_string = traceback.format_exc()
@@ -1147,9 +1208,9 @@ class SerialConnection(Connection):
                 self.setState(newState=ConnectionState.DISCONNECTED)
                 self.status = ThreadStatus.CRASHED
                 break #break out of while
-
+'''
 class HalPinConnection:
-    def __init__(self, component:hal.component, pinName:str, pinType:HalPinTypes, pinDirection:HalPinDirection):
+    def __init__(self, component, pinName:str, pinType:HalPinTypes, pinDirection:HalPinDirection):
         self.component = component
         self.pinName = pinName
         
@@ -1176,6 +1237,8 @@ class HalPinConnection:
     
     def Set(self, value):
         self.component[self.pinName] = value
+'''
+
 
 
 
@@ -1183,7 +1246,7 @@ class HalPinConnection:
 class ArduinoConnection:
     def __init__(self, settings:ArduinoSettings):
         self.settings = settings
-        self.serialConn = SerialConnection(dev=settings.dev, baudRate=settings.baud_rate, profileSignature=self.settings.profileSignature, timeout=settings.connection_timeout)
+        self.serialConn = SerialConnection(dev=settings.dev, baudRate=settings.baud_rate, profileSignature=self.settings.yamlProfileSignature, timeout=settings.connection_timeout)
         self.serialConn.alias = settings.alias
         '''
                 while( True ):
@@ -1195,22 +1258,65 @@ class ArduinoConnection:
                 logging.debug(f'PYDEBUG: ArduinoConnection::doWork, dev={self.settings.dev}, alias={self.settings.alias}, Detected existing instance of {self.settings.component_name} in HAL, calling halcmd unload..')
                 subprocess.run(["halcmd", f"unload {self.settings.component_name}"])
         '''
+        '''
         self.component = hal.component(self.settings.component_name) # Future TODO: Implement unload function as shown above.  Appear to need to handle CTRL+C in main loop to respect the unload request
                 
-
         for k, v in settings.io_map.items():
             for v1 in v:
                 if v1.pinEnabled == True: 
                     v1.halPinConnection = HalPinConnection(component=self.component, pinName=v1.pinName, pinType=v1.halPinType, pinDirection=v1.halPinDirection)
-        self.component.ready()
-        self.serialConn.messageReceivedSubscribe(mt=MessageType.MT_PINCHANGE, callback=lambda m: self.onMessage(m))
-            
-            
+
+        self.component.ready()  
+        
+        '''
+
+        if self.settings.enabled == True:
+            self.serialConn.messageReceivedSubscribe(mt=MessageType.MT_PINCHANGE, callback=lambda m: self.onMessage(m))
+            self.serialConn.messageReceivedSubscribe(mt=MessageType.MT_CONFIG_ACK, callback=lambda m: self.onMessage(m))
+            self.serialConn.messageReceivedSubscribe(mt=MessageType.MT_CONFIG_NAK, callback=lambda m: self.onMessage(m))
+
+            self.serialConn.connectionStateSubscribe(callback=lambda s: self.onConnectionStateChange(s))
+            try:
+                for f in self.settings.io_map.keys():
+                    f.Setup()
+            except Exception as ex:
+                just_the_string = traceback.format_exc()
+                logging.debug(f'PYDEBUG: Error [{settings.alias}: {str(just_the_string)}') 
+        
     def __str__(self) -> str:
         return f'Arduino Alias = {self.settings.alias}, Component Name = {self.settings.component_name}, Enabled = {self.settings.enabled}'
     
-    def onMessage(self, m:MessageDecoder):
+    def onConnectionStateChange(self, state:ConnectionState):
+        if self.settings.enabled == True:
+            try:
+                for f in self.settings.io_map.keys():
+                    if state == ConnectionState.CONNECTED:
+                        f.OnConnected()
+                    elif state == ConnectionState.DISCONNECTED:
+                        f.OnDisconnected()
+            except Exception as ex:
+                just_the_string = traceback.format_exc()
+                logging.debug(f'PYDEBUG: Error [{self.settings.alias}: {str(just_the_string)}') 
+
+    def onMessage(self, m:ProtocolMessage):
+        try:
+            if 'fi' in m.payload:
+                fid = m.payload['fi']
+                d = [e for e in self.settings.io_map.keys() if e.featureID == int(fid)][0]
+                if d != None:
+                    d.onMessageRecv(m)
+                #pass
+            pass
+        except Exception as ex:
+            just_the_string = traceback.format_exc()
+            logging.debug(f'PYDEBUG: Error [{self.settings.alias}: {str(just_the_string)}') 
+        pass
+        '''
         if debug_comm:print(f'PYDEBUG onMessageRecv() - Message Type {m.messageType}, Values = {m.payload}')
+        if m.messageType == MessageType.MT_CONFIG_ACK:
+            pass
+        if m.messageType == MessageType.MT_CONFIG_NAK:
+            pass
         if m.messageType == MessageType.MT_PINCHANGE:
             if debug_comm:print(f'PYDEBUG onMessageRecv() - Received MT_PINCHANGE, Values = {m.payload}')
 
@@ -1240,8 +1346,8 @@ class ArduinoConnection:
                 print(just_the_string)
                 logging.debug(f'PYDEBUG: error: {str(ex)}') 
          
-    
-    def doFeaturePinUpdates(self):
+        '''
+    #def doFeaturePinUpdates(self):
         '''
         for k, v in self.settings.io_map.items():
             if k.name == ConfigPinTypes.DIGITAL_OUTPUTS.name or k.name == ConfigPinTypes.ANALOG_OUTPUTS.name:
@@ -1281,7 +1387,7 @@ class ArduinoConnection:
     def doWork(self):
         if self.settings.enabled == False:
             return # do nothing. TODO: Still indicate the arduino is disabled via the HAL
-        self.doFeaturePinUpdates()
+        #self.doFeaturePinUpdates()
 
         if self.serialConn.status == ThreadStatus.STOPPED:
             self.serialConn.startRxTask()
@@ -1303,9 +1409,10 @@ class ArduinoConnection:
                 time.sleep(1) # TODO: Consider making this delay settable? Trying to avoid hammering the serial port when its in a strange state
                 self.serialConn.startRxTask()
         
-         
-        
-        if self.serialConn.getConnectionState() == ConnectionState.CONNECTED and self.settings.profileSignature is not self.serialConn.arduinoProfileSignature:
+        for f in self.settings.io_map.keys():
+            f.Loop()
+        '''
+                if self.serialConn.getConnectionState() == ConnectionState.CONNECTED and self.settings.profileSignature is not self.serialConn.arduinoProfileSignature:
             
             #time.sleep(5)
             j = self.settings.configJSON()
@@ -1332,6 +1439,9 @@ class ArduinoConnection:
                         return
                     time.sleep(.05)
             self.serialConn.arduinoProfileSignature = self.settings.profileSignature
+        
+        '''
+
     
 '''
     End Connection Objects and Helpers

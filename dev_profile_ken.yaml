@@ -6,6 +6,7 @@ mcu:
   dev: /dev/serial/by-id/usb-Arduino__www.arduino.cc__0042_55739323037351E04120-if00
   #dev: /dev/serial/by-id/usb-FTDI_FT232R_USB_UART_B001AYY4-if00-port0
   enabled: false
+  hal_emulation: true # Setting hal_emulation to true will result in the HAL components not being loaded / utilized.
 
   connection: 
     baudrate: 115200
@@ -85,6 +86,7 @@ mcu:
   #dev: /dev/cu.usbmodemF412FA68D6802 
   dev: /dev/serial/by-id/usb-Arduino_UNO_R4_Minima_33073017373238352A0433324B572D44-if00
   enabled: false
+  hal_emulation: true
   #connection: 
   #  baudrate: 9600
   io_map:
@@ -110,6 +112,7 @@ mcu:
   component_name: arduinom4 # Name of component to use in HAL
   dev: /dev/serial/by-id/usb-Adafruit_Grand_Central_M4_AB5B58B75335353334202020FF184219-if00
   enabled: false
+  hal_emulation: true
   io_map:
     digitalOutputs:
       - pin_id: 2
@@ -382,6 +385,7 @@ mcu:
   #dev: /dev/cu.usbmodem3485187ABE842
   dev: /dev/serial/by-id/usb-Arduino_Nano_ESP32_3485187ABE84-if01
   enabled: false
+  hal_emulation: true
   
   io_map:
     digitalOutputs:
@@ -477,6 +481,7 @@ mcu:
   #dev: /dev/ttyUSB0
   dev: /dev/ttyUSB0
   enabled: false
+  hal_emulation: true
   #connection: 
   #  baudrate: 9600
   io_map:           
@@ -493,6 +498,7 @@ mcu:
   dev: /dev/ttyUSB1
   #dev: /dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_0001-if00-port0
   enabled: false
+  hal_emulation: true
   #connection: 
   #  baudrate: 9600
   io_map:           
@@ -508,6 +514,7 @@ mcu:
   #dev: /dev/cu.usbmodemF412FA68D6802 
   dev: /dev/serial/by-id/usb-Arduino_Nano_RP2040_Connect_06C6345008889442-if00
   enabled: false
+  hal_emulation: true
   #connection: 
   #  baudrate: 9600
   io_map:
@@ -537,6 +544,7 @@ mcu:
   #dev: /dev/cu.usbmodemF412FA68D6802 
   dev: /dev/serial/by-id/usb-Arduino_UNO_WiFi_R4_CMSIS-DAP_F412FA68D680-if01
   enabled: true
+  hal_emulation: true
   #connection: 
   #  baudrate: 9600
   io_map:
