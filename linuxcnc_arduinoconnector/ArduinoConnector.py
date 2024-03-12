@@ -528,6 +528,14 @@ class Features(Enum):
 IO FEATURE OBJECTS
 '''
    
+class IOFeatureConfigItem():
+    def __init__(self, pinConfig:ArduinoPin, maxRetries:int=3, retryInterval:int=3) -> None:
+        self.pinConfig = pinConfig
+        self.retryCount = maxRetries
+        self.lastTickCount = 0
+        self.retryInterval = 3
+        self.seqID = pinConfig.pinID
+        
 '''
     Helpful information.
     Since a Yaml config can define multiple MCUs, each
@@ -598,8 +606,8 @@ class IOFeature(metaclass=ABCMeta):
     def OnConnected(self):
         for p in self.pinList:
             if p.pinConfigSynced == False:
-                self.pinConfigSyncMap[p.pinID] = p
-                
+                self.pinConfigSyncMap[p.pinID] = IOFeatureConfigItem(p)
+                          
     @abstractmethod
     def OnDisconnected(self):
         for p in self.pinList:
@@ -611,8 +619,24 @@ class IOFeature(metaclass=ABCMeta):
     
     @abstractmethod
     def Loop(self):
-        pass
-    
+        #for p in self.pinConfigSyncMap.values():
+        if len(self.pinConfigSyncMap.values()) > 0:
+            #p = self.pinConfigSyncMap.values()
+            #p = next(iter(self.pinConfigSyncMap))
+            p = next(iter(self.pinConfigSyncMap.values()))
+            if (time.time() - p.lastTickCount) > p.retryInterval:
+                print( f'{time.time() - p.lastTickCount}' )
+                if p.retryCount > 0:
+                    p.retryCount -= 1
+                    # do send
+                    p.lastTickCount = time.time()
+                    print('SENDING CONFIG!!!')
+                    return
+                else:
+                    print('SENDING CONFIG FAILED!!!')
+                    del self.pinConfigSyncMap[p.pinConfig.pinID]
+                    pass
+                    #indicate failure
     @abstractmethod
     def Setup(self):
         for i in range(0, len(self.pinList)):
