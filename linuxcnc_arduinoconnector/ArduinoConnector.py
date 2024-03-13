@@ -210,6 +210,7 @@ class ArduinoPin:
     def toJson(self): # This is the JSON sent to the Arduino during configuration.  Should only include the values needed by the Arduino to limit memory footprint/processing within the Arduino.
         return {'fi' : self.featureID,
                 'id': self.pinID,
+                'li': self.pinLogicalID,
                 'is': self.pinInitialState,
                 'cs': self.pinConnectedState,
                 'ds': self.pinDisconnectedState}
@@ -405,6 +406,37 @@ class ConfigMessage(ProtocolMessage):
         self.payload['to'] = total
         self.payload['cs'] = configJSON
 
+class ConfigMessageNak(ProtocolMessage):
+    def __init__(self, payload):
+        super().__init__(messageType=MessageType.MT_CONFIG_NAK)
+        self.payload = payload #{}
+        if 'fi' not in payload:
+            raise Exception(f'Feature index undefined')
+        self.featureID = payload['fi']
+        if 'se' not in payload:
+            raise Exception(f'Sequence index undefined')
+        self.sequenceID = payload['se']
+        if 'ec' not in payload:
+            raise Exception(f'Error code undefined')
+        self.errorCode = payload['ec']
+        if 'es' not in payload:
+            raise Exception(f'Error code string')
+        self.errorString = payload['es']
+
+class ConfigMessageAck(ProtocolMessage):
+    def __init__(self, payload):
+        super().__init__(messageType=MessageType.MT_CONFIG_ACK)
+        self.payload = payload 
+        if 'fi' not in payload:
+            raise Exception(f'Feature index undefined')
+        self.featureID = payload['fi']
+        if 'se' not in payload:
+            raise Exception(f'Sequence index undefined')
+        self.sequenceID = payload['se']
+        if 'fa' not in payload:
+            raise Exception(f'Feature Array Index undefined')
+        self.featureArrayIndex = payload['fa']
+        
 #class ConfigMessageAck(ProtocolMessage):
 #    def __init__(self, md:MessageDecoder):
 #        super().__init__(messageType=MessageType.MT_HANDSHAKE)
@@ -423,46 +455,46 @@ class PinChangeMessage(ProtocolMessage):
     #    super().__init__(messageType=MessageType.MT_PINCHANGE)
     #    self.payload = md.payload
 class HeartbeatMessage(ProtocolMessage):
-    def __init__(self, md):
+    def __init__(self, payload):
         super().__init__(messageType=MessageType.MT_HEARTBEAT)
-        self.payload = md.payload
+        self.payload = payload
         
 class HandshakeMessage(ProtocolMessage):
-    def __init__(self, md):
+    def __init__(self, payload):
         super().__init__(messageType=MessageType.MT_HANDSHAKE)
         #{'mt': 3, 'pv': 1, 'fm': 1, 'to': 20000, 'ps': 0, 'ui': 'ND', 'dp': 53, 'ai': 19, 'ao': 2}
-        if 'pv' not in md.payload:
+        if 'pv' not in payload:
             raise Exception(f'Protocol version undefined')
-        self.protocolVersion = md.payload['pv']
+        self.protocolVersion = payload['pv']
         if self.protocolVersion != protocol_ver:
             raise Exception(f'Expected protocol version {protocol_ver}, got {self.protocolVersion}')
-        if 'fm' not in md.payload:
+        if 'fm' not in payload:
             raise Exception(f'Enabled features undefined')
-        self.enabledFeatures = FeatureMapDecoder(md.payload['fm'])
-        if 'to' not in md.payload:
+        self.enabledFeatures = FeatureMapDecoder(payload['fm'])
+        if 'to' not in payload:
             raise Exception(f'Timeout undefined')
-        self.timeout = md.payload['to']
-        if 'ps' not in md.payload:
+        self.timeout = payload['to']
+        if 'ps' not in payload:
             raise Exception(f'Profile signature undefined')
-        self.profileSignature = md.payload['ps']
-        if 'ui' in md.payload:
-            self.UID = md.payload['ui']
+        self.profileSignature = payload['ps']
+        if 'ui' in payload:
+            self.UID = payload['ui']
         else:
             self.UID = 'UNDEFINED'
-        if 'dp' in md.payload:
-            self.digitalPins = md.payload['dp']
+        if 'dp' in payload:
+            self.digitalPins = payload['dp']
         else:
             self.digitalPins = 0
-        if 'ai' in md.payload:
-            self.analogInputs = md.payload['ai']
+        if 'ai' in payload:
+            self.analogInputs = payload['ai']
         else:
             self.analogInputs = 0
-        if 'ao' in md.payload:
-            self.analogOutputs = md.payload['ao']
+        if 'ao' in payload:
+            self.analogOutputs = payload['ao']
         else:
             self.analogOutputs = 0
         
-        self.payload = md.payload
+        self.payload = payload
         '''
         self.protocolVersion = md.payload[0]
         if self.protocolVersion != protocol_ver:
@@ -491,11 +523,17 @@ class MessageDecoder:
             raise Exception("PYDEBUG: Message type undefined.")
         self.messageType = self.payload['mt']
         if self.messageType == MessageType.MT_HANDSHAKE:
-            hm = HandshakeMessage(md=self)
+            hm = HandshakeMessage(payload=self.payload)
             return hm
         elif self.messageType == MessageType.MT_HEARTBEAT:
-            hb = HeartbeatMessage(md=self)
+            hb = HeartbeatMessage(payload=self.payload)
             return hb
+        elif self.messageType == MessageType.MT_CONFIG_NAK:
+            cn = ConfigMessageNak(payload=self.payload)
+            return cn
+        elif self.messageType == MessageType.MT_CONFIG_ACK:
+            ca = ConfigMessageAck(payload=self.payload)
+            return ca
         else:
             raise Exception(f"Error. Message Type Unsupported, type = {self.messageType}");
 
@@ -552,13 +590,16 @@ class IOFeatureConfigItem():
 class IOFeature(metaclass=ABCMeta):
     def __init__(self, featureName:str, featureConfigName:str, featureID:int) -> None:
         self.featureID = featureID
+        self.arduinoFeatureIndex = -1
         self.featureName = featureName
         self.featureConfigName = featureConfigName
         self.featureReady = False # Indicates if Feature is ready for IO processing
         self.pinList = [] # Holds a list of pins which were parsed from the Yaml config
         self.configComplete = False # Indicates if the Arduino has the Feature config applied
         self.pinConfigSyncMap = {}
-        
+        self._sendMessageCallbacks = []
+
+
     def FeatureName(self):
         return self.featureName
     
@@ -606,7 +647,7 @@ class IOFeature(metaclass=ABCMeta):
     def OnConnected(self):
         for p in self.pinList:
             if p.pinConfigSynced == False:
-                self.pinConfigSyncMap[p.pinID] = IOFeatureConfigItem(p)
+                self.pinConfigSyncMap[p.pinLogicalID] = IOFeatureConfigItem(p)
                           
     @abstractmethod
     def OnDisconnected(self):
@@ -615,7 +656,19 @@ class IOFeature(metaclass=ABCMeta):
 
     @abstractmethod
     def OnMessageRecv(self, pm:ProtocolMessage):
-        pass
+        if pm.mt == MessageType.MT_CONFIG_ACK:
+            # Use response to set the feature array index value
+            # This value is used later on when communicating with the arduino.
+            # The Arduino can use the index value to do a direct access of the feature
+            # rather than needing to perform a for loop to find the target feature object
+            if (self.arduinoFeatureIndex == -1):
+                self.arduinoFeatureIndex = pm.featureArrayIndex
+            del self.pinConfigSyncMap[pm.sequenceID]
+            if len(self.pinConfigSyncMap.values()) == 0:
+                print('CONFIG APPLIED!!!')
+
+        elif pm.mt == MessageType.MT_CONFIG_NAK:
+            pass
     
     @abstractmethod
     def Loop(self):
@@ -630,19 +683,29 @@ class IOFeature(metaclass=ABCMeta):
                     p.retryCount -= 1
                     # do send
                     p.lastTickCount = time.time()
+                    j = p.pinConfig.toJson()
                     print('SENDING CONFIG!!!')
+                    cf = ConfigMessage(configJSON=j, seq=p.pinConfig.pinLogicalID, total=1, featureID=p.pinConfig.featureID)
+                    for c in self._sendMessageCallbacks:
+                        c(cf.packetize())
                     return
                 else:
                     print('SENDING CONFIG FAILED!!!')
-                    del self.pinConfigSyncMap[p.pinConfig.pinID]
+                    del self.pinConfigSyncMap[p.pinConfig.pinLogicalID]
                     pass
                     #indicate failure
+        else:
+            #print('CONFIG APPLIED!!!')
+            pass
     @abstractmethod
     def Setup(self):
         for i in range(0, len(self.pinList)):
             self.pinList[i].pinConfigSynced = False
             self.pinList[i].pinLogicalID = i # set the logical ID. 
-
+            
+                    
+    def sendMessageSubscribe(self, callback: callable):
+        self._sendMessageCallbacks.append(callback)
 '''
     DigitalInputs
 '''
@@ -1046,6 +1109,8 @@ class Connection(MessageDecoder):
   
     def connectionStateSubscribe(self, callback: callable):
         self._connectionStateCallbacks.append(callback)
+        
+
  
 '''
 class UDPConnection(Connection):
@@ -1151,6 +1216,11 @@ class SerialConnection(Connection):
             self.shutdown = True
             self.daemon.join()
             self.daemon = None
+        
+    def sendMessage(self, pm: ProtocolMessage):
+        logging.debug(f'PYDEBUG: SerialConnection::sendMessage, dev={self.dev}, Message={b}')
+        self.arduino.write(b)
+        #self.arduino.flush()
         
     def sendMessage(self, b: bytes):
         logging.debug(f'PYDEBUG: SerialConnection::sendMessage, dev={self.dev}, Message={b}')
@@ -1303,12 +1373,16 @@ class ArduinoConnection:
             try:
                 for f in self.settings.io_map.keys():
                     f.Setup()
+                    f.sendMessageSubscribe(callback=lambda m: self.sendMessage(m))
             except Exception as ex:
                 just_the_string = traceback.format_exc()
                 logging.debug(f'PYDEBUG: Error [{settings.alias}: {str(just_the_string)}') 
         
     def __str__(self) -> str:
         return f'Arduino Alias = {self.settings.alias}, Component Name = {self.settings.component_name}, Enabled = {self.settings.enabled}'
+    
+    def sendMessage(self, pm:ProtocolMessage):
+        self.serialConn.sendMessage(pm)
     
     def onConnectionStateChange(self, state:ConnectionState):
         if self.settings.enabled == True:
@@ -1328,7 +1402,7 @@ class ArduinoConnection:
                 fid = m.payload['fi']
                 d = [e for e in self.settings.io_map.keys() if e.featureID == int(fid)][0]
                 if d != None:
-                    d.onMessageRecv(m)
+                    d.OnMessageRecv(m)
                 #pass
             pass
         except Exception as ex:
