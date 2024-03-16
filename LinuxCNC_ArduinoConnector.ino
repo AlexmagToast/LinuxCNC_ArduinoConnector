@@ -9,7 +9,7 @@
   You can create as many digital & analog Inputs, Outputs and PWM Outputs as your Arduino can handle.
   You can also generate "virtual Pins" by using latching Potentiometers, which are connected to one analog Pin, but are read in Hal as individual Pins.
 
-  Currently the Software Supports: 
+  Currently the Software Supports:
   - analog Inputs
   - latching Potentiometers
   - 1 binary encoded selector Switch
@@ -19,7 +19,7 @@
   - Multiplexed LEDs
   - Quadrature encoders
   - Joysticks
-  
+
   The Send and receive Protocol is <Signal><PinNumber>:<Pin State>
   To begin Transmitting Ready is send out and expects to receive E: to establish connection. Afterwards Data is exchanged.
   Data is only send everythime it changes once.
@@ -72,7 +72,7 @@ Communication Status      = 'E' -read/Write  -Pin State: 0:0
   int InPinmap[] = {8,9};
 #endif
 
-                                       //Use Arduino IO's as Toggle Inputs, which means Inputs (Buttons for example) keep HIGH State after Release and Send LOW only after beeing Pressed again. 
+                                       //Use Arduino IO's as Toggle Inputs, which means Inputs (Buttons for example) keep HIGH State after Release and Send LOW only after beeing Pressed again.
 #define SINPUTS                        //Define how many Toggle Inputs you want in total and then which Pins you want to be Toggle Inputs.
 #ifdef SINPUTS
   const int sInputs = 1;              //number of inputs using internal Pullup resistor. (short to ground to trigger)
@@ -94,30 +94,30 @@ Communication Status      = 'E' -read/Write  -Pin State: 0:0
 //#define AINPUTS                       //Use Arduino ADC's as Analog Inputs. Define how many Analog Inputs you want in total and then which Pins you want to be Analog Inputs.
                                         //Note that Analog Pin numbering is different to the Print on the PCB.
 #ifdef AINPUTS
-  const int AInputs = 1; 
+  const int AInputs = 1;
   int AInPinmap[] = {0};                //Potentiometer for SpindleSpeed override
   int smooth = 200;                     //number of samples to denoise ADC, try lower numbers on your setup 200 worked good for me.
 #endif
 
 
-                       
+
 /*This is a special mode of AInputs. My machine had originally Selector Knobs with many Pins on the backside to select different Speed Settings.
 I turned them into a "Potentiometer" by connecting all Pins with 10K Resistors in series. Then i applied GND to the first and 5V to the last Pin.
 Now the Selector is part of an Voltage Divider and outputs different Voltage for each Position. This function generates Pins for each Position in Linuxcnc Hal.
 
-It can happen, that when you switch position, that the selector is floating for a brief second. This might be detected as Position 0. 
+It can happen, that when you switch position, that the selector is floating for a brief second. This might be detected as Position 0.
 This shouldn't be an issue in most usecases, but think about that in your application.
 
 
 
-Connect it to an Analog In Pin of your Arduino and define how many of these you want. 
+Connect it to an Analog In Pin of your Arduino and define how many of these you want.
 Then in the Array, {which Pin, How many Positions}
-Note that Analog Pin numbering is different to the Print on the PCB.                                        
+Note that Analog Pin numbering is different to the Print on the PCB.
 
 */
 //#define LPOTIS
 #ifdef LPOTIS
-  const int LPotis = 2; 
+  const int LPotis = 2;
   const int LPotiPins[LPotis][2] = {
                     {1,9},             //Latching Knob Spindle Overdrive on A1, has 9 Positions
                     {2,4}              //Latching Knob Feed Resolution on A2, has 4 Positions
@@ -133,27 +133,27 @@ Note that Analog Pin numbering is different to the Print on the PCB.
 #endif
 
 
-//#define QUADENC                   
+//#define QUADENC
 //Support for Quadrature Encoders. Define Pins for A and B Signals for your encoders. Visit https://www.pjrc.com/teensy/td_libs_Encoder.html for further explanation.
-// Download Zip from here: https://github.com/PaulStoffregen/Encoder and import as Library to your Arduino IDE. 
+// Download Zip from here: https://github.com/PaulStoffregen/Encoder and import as Library to your Arduino IDE.
 #ifdef QUADENC
   #include <Encoder.h>
   #define QUADENCS 2  //how many Rotary Encoders do you want?
-  
+
     // Encoders have 2 signals, which must be connected to 2 pins. There are three options.
 
     //Best Performance: Both signals connect to interrupt pins.
     //Good Performance: First signal connects to an interrupt pin, second to a non-interrupt pin.
-    //Low Performance: Both signals connect to non-interrupt pins, details below. 
+    //Low Performance: Both signals connect to non-interrupt pins, details below.
 
     //Board	            Interrupt Pins	            LED Pin(do not use)
     //Teensy 4.0 - 4.1	All Digital Pins	          13
     //Teensy 3.0 - 3.6	All Digital Pins	          13
     //Teensy LC	        2 - 12, 14, 15, 20 - 23	    13
     //Teensy 2.0	      5, 6, 7, 8	                11
-    //Teensy 1.0	      0, 1, 2, 3, 4, 6, 7, 16	
+    //Teensy 1.0	      0, 1, 2, 3, 4, 6, 7, 16
     //Teensy++ 2.0	    0, 1, 2, 3, 18, 19, 36, 37  6
-    //Teensy++ 1.0	    0, 1, 2, 3, 18, 19, 36, 37	
+    //Teensy++ 1.0	    0, 1, 2, 3, 18, 19, 36, 37
     //Arduino Due	      All Digital Pins	          13
     //Arduino Uno	      2, 3	                      13
     //Arduino Leonardo	0, 1, 2, 3	                13
@@ -164,11 +164,11 @@ Encoder Encoder0(2,3);      //A,B Pin
 Encoder Encoder1(31,33);    //A,B Pin
 //Encoder Encoder2(A,B);
 //Encoder Encoder3(A,B);
-//Encoder Encoder4(A,B);                      
-  const int QuadEncSig[] = {2,2};   //define wich kind of Signal you want to generate. 
+//Encoder Encoder4(A,B);
+  const int QuadEncSig[] = {2,2};   //define wich kind of Signal you want to generate.
                                   //1= send up or down signal (typical use for selecting modes in hal)
                                   //2= send position signal (typical use for MPG wheel)
-  const int QuadEncMp[] = {4,4};   //some Rotary encoders send multiple Electronical Impulses per mechanical pulse. How many Electrical impulses are send for each mechanical Latch?            
+  const int QuadEncMp[] = {4,4};   //some Rotary encoders send multiple Electronical Impulses per mechanical pulse. How many Electrical impulses are send for each mechanical Latch?
 
 #endif
 
@@ -189,11 +189,11 @@ const float scalingFactor = 0.01;   // Scaling factor to control the impact of d
 //The Software will detect if there is an communication issue. When you power on your machine, the Buttons etc won't work, till LinuxCNC is running. THe StatusLED will inform you about the State of Communication.
 // Slow Flash = Not Connected
 // Steady on = connected
-// short Flash = connection lost. 
+// short Flash = connection lost.
 
 // if connection is lost, something happened. (Linuxcnc was closed for example or USB Connection failed.) It will recover when Linuxcnc is restartet. (you could also run "unloadusr arduino", "loadusr arduino" in Hal)
 // Define an Pin you want to connect the LED to. it will be set as Output indipendand of the OUTPUTS function, so don't use Pins twice.
-// If you use Digital LED's such as WS2812 or PL9823 (only works if you set up the DLED settings below) you can also define a position of the LED. In this case StatLedPin will set the number of the Digital LED Chain. 
+// If you use Digital LED's such as WS2812 or PL9823 (only works if you set up the DLED settings below) you can also define a position of the LED. In this case StatLedPin will set the number of the Digital LED Chain.
 
 #define STATUSLED
 #ifdef STATUSLED
@@ -203,19 +203,19 @@ const float scalingFactor = 0.01;   // Scaling factor to control the impact of d
 #endif
 
 
-                                        
-                       
-/* Instead of connecting LED's to Output pins, you can also connect digital LED's such as WS2812 or PL9823. 
+
+
+/* Instead of connecting LED's to Output pins, you can also connect digital LED's such as WS2812 or PL9823.
 This way you can have how many LED's you want and also define it's color with just one Pin.
 
 DLEDcount defines, how many Digital LED's you want to control. Count from 0. For Each LED an output Pin will be generated in LinuxCNC hal.
 To use this funcion you need to have the Adafruit_NeoPixel.h Library installed in your Arduino IDE.
 
-In LinuxCNC you can set the Pin to HIGH and LOW, for both States you can define an color per LED. 
-This way, you can make them glow or shut of, or have them Change color, from Green to Red for example. 
+In LinuxCNC you can set the Pin to HIGH and LOW, for both States you can define an color per LED.
+This way, you can make them glow or shut of, or have them Change color, from Green to Red for example.
 
-DledOnColors defines the color of each LED when turned "on". For each LED set {Red,Green,Blue} with Numbers from 0-255. 
-depending on the Chipset of your LED's Colors might be in a different order. You can try it out by setting {255,0,0} for example. 
+DledOnColors defines the color of each LED when turned "on". For each LED set {Red,Green,Blue} with Numbers from 0-255.
+depending on the Chipset of your LED's Colors might be in a different order. You can try it out by setting {255,0,0} for example.
 
 You need to define a color to DledOffColors too. Like the Name suggests it defines the color of each LED when turned "off".
 If you want the LED to be off just define {0,0,0}, .
@@ -231,7 +231,7 @@ If you use STATUSLED, it will also take the colors of your definition here.
   const int DLEDcount = 8;              //How Many DLED LED's are you going to connect?
   const int DLEDPin = 4;                  //Where is DI connected to?
   const int DLEDBrightness = 70;         //Brightness of the LED's 0-100%
- 
+
   int DledOnColors[DLEDcount][3] = {
                   {0,0,255},
                   {255,0,0},
@@ -260,12 +260,12 @@ Adafruit_NeoPixel strip(DLEDcount, DLEDPin, NEO_GRB + NEO_KHZ800);//Color sequen
 
 #endif
 /*
-Matrix Keypads are supported. The input is NOT added as HAL Pin to LinuxCNC. Instead it is inserted to Linux as Keyboard direktly. 
+Matrix Keypads are supported. The input is NOT added as HAL Pin to LinuxCNC. Instead it is inserted to Linux as Keyboard direktly.
 So you could attach a QWERT* Keyboard to the arduino and you will be able to write in Linux with it (only while LinuxCNC is running!)
 */
 //#define KEYPAD
 #ifdef KEYPAD
-const int numRows = 4;  // Define the number of rows in the matrix 
+const int numRows = 4;  // Define the number of rows in the matrix
 const int numCols = 4;  // Define the number of columns in the matrix
 
 // Define the pins connected to the rows and columns of the matrix
@@ -280,10 +280,10 @@ int lastKey= -1;
 // check out this thread on LinuxCNC Forum for context. https://forum.linuxcnc.org/show-your-stuff/49606-matrix-keyboard-controlling-linuxcnc
 // for Each LED an Output Pin is generated in LinuxCNC.
 
-//If your Keyboard shares pins with the LEDs, you have to check polarity. 
+//If your Keyboard shares pins with the LEDs, you have to check polarity.
 //rowPins[numRows] = {} are Pullup Inputs
 //colPins[numCols] = {} are GND Pins
-//the matrix keyboard described in the thread shares GND Pins between LEDs and KEys, therefore LedGndPins[] and colPins[numCols] = {} use same Pins. 
+//the matrix keyboard described in the thread shares GND Pins between LEDs and KEys, therefore LedGndPins[] and colPins[numCols] = {} use same Pins.
 
 #ifdef MULTIPLEXLEDS
 
@@ -349,20 +349,20 @@ const int debounceDelay = 50;
 #ifdef MULTIPLEXLEDS
   byte KeyLedStates[numVccPins*numGndPins];
 #endif
-#if QUADENCS == 1 
-  const int QuadEncs = 1;  
+#if QUADENCS == 1
+  const int QuadEncs = 1;
 #endif
-#if QUADENCS == 2 
-  const int QuadEncs = 2;  
+#if QUADENCS == 2
+  const int QuadEncs = 2;
 #endif
-#if QUADENCS == 3 
-  const int QuadEncs = 3;  
+#if QUADENCS == 3
+  const int QuadEncs = 3;
 #endif
-#if QUADENCS == 4 
-  const int QuadEncs = 4;  
+#if QUADENCS == 4
+  const int QuadEncs = 4;
 #endif
-#if QUADENCS == 5 
-  const int QuadEncs = 5;  
+#if QUADENCS == 5
+  const int QuadEncs = 5;
 #endif
 #ifdef QUADENC
   long EncCount[QuadEncs];
@@ -375,7 +375,7 @@ long counter[JoySticks*2] = {0};      // Initialize an array for the counters
 long prevCounter[JoySticks*2] = {0};  // Initialize an array for the previous counters
 float incrementFactor[JoySticks*2] = {0.0}; // Initialize an array for the incrementFactors
 unsigned long lastUpdateTime[JoySticks*2] = {0}; // Store the time of the last update for each potentiometer
-  
+
 #endif
 
 //### global Variables setup###
@@ -397,6 +397,28 @@ char cmd = 0;
 uint16_t io = 0;
 uint16_t value = 0;
 
+// Function Prototypes
+void readCommands();
+void commandReceived(char cmd, uint16_t io, uint16_t value);
+void multiplexLeds();
+void readKeypad();
+int readAbsKnob();
+void readsInputs();
+void readInputs();
+void readAInputs();
+void readLPoti();
+void controlDLED(int Pin, int Stat);
+void initDLED();
+void writePwmOutputs(int Pin, int Stat);
+void writeOutputs(int Pin, int Stat);
+void StatLedErr(int offtime, int ontime);
+void flushSerial();
+void sendData(char sig, int pin, int state);
+void reconnect();
+void comalive();
+void readEncoders();
+void readJoySticks();
+
 void setup() {
 
 #ifdef INPUTS
@@ -414,7 +436,7 @@ void setup() {
     soldInState[i] = -1;
     togglesinputs[i] = 0;
   }
-    
+
 #endif
 #ifdef AINPUTS
 
@@ -456,7 +478,7 @@ void setup() {
 #ifdef KEYPAD
 for(int col = 0; col < numCols; col++) {
   for (int row = 0; row < numRows; row++) {
-    keys[row][col] = row * numRows + col;
+    keys[row][col] = row * numCols + col;
   }
 }
 #endif
@@ -471,8 +493,8 @@ for(int col = 0; col < numCols; col++) {
 
 void loop() {
 
-  readCommands(); //receive and execute Commands 
-  comalive(); //if nothing is received for 10 sec. blink warning LED 
+  readCommands(); //receive and execute Commands
+  comalive(); //if nothing is received for 10 sec. blink warning LED
 
 
 #ifdef INPUTS
@@ -581,7 +603,7 @@ void readEncoders(){
           sendData('R',i,EncCount[i]);//send Counter
           OldEncCount[i] = EncCount[i];
         }
-      }  
+      }
       if(QuadEncSig[i]==1){
         if(OldEncCount[i] < EncCount[i]){
         sendData('R',i,1); //send Increase by 1 Signal
@@ -607,14 +629,14 @@ void comalive(){
       #ifdef STATUSLED
         StatLedErr(1000,1000);
       #endif
-    }  
+    }
     connectionState = 1;
     flushSerial();
     #ifdef DEBUG
       Serial.println("first connect");
     #endif
   }
-  if(millis() - lastcom > timeout){  
+  if(millis() - lastcom > timeout){
   #ifdef STATUSLED
      StatLedErr(500,200);
   #endif
@@ -624,9 +646,9 @@ void comalive(){
         #endif
         connectionState = 2;
       }
-            
+
    }
-   else{  
+   else{
       connectionState=1;
       #ifdef STATUSLED
         if(DLEDSTATUSLED == 1){
@@ -637,7 +659,7 @@ void comalive(){
         else{
           digitalWrite(StatLedPin, HIGH);
         }
-      #endif 
+      #endif
     }
 }
 
@@ -645,11 +667,9 @@ void comalive(){
 void reconnect(){
   #ifdef DEBUG
     Serial.println("reconnected");
-  #endif
-  #ifdef DEBUG
     Serial.println("resending Data");
   #endif
-    
+
   #ifdef INPUTS
     for (int x = 0; x < Inputs; x++){
       InState[x]= -1;
@@ -675,8 +695,8 @@ void reconnect(){
   #ifdef BINSEL
     oldAbsEncState = -1;
   #endif
-  
-  
+
+
   #ifdef INPUTS
     readInputs(); //read Inputs & send data
   #endif
@@ -698,7 +718,7 @@ void reconnect(){
 
   connectionState = 1;
 
-   
+
 }
 
 
@@ -718,23 +738,23 @@ void flushSerial(){
 #ifdef STATUSLED
 void StatLedErr(int offtime, int ontime){
   unsigned long newMillis = millis();
-  
+
   if (newMillis - oldmillis >= offtime){
       #ifdef DLED
         if(DLEDSTATUSLED == 1){
           controlDLED(StatLedPin, 1);}
       #endif
       if(DLEDSTATUSLED == 0){digitalWrite(StatLedPin, HIGH);}
-    } 
+    }
   if (newMillis - oldmillis >= offtime+ontime){{
       #ifdef DLED
         if(DLEDSTATUSLED == 1){
           controlDLED(StatLedPin, 0);}
       #endif
       if(DLEDSTATUSLED == 0){digitalWrite(StatLedPin, LOW);}
-            
+
       oldmillis = newMillis;
-      
+
     }
   }
 
@@ -758,7 +778,7 @@ void writePwmOutputs(int Pin, int Stat){
 void initDLED(){
   strip.begin();
   strip.setBrightness(DLEDBrightness);
-  
+
     for (int i = 0; i < DLEDcount; i++) {
     strip.setPixelColor(i, strip.Color(DledOffColors[i][0],DledOffColors[i][1],DledOffColors[i][2]));
     }
@@ -779,7 +799,7 @@ void controlDLED(int Pin, int Stat){
       Serial.println(Stat);
 
     #endif
-    } 
+    }
     else{
 
       strip.setPixelColor(Pin, strip.Color(DledOffColors[Pin][0],DledOffColors[Pin][1],DledOffColors[Pin][2]));
@@ -789,7 +809,7 @@ void controlDLED(int Pin, int Stat){
         Serial.print(" set to:");
         Serial.println(Stat);
 
-      #endif   
+      #endif
     }
   strip.show();
   }
@@ -813,7 +833,7 @@ void readLPoti(){
 #ifdef AINPUTS
 void readAInputs(){
   static unsigned int samplecount = 0;
-    
+
    for(int i= 0;i<AInputs; i++){
 
     if (samplecount < smooth) {
@@ -841,7 +861,7 @@ void readInputs(){
       if(InState[i]!= State && millis()- lastInputDebounce[i] > debounceDelay){
         InState[i] = State;
         sendData('I',InPinmap[i],InState[i]);
-      
+
       lastInputDebounce[i] = millis();
       }
     }
@@ -853,14 +873,14 @@ void readsInputs(){
     sInState[i] = digitalRead(sInPinmap[i]);
     if (sInState[i] != soldInState[i] && millis()- lastsInputDebounce[i] > debounceDelay){
       // Button state has changed and debounce delay has passed
-      
+
       if (sInState[i] == LOW || soldInState[i]== -1) { // Stuff after || is only there to send States at Startup
         // Button has been pressed
         togglesinputs[i] = !togglesinputs[i];  // Toggle the LED state
-      
+
         if (togglesinputs[i]) {
           sendData('I',sInPinmap[i],togglesinputs[i]);  // Turn the LED on
-        } 
+        }
         else {
           sendData('I',sInPinmap[i],togglesinputs[i]);   // Turn the LED off
         }
@@ -883,10 +903,10 @@ int readAbsKnob(){
   }
   if(digitalRead(BinSelKnobPins[2])==1){
     var += 4;
-  }  
+  }
   if(digitalRead(BinSelKnobPins[3])==1){
     var += 8;
-  }  
+  }
   if(digitalRead(BinSelKnobPins[4])==1){
     var += 16;
   }
@@ -912,17 +932,17 @@ void readKeypad(){
         // A button has been pressed
         sendData('M',keys[row][col],1);
         lastKey = keys[row][col];
-        row = numRows;
+        break;
 
       }
       if (digitalRead(rowPins[row]) == HIGH && lastKey == keys[row][col]) {
         // The Last Button has been unpressed
         sendData('M',keys[row][col],0);
         lastKey = -1; //reset Key pressed
-        row = numRows;
+        break;
       }
     }
-    
+
     // Set the column pin back to input mode
     pinMode(colPins[col], INPUT);
   }
@@ -949,30 +969,32 @@ void multiplexLeds() {
     pinMode(LedGndPins[i], OUTPUT);
     digitalWrite(LedGndPins[i], HIGH); // Set to HIGH to disable all GND Pins
   }
-  
+
   for(currentLED = 0; currentLED < numVccPins*numGndPins ;currentLED ++){
-    if(ledStates[currentLED] == 1){                         //only handle turned on LEDs 
+    if(ledStates[currentLED] == 1){                         //only handle turned on LEDs
       digitalWrite(LedVccPins[currentLED/numVccPins],HIGH); //turn current LED on
-      digitalWrite(LedGndPins[currentLED%numVccPins],LOW);
-      
-      Serial.print("VCC: ");
-      Serial.print(LedVccPins[currentLED/numVccPins]);
-      Serial.print(" GND: ");
-      Serial.println(LedGndPins[currentLED%numVccPins]);
-      
+      digitalWrite(LedGndPins[currentLED%numGndPins],LOW);
+
+      #ifdef debug
+        Serial.print("VCC: ");
+        Serial.print(LedVccPins[currentLED/numVccPins]);
+        Serial.print(" GND: ");
+        Serial.println(LedGndPins[currentLED%numGndPins]);
+      #endif
+
       delayMicroseconds(interval);                          //wait couple ms
       digitalWrite(LedVccPins[currentLED/numVccPins],LOW);  //turn off and go to next one
-      digitalWrite(LedGndPins[currentLED%numVccPins],HIGH);
+      digitalWrite(LedGndPins[currentLED%numGndPins],HIGH);
     }
   }
 /*
   }
-  if(ledStates[currentLED]==0){//If currentLED is Off, manage next one. 
+  if(ledStates[currentLED]==0){//If currentLED is Off, manage next one.
     currentLED++;
   }
   if(currentLED >= numVccPins*numGndPins){
       currentLED= 0;
-  } 
+  }
   */
 }
 #endif
@@ -1019,11 +1041,11 @@ void commandReceived(char cmd, uint16_t io, uint16_t value){
   }
   #endif
 
-  
+
   if(cmd == 'E'){
     lastcom=millis();
     if(connectionState == 2){
-     reconnect(); 
+     reconnect();
     }
   }
 
@@ -1080,7 +1102,7 @@ void readCommands(){
                   Serial.print("Ungültiges zeichen: ");
                   Serial.println(current);
                   #endif
-                
+
                 }
                 break;
         }
