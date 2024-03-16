@@ -598,7 +598,7 @@ class IOFeature(metaclass=ABCMeta):
         self.configComplete = False # Indicates if the Arduino has the Feature config applied
         self.pinConfigSyncMap = {}
         self._sendMessageCallbacks = []
-
+        self._debugCallbacks = []
 
     def FeatureName(self):
         return self.featureName
@@ -614,34 +614,10 @@ class IOFeature(metaclass=ABCMeta):
     
     def ConfigComplete(self) -> bool:
         return self.configComplete
-    '''
-                    #time.sleep(5)
-            j = self.settings.configJSON()
-            #config_json = json.dumps(j)
-            #h = int(hashlib.sha256(config_json.encode('utf-8')).hexdigest(), 16) % 10**8
-            for k, v in j.items():
-                total = len(v)
-                seq = 0
-                for k1, v1 in v.items():
-                    v1['li'] = k1
-                    #print(v1)
-                    cf = ConfigMessage(configJSON=json.dumps(v1), seq=seq, total=total, featureID=v1['fi'])
-                    print(json.dumps(v1))
-                    seq += 1
-                    try:
-                        self.serialConn.sendMessage(cf.packetize())
-                        self.serialConn.arduino.flush()
-                        #if seq == 1:
-                        #    time.sleep(5)
-                    except Exception as error:
-                        just_the_string = traceback.format_exc()
-                        logging.debug(f'PYDEBUG: ArduinoConnection::doWork, dev={self.settings.dev}, alias={self.settings.alias}, Exception: {str(error)}, Traceback = {just_the_string}')
-                        # Future TODO: Consider doing something intelligent and not just reporting an error. Maybe increment a hal pin that reflects error counts?
-                        return
-                    time.sleep(.05)
-            self.serialConn.arduinoProfileSignature = self.settings.profileSignature
-    '''
-
+    
+    def Debug(self, s:str):
+        for dc in self._debugCallbacks:
+            dc(f'[{self.featureName}] {s}')
             
     @abstractmethod
     def OnConnected(self):
@@ -665,17 +641,15 @@ class IOFeature(metaclass=ABCMeta):
                 self.arduinoFeatureIndex = pm.featureArrayIndex
             del self.pinConfigSyncMap[pm.sequenceID]
             if len(self.pinConfigSyncMap.values()) == 0:
-                print('CONFIG APPLIED!!!')
+                self.Debug("Config successfully applied.")
 
         elif pm.mt == MessageType.MT_CONFIG_NAK:
+            self.Debug(f'Error. MCU NAK on config. Reason = {pm.errorString}')
             pass
     
     @abstractmethod
     def Loop(self):
-        #for p in self.pinConfigSyncMap.values():
         if len(self.pinConfigSyncMap.values()) > 0:
-            #p = self.pinConfigSyncMap.values()
-            #p = next(iter(self.pinConfigSyncMap))
             p = next(iter(self.pinConfigSyncMap.values()))
             if (time.time() - p.lastTickCount) > p.retryInterval:
                 print( f'{time.time() - p.lastTickCount}' )
@@ -684,13 +658,13 @@ class IOFeature(metaclass=ABCMeta):
                     # do send
                     p.lastTickCount = time.time()
                     j = p.pinConfig.toJson()
-                    print('SENDING CONFIG!!!')
                     cf = ConfigMessage(configJSON=j, seq=p.pinConfig.pinLogicalID, total=1, featureID=p.pinConfig.featureID)
+                    self.Debug(f'Sending Config Message, Message = {cf.packetize()}')
                     for c in self._sendMessageCallbacks:
                         c(cf.packetize())
                     return
                 else:
-                    print('SENDING CONFIG FAILED!!!')
+                    self.Debug('Error. Config timed out during sending!')
                     del self.pinConfigSyncMap[p.pinConfig.pinLogicalID]
                     pass
                     #indicate failure
@@ -699,6 +673,7 @@ class IOFeature(metaclass=ABCMeta):
             pass
     @abstractmethod
     def Setup(self):
+        self.Debug('Setup called')
         for i in range(0, len(self.pinList)):
             self.pinList[i].pinConfigSynced = False
             self.pinList[i].pinLogicalID = i # set the logical ID. 
@@ -706,6 +681,9 @@ class IOFeature(metaclass=ABCMeta):
                     
     def sendMessageSubscribe(self, callback: callable):
         self._sendMessageCallbacks.append(callback)
+
+    def debugSubscribe(self, callback: callable):
+        self._debugCallbacks.append(callback)
 '''
     DigitalInputs
 '''
@@ -1372,6 +1350,7 @@ class ArduinoConnection:
             self.serialConn.connectionStateSubscribe(callback=lambda s: self.onConnectionStateChange(s))
             try:
                 for f in self.settings.io_map.keys():
+                    f.debugSubscribe(callback=lambda d: self.onDebug(d))
                     f.Setup()
                     f.sendMessageSubscribe(callback=lambda m: self.sendMessage(m))
             except Exception as ex:
@@ -1383,6 +1362,9 @@ class ArduinoConnection:
     
     def sendMessage(self, pm:ProtocolMessage):
         self.serialConn.sendMessage(pm)
+        
+    def onDebug(self, d:str):
+        logging.debug(f'PYDEBUG: [{self.settings.alias}]: {d}') 
     
     def onConnectionStateChange(self, state:ConnectionState):
         if self.settings.enabled == True:
