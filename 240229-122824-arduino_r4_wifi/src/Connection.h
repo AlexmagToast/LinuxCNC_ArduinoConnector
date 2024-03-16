@@ -379,12 +379,14 @@ protected:
 
 
     uint16_t mt = doc[F("mt")];
+    
     #ifdef DEBUG_VERBOSE
       COM_DEV.println(F("JSON RX="));
       serializeJson(doc, DEBUG_DEV);
       COM_DEV.println(F(""));
       COM_DEV.flush();
     #endif
+    
     //DEBUG_DEV.println(mt);
     switch(mt)
     {
@@ -393,9 +395,19 @@ protected:
         #ifdef DEBUG
           DEBUG_DEV.println(F("RX MT_HANDSHAKE"));
         #endif
-        protocol::HandshakeMessage hmm;
-        hmm.fromJSON(doc);
-        _onHandshakeMessage(hmm);
+
+        if(_myState == ConnectionState::CS_CONNECTED)
+        {
+          // Trigger a reconnect if the python side sends a handshake message when we 'think' we are already connected.
+          DEBUG_DEV.println(F("RX MT_HANDSHAKE, RESTARTING CONNECTION LOOP!"));
+          this->_setState(CS_DISCONNECTED);
+        }
+        else
+        {
+          protocol::HandshakeMessage hmm;
+          hmm.fromJSON(doc);
+          _onHandshakeMessage(hmm);
+        }
         break;
       }
       case protocol::MessageTypes::MT_HEARTBEAT:

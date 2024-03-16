@@ -104,6 +104,7 @@ public:
 
     void OnConfig(const protocol::ConfigMessage& cm)
     {
+        /*
         protocol::ConfigMessageNak nak;
         nak.featureID = cm.featureID;
         nak.seq = cm.seq;
@@ -111,6 +112,12 @@ public:
         nak.errorCode = 10;
         nak.errorString = "TEST FAIL";
         serialClient.SendMessage(nak);
+        */
+        protocol::ConfigMessageAck ack;
+        ack.featureID = cm.featureID;
+        ack.seq = cm.seq;
+        ack.featureArrIndex = 33;
+        serialClient.SendMessage(ack);
     }
 
 

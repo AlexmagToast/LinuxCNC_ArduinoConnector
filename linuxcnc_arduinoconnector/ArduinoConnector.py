@@ -596,6 +596,7 @@ class IOFeature(metaclass=ABCMeta):
         self.featureReady = False # Indicates if Feature is ready for IO processing
         self.pinList = [] # Holds a list of pins which were parsed from the Yaml config
         self.configComplete = False # Indicates if the Arduino has the Feature config applied
+        self.configSyncError = False
         self.pinConfigSyncMap = {}
         self._sendMessageCallbacks = []
         self._debugCallbacks = []
@@ -614,6 +615,9 @@ class IOFeature(metaclass=ABCMeta):
     
     def ConfigComplete(self) -> bool:
         return self.configComplete
+
+    def ConfigSyncError(self) -> bool:
+        return self.configSyncError
     
     def Debug(self, s:str):
         for dc in self._debugCallbacks:
@@ -621,9 +625,9 @@ class IOFeature(metaclass=ABCMeta):
             
     @abstractmethod
     def OnConnected(self):
-        for p in self.pinList:
-            if p.pinConfigSynced == False:
-                self.pinConfigSyncMap[p.pinLogicalID] = IOFeatureConfigItem(p)
+        self.configSyncError = False # Clear the error flag on reconnect
+        for p in self.pinList: # Iterate through the pin config list and queue pin config messages for syncing with MCU
+            self.pinConfigSyncMap[p.pinLogicalID] = IOFeatureConfigItem(p)
                           
     @abstractmethod
     def OnDisconnected(self):
@@ -644,12 +648,13 @@ class IOFeature(metaclass=ABCMeta):
                 self.Debug("Config successfully applied.")
 
         elif pm.mt == MessageType.MT_CONFIG_NAK:
-            self.Debug(f'Error. MCU NAK on config. Reason = {pm.errorString}')
+            self.Debug(f'Error. MCU NAK on config. Reason = {pm.errorString}. Terminating sync.')
+            self.configSyncError = True
             pass
     
     @abstractmethod
     def Loop(self):
-        if len(self.pinConfigSyncMap.values()) > 0:
+        if self.ConfigSyncError() != True and len(self.pinConfigSyncMap.values()) > 0:
             p = next(iter(self.pinConfigSyncMap.values()))
             if (time.time() - p.lastTickCount) > p.retryInterval:
                 print( f'{time.time() - p.lastTickCount}' )
@@ -664,13 +669,11 @@ class IOFeature(metaclass=ABCMeta):
                         c(cf.packetize())
                     return
                 else:
-                    self.Debug('Error. Config timed out during sending!')
-                    del self.pinConfigSyncMap[p.pinConfig.pinLogicalID]
-                    pass
-                    #indicate failure
-        else:
-            #print('CONFIG APPLIED!!!')
-            pass
+                    self.Debug('Error. Config timed out during sending! Sync failed.')
+                    #del self.pinConfigSyncMap[p.pinConfig.pinLogicalID]
+                    self.pinConfigSyncMap.clear()
+                    self.configSyncError = True
+
     @abstractmethod
     def Setup(self):
         self.Debug('Setup called')
@@ -982,6 +985,7 @@ class Connection(MessageDecoder):
         self.rxQueue = Queue(RX_MAX_QUEUE_SIZE)
         self._messageReceivedCallbacks = {}
         self._connectionStateCallbacks = []
+        
 
     def sendCommand(self, m:str):
         cm = MessageEncoder().encodeBytes(mt=MessageType.MT_COMMAND, payload=[m, 1])
@@ -998,43 +1002,45 @@ class Connection(MessageDecoder):
         if m.mt == MessageType.MT_HANDSHAKE:
             logging.debug(f'PYDEBUG: onMessageRecv() - Received MT_HANDSHAKE, Values = {m.payload}')
             try:
-                
-                #hsm = HandshakeMessage(m)
                 self.timeout = m.timeout / 1000
                 self.arduinoProfileSignature = m.profileSignature
-                #self.maxMsgSize = hsm.maxMsgSize
                 self.enabledFeatures = m.enabledFeatures
                 self.uid = m.UID
                 self.setState(ConnectionState.CONNECTED)
                 self.lastMessageReceived = time.time()
-
                 resp = m.packetize()
                 self.sendMessage(resp)
-                
-                #pass
-
-                
             except Exception as ex:
                 just_the_string = traceback.format_exc()
                 print(just_the_string)
                 logging.debug(f'PYDEBUG: error: {str(ex)}')
-                
+        
+        if self.connectionState != ConnectionState.CONNECTED:
+                name = 'UNKNOWN_TYPE'
+                try:
+                    name = MessageType(m.mt)
+                except Exception as ex:
+                    pass
+                    #debugstr = f'PYDEBUG Error. Received unknown message of type {m.mt} from arduino. Ignoring.'
+                    #logging.debug(debugstr)
+                debugstr = f'PYDEBUG Error. Received message of type {name} from arduino prior to completing handshake. Ignoring.'
+                logging.debug(debugstr)
+                return
+              
         if m.mt == MessageType.MT_HEARTBEAT:
             logging.debug(f'PYDEBUG onMessageRecv() - Received MT_HEARTBEAT, Values = {m.payload}')
             #bi = m.payload[0]-1 # board index is always sent over incremeented by one
-            if self.connectionState != ConnectionState.CONNECTED:
-                debugstr = f'PYDEBUG Error. Received message from arduino prior to completing handshake. Ignoring.'
-                logging.debug(debugstr)
-                return
+
             self.lastMessageReceived = time.time()
             hb = MessageEncoder().encodeBytes(payload=m.payload) + b'\x00'
             self.sendMessage(bytes(hb))
-        #if m.messageType == MessageType.MT_CONFIG_ACK:    
-        #    pass
-        #if m.messageType == MessageType.MT_CONFIG_NAK:
-        #    pass
+
         if m.mt in self._messageReceivedCallbacks.keys():
-            self._messageReceivedCallbacks[m.mt](m)
+            if m.mt in self._messageReceivedCallbacks.keys():
+                self._messageReceivedCallbacks[m.mt](m)
+            else:
+                debugstr = f'PYDEBUG Error. Received message of unknown type {m.mt} from arduino, ignoring.'
+                logging.debug(debugstr)
         
         '''
         if m.messageType == MessageType.MT_PINSTATUS:
@@ -1066,10 +1072,16 @@ class Connection(MessageDecoder):
     def sendMessage(self, b:bytes):
         pass
 
+    def sendHandshakeMessage(self):
+        hsm = ProtocolMessage(messageType=MessageType.MT_HANDSHAKE)
+        hsm.payload = {'mt': 3, 'pv': 1, 'fm': 65, 'to': 20000, 'ps': 0}
+        self.sendMessage(hsm.packetize())
+
     def updateState(self):
-        if self.connectionState == ConnectionState.DISCONNECTED:
+        if self.connectionState == ConnectionState.DISCONNECTED or self.connectionState == ConnectionState.ERROR:
             #self.lastMessageReceived = time.process_time()
             self.setState(ConnectionState.CONNECTING)
+            
         elif self.connectionState == ConnectionState.CONNECTING:
             pass
             #if time.process_time() - arduino.lastMessageReceived >= arduino.timeout:
@@ -1220,8 +1232,10 @@ class SerialConnection(Connection):
                         if port.serial_number != None:
                             if self.dev in port.device or port.serial_number in self.dev:
                                 self.serial = port.serial_number
+                    self.sendHandshakeMessage() # Send handshake to arduino. This avoids the Arduino waiting for a timeout to occur before eventually re-trying the handshake routine (shaves off upwards of 10 seconds)
 
                 num_bytes = self.arduino.in_waiting
+                self.updateState()
                 #logging.debug(f'SerialConnection::rxTask, dev={self.dev}, in_waiting={num_bytes}')
                 if num_bytes > 0:
                     self.rxBuffer += self.arduino.read(num_bytes)
@@ -1348,6 +1362,7 @@ class ArduinoConnection:
             self.serialConn.messageReceivedSubscribe(mt=MessageType.MT_CONFIG_NAK, callback=lambda m: self.onMessage(m))
 
             self.serialConn.connectionStateSubscribe(callback=lambda s: self.onConnectionStateChange(s))
+            
             try:
                 for f in self.settings.io_map.keys():
                     f.debugSubscribe(callback=lambda d: self.onDebug(d))
@@ -1466,7 +1481,10 @@ class ArduinoConnection:
 
     def doWork(self):
         if self.settings.enabled == False:
-            return # do nothing. TODO: Still indicate the arduino is disabled via the HAL
+            return # do nothing. 
+        
+        #if self.serialConn.connectionState == ConnectionState.CONNECTED:
+
         #self.doFeaturePinUpdates()
 
         if self.serialConn.status == ThreadStatus.STOPPED:
@@ -1490,7 +1508,12 @@ class ArduinoConnection:
                 self.serialConn.startRxTask()
         
         for f in self.settings.io_map.keys():
-            f.Loop()
+            if self.serialConn.connectionState == ConnectionState.CONNECTED and f.ConfigSyncError() == True:
+                logging.debug(f'PYDEBUG: ArduinoConnection::doWork, dev={self.settings.dev}, alias={self.settings.alias}, Feature {f.featureName} reported sync error. Terminating connection..')
+                self.serialConn.setState(newState=ConnectionState.ERROR)
+                return
+            else:
+                f.Loop()
         '''
                 if self.serialConn.getConnectionState() == ConnectionState.CONNECTED and self.settings.profileSignature is not self.serialConn.arduinoProfileSignature:
             
