@@ -37,6 +37,14 @@
 
 
 using namespace protocol;
+/**
+ * @class SerialConnection
+ * @brief Represents a serial connection for communication with an Arduino device.
+ * 
+ * The SerialConnection class is a concrete implementation of the ConnectionBase class,
+ * providing functionality to establish a serial connection with an Arduino device and
+ * send/receive messages over the serial interface.
+ */
 class SerialConnection : public ConnectionBase {
 public:
 

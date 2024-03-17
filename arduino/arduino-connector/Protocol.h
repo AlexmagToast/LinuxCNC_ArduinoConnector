@@ -140,6 +140,7 @@ namespace protocol
         message = m;
       }
   }pcm;
+
   /*
   struct PinChangeResponseMessage {
       uint8_t featureID;

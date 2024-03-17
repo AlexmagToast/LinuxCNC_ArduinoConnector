@@ -55,7 +55,7 @@ class IFeature
        virtual bool FeatureReady() = 0;
        virtual void SetFeatureReady(bool);
        virtual uint8_t GetFeatureID() = 0;
-       virtual bool onConfig(protocol::ConfigMessage*, String& reason) = 0;
+       virtual bool onConfig(protocol::ConfigMessage*, String& fail_reason) = 0;
 
     protected:
         
@@ -65,6 +65,12 @@ class IFeature
 
 typedef IFeature* FeaturePtr;
 
+/**
+ * @class FeatureController
+ * @brief The FeatureController class manages a collection of features and provides methods to execute their loops and setups.
+ *
+ * The FeatureController class allows registering features, executing their loops, and performing setups. It also provides a method to handle configuration messages for the registered features.
+ */
 class FeatureController {
 public:
     FeatureController()
@@ -191,6 +197,14 @@ private:
     size_t _currentFeatureCount = 0;
 }featureController;
 
+/**
+ * @class Feature
+ * @brief Represents a feature in the system.
+ * 
+ * The `Feature` class is a base class for implementing features in the system. It provides
+ * common functionality and methods that can be overridden by derived classes to customize
+ * the behavior of the feature.
+ */
 class Feature : public IFeature {
 public:
     Feature(const uint8_t featureID, const size_t loopFrequency=DEFAULT_LOOP_FREQUENCY)
@@ -245,9 +259,9 @@ protected:
         Events
     */
     // onConfig gets called when a config message is received from the python host
-    virtual bool onConfig(protocol::ConfigMessage * config, String& reason)
+    virtual bool onConfig(protocol::ConfigMessage * config, String& fail_reason)
     {
-        reason = "Feature did not implement onConfig";
+        fail_reason = "Feature did not implement onConfig";
         return false;
     }
     // onConnected gets called when the python host has connected and completed handshaking
@@ -304,6 +318,7 @@ private:
     bool _featureReady = false;
     uint8_t _featureArrayIndex = 0;
 };
+
 
 namespace Callbacks
 {
