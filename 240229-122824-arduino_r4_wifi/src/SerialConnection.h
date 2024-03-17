@@ -40,15 +40,13 @@ class SerialConnection : public ConnectionBase {
 public:
 
     // Future TODO: Support selection of a different Serial interface other than just the default 'Serial'
-    SerialConnection(uint16_t retryPeriod, uint32_t& fm)
-  : ConnectionBase(retryPeriod, fm)
+    SerialConnection(uint16_t retryPeriod)
+  : ConnectionBase(retryPeriod)
   {
 
   }
 
   ~SerialConnection(){}
-
-
 
   // Virtual interfaces from Connection class
   virtual void _onConnect(){}
@@ -61,7 +59,8 @@ public:
 
   void SendMessage( protocol::IMessage& m)
   {
-    Serial.println("SEND MESSAGE");
+    //Serial.println("SEND MESSAGE");
+    DEBUG_DEV.println("SEND MESSAGE");
     JsonDocument doc;
     m.toJSON(doc);
     uint8_t buffer[128];

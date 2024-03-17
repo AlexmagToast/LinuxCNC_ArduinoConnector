@@ -66,12 +66,14 @@ const uint16_t RX_BUFFER_SIZE = 256;
 #include "FeatureMap.h"
 
 #ifdef ENABLE_FEATUREMAP
-featureMap fm;
-SerialConnection serialClient(SERIAL_RX_TIMEOUT, fm.features);
+//featureMap fm;
+SerialConnection serialClient(SERIAL_RX_TIMEOUT);
 #else
 uint32_t f = 0;
-SerialConnection serialClient(SERIAL_RX_TIMEOUT, f);
+SerialConnection serialClient(SERIAL_RX_TIMEOUT);
 #endif
+
+//#define DEBUG_DEV serialClient
 
 #endif
 /*

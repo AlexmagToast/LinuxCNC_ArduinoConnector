@@ -102,7 +102,7 @@ public:
         }
     }
 
-    void OnConfig(const protocol::ConfigMessage& cm)
+    void OnConfig( protocol::ConfigMessage& cm)
     {
         /*
         protocol::ConfigMessageNak nak;
@@ -113,11 +113,6 @@ public:
         nak.errorString = "TEST FAIL";
         serialClient.SendMessage(nak);
         */
-        protocol::ConfigMessageAck ack;
-        ack.featureID = cm.featureID;
-        ack.seq = cm.seq;
-        ack.featureArrIndex = 33;
-        serialClient.SendMessage(ack);
     }
 
 
@@ -243,7 +238,7 @@ private:
 
 namespace Callbacks
 {
-    void onConfig(const protocol::ConfigMessage& cm) {
+    void onConfig(protocol::ConfigMessage& cm) {
         #ifdef DEBUG
         DEBUG_DEV.print(F("::onConfig called, featureID = "));
         DEBUG_DEV.print((int)cm.featureID);

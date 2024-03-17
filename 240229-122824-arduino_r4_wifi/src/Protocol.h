@@ -312,6 +312,7 @@ namespace protocol
         String s = doc[F("cs")];
         configString = s;
       }
+
       #endif
   }cfg;
 

@@ -5,6 +5,7 @@
 #ifdef INTEGRATED_CALLBACKS
 #include "RXBuffer.h"
 #include "Cobs.h"
+#include "FeatureMap.h"
 #endif
 
 
@@ -25,19 +26,19 @@ class ConnectionBase : public RXBuffer {
 class ConnectionBase {
 #endif
 
-  using m_cmcb = void (*)(const protocol::ConfigMessage&);
+  using m_cmcb = void (*)(protocol::ConfigMessage&);
   using m_pcmcb = void (*)(const protocol::PinChangeMessage&);
   using m_cscb = void (*)(int);
 
 public:
 #ifdef INTEGRATED_CALLBACKS
-  ConnectionBase(uint16_t retryPeriod, uint32_t& fm) : RXBuffer(), _retryPeriod(retryPeriod), _featureMap(fm)
+  ConnectionBase(uint16_t retryPeriod) : RXBuffer(), _retryPeriod(retryPeriod)
   {
 
   }
   //virtual void onMessage(uint8_t* d, const size_t& size)=0;
 #else
-  ConnectionBase(uint16_t retryPeriod, uint32_t& fm) : _retryPeriod(retryPeriod), _featureMap(fm)
+  ConnectionBase(uint16_t retryPeriod, uint32_t& fm) : _retryPeriod(retryPeriod)
   {
 
   }
@@ -291,7 +292,7 @@ protected:
       _commandReceived = 1;
   }
   */
-  void _onConfigMessage(const protocol::ConfigMessage& n)
+  void _onConfigMessage(protocol::ConfigMessage& n)
   {
       if(_configAction != NULL)
       {
@@ -454,7 +455,7 @@ protected:
 
   size_t _getHandshakeMessage(uint8_t * buffer, size_t size)
   {
-    protocol::hm.featureMap = this->_featureMap;
+    protocol::hm.featureMap = fm.features;//this->_featureMap;
     protocol::hm.timeout = _retryPeriod * 2;
     #ifndef INTEGRATED_CALLBACKS_LOWMEMORY
     protocol::hm.uid = _uid;
@@ -628,7 +629,7 @@ protected:
   uint32_t _resendTimer = 0;
   uint32_t _receiveTimer = 0;
   uint8_t _initialized = false;
-  uint32_t _featureMap = 1;
+  //uint32_t _featureMap = 1;
   int _myState = CS_DISCONNECTED;
   //char _rxBuffer[RX_BUFFER_SIZE];
   //byte _txBuffer[RX_BUFFER_SIZE];

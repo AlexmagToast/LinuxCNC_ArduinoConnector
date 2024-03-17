@@ -88,7 +88,7 @@ void setup() {
 
   //DEBUG_DEV.begin(19200);
   COM_DEV.begin(115200);
-  DEBUG_DEV.begin(115200);
+  //DEBUG_DEV.begin(115200);
   //while (!Serial) {
 
  //   ; // wait for serial port to connect. Needed for native USB port only

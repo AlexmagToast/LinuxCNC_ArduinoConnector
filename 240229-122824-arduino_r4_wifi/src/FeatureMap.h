@@ -15,7 +15,7 @@
  */
 struct featureMap
 {
-  uint32_t features;
+  uint32_t features = 0;
   featureMap()
   {
     features = 0;
@@ -93,6 +93,7 @@ struct featureMap
 
   void DumpFeatureMapToSerial()
   {
+    /*
     #ifdef DEBUG
     DEBUG_DEV.print(F("DEBUG: Feature Map = 0x"));
     DEBUG_DEV.println((uint32_t)this->features, HEX);
@@ -215,9 +216,10 @@ struct featureMap
 
       DEBUG_DEV.println(F("- End Feature Map Decode Dump -"));
     #endif
+    */
   }
 
-};
+}fm;
 #endif
 #endif //#define FEATUREMAP_H_
 
