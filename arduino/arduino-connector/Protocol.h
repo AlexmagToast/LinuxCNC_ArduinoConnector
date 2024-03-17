@@ -33,6 +33,7 @@ namespace protocol
 {
   enum MessageTypes
   {
+    MT_INVITE_SYNC              =   0,
     MT_HEARTBEAT                =   1,
     MT_RESPONSE                 =   2,
     MT_HANDSHAKE                =   3, 

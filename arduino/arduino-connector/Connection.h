@@ -268,16 +268,12 @@ protected:
 
   void _onHandshakeMessage(const protocol::HandshakeMessage& n)
   {
-      //Serial1.println("GOT HS MESSAGE");
-      //Serial1.flush();
       #ifdef DEBUG_VERBOSE
       DEBUG_DEV.println(F("-RX HANDSHAKE MESSAGE DUMP-"));
       DEBUG_DEV.print(F("Protocol Version: 0x"));
       DEBUG_DEV.println(n.protocolVersion, HEX);
       DEBUG_DEV.print(F("Profile Signature:"));
       DEBUG_DEV.println(n.profileSignature);
-      //DEBUG_DEV.print(" Board Index: ");
-      //DEBUG_DEV.println(n.boardIndex);
       DEBUG_DEV.println(F(" - RX END HANDSHAKE MESSAGE DUMP -"));
       #endif
       _handshakeReceived = 1;
@@ -287,8 +283,6 @@ protected:
   {
       #ifdef DEBUG_VERBOSE
       DEBUG_DEV.println(F(" - RX HEARTBEAT MESSAGE DUMP -"));
-      //DEBUG_DEV.print(" Board Index: ");
-      //DEBUG_DEV.println(n.boardIndex);
       DEBUG_DEV.println(F(" - RX END HEARTBEAT MESSAGE DUMP -"));
       #endif
       _heartbeatReceived = 1;
@@ -409,25 +403,29 @@ protected:
     //DEBUG_DEV.println(mt);
     switch(mt)
     {
+      case protocol::MessageTypes::MT_INVITE_SYNC:
+      {
+        #ifdef DEBUG
+          DEBUG_DEV.println(F("RX MT_INVITE_SYNC"));
+        #endif
+        //if(_myState == ConnectionState::CS_CONNECTED)
+        //{
+          // Trigger a reconnect if the python side sends a handshake message when we 'think' we are already connected.
+          #ifdef DEBUG
+          DEBUG_DEV.println(F("RX MT_INVITE_SYNC, RESTARTING CONNECTION LOOP!"));
+          #endif
+          this->_setState(CS_DISCONNECTED);
+        //}
+        break;
+      }
       case protocol::MessageTypes::MT_HANDSHAKE:
       {
         #ifdef DEBUG
           DEBUG_DEV.println(F("RX MT_HANDSHAKE"));
         #endif
-
-        if(_myState == ConnectionState::CS_CONNECTED)
-        {
-          // Trigger a reconnect if the python side sends a handshake message when we 'think' we are already connected.
-          DEBUG_DEV.println(F("RX MT_HANDSHAKE, RESTARTING CONNECTION LOOP!"));
-          this->_setState(CS_DISCONNECTED);
-        }
-        else
-        {
-          protocol::HandshakeMessage hmm;
-          hmm.fromJSON(doc);
-          _onHandshakeMessage(hmm);
-          this->_sendHandshakeMessage(); // This is to cover a situation where the Python side sent this handshake message not in response to the MCU's, but to speed up sync.  So the MCU sends a handshake message to let the other side know that sync is complete.
-        }
+        protocol::HandshakeMessage hmm;
+        hmm.fromJSON(doc);
+        _onHandshakeMessage(hmm);
         break;
       }
       case protocol::MessageTypes::MT_HEARTBEAT:

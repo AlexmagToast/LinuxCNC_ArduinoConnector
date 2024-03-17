@@ -56,6 +56,8 @@ logging.basicConfig(level=logging.DEBUG)
 # Filename of default yaml profile.
 DEFAULT_PROFILE = "config.yaml"
 
+MCU_PROTOCOL_VERSION = 1
+
 #INFO = Info()
 
 '''
@@ -319,6 +321,7 @@ class ConnectionState(StrEnum):
         return self.value
        
 class MessageType(IntEnum):
+    MT_INVITE_SYNC = 0,
     MT_HEARTBEAT = 1,
     MT_RESPONSE = 2, 
     MT_HANDSHAKE = 3, 
@@ -436,6 +439,19 @@ class ConfigMessageAck(ProtocolMessage):
         if 'fa' not in payload:
             raise Exception(f'Feature Array Index undefined')
         self.featureArrayIndex = payload['fa']
+
+class InviteSyncMessage(ProtocolMessage):
+    def __init__(self, payload=None):
+        super().__init__(messageType=MessageType.MT_INVITE_SYNC)
+        self.payload = payload
+
+        if payload != None:
+            if 'pv' not in payload:
+                raise Exception(f'Protocol version undefined')
+            self.pv = payload['pv']
+        else:
+            payload = { 'pv': f'{MCU_PROTOCOL_VERSION}' }
+
         
 #class ConfigMessageAck(ProtocolMessage):
 #    def __init__(self, md:MessageDecoder):
@@ -466,8 +482,8 @@ class HandshakeMessage(ProtocolMessage):
         if 'pv' not in payload:
             raise Exception(f'Protocol version undefined')
         self.protocolVersion = payload['pv']
-        if self.protocolVersion != protocol_ver:
-            raise Exception(f'Expected protocol version {protocol_ver}, got {self.protocolVersion}')
+        if self.protocolVersion != MCU_PROTOCOL_VERSION:
+            raise Exception(f'Expected protocol version {MCU_PROTOCOL_VERSION}, got {self.protocolVersion}')
         if 'fm' not in payload:
             raise Exception(f'Enabled features undefined')
         self.enabledFeatures = FeatureMapDecoder(payload['fm'])
@@ -907,15 +923,6 @@ class ArduinoYamlParser:
 
 
 
-debug_comm = True
-
-#serial_dev = '/dev/ttyACM0' 
-#serial_dev = '/dev/tty.usbmodemF412FA68D6802'
-
-#arduino = None #serial.Serial(serial_dev, 115200, timeout=1, xonxoff=False, rtscts=False, dsrdtr=True)
-
-protocol_ver = 1
-
 
 class FeatureMapDecoder:
     def __init__(self, b:bytes):
@@ -1072,10 +1079,9 @@ class Connection(MessageDecoder):
     def sendMessage(self, b:bytes):
         pass
 
-    def sendHandshakeMessage(self):
-        hsm = ProtocolMessage(messageType=MessageType.MT_HANDSHAKE)
-        hsm.payload = {'mt': 3, 'pv': 1, 'fm': 65, 'to': 20000, 'ps': 0}
-        self.sendMessage(hsm.packetize())
+    def sendInviteSyncMessage(self):
+        si = InviteSyncMessage()
+        self.sendMessage(si.packetize())
 
     def updateState(self):
         if self.connectionState == ConnectionState.DISCONNECTED or self.connectionState == ConnectionState.ERROR:
@@ -1090,6 +1096,7 @@ class Connection(MessageDecoder):
             d = time.time() - self.lastMessageReceived
             if (time.time() - self.lastMessageReceived) >= self.timeout:
                 self.setState(ConnectionState.DISCONNECTED)
+                self.sendInviteSyncMessage() # Send sync invite to arduino. This avoids the Arduino waiting for a timeout to occur before eventually re-trying the handshake routine (shaves off upwards of 10 seconds)
 
     def getConnectionState(self) -> ConnectionState:
         return self.connectionState
@@ -1232,7 +1239,7 @@ class SerialConnection(Connection):
                         if port.serial_number != None:
                             if self.dev in port.device or port.serial_number in self.dev:
                                 self.serial = port.serial_number
-                    self.sendHandshakeMessage() # Send handshake to arduino. This avoids the Arduino waiting for a timeout to occur before eventually re-trying the handshake routine (shaves off upwards of 10 seconds)
+                    self.sendInviteSyncMessage() # Send sync invite to arduino. This avoids the Arduino waiting for a timeout to occur before eventually re-trying the handshake routine (shaves off upwards of 10 seconds)
 
                 num_bytes = self.arduino.in_waiting
                 self.updateState()
