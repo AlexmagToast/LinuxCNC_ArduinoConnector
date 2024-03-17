@@ -29,9 +29,8 @@
 #include "FeatureController.h"
 #include "Features.h"
 
-#ifdef INTEGRATED_CALLBACKS
 #include "RXBuffer.h"
-#endif
+
 #ifdef ENABLE_RAPIDCHANGE
 #include "RapidChange.h"
 #endif

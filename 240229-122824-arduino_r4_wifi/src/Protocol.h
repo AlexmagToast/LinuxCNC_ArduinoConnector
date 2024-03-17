@@ -24,49 +24,6 @@ SOFTWARE.
 #pragma once
 #ifndef PROTOCOL_H_
 #define PROTOCOL_H_
-/*
-#define MSGPACKETIZER_MAX_PUBLISH_ELEMENT_SIZE 20
-#define MSGPACK_MAX_PACKET_BYTE_SIZE 2048
-#define PACKETIZER_MAX_PACKET_BINARY_SIZE 512
-#define MSGPACK_MAX_ARRAY_SIZE 512
-#define MSGPACK_MAX_OBJECT_SIZE 512
-#define MSGPACKETIZER_DEBUGLOG_ENABLE
-#define PACKETIZER_MAX_PACKET_QUEUE_SIZE 10
-*/
-//#define MSGPACKETIZER_ENABLE_STREAM
-/*
-// The following are otpomizations for low-memory boards such as Arduino Unos.\
-// See https://github.com/hideakitai/MsgPacketizer#memory-management-only-for-no-stl-boards
-// TODO: Board detect & set these dynamically based on detected board
-// max publishing element size in one destination
-#define MSGPACKETIZER_MAX_PUBLISH_ELEMENT_SIZE 5
-// max destinations to publish
-#define MSGPACKETIZER_MAX_PUBLISH_DESTINATION_SIZE 1
-
-// msgpack serialized binary size
-#define MSGPACK_MAX_PACKET_BYTE_SIZE 96
-// max size of MsgPack::arr_t
-#define MSGPACK_MAX_ARRAY_SIZE 7
-// max size of MsgPack::map_t
-#define MSGPACK_MAX_MAP_SIZE 7
-// msgpack objects size in one packet
-#define MSGPACK_MAX_OBJECT_SIZE 64
-
-// max number of decoded packet queues
-#define PACKETIZER_MAX_PACKET_QUEUE_SIZE 1
-// max data bytes in packet
-#define PACKETIZER_MAX_PACKET_BINARY_SIZE 96
-// max number of callback for one stream
-#define PACKETIZER_MAX_CALLBACK_QUEUE_SIZE 3
-// max number of streams
-#define PACKETIZER_MAX_STREAM_MAP_SIZE 1
-
-#define MSGPACKETIZER_DEBUGLOG_ENABLE
-//#define MSGPACKETIZER_ENABLE_STREAM
-//#define MSGPACKETIZER_ENABLE_ETHER
-#define MSGPACK_MAX_OBJECT_SIZE 64
-*/
-//#include <MsgPacketizer.h>
 #define PROTOCOL_VERSION 1 // Server and client must agree on version during handshake
 
 namespace protocol
@@ -119,11 +76,6 @@ namespace protocol
         uint8_t   analogOutputs = 0;
         #endif
       #endif
-
-      #ifdef ENABLE_MSGPACKETIZER_CALLBACKS
-      MSGPACK_DEFINE(protocolVersion, featureMap, timeout, profileSignature, uid, digitalPins, analogInputs, analogOutputs);
-      #endif 
-      #ifdef INTEGRATED_CALLBACKS
       void toJSON(JsonDocument& doc)
       {
         //JsonDocument doc;
@@ -154,7 +106,6 @@ namespace protocol
         #endif
         //return doc;
       }
-      #endif
   }hm;
 
   // First ResponseMessage received by the Arduino is in response to the Python side receiving the HandshakeMessage from the Arduiono.  The arduinoIndex value
@@ -166,7 +117,6 @@ namespace protocol
       uint8_t seqID;  
       uint8_t responseReq; // Indicates if a response is required from recepient
       String message;
-      #ifdef INTEGRATED_CALLBACKS
       void toJSON(JsonDocument& doc)
       {
         //JsonDocument doc;
@@ -185,7 +135,6 @@ namespace protocol
         String m = doc[F("ms")];
         message = m;
       }
-      #endif
   }pcm;
   /*
   struct PinChangeResponseMessage {
@@ -209,7 +158,6 @@ namespace protocol
 */
   struct HeartbeatMessage : public IMessage {
     uint8_t boardIndex = 0;
-    #ifdef INTEGRATED_CALLBACKS
       void toJSON(JsonDocument& doc)
       {
         //JsonDocument doc;
@@ -221,7 +169,6 @@ namespace protocol
       {
         
       }
-    #endif
   }hb;
 
   /*
@@ -241,7 +188,6 @@ namespace protocol
     uint8_t featureID;
     uint16_t seq;
     uint8_t featureArrIndex;
-    #ifdef INTEGRATED_CALLBACKS
     void toJSON(JsonDocument& doc)
     {
       //JsonDocument doc;
@@ -257,7 +203,6 @@ namespace protocol
       seq = doc[F("se")];
       featureArrIndex = doc[F("fa")];
     }
-    #endif
   };
 
   struct ConfigMessageNak : public IMessage {
@@ -265,7 +210,6 @@ namespace protocol
     uint16_t seq;
     uint8_t errorCode;
     String errorString;
-    #ifdef INTEGRATED_CALLBACKS
     void toJSON(JsonDocument& doc)
     {
       //JsonDocument doc;
@@ -284,7 +228,6 @@ namespace protocol
       String s = doc[F("es")];
       errorString = s;
     }
-    #endif
   };
 
   struct ConfigMessage : public IMessage {
@@ -292,7 +235,6 @@ namespace protocol
       uint16_t seq;
       uint16_t total;
       String configString; 
-      #ifdef INTEGRATED_CALLBACKS
       void toJSON(JsonDocument& doc)
       {
         //JsonDocument doc;
@@ -312,8 +254,6 @@ namespace protocol
         String s = doc[F("cs")];
         configString = s;
       }
-
-      #endif
   }cfg;
 
   #ifdef DEBUG

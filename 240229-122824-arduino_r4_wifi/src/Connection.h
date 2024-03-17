@@ -2,9 +2,10 @@
 #define CONNECTION_H_
 #pragma once
 #include "Protocol.h"
-#ifdef INTEGRATED_CALLBACKS
 #include "RXBuffer.h"
 #include "Cobs.h"
+
+#ifdef ENABLE_FEATUREMAP
 #include "FeatureMap.h"
 #endif
 
@@ -20,29 +21,20 @@ enum ConnectionState
   CS_ERROR
 };
 
-#ifdef INTEGRATED_CALLBACKS
-class ConnectionBase : public RXBuffer {
-#else
-class ConnectionBase {
-#endif
 
+class ConnectionBase : public RXBuffer {
   using m_cmcb = void (*)(protocol::ConfigMessage&);
   using m_pcmcb = void (*)(const protocol::PinChangeMessage&);
   using m_cscb = void (*)(int);
 
 public:
-#ifdef INTEGRATED_CALLBACKS
+
   ConnectionBase(uint16_t retryPeriod) : RXBuffer(), _retryPeriod(retryPeriod)
   {
 
   }
   //virtual void onMessage(uint8_t* d, const size_t& size)=0;
-#else
-  ConnectionBase(uint16_t retryPeriod, uint32_t& fm) : _retryPeriod(retryPeriod)
-  {
 
-  }
-#endif
 
   void RegisterConfigCallback(m_cmcb act)
   {
@@ -341,7 +333,7 @@ protected:
 
 
 
-  #ifdef INTEGRATED_CALLBACKS
+
   void printBuffer(uint8_t* buffer, size_t size) {
     for (uint8_t i = 0; i < size; i++) {
       if (buffer[i] < 0x10) {
@@ -521,63 +513,6 @@ protected:
     return sz;
   }
 
-  #endif
-
-  #ifdef ENABLE_MSGPACKETIZER_CALLBACKS
-  protocol::HandshakeMessage& _getHandshakeMessage()
-  {
-    protocol::hm.featureMap = this->_featureMap;
-    protocol::hm.timeout = _retryPeriod * 2;
-
-    protocol::hm.uid = _uid;
-    #ifdef DEBUG_VERBOSE  
-    
-      DEBUG_DEV.println(F("- TX HANDSHAKE MESSAGE DUMP -"));
-      DEBUG_DEV.print(F("Protocol Version: 0x"));
-      DEBUG_DEV.println(protocol::hm.protocolVersion, HEX);
-      //DEBUG_DEV.print(" Feature Map: 0x");
-      //DEBUG_DEV.println(protocol::hm.featureMap, HEX);
-      DEBUG_DEV.print(F("Timeout:"));
-      DEBUG_DEV.println(protocol::hm.timeout);
-      //DEBUG_DEV.print(" MaxMsgSize: ");
-      //DEBUG_DEV.println(protocol::hm.maxMsgSize);
-      DEBUG_DEV.print(F("ProfileSignature:"));
-      DEBUG_DEV.println(protocol::hm.profileSignature);
-      //DEBUG_DEV.print(" Board Index: ");
-     //DEBUG_DEV.println(protocol::hm.boardIndex);
-      DEBUG_DEV.print(F("Board UID:"));
-      DEBUG_DEV.println(protocol::hm.uid);
-      DEBUG_DEV.println(F("- TX END HANDSHAKE MESSAGE DUMP -"));
-    
-    #endif
-    return protocol::hm;
-  }
-    protocol::HeartbeatMessage& _getHeartbeatMessage()
-  {
-    #ifdef DEBUG_VERBOSE
-      DEBUG_DEV.println(F("- TX HEARTBEAT MESSAGE DUMP -"));
-      DEBUG_DEV.print(F("Board Index:"));
-      DEBUG_DEV.println(protocol::hb.boardIndex);
-      DEBUG_DEV.println(F("- TX END HEARTBEAT MESSAGE DUMP -"));
-    #endif
-    return protocol::hb;
-  }
-
-  protocol::PinChangeMessage& _getPinChangeMessage()
-  {
-    #ifdef DEBUG_VERBOSE
-      DEBUG_DEV.println(F("-TX PINCHANGE MESSAGE DUMP -"));
-      DEBUG_DEV.print(F("FEATURE ID:"));
-      DEBUG_DEV.println(protocol::pcm.featureID);  
-      DEBUG_DEV.print(F("ACK REQ:"));
-      DEBUG_DEV.println(protocol::pcm.responseReq);       
-      DEBUG_DEV.print(F("MESSAGE:"));
-      DEBUG_DEV.println(protocol::pcm.message);  
-      DEBUG_DEV.println(F("- TX END PINCHANGE MESSAGE DUMP -"));
-    #endif
-    return protocol::pcm;
-  }
-  #endif
 
 /*
   protocol::PinStatusMessage& _getPinStatusMessage()

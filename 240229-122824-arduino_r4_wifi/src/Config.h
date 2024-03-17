@@ -33,17 +33,10 @@
 #endif
 
 
-//#define ENABLE_MSGPACKETIZER_CALLBACKS
-#define INTEGRATED_CALLBACKS
+
+//#define INTEGRATED_CALLBACKS
 #ifdef LOWMEM
 #define INTEGRATED_CALLBACKS_LOWMEMORY
-#endif
-
-#ifdef INTEGRATED_CALLBACKS_LOWMEMORY
-  #define INTEGRATED_CALLBACKS
-  #ifdef ENABLE_MSGPACKETIZER_CALLBACKS
-    #undef ENABLE_MSGPACKETIZER_CALLBACKS
-  #endif
 #endif
 
 #ifndef EEPROM_ENABLED
@@ -55,23 +48,16 @@
 const uint16_t SERIAL_STARTUP_DELAY = 5000; // In milliseconds
 const uint16_t SERIAL_RX_TIMEOUT = 10000;
 
-#ifdef INTEGRATED_CALLBACKS
+
 const uint16_t RX_BUFFER_SIZE = 256;
-#endif
 
 #define DEBUG_DEV Serial
 #define COM_DEV Serial
 #include "ArduinoJson.h"
 #include "SerialConnection.h"
-#include "FeatureMap.h"
 
-#ifdef ENABLE_FEATUREMAP
-//featureMap fm;
 SerialConnection serialClient(SERIAL_RX_TIMEOUT);
-#else
-uint32_t f = 0;
-SerialConnection serialClient(SERIAL_RX_TIMEOUT);
-#endif
+
 
 //#define DEBUG_DEV serialClient
 
