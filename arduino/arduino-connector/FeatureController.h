@@ -28,6 +28,7 @@
 #define FEATURE_CONTROLLER_H_
 #include <Arduino.h>
 #include "ArduinoJson.h"
+#include "Config.h"
 #include "Protocol.h"
 
 const int DEFAULT_LOOP_FREQUENCY = 50;
@@ -53,9 +54,11 @@ class IFeature
        virtual void SetLastExecMilli(unsigned long) = 0;
        virtual bool FeatureReady() = 0;
        virtual void SetFeatureReady(bool);
+       virtual uint8_t GetFeatureID() = 0;
+       virtual bool onConfig(protocol::ConfigMessage*, String& reason) = 0;
 
     protected:
-        virtual bool onConfig(protocol::ConfigMessage*) = 0;
+        
         virtual void onConnected() = 0;
         virtual void onDisconnected() = 0;
 };
@@ -130,6 +133,45 @@ public:
 
     void OnConfig( protocol::ConfigMessage& cm)
     {
+        if( _features == NULL )
+        {
+            #ifdef DEBUG
+                DEBUG_DEV.println(F("Error. No features registered!"));
+            #endif
+            return;
+        }
+        for(int x = 0; x < _currentFeatureCount; x++)
+        {
+            if( _features[x]->GetFeatureID() == cm.featureID )
+            {   
+                String reason;
+                if( _features[x]->onConfig(&cm, reason) )
+                {
+                    protocol::ConfigMessageAck ack;
+                    ack.featureID = cm.featureID;
+                    ack.seq = cm.seq;
+                    ack.featureArrIndex = x;
+                    serialClient.SendMessage(ack);
+                }
+                else
+                {
+                    protocol::ConfigMessageNak nak;
+                    nak.featureID = cm.featureID;
+                    nak.seq = cm.seq;
+                    nak.errorCode = 10;
+                    nak.errorString = "Feature did not accept config";
+                    serialClient.SendMessage(nak);
+                }
+                return;
+            }
+            else
+            {
+                #ifdef DEBUG
+                    DEBUG_DEV.print(F("Feature not found for featureID: "));
+                    DEBUG_DEV.println(cm.featureID);
+                #endif
+            }
+        }
         /*
         protocol::ConfigMessageNak nak;
         nak.featureID = cm.featureID;
@@ -203,8 +245,9 @@ protected:
         Events
     */
     // onConfig gets called when a config message is received from the python host
-    virtual bool onConfig(protocol::ConfigMessage * config)
+    virtual bool onConfig(protocol::ConfigMessage * config, String& reason)
     {
+        reason = "Feature did not implement onConfig";
         return false;
     }
     // onConnected gets called when the python host has connected and completed handshaking
