@@ -1,3 +1,29 @@
+/*
+  LinuxCNC_ArduinoConnector
+  By Alexander Richter, info@theartoftinkering.com &
+  Ken Thompson (not THAT Ken Thompson), https://github.com/KennethThompson
+  
+  MIT License
+  Copyright (c) 2023 Alexander Richter & Ken Thompson
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files (the "Software"), to deal
+  in the Software without restriction, including without limitation the rights
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  copies of the Software, and to permit persons to whom the Software is
+  furnished to do so, subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in all
+  copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+  SOFTWARE.
+*/
 #ifndef CONNECTION_H_
 #define CONNECTION_H_
 #pragma once
@@ -351,12 +377,12 @@ protected:
   {
     JsonDocument doc;
     #ifdef DEBUG_VERBOSE
-      COM_DEV.println(F("ENCODED RX="));
+      DEBUG_DEV.println(F("ENCODED RX="));
       printBuffer(d, size);
     #endif
     size_t sz = cobs::decode(d, size-1);
     #ifdef DEBUG_VERBOSE
-      COM_DEV.println(F("DECODED RX="));
+      DEBUG_DEV.println(F("DECODED RX="));
       printBuffer(d, sz);
     #endif
   
@@ -365,7 +391,7 @@ protected:
       #ifdef DEBUG
       DEBUG_DEV.print(F("deserializeJson() failed: "));
       DEBUG_DEV.println(error.f_str());
-      COM_DEV.flush();
+      DEBUG_DEV.flush();
       #endif
       return;
     }
@@ -400,6 +426,7 @@ protected:
           protocol::HandshakeMessage hmm;
           hmm.fromJSON(doc);
           _onHandshakeMessage(hmm);
+          this->_sendHandshakeMessage(); // This is to cover a situation where the Python side sent this handshake message not in response to the MCU's, but to speed up sync.  So the MCU sends a handshake message to let the other side know that sync is complete.
         }
         break;
       }
