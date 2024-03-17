@@ -55,7 +55,7 @@ class IFeature
        virtual bool FeatureReady() = 0;
        virtual void SetFeatureReady(bool);
        virtual uint8_t GetFeatureID() = 0;
-       virtual bool onConfig(protocol::ConfigMessage*, String& fail_reason) = 0;
+       virtual uint32_t onConfig(protocol::ConfigMessage*, String& fail_reason) = 0;
 
     protected:
         
@@ -151,7 +151,8 @@ public:
             if( _features[x]->GetFeatureID() == cm.featureID )
             {   
                 String reason;
-                if( _features[x]->onConfig(&cm, reason) )
+                uint32_t r = _features[x]->onConfig(&cm, reason);
+                if( r == 0 )
                 {
                     protocol::ConfigMessageAck ack;
                     ack.featureID = cm.featureID;
@@ -164,29 +165,26 @@ public:
                     protocol::ConfigMessageNak nak;
                     nak.featureID = cm.featureID;
                     nak.seq = cm.seq;
-                    nak.errorCode = 10;
-                    nak.errorString = "Feature did not accept config";
+                    nak.errorCode = r;
+                    nak.errorString = reason;
                     serialClient.SendMessage(nak);
                 }
                 return;
             }
-            else
-            {
-                #ifdef DEBUG
-                    DEBUG_DEV.print(F("Feature not found for featureID: "));
-                    DEBUG_DEV.println(cm.featureID);
-                #endif
-            }
+
         }
-        /*
-        protocol::ConfigMessageNak nak;
-        nak.featureID = cm.featureID;
-        nak.seq = cm.seq;
-        //ack.featureArrIndex = 33;
-        nak.errorCode = 10;
-        nak.errorString = "TEST FAIL";
-        serialClient.SendMessage(nak);
-        */
+
+        #ifdef DEBUG
+            protocol::ConfigMessageNak nak;
+            nak.featureID = cm.featureID;
+            nak.seq = cm.seq;
+            nak.errorCode = ERR_INVALID_FEATURE_ID;
+            nak.errorString = "Feature ID unknown";
+            serialClient.SendMessage(nak);
+            DEBUG_DEV.print(F("Feature not found for featureID: "));
+            DEBUG_DEV.println(cm.featureID);
+        #endif
+    
     }
 
 
@@ -232,6 +230,7 @@ public:
     virtual void Debug(String message)
     {
 
+        
     }
 
     virtual unsigned long GetLastExecMilli()
@@ -259,10 +258,10 @@ protected:
         Events
     */
     // onConfig gets called when a config message is received from the python host
-    virtual bool onConfig(protocol::ConfigMessage * config, String& fail_reason)
+    virtual uint32_t onConfig(protocol::ConfigMessage * config, String& fail_reason)
     {
         fail_reason = "Feature did not implement onConfig";
-        return false;
+        return ERR_NONE;
     }
     // onConnected gets called when the python host has connected and completed handshaking
     virtual void onConnected()

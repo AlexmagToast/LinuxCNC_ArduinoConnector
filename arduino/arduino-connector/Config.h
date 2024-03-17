@@ -71,6 +71,13 @@ const uint16_t SERIAL_STARTUP_DELAY = 5000; // In milliseconds
 const uint16_t SERIAL_RX_TIMEOUT = 5000; // In milliseconds. On handhshake, the python side is told to use this value, times two, to determine connection timeouts. 
 
 
+// Error Codes
+const uint32_t ERR_NONE = 0x00000000;
+const uint32_t ERR_INVALID_FEATURE_ID = 0x00000001;
+const uint32_t ERR_FEATURE_NOT_REGISTERED = 0x00000002;
+const uint32_t ERR_INVALID_PIN_ID = 0x00000003;
+
+
 const uint16_t RX_BUFFER_SIZE = 256;
 
 #define DEBUG_DEV Serial
