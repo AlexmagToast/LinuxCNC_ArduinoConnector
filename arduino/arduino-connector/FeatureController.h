@@ -205,11 +205,12 @@ private:
  */
 class Feature : public IFeature {
 public:
-    Feature(const uint8_t featureID, const size_t loopFrequency=DEFAULT_LOOP_FREQUENCY)
+    Feature(const uint8_t featureID, String featureName, const size_t loopFrequency=DEFAULT_LOOP_FREQUENCY)
     {
         _featureID = featureID;
         _loopFrequency = loopFrequency;
         _featureArrayIndex = featureController.RegisterFeature(this);
+        _featureName = featureName;
     }
     
     ~Feature()
@@ -243,14 +244,29 @@ public:
         _lastExecutedMillis = ms;
     }
 
-    uint8_t GetFeatureID()
+    virtual uint8_t GetFeatureID()
     {
         return _featureID;
     }
 
-    int GetLoopFreq()
+    virtual int GetLoopFreq()
     {
         return _loopFrequency;
+    }
+
+    virtual void SetLoopFreq(int freq)
+    {
+        _loopFrequency = freq;
+    }
+
+    virtual void SetFeatureName(String name)
+    {
+        _featureName = name;
+    }
+
+    virtual String GetFeatureName()
+    {
+        return _featureName;
     }
 
 protected:
@@ -260,7 +276,62 @@ protected:
     // onConfig gets called when a config message is received from the python host
     virtual uint32_t onConfig(protocol::ConfigMessage * config, String& fail_reason)
     {
-        fail_reason = "Feature did not implement onConfig";
+        if (config->total == 0)
+        {
+            fail_reason = "Error. Feature " + GetFeatureName() + " with ID " + String(config->featureID) + "did not implement onConfig";
+            return ERR_NOT_IMPLEMENTED_BY_FEATURE;
+        }
+        if (config->seq == 0)
+        {
+            #ifdef DEBUG
+                DEBUG_DEV.print(F("Feature::onConfig: Feature ID "));
+                DEBUG_DEV.print(config->featureID);
+                DEBUG_DEV.println(F(" is initializing pins"));
+                #ifdef DEBUG_VERBOSE
+                    DEBUG_DEV.print(F("Feature Name = "));
+                    DEBUG_DEV.println(GetFeatureName());
+                    DEBUG_DEV.print(F("Total = "));
+                    DEBUG_DEV.println(config->total);
+                    DEBUG_DEV.print(F("Seq = "));
+                    DEBUG_DEV.println(config->seq);
+                #endif
+
+                //DEBUG_DEV.println(F("Feature::onConfig: seq is 0, initializing pins")); 
+            #endif
+            InitPins(config->total);
+        }   
+        JsonDocument pinDoc;
+        DeserializationError error = deserializeJson(pinDoc, config->configString);
+
+        // check for deserialization error
+        if (error) {
+            fail_reason = "Failed to deserialize config string";
+            return ERR_INVALID_JSON;
+        }
+        // Extract lid and pid from pinDoc
+        uint8_t lid = pinDoc["lid"];
+        uint8_t pid = pinDoc["pid"];
+        // AddPin based on config's featureID, lid and pid
+        AddPin(new Pin{config->featureID, lid, pid}, config->seq);
+        // Set feautre ready if all pins are initialized
+        if (config->seq == config->total - 1)
+        {
+            // output debug indicating feature ID was set ready
+            #ifdef DEBUG
+                DEBUG_DEV.print(F("Feature::onConfig: Feature ID "));
+                DEBUG_DEV.print(config->featureID);
+                DEBUG_DEV.println(F(" is ready"));
+                #ifdef DEBUG_VERBOSE
+                    DEBUG_DEV.print(F("Feature Name = "));
+                    DEBUG_DEV.println(GetFeatureName());
+                    DEBUG_DEV.print(F("Total Pins = "));
+                    DEBUG_DEV.println(config->total);
+                    DEBUG_DEV.print(F("Feature Index = "));
+                    DEBUG_DEV.println(_featureArrayIndex);
+                #endif
+            #endif
+            SetFeatureReady(true);
+        }       
         return ERR_NONE;
     }
     // onConnected gets called when the python host has connected and completed handshaking
@@ -316,8 +387,8 @@ private:
     PinPtr * _pins = NULL;
     bool _featureReady = false;
     uint8_t _featureArrayIndex = 0;
+    String _featureName;
 };
-
 
 namespace Callbacks
 {

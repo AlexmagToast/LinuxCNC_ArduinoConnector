@@ -679,7 +679,7 @@ class IOFeature(metaclass=ABCMeta):
                     # do send
                     p.lastTickCount = time.time()
                     j = p.pinConfig.toJson()
-                    cf = ConfigMessage(configJSON=j, seq=p.pinConfig.pinLogicalID, total=1, featureID=p.pinConfig.featureID)
+                    cf = ConfigMessage(configJSON=j, seq=p.pinConfig.pinLogicalID, total=len(self.pinList), featureID=p.pinConfig.featureID)
                     self.Debug(f'Sending Config Message, Message = {cf.packetize()}')
                     for c in self._sendMessageCallbacks:
                         c(cf.packetize())

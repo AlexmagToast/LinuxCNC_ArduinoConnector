@@ -445,9 +445,19 @@ protected:
       {
         #ifdef DEBUG
           DEBUG_DEV.println(F("RX MT_CONFIG"));
+
         #endif
         protocol::ConfigMessage ccf;
         ccf.fromJSON(doc);
+        #ifdef DEBUG_VERBOSE
+            DEBUG_DEV.println(F("CONFIG MESSAGE DUMP:"));
+            DEBUG_DEV.print(F("SEQ:"));
+            DEBUG_DEV.println(ccf.seq);
+            DEBUG_DEV.print(F("TOTAL:"));
+            DEBUG_DEV.println(ccf.total);
+            DEBUG_DEV.print(F("CONFIG STRING:"));
+            DEBUG_DEV.println(ccf.configString);
+        #endif
         _onConfigMessage(ccf);
         break;
       }

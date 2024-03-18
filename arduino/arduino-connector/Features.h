@@ -35,7 +35,7 @@ namespace Features
     class DigitalInputs: public Feature
     {
         public:
-        DigitalInputs() : Feature(DINPUTS, DEFAULT_LOOP_FREQUENCY)
+        DigitalInputs() : Feature(DINPUTS, String("DIGITAL_INPUTS"), DEFAULT_LOOP_FREQUENCY)
         {
             
         }
@@ -51,22 +51,21 @@ namespace Features
         }
 
         protected:
-        // onConfig gets called when a config message is received from the python host
-        virtual bool onConfig(protocol::ConfigMessage * config)
-        {
-            return true;
-        }
 
         // onConnected gets called when the python host has connected and completed handshaking
         virtual void onConnected()
         {
-
+            #ifdef DEBUG
+                Serial.println("DigitalInputs::onConnected");
+            #endif
         }
 
         // onDisconnected gets called when the python host has disconnected
         virtual void onDisconnected()
         {
-
+            #ifdef DEBUG
+                Serial.println("DigitalInputs::onDisconnected");
+            #endif
         }
 
     }din;
