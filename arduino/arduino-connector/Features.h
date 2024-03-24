@@ -42,12 +42,14 @@ namespace Features
 
         virtual void loop()
         {
-
+           
         }
 
         virtual void setup()
         {
-
+            #ifdef DEBUG
+                Serial.println("DigitalInputs::setup");
+            #endif
         }
 
         protected:

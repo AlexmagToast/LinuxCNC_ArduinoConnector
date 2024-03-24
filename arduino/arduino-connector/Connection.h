@@ -284,10 +284,9 @@ protected:
 
   void _onHeartbeatMessage(const protocol::HeartbeatMessage& n)
   {
-      #ifdef DEBUG_VERBOSE
-      DEBUG_DEV.println(F(" - RX HEARTBEAT MESSAGE DUMP -"));
-      DEBUG_DEV.println(F(" - RX END HEARTBEAT MESSAGE DUMP -"));
-      #endif
+      //#ifdef DEBUG_VERBOSE
+      //DEBUG_DEV.println(F("RX HEARTBEAT MESSAGE"));
+      //#endif
       _heartbeatReceived = 1;
   }
 
