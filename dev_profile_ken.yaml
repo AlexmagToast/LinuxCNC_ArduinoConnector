@@ -386,7 +386,8 @@ mcu:
   #dev: /dev/cu.usbmodem3485187ABE842
   #dev: /dev/serial/by-id/usb-Arduino_Nano_ESP32_3485187ABE84-if01
   #dev: /dev/tty.usbmodem3485187ABE842
-  dev: /dev/tty.usbmodem3485187ABE842
+  #dev: /dev/tty.usbmodem3485187ABE842
+  dev: /dev/tty.usbmodem3485187ABE842 
    
   enabled: true
   hal_emulation: true
