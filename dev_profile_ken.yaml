@@ -384,12 +384,15 @@ mcu:
   #dev: /dev/cu.usbmodem14201  # Used for initial programming
   #dev: /dev/cu.usbmodemF412FA68D6802 
   #dev: /dev/cu.usbmodem3485187ABE842
-  dev: /dev/serial/by-id/usb-Arduino_Nano_ESP32_3485187ABE84-if01
-  enabled: false
+  #dev: /dev/serial/by-id/usb-Arduino_Nano_ESP32_3485187ABE84-if01
+  #dev: /dev/tty.usbmodem3485187ABE842
+  dev: /dev/tty.usbmodem3485187ABE842
+   
+  enabled: true
   hal_emulation: true
   
   io_map:
-    digitalOutputs:
+    digitalOutputsdisabled:
       - pin_id: 2
         pin_name: dout.2 #hal pin name
         input_pullup: true
@@ -404,74 +407,7 @@ mcu:
         pin_name: din.4 #hal pin name
         input_pullup: true
         pin_debounce: 0
-      - pin_id: 5
-        pin_name: din.5 #hal pin name
-        input_pullup: true
-        pin_debounce: 0
-      - pin_id: 6
-        pin_name: din.6 #hal pin name
-        input_pullup: true
-        pin_debounce: 0
-      - pin_id: 7
-        pin_name: din.7 #hal pin name
-        input_pullup: true
-        pin_debounce: 0
-      - pin_id: 8
-        pin_name: din.8 #hal pin name
-        input_pullup: true
-        pin_debounce: 0
-      - pin_id: 9
-        pin_name: din.9 #hal pin name
-        input_pullup: true
-        pin_debounce: 0
-      - pin_id: 10
-        pin_name: din.10 #hal pin name
-        input_pullup: true
-        pin_debounce: 0
-      - pin_id: 11
-        pin_name: din.11 #hal pin name
-        input_pullup: true
-        pin_debounce: 0
-      - pin_id: 12
-        pin_name: din.12 #hal pin name
-        input_pullup: true
-        pin_debounce: 0
-      - pin_id: 13
-        pin_name: din.13 #hal pin name
-        input_pullup: true
-        pin_debounce: 0
-      - pin_id: 17
-        pin_name: din.17 #hal pin name
-        input_pullup: true
-        pin_debounce: 0
-      - pin_id: 18
-        pin_name: din.18 #hal pin name
-        input_pullup: true
-        pin_debounce: 0
-      - pin_id: 19
-        pin_name: din.19 #hal pin name
-        input_pullup: true
-        pin_debounce: 0
-      - pin_id: 20
-        pin_name: din.20 #hal pin name
-        input_pullup: true
-        pin_debounce: 0
-      - pin_id: 21
-        pin_name: din.21 #hal pin name
-        input_pullup: true
-        pin_debounce: 0
-      - pin_id: 22
-        pin_name: din.22 #hal pin name
-        input_pullup: true
-        pin_debounce: 0
-      - pin_id: 23
-        pin_name: din.23 #hal pin name
-        input_pullup: true
-        pin_debounce: 0
-      - pin_id: 24
-        pin_name: din.24 #hal pin name
-        input_pullup: true
-        pin_debounce: 0
+
 
 ---
 mcu: 
@@ -541,18 +477,15 @@ mcu:
 mcu: 
   alias: Arduino R4 Wifi
   component_name: arduinoR4wifi # Name of component to use in HAL
-<<<<<<< HEAD
   #dev: /dev/cu.usbmodem14201  # Used for initial programming
   #dev: /dev/cu.usbmodemF412FA68D6802 
   #dev: /dev/serial/by-id/usb-Arduino_UNO_WiFi_R4_CMSIS-DAP_F412FA68D680-if01
-  dev: /dev/tty.usbmodemF412FA68D6802
-=======
+  #dev: /dev/tty.usbmodemF412FA68D6802
   #dev: /dev/cu.usbmodem14201 
   #/dev/tty.usbmodemF412FA68D6802
   dev: /dev/cu.usbmodemF412FA68D6802 
   #dev: /dev/serial/by-id/usb-Arduino_UNO_WiFi_R4_CMSIS-DAP_F412FA68D680-if01
->>>>>>> 5db58bf9d116eee79676d3896b803242b50f28af
-  enabled: true
+  enabled: false
   hal_emulation: true
   #connection: 
   #  baudrate: 9600
