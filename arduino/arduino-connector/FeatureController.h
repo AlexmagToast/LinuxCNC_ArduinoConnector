@@ -33,6 +33,13 @@
 
 const int DEFAULT_LOOP_FREQUENCY = 50;
 
+namespace SetupEventOptions
+{
+    const uint8_t PostConfigSync = 0; // Default. Only call Setup after config sync success
+    const uint8_t PostStart = 1; // Call setup after start (regardless of config sync success)
+    const uint8_t PostStartAndPostConfigSync = 2; // Call setup after start and after config sync success
+}
+
 struct Pin
 {
     uint8_t fid;
@@ -205,12 +212,21 @@ private:
  */
 class Feature : public IFeature {
 public:
-    Feature(const uint8_t featureID, String featureName, const size_t loopFrequency=DEFAULT_LOOP_FREQUENCY)
+    Feature(const uint8_t featureID, 
+        String featureName, 
+        const size_t loopFrequency=DEFAULT_LOOP_FREQUENCY, 
+        const uint8_t setupEventOption=SetupEventOptions::PostConfigSync)
     {
         _featureID = featureID;
         _loopFrequency = loopFrequency;
         _featureArrayIndex = featureController.RegisterFeature(this);
         _featureName = featureName;
+        _setupEventOption = setupEventOption;
+        if(_setupEventOption == SetupEventOptions::PostStart || 
+            _setupEventOption == SetupEventOptions::PostStartAndPostConfigSync)
+        {
+            setup();
+        }
     }
     
     ~Feature()
@@ -330,7 +346,12 @@ protected:
                     DEBUG_DEV.println(_featureArrayIndex);
                 #endif
             #endif
-            SetFeatureReady(true);
+            _configSynced = true;
+            if(_setupEventOption == SetupEventOptions::PostConfigSync || 
+                _setupEventOption == SetupEventOptions::PostStartAndPostConfigSync)
+            {
+                setup();
+            }
         }       
         return ERR_NONE;
     }
@@ -386,8 +407,10 @@ private:
     uint8_t _featureID = 0;
     PinPtr * _pins = NULL;
     bool _featureReady = false;
+    bool _configSynced = false;
     uint8_t _featureArrayIndex = 0;
     String _featureName;
+    uint8_t _setupEventOption = SetupEventOptions::PostConfigSync;
 };
 
 namespace Callbacks
