@@ -123,9 +123,7 @@ public:
     // Returns array position of feature to avoid having to iterate over feature array
     int RegisterFeature(IFeature * f)
     {
-        #ifdef DEBUG
-            DEBUG_DEV.println(F("FeatureController::RegisterFeature: Registering feature"));
-        #endif
+
         if( _features == NULL )
         {
             #ifdef DEBUG
@@ -150,14 +148,17 @@ public:
             delete [] _features;
             _features = tmp;
         }
+        f->SetFeatureArrayIndex(_currentFeatureCount);
         #ifdef DEBUG
             DEBUG_DEV.print(F("FeatureController::RegisterFeature: Registering feature "));
             DEBUG_DEV.print(f->GetFeatureID());
             DEBUG_DEV.print(F(" with name "));
             DEBUG_DEV.println(f->GetFeatureName());
+            DEBUG_DEV.print(F("Feature Array Index = "));
+            DEBUG_DEV.println(_currentFeatureCount);
         #endif
         _features[_currentFeatureCount] = f;//new FeaturePtr();
-        f->SetFeatureArrayIndex(_currentFeatureCount);
+        
         return _currentFeatureCount++;
         
     }

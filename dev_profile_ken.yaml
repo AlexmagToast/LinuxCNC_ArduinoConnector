@@ -389,7 +389,7 @@ mcu:
   #dev: /dev/tty.usbmodem3485187ABE842
   dev: /dev/tty.usbmodem3485187ABE842 
    
-  enabled: true
+  enabled: false
   hal_emulation: true
   
   io_map:
@@ -602,4 +602,33 @@ mcu:
       - pin_id: 7
         pin_name: dout.7 #hal pin name
 
-      
+---
+mcu: 
+  alias: Arduino Zero
+  component_name: arduinoZero # Name of component to use in HAL
+  dev: /dev/tty.usbmodem1302
+  enabled: true
+  hal_emulation: true
+  #connection: 
+  #  baudrate: 9600
+  io_map:
+        
+    digitalInputs:
+      - pin_id: 2
+        pin_name: din.02 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 3
+        pin_name: din.03 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 4
+        pin_name: din.04 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+
+    digitalOutputs:
+      - pin_id: 6
+        pin_name: dout.6
+      - pin_id: 7
+        pin_name: dout.7 #hal pin name

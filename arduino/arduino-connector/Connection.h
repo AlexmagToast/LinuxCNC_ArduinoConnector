@@ -156,6 +156,7 @@ public:
           this->_setState(CS_CONNECTED);
           _resendTimer = millis();
           _receiveTimer = millis();
+          _connectedTime = millis();
           return;
         }
         else if(millis() > this->_resendTimer + _retryPeriod)
@@ -352,10 +353,6 @@ protected:
     }
   }
 
-
-
-
-
   void printBuffer(uint8_t* buffer, size_t size) {
     for (uint8_t i = 0; i < size; i++) {
       if (buffer[i] < 0x10) {
@@ -491,7 +488,7 @@ protected:
     #endif
     #ifdef DEBUG_VERBOSE  
     
-      DEBUG_DEV.println(F("-TX HANDSHAKE MESSAGE DUMP-"));
+      DEBUG_DEV.println(F("TX HANDSHAKE MESSAGE DUMP"));
       DEBUG_DEV.print(F("Protocol Version: 0x"));
       DEBUG_DEV.println(protocol::hm.protocolVersion, HEX);
       //DEBUG_DEV.print(" Feature Map: 0x");
@@ -508,7 +505,7 @@ protected:
       DEBUG_DEV.print(F("Board UID:"));
       DEBUG_DEV.println(protocol::hm.uid);
       #endif
-      DEBUG_DEV.println(F("-TX END HANDSHAKE MESSAGE DUMP-"));
+      DEBUG_DEV.println(F("TX END HANDSHAKE MESSAGE DUMP"));
     
     #endif
 
@@ -520,14 +517,31 @@ protected:
 
   size_t _getHeartbeatMessage(uint8_t * buffer, size_t size)
   {
-    #ifdef DEBUG_VERBOSE
-      DEBUG_DEV.println(F("- TX HEARTBEAT MESSAGE DUMP -"));
-      DEBUG_DEV.print(F("Board Index:"));
-      DEBUG_DEV.println(protocol::hb.boardIndex);
-      DEBUG_DEV.println(F("- TX END HEARTBEAT MESSAGE DUMP -"));
-    #endif
     JsonDocument doc;
+    /*
+    //unsigned long diff = millis() - _connectedTime;
+    unsigned long runMillis = millis();
+    unsigned long allSeconds=runMillis/1000;
+    int runDays = allSeconds/86400;
+    int secsRemaining = allSeconds%86400;
+
+    int runHours=secsRemaining/3600;
+    secsRemaining=secsRemaining%3600;
+
+    int runMinutes=secsRemaining/60;
+    int runSeconds=secsRemaining%60;
+    char buf[32];
+    sprintf(buf,"%02d:%02d:%02d:%02d", runDays, runHours,runMinutes,runSeconds);
+    */
+    protocol::hb.mcuUptime = millis() / 1000;
     protocol::hb.toJSON(doc);
+    //doc["ut"] = diff;
+    #ifdef DEBUG_VERBOSE
+      DEBUG_DEV.println(F("TX HEARTBEAT MESSAGE DUMP"));
+      DEBUG_DEV.print(F("MCU Uptime: "));
+      DEBUG_DEV.println(protocol::hb.mcuUptime);
+      DEBUG_DEV.println(F("TX END HEARTBEAT MESSAGE DUMP"));
+    #endif
     size_t sz = _jsonToMsgPack(doc, buffer, size);
     return sz;
   }
@@ -535,14 +549,14 @@ protected:
   size_t _getPinChangeMessage(uint8_t * buffer, size_t size)
   {
     #ifdef DEBUG_VERBOSE
-      DEBUG_DEV.println(F("-TX PINCHANGE MESSAGE DUMP -"));
+      DEBUG_DEV.println(F("TX PINCHANGE MESSAGE DUMP"));
       DEBUG_DEV.print(F("FEATURE ID:"));
       DEBUG_DEV.println(protocol::pcm.featureID);  
       DEBUG_DEV.print(F("ACK REQ:"));
       DEBUG_DEV.println(protocol::pcm.responseReq);       
       DEBUG_DEV.print(F("MESSAGE:"));
       DEBUG_DEV.println(protocol::pcm.message);  
-      DEBUG_DEV.println(F("- TX END PINCHANGE MESSAGE DUMP -"));
+      DEBUG_DEV.println(F("TX END PINCHANGE MESSAGE DUMP"));
     #endif
     JsonDocument doc;
     protocol::pcm.toJSON(doc);
@@ -596,15 +610,12 @@ protected:
     return r;
   }
 
-  
   uint16_t _retryPeriod = 0;
   uint32_t _resendTimer = 0;
   uint32_t _receiveTimer = 0;
   uint8_t _initialized = false;
-  //uint32_t _featureMap = 1;
   int _myState = CS_DISCONNECTED;
-  //char _rxBuffer[RX_BUFFER_SIZE];
-  //byte _txBuffer[RX_BUFFER_SIZE];
+  unsigned long _connectedTime = 0;
   // Flip-flops used to signal the presence of received message types
   uint8_t _handshakeReceived = 0;
   uint8_t _heartbeatReceived = 0;

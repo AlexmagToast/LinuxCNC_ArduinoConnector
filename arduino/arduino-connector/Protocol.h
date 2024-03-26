@@ -162,18 +162,19 @@ namespace protocol
   }apm;
 */
   struct HeartbeatMessage : public IMessage {
-    uint8_t boardIndex = 0;
-      void toJSON(JsonDocument& doc)
-      {
-        //JsonDocument doc;
-        doc[F("mt")] = MessageTypes::MT_HEARTBEAT;
-        doc[F("bi")] = 0;
-        //return doc;
-      }
-      void fromJSON(const JsonDocument& doc)
-      {
-        
-      }
+    //String mcuUptime;
+    uint32_t mcuUptime;
+    void toJSON(JsonDocument& doc)
+    {
+      //JsonDocument doc;
+      doc[F("mt")] = MessageTypes::MT_HEARTBEAT;
+      doc[F("ut")] = mcuUptime;
+      //return doc;
+    }
+    void fromJSON(const JsonDocument& doc)
+    {
+      
+    }
   }hb;
 
   /*
