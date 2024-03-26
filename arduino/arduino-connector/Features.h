@@ -37,7 +37,10 @@ namespace Features
         public:
         DigitalInputs() : Feature(DINPUTS, String("DIGITAL_INPUTS"), DEFAULT_LOOP_FREQUENCY)
         {
-            
+            #ifdef DEBUG
+                Serial.println("DigitalInputs::DigitalInputs");
+                Serial.flush();
+            #endif
         }
 
         virtual void loop()
@@ -70,7 +73,7 @@ namespace Features
             #endif
         }
 
-    }din;
+    };
     #endif
 }
 #endif

@@ -13,7 +13,7 @@
   copies of the Software, and to permit persons to whom the Software is
   furnished to do so, subject to the following conditions:
 
-  The above copyright notice and this permission notice shall be included in all
+  The above copyright notice and this permission notice shall be included in all  
   copies or substantial portions of the Software.
 
   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
@@ -29,7 +29,7 @@
 #include "FeatureController.h"
 #include "Features.h"
 
-#include "RXBuffer.h"
+//#include "RXBuffer.h"
 
 #ifdef ENABLE_RAPIDCHANGE
 #include "RapidChange.h"
@@ -66,8 +66,8 @@
 //#include <FastCRC.h>
 //#include <UUID.h>
 //#include "SerialConnection.h"
-#include "ConfigManager.h"
-#include "IOProcessor.h"
+//#include "ConfigManager.h"
+//#include "IOProcessor.h"
 
 
 /*
@@ -94,7 +94,7 @@ void setup() {
   //}
   delay(SERIAL_STARTUP_DELAY);
   #ifdef DEBUG
-    DEBUG_DEV.println(F("STARTING UP"));
+    DEBUG_DEV.println(F("STARTING UP!! V8"));
     //DEBUG_DEV.println("HERE WE GO");
     DEBUG_DEV.flush();
   #endif
@@ -210,9 +210,11 @@ void setup() {
 
   
   serialClient.RegisterConfigCallback(Callbacks::onConfig);
-  serialClient.RegisterCSCallback(Callbacks::onConnectionStageChange);
-  serialClient.RegisterPinChangeCallback(Callbacks::onPinChange);
+  //serialClient.RegisterCSCallback(Callbacks::onConnectionStageChange);
+  //serialClient.RegisterPinChangeCallback(Callbacks::onPinChange);
   featureController.ExcecuteFeatureSetups();
+  Features::DigitalInputs * din = new Features::DigitalInputs();
+  featureController.RegisterFeature(din);
   digitalWrite(LED_BUILTIN, LOW);// Signal startup success to builtin LED
   serialClient.DoWork(); 
 }
@@ -232,148 +234,7 @@ void loop() {
     rc_loop();
   #endif
   
-  #ifdef DINPUTS
-  
-  if(ConfigManager::GetDigitalInputsReady() == 1)
-  {
-    String output; // Used below to output Io update messages
-    JsonDocument doc;
-    JsonArray pa; 
 
-    //pa.clear();
-    //doc.clear();
-    pa = doc["pa"].to<JsonArray>();
-
-    for( int x = 0; x < ConfigManager::GetDigitalInputPinsLen(); x++ )
-    {
-      
-      ConfigManager::dpin & pin = ConfigManager::GetDigitalInputPins()[x];
-      int v = digitalRead(atoi(pin.pinID.c_str()));
-  
-      if(pin.pinCurrentState != v && (currentMills - pin.t) >= pin.debounce)
-      {
-        #ifdef DEBUG_VERBOSE
-        DEBUG_DEV.print(F("DINPUTS PIN CHANGE!"));
-        DEBUG_DEV.print(F("PIN:"));
-        DEBUG_DEV.println(pin.pinID);
-        DEBUG_DEV.print(F("Current value: "));
-        DEBUG_DEV.println(pin.pinCurrentState);
-        DEBUG_DEV.print(F("New value: "));
-        DEBUG_DEV.println(v);
-        #endif
-        
-        pin.pinCurrentState = v;
-        pin.t = currentMills;
-        
-        // send update out
-        //serialClient
-
-        //doc.clear();
-
-        JsonObject pa_0 = pa.add<JsonObject>();
-        pa_0["lid"] = x;
-        pa_0["pid"] = atoi(pin.pinID.c_str());
-        pa_0["v"] = v;
-        
-        //doc.shrinkToFit();  // optional
-        if(pa.size() > 0)
-        {
-          output = "";
-          serializeJson(doc, output);
-          #ifdef DEBUG_VERBOSE
-          DEBUG_DEV.print(F("JSON = "));
-          DEBUG_DEV.println(output);
-          #endif
-          uint8_t seqID = 0;
-          uint8_t resp = 0; // Future TODO: Consider requiring ACK/NAK, maybe.
-          uint8_t f = DINPUTS;
-          //String o = String(output.c_str());
-          serialClient.SendPinChangeMessage(f, seqID, resp, output);
-          pa.clear();
-        }
-      }
-    }
-  }
-  //for (dpin & pin : ConfigManager.GetDigitalInputPins())
-
-  #endif
-  #ifdef AINPUTS
-  
-  if(ConfigManager::GetAnalogInputsReady() == 1)
-  {
-    String output; // Used below to output Io update messages
-    JsonDocument doc;
-    JsonArray pa; 
-
-    //pa.clear();
-    //doc.clear();
-    pa = doc["pa"].to<JsonArray>();
-
-    for( int x = 0; x < ConfigManager::GetAnalogInputPinsLen(); x++ )
-    {
-      
-      ConfigManager::apin & pin = ConfigManager::GetAnalogInputPins()[x];
-      int v = analogRead(atoi(pin.pinID.c_str()));
-  
-      if(pin.pinCurrentState != v && (currentMills - pin.t) > 500)
-      {
-        #ifdef DEBUG_VERBOSE
-        DEBUG_DEV.print(F("AINPUTS PIN CHANGE!"));
-        DEBUG_DEV.print(F("PIN:"));
-        DEBUG_DEV.println(pin.pinID);
-        DEBUG_DEV.print(F("Current value: "));
-        DEBUG_DEV.println(pin.pinCurrentState);
-        DEBUG_DEV.print(F("New value: "));
-        DEBUG_DEV.println(v);
-        #endif
-        
-        pin.pinCurrentState = v;
-        pin.t = currentMills;
-        
-        // send update out
-        //serialClient
-
-        //doc.clear();
-
-        JsonObject pa_0 = pa.add<JsonObject>();
-        pa_0["lid"] = x;
-        pa_0["pid"] = atoi(pin.pinID.c_str());
-        pa_0["v"] = v;
-        
-        //doc.shrinkToFit();  // optional
-        if(pa.size() > 0)
-        {
-          output = "";
-          serializeJson(doc, output);
-          #ifdef DEBUG_VERBOSE
-          DEBUG_DEV.print(F("JSON = "));
-          DEBUG_DEV.println(output);
-          #endif
-          uint8_t seqID = 0;
-          uint8_t resp = 0; // Future TODO: Consider requiring ACK/NAK, maybe.
-          uint8_t f = AINPUTS;
-          //String o = String(output.c_str());
-          serialClient.SendPinChangeMessage(f, seqID, resp, output);
-          pa.clear();
-        }
-        
-      }
-
-
-    }
-
-  }
-  //for (dpin & pin : ConfigManager.GetDigitalInputPins())
-
-  #endif
-/*
-  #ifdef DOUTPUTS
-  for (dpin pin : doutput_arr)
-  {
-    //Serial << element << " ";
-  }
-  #endif
-*/
 }
 /*
 // Causes builtin LED to blink in a defined sequence.

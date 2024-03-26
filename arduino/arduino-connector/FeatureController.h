@@ -62,6 +62,8 @@ class IFeature
        virtual bool FeatureReady() = 0;
        virtual void SetFeatureReady(bool);
        virtual uint8_t GetFeatureID() = 0;
+       virtual String GetFeatureName() = 0;
+       virtual void SetFeatureArrayIndex(uint8_t) = 0;
        virtual uint32_t onConfig(protocol::ConfigMessage*, String& fail_reason) = 0;
 
     protected:
@@ -121,27 +123,43 @@ public:
     // Returns array position of feature to avoid having to iterate over feature array
     int RegisterFeature(IFeature * f)
     {
+        #ifdef DEBUG
+            DEBUG_DEV.println(F("FeatureController::RegisterFeature: Registering feature"));
+        #endif
         if( _features == NULL )
         {
+            #ifdef DEBUG
+                DEBUG_DEV.println(F("FeatureController::RegisterFeature: Allocating memory for features"));
+            #endif
             _features = new FeaturePtr[_defaultToAlloc];
             _allocatedFeatureCount = _defaultToAlloc;
         }
-        else
+
+
+        if( _currentFeatureCount + 1 > _allocatedFeatureCount )
         {
-            if( _currentFeatureCount + 1 > _allocatedFeatureCount )
+            #ifdef DEBUG
+                DEBUG_DEV.println(F("FeatureController::RegisterFeature: Allocating more memory for features"));
+            #endif
+            // need to allocate more space
+            FeaturePtr * tmp = new FeaturePtr[_allocatedFeatureCount+_defaultToAlloc];
+            for (int x = 0; x < _currentFeatureCount; x++ )
             {
-                // need to allocate more space
-                FeaturePtr * tmp = new FeaturePtr[_allocatedFeatureCount+_defaultToAlloc];
-                for (int x = 0; x < _currentFeatureCount; x++ )
-                {
-                    tmp[x] = _features[x];
-                }
-                delete [] _features;
-                _features = tmp;
+                tmp[x] = _features[x];
             }
-            _features[_currentFeatureCount] = f;//new FeaturePtr();
-            return _currentFeatureCount++;
+            delete [] _features;
+            _features = tmp;
         }
+        #ifdef DEBUG
+            DEBUG_DEV.print(F("FeatureController::RegisterFeature: Registering feature "));
+            DEBUG_DEV.print(f->GetFeatureID());
+            DEBUG_DEV.print(F(" with name "));
+            DEBUG_DEV.println(f->GetFeatureName());
+        #endif
+        _features[_currentFeatureCount] = f;//new FeaturePtr();
+        f->SetFeatureArrayIndex(_currentFeatureCount);
+        return _currentFeatureCount++;
+        
     }
 
     void OnConfig( protocol::ConfigMessage& cm)
@@ -217,11 +235,21 @@ public:
         const size_t loopFrequency=DEFAULT_LOOP_FREQUENCY, 
         const uint8_t setupEventOption=SetupEventOptions::PostConfigSync)
     {
+        #ifdef DEBUG
+            Serial.println("DigitalInputs::DigitalInputs");
+            Serial.flush();
+        #endif
         _featureID = featureID;
         _loopFrequency = loopFrequency;
-        _featureArrayIndex = featureController.RegisterFeature(this);
         _featureName = featureName;
         _setupEventOption = setupEventOption;
+        #ifdef DEBUG
+            DEBUG_DEV.print(F("Feature::Feature: Registering feature "));
+            DEBUG_DEV.print(featureID);
+            DEBUG_DEV.print(F(" with name "));
+            DEBUG_DEV.println(featureName);
+        #endif
+        //_featureArrayIndex = featureController.RegisterFeature(this);
         if(_setupEventOption == SetupEventOptions::PostStart || 
             _setupEventOption == SetupEventOptions::PostStartAndPostConfigSync)
         {
@@ -284,6 +312,11 @@ public:
     {
         return _featureName;
     }
+
+    virtual void SetFeatureArrayIndex(uint8_t index)
+    {
+        _featureArrayIndex = index;
+    }  
 
 protected:
     /*
