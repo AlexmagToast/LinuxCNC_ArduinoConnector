@@ -94,20 +94,91 @@ namespace Features
             #endif
         }
 
-        virtual Pin* InitFeaturePin(uint8_t fid, uint8_t lid, uint8_t pid, JsonDocument& json)
+        virtual uint8_t InitFeaturePin(uint8_t fid, uint8_t lid, uint8_t pid, JsonDocument& json, String& fail_reason, Pin ** p)
         {
-            DigitalPin* dp = new DigitalPin();
+            DigitalPin * dp = new DigitalPin();
             dp->fid = fid;
             dp->lid = lid;
             dp->pid = pid;
-            dp->pinInitialState = 0;
-            dp->pinConnectedState = 1;
-            dp->pinDisconnectedState = 0;
-            dp->debounce = 0;
-            dp->inputPullup = 0;
-            dp->pinCurrentState = 0;
-            dp->t = 0;
-            return dp;
+            //{"mt":7,"fi":4,"se":85,"to":99,"cs":{"fi":4,"id":87,"li":85,"is":-1,"cs":-1,"ds":-1,"pd":5,"ip":true}}
+            if(json.containsKey("is"))
+            {
+                dp->pinInitialState = json["is"];
+            }
+            else
+            {
+                dp->pinInitialState = -1;
+            }
+            if(json.containsKey("cs"))
+            {
+                dp->pinConnectedState = json["cs"];
+            }
+            else
+            {
+                dp->pinConnectedState = -1;
+            }
+            if(json.containsKey("ds"))
+            {
+                dp->pinDisconnectedState = json["ds"];
+            }
+            else
+            {
+                dp->pinDisconnectedState = -1;
+            }
+            if(json.containsKey("pd"))
+            {
+                dp->debounce = json["pd"];
+            }
+            else
+            {
+                dp->debounce = 0;
+            }
+            if(json.containsKey("ip"))
+            {
+                if (json["ip"] == true)
+                {
+                    dp->inputPullup = 1;
+                }
+                else
+                {
+                    dp->inputPullup = 0;
+                }
+                //dp->inputPullup = json["ip"];
+            }
+            else
+            {
+                dp->inputPullup = 0;
+            }
+            #ifdef DEBUG
+                DEBUG_DEV.print("DigitalInputs::InitFeaturePin: ");
+                DEBUG_DEV.print("fid: ");
+                DEBUG_DEV.print(fid);
+                DEBUG_DEV.print(", lid: ");
+                DEBUG_DEV.print(lid);
+                DEBUG_DEV.print(", pid: ");
+                DEBUG_DEV.print(pid);
+                #ifdef DEBUG_VERBOSE
+                    DEBUG_DEV.print(", is: ");
+                    DEBUG_DEV.print(dp->pinInitialState);
+                    DEBUG_DEV.print(", cs: ");
+                    DEBUG_DEV.print(dp->pinConnectedState);
+                    DEBUG_DEV.print(", ds: ");
+                    DEBUG_DEV.print(dp->pinDisconnectedState);
+                    DEBUG_DEV.print(", pd: ");
+                    DEBUG_DEV.print(dp->debounce);
+                    DEBUG_DEV.print(", ip: ");
+                    DEBUG_DEV.println(dp->inputPullup);
+                #endif
+            #endif
+            //dp->pinConnectedState = 1;
+            //dp->pinDisconnectedState = 0;
+            //dp->debounce = 0;
+            //dp->inputPullup = 0;
+            //dp->pinCurrentState = 0;
+            //dp->t = 0;
+            *p = dp;
+            fail_reason = "";
+            return 0;
         }
 
     };

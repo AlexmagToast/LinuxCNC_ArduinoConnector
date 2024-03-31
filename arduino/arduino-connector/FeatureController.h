@@ -73,6 +73,8 @@ class IFeature
        virtual uint32_t onConfig(protocol::ConfigMessage*, String& fail_reason) = 0;
        virtual uint8_t GetLoopEventOption() = 0;
 
+       virtual uint8_t InitFeaturePin(uint8_t fid, uint8_t lid, uint8_t pid, JsonDocument& json, String& fail_reason, Pin ** p) = 0;
+
     protected:
         virtual void SetFeatureReady(bool);
         virtual void onConnected() = 0;
@@ -378,8 +380,15 @@ protected:
         uint8_t lid = pinDoc["lid"];
         uint8_t pid = pinDoc["pid"];
         // AddPin based on config's featureID, lid and pid
-        auto pin = InitFeaturePin(config->featureID, lid, pid, pinDoc);
-        AddPin(new Pin{config->featureID, lid, pid}, config->seq);
+        //auto pin = InitFeaturePin(config->featureID, lid, pid, pinDoc);
+        Pin * p;
+        uint8_t code = InitFeaturePin(config->featureID, lid, pid, pinDoc, fail_reason, &p);
+        if (code != 0)
+        {
+            fail_reason = fail_reason;
+            return code;
+        }
+        AddPin(p, config->seq);
         // Set feautre ready if all pins are initialized
         if (config->seq == config->total - 1)
         {
@@ -451,7 +460,7 @@ protected:
         return _featureArrayIndex;
     }
 
-    virtual Pin* InitFeaturePin(uint8_t fid, uint8_t lid, uint8_t pid, JsonDocument& json) = 0;
+   
 
 private:
     // How often loop should be called for feature

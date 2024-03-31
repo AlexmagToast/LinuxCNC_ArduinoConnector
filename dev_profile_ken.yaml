@@ -607,7 +607,7 @@ mcu:
   alias: Arduino Zero
   component_name: arduinoZero # Name of component to use in HAL
   #dev: /dev/tty.usbmodem1302
-  dev: /dev/tty.usbmodem1202
+  dev: /dev/tty.usbmodem11402
   enabled: true
   hal_emulation: true
   #connection: 
