@@ -606,7 +606,8 @@ mcu:
 mcu: 
   alias: Arduino Zero
   component_name: arduinoZero # Name of component to use in HAL
-  dev: /dev/tty.usbmodem1302
+  #dev: /dev/tty.usbmodem1302
+  dev: /dev/tty.usbmodem1202
   enabled: true
   hal_emulation: true
   #connection: 
@@ -626,6 +627,392 @@ mcu:
         pin_name: din.04 #hal pin name
         input_pullup: true
         pin_debounce: 5
+      - pin_id: 5
+        pin_name: din.05 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 6
+        pin_name: din.06 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 7
+        pin_name: din.07 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 8
+        pin_name: din.08 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 9
+        pin_name: din.09 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 10
+        pin_name: din.10 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 11
+        pin_name: din.11 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 12
+        pin_name: din.12 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 13
+        pin_name: din.13 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 14 
+        pin_name: din.14 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 15
+        pin_name: din.15 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 16
+        pin_name: din.16 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 17
+        pin_name: din.17 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 18
+        pin_name: din.18 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 19
+        pin_name: din.19 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 20
+        pin_name: din.20 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 21
+        pin_name: din.21 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 22
+        pin_name: din.22 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 23
+        pin_name: din.23 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 24  
+        pin_name: din.24 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 25  
+        pin_name: din.25 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 26  
+        pin_name: din.26 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 27  
+        pin_name: din.27 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 28  
+        pin_name: din.28 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 29  
+        pin_name: din.29 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 30  
+        pin_name: din.30 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 31  
+        pin_name: din.31 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 32  
+        pin_name: din.32 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 33  
+        pin_name: din.33 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 34  
+        pin_name: din.34 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 35  
+        pin_name: din.35 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 36  
+        pin_name: din.36 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 37  
+        pin_name: din.37 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 38  
+        pin_name: din.38 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 39  
+        pin_name: din.39 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 40  
+        pin_name: din.40 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 41  
+        pin_name: din.41 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 42  
+        pin_name: din.42 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 43  
+        pin_name: din.43 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 44  
+        pin_name: din.44 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 45  
+        pin_name: din.45 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 46  
+        pin_name: din.46 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 47  
+        pin_name: din.47 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 48  
+        pin_name: din.48 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 49  
+        pin_name: din.49 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 50  
+        pin_name: din.50 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 51  
+        pin_name: din.51 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 52  
+        pin_name: din.52 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 53  
+        pin_name: din.53 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 54  
+        pin_name: din.54 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 55  
+        pin_name: din.55 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 56  
+        pin_name: din.56 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 57  
+        pin_name: din.57 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 58  
+        pin_name: din.58 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 59  
+        pin_name: din.59 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 60  
+        pin_name: din.60 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 61  
+        pin_name: din.61 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 62  
+        pin_name: din.62 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 63  
+        pin_name: din.63 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 64  
+        pin_name: din.64 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 65  
+        pin_name: din.65 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 66  
+        pin_name: din.66 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 67  
+        pin_name: din.67 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 68  
+        pin_name: din.68 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 69  
+        pin_name: din.69 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 70  
+        pin_name: din.70 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 71  
+        pin_name: din.71 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 72  
+        pin_name: din.72 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 73  
+        pin_name: din.73 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 74  
+        pin_name: din.74 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 75  
+        pin_name: din.75 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 76  
+        pin_name: din.76 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 77  
+        pin_name: din.77 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 78  
+        pin_name: din.78 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 79  
+        pin_name: din.79 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 80  
+        pin_name: din.80 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 81  
+        pin_name: din.81 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 82  
+        pin_name: din.82 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 83  
+        pin_name: din.83 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 84  
+        pin_name: din.84 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 85  
+        pin_name: din.85 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 86  
+        pin_name: din.86 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 87  
+        pin_name: din.87 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 88  
+        pin_name: din.88 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 89  
+        pin_name: din.89 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 90  
+        pin_name: din.90 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 91  
+        pin_name: din.91 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 92  
+        pin_name: din.92 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 93  
+        pin_name: din.93 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 94  
+        pin_name: din.94 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 95  
+        pin_name: din.95 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 96  
+        pin_name: din.96 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 97  
+        pin_name: din.97 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 98  
+        pin_name: din.98 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 99  
+        pin_name: din.99 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      - pin_id: 100  
+        pin_name: din.100 #hal pin name
+        input_pullup: true
+        pin_debounce: 5
+      
+      
 
     digitalOutputs:
       - pin_id: 6

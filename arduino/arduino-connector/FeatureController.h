@@ -40,6 +40,12 @@ namespace SetupEventOptions
     const uint8_t PostStartAndPostConfigSync = 2; // Call setup after start and after config sync success
 }
 
+namespace LoopEventOptions
+{
+    const uint8_t PostConfigSync = 0; // Default. Only call loop after config sync success
+    const uint8_t PostStart = 1; // Call loop after start (regardless of config sync success)
+}
+
 struct Pin
 {
     uint8_t fid;
@@ -60,16 +66,18 @@ class IFeature
        virtual int GetLoopFreq() = 0;
        virtual void SetLastExecMilli(unsigned long) = 0;
        virtual bool FeatureReady() = 0;
-       virtual void SetFeatureReady(bool);
+       
        virtual uint8_t GetFeatureID() = 0;
        virtual String GetFeatureName() = 0;
        virtual void SetFeatureArrayIndex(uint8_t) = 0;
        virtual uint32_t onConfig(protocol::ConfigMessage*, String& fail_reason) = 0;
+       virtual uint8_t GetLoopEventOption() = 0;
 
     protected:
-        
+        virtual void SetFeatureReady(bool);
         virtual void onConnected() = 0;
         virtual void onDisconnected() = 0;
+        
 };
 
 typedef IFeature* FeaturePtr;
@@ -102,11 +110,13 @@ public:
         unsigned long currentMills = millis();
         for(int x = 0; x < _currentFeatureCount; x++)
         {
-            if( currentMills - _features[x]->GetLastExecMilli() >= _features[x]->GetLoopFreq() &&
-                _features[x]->FeatureReady())
+            if( currentMills - _features[x]->GetLastExecMilli() >= _features[x]->GetLoopFreq())
             {
-                _features[x]->loop();
-                _features[x]->SetLastExecMilli(millis());
+                if ( _features[x]->FeatureReady() || _features[x]->GetLoopEventOption() == LoopEventOptions::PostStart )
+                {
+                    _features[x]->loop();
+                    _features[x]->SetLastExecMilli(millis());
+                }
             }
         }
     }
@@ -234,7 +244,8 @@ public:
     Feature(const uint8_t featureID, 
         String featureName, 
         const size_t loopFrequency=DEFAULT_LOOP_FREQUENCY, 
-        const uint8_t setupEventOption=SetupEventOptions::PostConfigSync)
+        const uint8_t setupEventOption=SetupEventOptions::PostConfigSync,
+        const uint8_t loopEventOption=LoopEventOptions::PostConfigSync)
     {
         #ifdef DEBUG
             Serial.println("DigitalInputs::DigitalInputs");
@@ -319,6 +330,11 @@ public:
         _featureArrayIndex = index;
     }  
 
+    virtual uint8_t GetLoopEventOption()
+    {
+        return _loopEventOption;
+    }
+
 protected:
     /*
         Events
@@ -362,6 +378,7 @@ protected:
         uint8_t lid = pinDoc["lid"];
         uint8_t pid = pinDoc["pid"];
         // AddPin based on config's featureID, lid and pid
+        auto pin = InitFeaturePin(config->featureID, lid, pid, pinDoc);
         AddPin(new Pin{config->featureID, lid, pid}, config->seq);
         // Set feautre ready if all pins are initialized
         if (config->seq == config->total - 1)
@@ -434,6 +451,8 @@ protected:
         return _featureArrayIndex;
     }
 
+    virtual Pin* InitFeaturePin(uint8_t fid, uint8_t lid, uint8_t pid, JsonDocument& json) = 0;
+
 private:
     // How often loop should be called for feature
     int _loopFrequency = 5000;
@@ -445,6 +464,7 @@ private:
     uint8_t _featureArrayIndex = 0;
     String _featureName;
     uint8_t _setupEventOption = SetupEventOptions::PostConfigSync;
+    uint8_t _loopEventOption = LoopEventOptions::PostConfigSync;
 };
 
 namespace Callbacks

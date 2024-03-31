@@ -32,6 +32,20 @@
 namespace Features
 {
     #ifdef DINPUTS
+
+    struct DigitalPin: public Pin
+    {
+        uint32_t ts;
+
+        int8_t pinInitialState;
+        int8_t pinConnectedState;
+        int8_t pinDisconnectedState;
+        uint16_t debounce;
+        uint8_t inputPullup;
+        int8_t pinCurrentState;
+        unsigned long t;
+    };
+
     class DigitalInputs: public Feature
     {
         public:
@@ -45,7 +59,8 @@ namespace Features
 
         virtual void loop()
         {
-           
+           // loop through pins and perform reads
+
         }
 
         virtual void setup()
@@ -53,6 +68,12 @@ namespace Features
             #ifdef DEBUG
                 Serial.println("DigitalInputs::setup");
             #endif
+
+            // Perform any setup here.
+
+            // Then set the feature to ready, otherwise it will not be available to process incoming messages or perform local
+            // tasks such as pin reads.
+            SetFeatureReady(true);
         }
 
         protected:
@@ -71,6 +92,22 @@ namespace Features
             #ifdef DEBUG
                 Serial.println("DigitalInputs::onDisconnected");
             #endif
+        }
+
+        virtual Pin* InitFeaturePin(uint8_t fid, uint8_t lid, uint8_t pid, JsonDocument& json)
+        {
+            DigitalPin* dp = new DigitalPin();
+            dp->fid = fid;
+            dp->lid = lid;
+            dp->pid = pid;
+            dp->pinInitialState = 0;
+            dp->pinConnectedState = 1;
+            dp->pinDisconnectedState = 0;
+            dp->debounce = 0;
+            dp->inputPullup = 0;
+            dp->pinCurrentState = 0;
+            dp->t = 0;
+            return dp;
         }
 
     };
