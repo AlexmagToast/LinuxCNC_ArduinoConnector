@@ -50,7 +50,7 @@ struct Pin
 {
     uint8_t fid;
     uint8_t lid;
-    uint8_t pid;
+    String pid;
 };
 
 typedef Pin* PinPtr;
@@ -73,12 +73,14 @@ class IFeature
        virtual uint32_t onConfig(protocol::ConfigMessage*, String& fail_reason) = 0;
        virtual uint8_t GetLoopEventOption() = 0;
 
-       virtual uint8_t InitFeaturePin(uint8_t fid, uint8_t lid, uint8_t pid, JsonDocument& json, String& fail_reason, Pin ** p) = 0;
+       virtual uint8_t InitFeaturePin(uint8_t fid, uint8_t lid, String& pid, JsonDocument& json, String& fail_reason, Pin ** p) = 0;
 
     protected:
         virtual void SetFeatureReady(bool);
         virtual void onConnected() = 0;
         virtual void onDisconnected() = 0;
+        virtual PinPtr* GetPins() = 0;
+        virtual uint16_t GetPinCount() = 0;
         
 };
 
@@ -378,7 +380,7 @@ protected:
         }
         // Extract lid and pid from pinDoc
         uint8_t lid = pinDoc["lid"];
-        uint8_t pid = pinDoc["pid"];
+        String pid = pinDoc["pid"];
         // AddPin based on config's featureID, lid and pid
         //auto pin = InitFeaturePin(config->featureID, lid, pid, pinDoc);
         Pin * p;
@@ -432,17 +434,24 @@ protected:
         {
             delete [] _pins;
         }
+        _pinCount = 0;
         _pins = new PinPtr[size];
     }
 
     virtual void AddPin(Pin* p, uint8_t index)
     {
         _pins[index] = p;
+        _pinCount++;
     }
 
     virtual Pin* GetPin(uint8_t index)
     {
         return _pins[index];
+    }
+
+    virtual PinPtr* GetPins()
+    {
+        return _pins;
     }
 
     virtual bool FeatureReady()
@@ -460,6 +469,11 @@ protected:
         return _featureArrayIndex;
     }
 
+    uint16_t GetPinCount()
+    {
+        return _pinCount;
+    }
+
    
 
 private:
@@ -468,6 +482,7 @@ private:
     unsigned long _lastExecutedMillis = 0;
     uint8_t _featureID = 0;
     PinPtr * _pins = NULL;
+    uint16_t _pinCount = 0;
     bool _featureReady = false;
     bool _configSynced = false;
     uint8_t _featureArrayIndex = 0;
