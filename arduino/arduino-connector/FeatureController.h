@@ -76,7 +76,7 @@ class IFeature
        virtual uint8_t InitFeaturePin(uint8_t fid, uint8_t lid, String& pid, JsonDocument& json, String& fail_reason, Pin ** p) = 0;
 
     protected:
-        virtual void SetFeatureReady(bool);
+        virtual void SetFeatureReady(bool)=0;
         virtual void onConnected() = 0;
         virtual void onDisconnected() = 0;
         virtual PinPtr* GetPins() = 0;

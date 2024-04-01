@@ -153,8 +153,19 @@ namespace Features
             DigitalPin * dp = new DigitalPin();
             dp->fid = fid;
             dp->lid = lid;
-            dp->pid = pid;
+            //dp->pid = pid;
             //{"mt":7,"fi":4,"se":85,"to":99,"cs":{"fi":4,"id":87,"li":85,"is":-1,"cs":-1,"ds":-1,"pd":5,"ip":true}}
+            if(json.containsKey("id"))
+            {
+                String idstring = json[F("id")];
+                dp->pid = idstring;
+            }
+            else
+            {
+               // dp->pinInitialState = -1;
+               fail_reason = "Missing pin 'id' key in JSON";
+               return ERR_INVALID_JSON;
+            }
             if(json.containsKey("is"))
             {
                 dp->pinInitialState = json["is"];
@@ -192,16 +203,19 @@ namespace Features
                 if (json["ip"] == true)
                 {
                     dp->inputPullup = 1;
+                    pinMode(atoi(dp->pid.c_str()), INPUT_PULLUP);
                 }
                 else
                 {
                     dp->inputPullup = 0;
+                    pinMode(atoi(dp->pid.c_str()), INPUT);
                 }
                 //dp->inputPullup = json["ip"];
             }
             else
             {
                 dp->inputPullup = 0;
+                pinMode(atoi(dp->pid.c_str()), INPUT);
             }
             #ifdef DEBUG
                 DEBUG_DEV.print("DigitalInputs::InitFeaturePin: ");

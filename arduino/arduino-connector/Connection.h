@@ -81,8 +81,6 @@ public:
     _csAction = act;
   }
 
-  virtual ~ConnectionBase(){}
-
   #ifdef DEBUG
   virtual void SendDebugMessage(String& message)
   {
@@ -100,7 +98,8 @@ public:
     _uid = uid;
   }
 
-  virtual void SendMessage( protocol::IMessage& m) = 0;
+  virtual void SendMessage( protocol::IMessage& m)
+  {}
 /*
   virtual void SendPinStatusMessage(char sig, int pin, int state)
   {
@@ -253,21 +252,47 @@ public:
   }
 */
 protected:
-  virtual uint8_t _onInit();
-  virtual void _onConnect();
-  virtual void _onDisconnect();
-  virtual void _onError();
-  virtual void _onDoWork();
+  virtual uint8_t _onInit()
+  {
+    return 0;
+  }
+  virtual void _onConnect()
+  {
+
+  }
+  virtual void _onDisconnect()
+  {
+
+  }
+  virtual void _onError()
+  {
+
+  }
+  virtual void _onDoWork()
+  {
+
+  }
 
 
-  virtual void _sendHandshakeMessage();
+  virtual void _sendHandshakeMessage()
+  {
 
-  virtual void _sendHeartbeatMessage();
+  }
 
-  virtual void _sendPinChangeMessage();
+  virtual void _sendHeartbeatMessage()
+  {
+
+  }
+
+  virtual void _sendPinChangeMessage(){
+
+  }
                 //_sendPinChangeMessage
   #ifdef DEBUG
-  virtual void _sendDebugMessage(String& message);
+  virtual void _sendDebugMessage(String& message)
+  {
+    
+  }
   #endif
 
   void _onHandshakeMessage(const protocol::HandshakeMessage& n)

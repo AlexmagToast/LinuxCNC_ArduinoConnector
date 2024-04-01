@@ -66,7 +66,7 @@ public:
     return 1;
   }
 
-  void SendMessage( protocol::IMessage& m)
+  virtual void SendMessage( protocol::IMessage& m)
   {
     JsonDocument doc;
     m.toJSON(doc);
