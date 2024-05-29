@@ -1502,7 +1502,7 @@ class ArduinoConnection:
             # perhaps device was unplugged..
             found = False
             for port in serial.tools.list_ports.comports():
-                if self.settings.dev in port or self.serialConn.serial in port.serial_number:
+                if self.settings.dev in port or (port.serial_number != None and self.serialConn.serial in port.serial_number):
                     found = True
             if found == False:
                 retry = 5
