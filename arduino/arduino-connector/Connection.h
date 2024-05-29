@@ -573,6 +573,10 @@ protected:
 
   size_t _getPinChangeMessage(uint8_t * buffer, size_t size)
   {
+
+    JsonDocument doc;
+    protocol::pcm.toJSON(doc);
+    size_t sz = _jsonToMsgPack(doc, buffer, size);
     #ifdef DEBUG_VERBOSE
       DEBUG_DEV.println(F("TX PINCHANGE MESSAGE DUMP"));
       DEBUG_DEV.print(F("FEATURE ID:"));
@@ -583,9 +587,6 @@ protected:
       DEBUG_DEV.println(protocol::pcm.message);  
       DEBUG_DEV.println(F("TX END PINCHANGE MESSAGE DUMP"));
     #endif
-    JsonDocument doc;
-    protocol::pcm.toJSON(doc);
-    size_t sz = _jsonToMsgPack(doc, buffer, size);
     return sz;
   }
 

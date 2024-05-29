@@ -91,27 +91,30 @@ namespace Features
 
                     //doc.clear();
 
-                    JsonObject pa_0 = pa.add<JsonObject>();
-                    pa_0["lid"] = x;
-                    pa_0["pid"] = atoi(pin.pid.c_str());
-                    pa_0["v"] = v;
+                    //JsonObject pa_0 = pa.add<JsonObject>();
+                    //pa_0["lid"] = x;
+                    //pa_0["pid"] = atoi(pin.pid.c_str());
+                    //pa_0["v"] = v;
+                    doc[F("lid")] = x;
+                    doc[F("pid")] = atoi(pin.pid.c_str());
+                    doc[F("v")] = v;
 
                     //doc.shrinkToFit();  // optional
-                    if(pa.size() > 0)
-                    {
-                        output = "";
-                        serializeJson(doc, output);
-                        #ifdef DEBUG_VERBOSE
-                            DEBUG_DEV.print(F("JSON = "));
-                            DEBUG_DEV.println(output);
-                        #endif
-                        uint8_t seqID = 0;
-                        uint8_t resp = 0; // Future TODO: Consider requiring ACK/NAK, maybe.
-                        uint8_t f = DINPUTS;
-                        //String o = String(output.c_str());
-                        serialClient.SendPinChangeMessage(f, seqID, resp, output);
-                        pa.clear();
-                    }
+                    //if(pa.size() > 0)
+                    //{
+                    output = "";
+                    serializeJson(doc, output);
+                    #ifdef DEBUG_VERBOSE
+                        DEBUG_DEV.print(F("JSON = "));
+                        DEBUG_DEV.println(output);
+                    #endif
+                    uint8_t seqID = 0;
+                    uint8_t resp = 0; // Future TODO: Consider requiring ACK/NAK, maybe.
+                    uint8_t f = DINPUTS;
+                    //String o = String(output.c_str());
+                    serialClient.SendPinChangeMessage(f, seqID, resp, output);
+                    //  pa.clear();
+                    //}
                 }
             }
 

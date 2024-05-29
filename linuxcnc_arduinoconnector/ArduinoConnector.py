@@ -550,6 +550,9 @@ class MessageDecoder:
         elif self.messageType == MessageType.MT_CONFIG_ACK:
             ca = ConfigMessageAck(payload=self.payload)
             return ca
+        elif self.messageType == MessageType.MT_PINCHANGE:
+            pc = PinChangeMessage(featureID=self.payload['fi'], seqID=self.payload['si'], responseReq=self.payload['rr'], message=self.payload['ms'])
+            return pc
         else:
             raise Exception(f"Error. Message Type Unsupported, type = {self.messageType}");
 
@@ -559,15 +562,15 @@ class MessageDecoder:
 '''
 # The Features enum is used by the Feature objects to set the Feature properties such as the corresponding constant name, config string name, and feature ID
 class Features(Enum):
-    DEBUG = ['DEBUG', '', 0]
-    DEBUG_VERBOSE = ['DEBUG_VERBOSE', '', 1]
-    FEATUREMAP = ['FEATURE_MAP', '', 2]
-    LOWMEM = ['LOWMEM', '', 3]
-    DIGITAL_INPUTS = ['DIGITAL_INPUTS', 'digitalInputs', 4]
-    DIGITAL_OUTPUTS = ['DIGITAL_OUTPUTS', 'digitalOutputs', 5]
-    ANALOG_INPUTS  = ['ANALOG_INPUTS', 'analogInputs', 6]
-    ANALOG_OUTPUTS = ['ANALOG_OUTPUTS', 'analogOutputs', 7]
-    PWM_OUTPUTS = ['PWM_OUTPUTS', 'pwmOutputs', 8]
+    DEBUG               = ['DEBUG', '', 0]
+    DEBUG_VERBOSE       = ['DEBUG_VERBOSE', '', 1]
+    FEATUREMAP          = ['FEATURE_MAP', '', 2]
+    LOWMEM              = ['LOWMEM', '', 3]
+    DIGITAL_INPUTS      = ['DIGITAL_INPUTS', 'digitalInputs', 4]
+    DIGITAL_OUTPUTS     = ['DIGITAL_OUTPUTS', 'digitalOutputs', 5]
+    ANALOG_INPUTS       = ['ANALOG_INPUTS', 'analogInputs', 6]
+    ANALOG_OUTPUTS      = ['ANALOG_OUTPUTS', 'analogOutputs', 7]
+    PWM_OUTPUTS         = ['PWM_OUTPUTS', 'pwmOutputs', 8]
     
     def __str__(self) -> str:
         return self.value[0]
@@ -612,7 +615,7 @@ class IOFeature(metaclass=ABCMeta):
         self.featureReady = False # Indicates if Feature is ready for IO processing
         self.pinList = [] # Holds a list of pins which were parsed from the Yaml config
         self.configComplete = False # Indicates if the Arduino has the Feature config applied
-        self.configSyncError = False
+        self.configSyncError = False # Indicates if there was an error during config sync
         self.pinConfigSyncMap = {}
         self._sendMessageCallbacks = []
         self._debugCallbacks = []
@@ -659,8 +662,10 @@ class IOFeature(metaclass=ABCMeta):
             # rather than needing to perform a for loop to find the target feature object
             if (self.arduinoFeatureIndex == -1):
                 self.arduinoFeatureIndex = pm.featureArrayIndex
+            self.pinConfigSyncMap[pm.sequenceID].pinConfigSynced = True
             del self.pinConfigSyncMap[pm.sequenceID]
             if len(self.pinConfigSyncMap.values()) == 0:
+                self.configComplete = True
                 self.Debug("Config successfully applied.")
 
         elif pm.mt == MessageType.MT_CONFIG_NAK:
@@ -689,6 +694,10 @@ class IOFeature(metaclass=ABCMeta):
                     #del self.pinConfigSyncMap[p.pinConfig.pinLogicalID]
                     self.pinConfigSyncMap.clear()
                     self.configSyncError = True
+        #if self.FeatureReady() == True and self.ConfigComplete() == True:
+            
+        #if self.ConfigComplete() == True:
+        #    self.Debug('Feature is ready for processing.')
 
     @abstractmethod
     def Setup(self):
@@ -713,7 +722,7 @@ class DigitalInputs(IOFeature):
             the featureConfigName (how the feature name appears in yaml, e.g., 'digitalInputs'), and the featureID (e.g., also the INT constant defined in the Config.h and the python script)
         ''' 
         IOFeature.__init__(self, featureName=str(Features.DIGITAL_INPUTS), featureConfigName=Features.DIGITAL_INPUTS.configName(), featureID=int(Features.DIGITAL_INPUTS))
-    
+        self.featureReady = True
     '''
         All IOFeature objects must also define a YamlParser method which returns a lambda.  The lamdda method is what gets called when parsing properties from the Yaml profile.
         DigitalPin and AnalogPin have been predefined in this python script to provide a uinform way of parsing out required properties, optional properties, and default values.
@@ -723,19 +732,25 @@ class DigitalInputs(IOFeature):
         return lambda yaml, featureID : DigitalPin(yaml=yaml, featureID=featureID, halPinDirection=HalPinDirection.HAL_OUT)
     
     def OnMessageRecv(self, pm:ProtocolMessage):
-        return super().OnMessageRecv(pm)
+        super().OnMessageRecv(pm)
+        if (pm.mt == MessageType.MT_PINCHANGE):
+            pass
     
     def OnConnected(self):
-        return super().OnConnected()
+        super().OnConnected()
     
     def OnDisconnected(self):
-        return super().OnDisconnected()
+        super().OnDisconnected()
     
     def Setup(self):
-        return super().Setup()
+        super().Setup()
     
     def Loop(self):
-        return super().Loop()
+        super().Loop()
+        if (self.FeatureReady() == True and self.ConfigComplete() == True):
+            #self.Debug('Feature is ready for processing.')
+            pass
+        
     
 
     
