@@ -28,6 +28,7 @@
 #ifndef PROTOCOL_H_
 #define PROTOCOL_H_
 #define PROTOCOL_VERSION 1 // Server and client must agree on version during handshake
+#include <ArduinoJson.h>
 
 namespace protocol
 {
@@ -54,69 +55,85 @@ namespace protocol
   struct IMessage
   {
     virtual void fromJSON(const JsonDocument& doc) = 0;
-    virtual void toJSON(JsonDocument& doc) = 0;
+    virtual void toJSON(JsonDocument& doc) const = 0;
   };
 
-  struct HandshakeMessage : public IMessage {
-      uint8_t protocolVersion = PROTOCOL_VERSION;
-      uint32_t featureMap;
-      uint32_t timeout;
-      uint32_t profileSignature = 0; // 0 indicates no config, >0 indicates an existing config
-      #if !defined(INTEGRATED_CALLBACKS_LOWMEMORY)
+struct HandshakeMessage : public IMessage {
+    uint8_t protocolVersion = PROTOCOL_VERSION;
+    uint32_t featureMap;
+    uint32_t timeout;
+    uint32_t profileSignature = 0; // 0 indicates no config, >0 indicates an existing config
+
+    #if !defined(INTEGRATED_CALLBACKS_LOWMEMORY)
         String uid;
         #ifdef NUM_DIGITAL_PINS
-        uint8_t   digitalPins = NUM_DIGITAL_PINS;
+        uint8_t digitalPins = NUM_DIGITAL_PINS;
         #else
-        uint8_t   digitalPins = 0;
+        uint8_t digitalPins = 0;
         #endif
         #ifdef NUM_ANALOG_INPUTS
-        uint8_t   analogInputs = NUM_ANALOG_INPUTS;
+        uint8_t analogInputs = NUM_ANALOG_INPUTS;
         #else
         uint8_t analogInputs = 0;
         #endif
         #ifdef NUM_ANALOG_OUTPUTS
-        uint8_t   analogOutputs = NUM_ANALOG_OUTPUTS;
+        uint8_t analogOutputs = NUM_ANALOG_OUTPUTS;
         #else
-        uint8_t   analogOutputs = 0;
+        uint8_t analogOutputs = 0;
         #endif
-      #endif
-      void toJSON(JsonDocument& doc)
-      {
-        //JsonDocument doc;
-        doc[F("mt")] = MessageTypes::MT_HANDSHAKE;
-        doc[F("pv")] = protocolVersion;
-        doc[F("fm")] = featureMap;
-        doc[F("to")] = timeout;
-        doc[F("ps")] = profileSignature;
+    #endif
+
+    void toJSON(JsonDocument& doc) const {
+        doc["mt"] = MessageTypes::MT_HANDSHAKE;
+        doc["pv"] = protocolVersion;
+        doc["fm"] = featureMap;
+        doc["to"] = timeout;
+        doc["ps"] = profileSignature;
+
         #if !defined(INTEGRATED_CALLBACKS_LOWMEMORY)
-          doc[F("ui")] = uid;
-          doc[F("dp")] = digitalPins;
-          doc[F("ai")] = analogInputs;
-          doc[F("ao")] = analogOutputs;
+            doc["ui"] = uid;
+            doc["dp"] = digitalPins;
+            doc["ai"] = analogInputs;
+            doc["ao"] = analogOutputs;
         #endif
-        //return doc;
-      }
-      void fromJSON(const JsonDocument& doc)
-      {
-        protocolVersion = doc[F("pv")];
-        featureMap = doc[F("fm")];
-        timeout = doc[F("to")];
-        profileSignature = doc[F("ps")];
+    }
+
+    void fromJSON(const JsonDocument& doc) {
+        if (doc.containsKey("pv")) {
+            protocolVersion = doc["pv"].as<uint8_t>();
+        }
+        if (doc.containsKey("fm")) {
+            featureMap = doc["fm"].as<uint32_t>();
+        }
+        if (doc.containsKey("to")) {
+            timeout = doc["to"].as<uint32_t>();
+        }
+        if (doc.containsKey("ps")) {
+            profileSignature = doc["ps"].as<uint32_t>();
+        }
+
         #if !defined(INTEGRATED_CALLBACKS_LOWMEMORY)
-          uid = doc[F("ui")];
-          digitalPins = doc[F("dp")];
-          analogInputs = doc[F("ai")];
-          analogOutputs = doc[F("ao")];
+            if (doc.containsKey("ui")) {
+                uid = doc["ui"].as<String>();
+            }
+            if (doc.containsKey("dp")) {
+                digitalPins = doc["dp"].as<uint8_t>();
+            }
+            if (doc.containsKey("ai")) {
+                analogInputs = doc["ai"].as<uint8_t>();
+            }
+            if (doc.containsKey("ao")) {
+                analogOutputs = doc["ao"].as<uint8_t>();
+            }
         #endif
-        //return doc;
-      }
-  }hm;
+    }
+}hm;
 
   // First ResponseMessage received by the Arduino is in response to the Python side receiving the HandshakeMessage from the Arduiono.  The arduinoIndex value
   // in the ResponseMessage gets used by the Arduino when sending subsequent
   // messages to python, such as via UDP.  This avoids the need to send the full UID in each message to the python side.
-
-  struct PinChangeMessage : IMessage {
+  /*
+    struct PinChangeMessage : IMessage {
       uint8_t featureID;
       uint8_t seqID;  
       uint8_t responseReq; // Indicates if a response is required from recepient
@@ -140,6 +157,40 @@ namespace protocol
         message = m;
       }
   }pcm;
+  */
+
+  //virtual void fromJSON(const JsonDocument& doc) = 0;
+  //virtual void toJSON(JsonDocument& doc) = 0;
+
+struct PinChangeMessage : IMessage {
+    uint8_t featureID;
+    uint8_t seqID;
+    uint8_t responseReq; // Indicates if a response is required from recipient
+    String message;
+
+    void toJSON(JsonDocument& doc) const {
+        doc["mt"] = MessageTypes::MT_PINCHANGE;
+        doc["fi"] = featureID;
+        doc["si"] = seqID;
+        doc["rr"] = responseReq;
+        doc["ms"] = message;
+    }
+
+    void fromJSON(const JsonDocument& doc) {
+        if (doc.containsKey("fi")) {
+            featureID = doc["fi"].as<uint8_t>();
+        }
+        if (doc.containsKey("si")) {
+            seqID = doc["si"].as<uint8_t>();
+        }
+        if (doc.containsKey("rr")) {
+            responseReq = doc["rr"].as<uint8_t>();
+        }
+        if (doc.containsKey("ms")) {
+            message = doc["ms"].as<String>();
+        }
+    }
+}pcm;
 
   /*
   struct PinChangeResponseMessage {
@@ -162,20 +213,20 @@ namespace protocol
   }apm;
 */
   struct HeartbeatMessage : public IMessage {
-    //String mcuUptime;
-    uint32_t mcuUptime;
-    void toJSON(JsonDocument& doc)
-    {
-      //JsonDocument doc;
-      doc[F("mt")] = MessageTypes::MT_HEARTBEAT;
-      doc[F("ut")] = mcuUptime;
-      //return doc;
-    }
-    void fromJSON(const JsonDocument& doc)
-    {
-      
-    }
+      uint32_t mcuUptime;
+
+      void toJSON(JsonDocument& doc) const {
+          doc["mt"] = MessageTypes::MT_HEARTBEAT;
+          doc["ut"] = mcuUptime;
+      }
+
+      void fromJSON(const JsonDocument& doc) {
+          if (doc.containsKey("ut")) {
+              mcuUptime = doc["ut"].as<uint32_t>();
+          }
+      }
   }hb;
+
 
   /*
   // This message may be deprecated in the near future
@@ -190,82 +241,95 @@ namespace protocol
       MSGPACK_DEFINE(status); 
   }pm;
   */
-  struct ConfigMessageAck : public IMessage{
-    uint8_t featureID;
-    uint16_t seq;
-    uint8_t featureArrIndex;
-    void toJSON(JsonDocument& doc)
-    {
-      //JsonDocument doc;
-      doc[F("mt")] = MessageTypes::MT_CONFIG_ACK;
-      doc[F("fi")] = featureID;
-      doc[F("se")] = seq;
-      doc[F("fa")] = featureArrIndex;
-      //return doc;
-    }
-    void fromJSON(const JsonDocument& doc)
-    {
-      featureID = doc[F("fi")];
-      seq = doc[F("se")];
-      featureArrIndex = doc[F("fa")];
-    }
+  struct ConfigMessageAck : public IMessage {
+      uint8_t featureID;
+      uint16_t seq;
+      uint8_t featureArrIndex;
+
+      void toJSON(JsonDocument& doc) const {
+          doc["mt"] = MessageTypes::MT_CONFIG_ACK;
+          doc["fi"] = featureID;
+          doc["se"] = seq;
+          doc["fa"] = featureArrIndex;
+      }
+
+      void fromJSON(const JsonDocument& doc) {
+          if (doc.containsKey("fi")) {
+              featureID = doc["fi"].as<uint8_t>();
+          }
+          if (doc.containsKey("se")) {
+              seq = doc["se"].as<uint16_t>();
+          }
+          if (doc.containsKey("fa")) {
+              featureArrIndex = doc["fa"].as<uint8_t>();
+          }
+      }
   };
 
   struct ConfigMessageNak : public IMessage {
-    uint8_t featureID;
-    uint16_t seq;
-    uint8_t errorCode;
-    String errorString;
-    void toJSON(JsonDocument& doc)
-    {
-      //JsonDocument doc;
-      doc[F("mt")] = MessageTypes::MT_CONFIG_NAK;
-      doc[F("fi")] = featureID;
-      doc[F("se")] = seq;
-      doc[F("ec")] = errorCode;
-      doc[F("es")] = errorString;
-      //return doc;
-    }
-    void fromJSON(const JsonDocument& doc)
-    {
-      featureID = doc[F("fi")];
-      seq = doc[F("se")];
-      errorCode = doc[F("ec")];
-      String s = doc[F("es")];
-      errorString = s;
-    }
+      uint8_t featureID;
+      uint16_t seq;
+      uint8_t errorCode;
+      String errorString;
+
+      void toJSON(JsonDocument& doc) const {
+          doc["mt"] = MessageTypes::MT_CONFIG_NAK;
+          doc["fi"] = featureID;
+          doc["se"] = seq;
+          doc["ec"] = errorCode;
+          doc["es"] = errorString;
+      }
+
+      void fromJSON(const JsonDocument& doc) {
+          if (doc.containsKey("fi")) {
+              featureID = doc["fi"].as<uint8_t>();
+          }
+          if (doc.containsKey("se")) {
+              seq = doc["se"].as<uint16_t>();
+          }
+          if (doc.containsKey("ec")) {
+              errorCode = doc["ec"].as<uint8_t>();
+          }
+          if (doc.containsKey("es")) {
+              errorString = doc["es"].as<String>();
+          }
+      }
   };
 
   struct ConfigMessage : public IMessage {
       uint8_t featureID;
       uint16_t seq;
       uint16_t total;
-      String configString; 
-      void toJSON(JsonDocument& doc)
-      {
-        //JsonDocument doc;
-        doc[F("mt")] = MessageTypes::MT_CONFIG;
-        doc[F("fi")] = featureID;
-        doc[F("se")] = seq;
-        doc[F("to")] = total;
-        doc[F("cs")] = configString;
-        //return doc;
+      String configString;
+
+      void toJSON(JsonDocument& doc) const {
+          doc["mt"] = MessageTypes::MT_CONFIG;
+          doc["fi"] = featureID;
+          doc["se"] = seq;
+          doc["to"] = total;
+          doc["cs"] = configString;
       }
-      void fromJSON(const JsonDocument& doc)
-      {
-        //doc[F("mt")] = MessageTypes::MT_PINCONFIG;
-        featureID = doc[F("fi")];//= featureID;
-        seq = doc[F("se")];// = sequence;
-        total = doc[F("to")];// = total;
-        String s = doc[F("cs")];
-        configString = s;
+
+      void fromJSON(const JsonDocument& doc) {
+          if (doc.containsKey("fi")) {
+              featureID = doc["fi"].as<uint8_t>();
+          }
+          if (doc.containsKey("se")) {
+              seq = doc["se"].as<uint16_t>();
+          }
+          if (doc.containsKey("to")) {
+              total = doc["to"].as<uint16_t>();
+          }
+          if (doc.containsKey("cs")) {
+              configString = doc["cs"].as<String>();
+          }
       }
   }cfg;
 
   #ifdef DEBUG
   struct DebugMessage : public IMessage {
     String message;
-    void toJSON(JsonDocument& doc)
+    void toJSON(JsonDocument& doc) const
     {
       //JsonDocument doc;
       doc[F("mt")] = MessageTypes::MT_DEBUG;
