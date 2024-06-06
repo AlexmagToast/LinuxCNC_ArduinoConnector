@@ -162,136 +162,146 @@ class HalPinDirection(StrEnum):
     def __str__(self) -> str:
         return self.value
 
-
 class ConnectionType:
     def __init__(self, yaml:dict = None):
         pass
 
-
 class ArduinoPin:
-    def __init__(self, pinName:str='', featureID:int=0, pinID:str='', pinType:PinTypes=PinTypes.UNDEFINED, halPinType:HalPinTypes=HalPinTypes.UNDEFINED, 
-                 halPinDirection:HalPinDirection=HalPinDirection.UNDEFINED, yaml:dict = None): 
+    def __init__(self, pinName:str='', featureID:int=0, pinID:str='', pinType:PinTypes=PinTypes.UNDEFINED, 
+                 halPinType:HalPinTypes=HalPinTypes.UNDEFINED, halPinDirection:HalPinDirection=HalPinDirection.UNDEFINED, 
+                 yaml:dict=None):
         self.pinName = pinName
         self.pinType = pinType
         self.halPinType = halPinType
         self.halPinDirection = halPinDirection
         self.pinID = pinID
         self.featureID = featureID
-        self.pinInitialState = PinConfigElement.PIN_INITIAL_STATE.defaultValue() #.value[DEFAULT_VALUE_KEY]
-        self.pinConnectedState = PinConfigElement.PIN_CONNECTED_STATE.defaultValue() #.value[DEFAULT_VALUE_KEY]
-        self.pinDisconnectedState = PinConfigElement.PIN_DISCONNECTED_STATE.defaultValue() #.value[DEFAULT_VALUE_KEY]
-        self.pinEnabled = PinConfigElement.PIN_ENABLED.defaultValue()#.value[DEFAULT_VALUE_KEY]
+        self.pinInitialState = PinConfigElement.PIN_INITIAL_STATE.defaultValue()
+        self.pinConnectedState = PinConfigElement.PIN_CONNECTED_STATE.defaultValue()
+        self.pinDisconnectedState = PinConfigElement.PIN_DISCONNECTED_STATE.defaultValue()
+        self.pinEnabled = PinConfigElement.PIN_ENABLED.defaultValue()
         self.halPinConnection = None
         self.halPinCurrentValue = 0
         self.pinLogicalID = 0
         self.pinConfigSynced = False
-        #if yaml != None: self.parseYAML(doc=yaml)
+        
+        if yaml is not None:
+            self.parseYAML(yaml)
 
     def parseYAML(self, doc):
-        if PinConfigElement.PIN_ID.value[0] not in doc.keys():
-            raise Exception(f'Error. {PinConfigElement.PIN_ID.value[0]} undefined in config yaml')
+        required_keys = [
+            PinConfigElement.PIN_ID.value[0]
+        ]
+
+        for key in required_keys:
+            if key not in doc:
+                raise ValueError(f'Error: {key} undefined in config yaml')
+        
         self.pinID = doc[PinConfigElement.PIN_ID.value[0]]
-        if PinConfigElement.PIN_ENABLED.value[0] in doc.keys():
-            self.pinEnabled = doc[PinConfigElement.PIN_ENABLED.value[0]]
-        if PinConfigElement.PIN_TYPE.value[0] in doc.keys():
-            self.halPinType = HalPinTypes(str(doc[PinConfigElement.PIN_TYPE.value[0]]).upper())
-        if PinConfigElement.PIN_NAME.value[0] in doc.keys():    
-            self.pinName = doc[PinConfigElement.PIN_NAME.value[0]]
-        else:
+        optional_mappings = {
+            PinConfigElement.PIN_ENABLED.value[0]: 'pinEnabled',
+            PinConfigElement.PIN_TYPE.value[0]: 'halPinType',
+            PinConfigElement.PIN_NAME.value[0]: 'pinName',
+            PinConfigElement.PIN_INITIAL_STATE.value[0]: 'pinInitialState',
+            PinConfigElement.PIN_DISCONNECTED_STATE.value[0]: 'pinDisconnectedState',
+            PinConfigElement.PIN_CONNECTED_STATE.value[0]: 'pinConnectedState'
+        }
+
+        for yaml_key, attr_name in optional_mappings.items():
+            if yaml_key in doc:
+                value = doc[yaml_key]
+                if attr_name == 'halPinType':
+                    value = HalPinTypes(str(value).upper())
+                setattr(self, attr_name, value)
+
+        if not self.pinName:
             self.pinName = f"{self.pinType.value}"
-        if PinConfigElement.PIN_INITIAL_STATE.value[0] in doc.keys():    
-            self.pinInitialState = doc[PinConfigElement.PIN_INITIAL_STATE.value[0]]
-        if PinConfigElement.PIN_DISCONNECTED_STATE.value[0] in doc.keys():    
-            self.pinDisconnectedState = doc[PinConfigElement.PIN_DISCONNECTED_STATE.value[0]]
-        if PinConfigElement.PIN_CONNECTED_STATE.value[0] in doc.keys():    
-            self.pinConnectedState = doc[PinConfigElement.PIN_CONNECTED_STATE.value[0]]
 
     def __str__(self) -> str:
-        return f'pinName = {self.pinName}, pinType={self.pinType.name}, halPinType={self.halPinType}, pinEnabled={self.pinEnabled}, pinIniitalState={self.pinInitialState}, pinConnectedState={self.pinConnectedState}, pinDisconnectedState={self.pinDisconnectedState}'
+        return (f'pinName = {self.pinName}, pinType = {self.pinType.name}, halPinType = {self.halPinType}, '
+                f'pinEnabled = {self.pinEnabled}, pinInitialState = {self.pinInitialState}, '
+                f'pinConnectedState = {self.pinConnectedState}, pinDisconnectedState = {self.pinDisconnectedState}')
     
-    def toJson(self): # This is the JSON sent to the Arduino during configuration.  Should only include the values needed by the Arduino to limit memory footprint/processing within the Arduino.
-        return {'fi' : self.featureID,
-                'id': self.pinID,
-                'li': self.pinLogicalID,
-                'is': self.pinInitialState,
-                'cs': self.pinConnectedState,
-                'ds': self.pinDisconnectedState}
+    def toJson(self):
+        return {
+            'fi': self.featureID,
+            'id': self.pinID,
+            'li': self.pinLogicalID,
+            'is': self.pinInitialState,
+            'cs': self.pinConnectedState,
+            'ds': self.pinDisconnectedState
+        }
     
 class AnalogPin(ArduinoPin):
-    def __init__(self,yaml:dict = None, featureID:int=0, halPinDirection=HalPinDirection):
-        if halPinDirection == HalPinDirection.HAL_IN or halPinDirection == HalPinDirection.HAL_IO:
-            ArduinoPin.__init__(self, featureID=featureID, pinType=PinTypes.ANALOG_INPUT, 
-                        halPinType=HalPinTypes.HAL_FLOAT, halPinDirection=halPinDirection,
-                        yaml=yaml)
-        else:
-            ArduinoPin.__init__(self, featureID=featureID, pinType=PinTypes.ANALOG_OUTPUT, 
-                        halPinType=HalPinTypes.HAL_FLOAT, halPinDirection=halPinDirection,
-                        yaml=yaml)
-        
-        # set the defaults, which can be overriden through the yaml profile
-        
-        self.pinSmoothing = AnalogConfigElement.PIN_SMOOTHING.defaultValue()#.value[DEFAULT_VALUE_KEY] #smoothing const   #optional
-        self.pinMinVal = AnalogConfigElement.PIN_MIN_VALUE.defaultValue()#.value[DEFAULT_VALUE_KEY] #minimum value         #optional     these could be used to convert the value to 0-10 for example
-        self.pinMaxVal = AnalogConfigElement.PIN_MAX_VALUE.defaultValue()#.value[DEFAULT_VALUE_KEY] #maximum value      #optional
-        
-        if yaml != None: 
-            self.parseYAML(doc=yaml)
-            ArduinoPin.parseYAML(self, doc=yaml)
+    def __init__(self, yaml:dict=None, featureID:int=0, halPinDirection=HalPinDirection.UNDEFINED):
+        pinType = PinTypes.ANALOG_INPUT if halPinDirection in [HalPinDirection.HAL_IN, HalPinDirection.HAL_IO] else PinTypes.ANALOG_OUTPUT
+        super().__init__(featureID=featureID, pinType=pinType, halPinType=HalPinTypes.HAL_FLOAT, halPinDirection=halPinDirection, yaml=yaml)
 
-    def __str__(self) -> str:
-        return f'\npinID={self.pinID}, pinName = {self.pinName}, pinType={self.pinType.name}, '\
-            f'halPinDirection = {self.halPinDirection}, halPinType={self.halPinType}, pinSmoothing={self.pinSmoothing}, '\
-            f'pinMinVal={self.pinMinVal}, pinMaxVal={self.pinMaxVal}'  
-    
+        # Set the defaults, which can be overridden through the yaml profile
+        self.pinSmoothing = AnalogConfigElement.PIN_SMOOTHING.defaultValue()
+        self.pinMinVal = AnalogConfigElement.PIN_MIN_VALUE.defaultValue()
+        self.pinMaxVal = AnalogConfigElement.PIN_MAX_VALUE.defaultValue()
+
+        if yaml is not None: 
+            self.parseYAML(yaml)
+
     def parseYAML(self, doc):
-        if AnalogConfigElement.PIN_SMOOTHING.value[0] in doc.keys():
+        if AnalogConfigElement.PIN_SMOOTHING.value[0] in doc:
             self.pinSmoothing = int(doc[AnalogConfigElement.PIN_SMOOTHING.value[0]])
-        if AnalogConfigElement.PIN_MIN_VALUE.value[0] in doc.keys():
+        if AnalogConfigElement.PIN_MIN_VALUE.value[0] in doc:
             self.pinMinVal = int(doc[AnalogConfigElement.PIN_MIN_VALUE.value[0]])
-        if AnalogConfigElement.PIN_MAX_VALUE.value[0] in doc.keys():
+        if AnalogConfigElement.PIN_MAX_VALUE.value[0] in doc:
             self.pinMaxVal = int(doc[AnalogConfigElement.PIN_MAX_VALUE.value[0]])
 
-    def toJson(self):
-        s = ArduinoPin.toJson(self)
-        s['ps'] = self.pinSmoothing
-        s['pm'] = self.pinMaxVal
-        s['pn'] = self.pinMinVal
+        # Also parse the parent class YAML settings
+        super().parseYAML(doc)
 
+    def __str__(self) -> str:
+        return (f'\npinID={self.pinID}, pinName={self.pinName}, pinType={self.pinType.name}, '
+                f'halPinDirection={self.halPinDirection}, halPinType={self.halPinType}, '
+                f'pinSmoothing={self.pinSmoothing}, pinMinVal={self.pinMinVal}, pinMaxVal={self.pinMaxVal}')
+
+    def toJson(self):
+        s = super().toJson()
+        s.update({
+            'ps': self.pinSmoothing,
+            'pm': self.pinMaxVal,
+            'pn': self.pinMinVal
+        })
         return s
 
 class DigitalPin(ArduinoPin):
-    def __init__(self,  halPinDirection:HalPinDirection,featureID:int=0, yaml:dict = None):
-        if halPinDirection == HalPinDirection.HAL_IN or halPinDirection == HalPinDirection.HAL_IO:
-            ArduinoPin.__init__(self, pinType=PinTypes.DIGITAL_INPUT, featureID=featureID, 
-                        halPinType=HalPinTypes.HAL_BIT, halPinDirection=halPinDirection,
-                        yaml=yaml)
-        else:
-            ArduinoPin.__init__(self, pinType=PinTypes.DIGITAL_OUTPUT, featureID=featureID,
-                        halPinType=HalPinTypes.HAL_BIT, halPinDirection=halPinDirection,
-                        yaml=yaml)
-        
-        # set the defaults, which can be overriden through the yaml profile
-        self.pinDebounce = DigitalConfigElement.PIN_DEBOUNCE.defaultValue()#.value[DEFAULT_VALUE_KEY]
-        self.inputPullup = DigitalConfigElement.INPUT_PULLUP.defaultValue()#.value[DEFAULT_VALUE_KEY] 
-        if yaml != None: 
-            self.parseYAML(doc=yaml)
-            ArduinoPin.parseYAML(self, doc=yaml)
+    def __init__(self, halPinDirection: HalPinDirection, featureID: int = 0, yaml: dict = None):
+        pinType = PinTypes.DIGITAL_INPUT if halPinDirection in [HalPinDirection.HAL_IN, HalPinDirection.HAL_IO] else PinTypes.DIGITAL_OUTPUT
+        super().__init__(pinType=pinType, featureID=featureID, halPinType=HalPinTypes.HAL_BIT, halPinDirection=halPinDirection, yaml=yaml)
+
+        # Set the defaults, which can be overridden through the yaml profile
+        self.pinDebounce = DigitalConfigElement.PIN_DEBOUNCE.defaultValue()
+        self.inputPullup = DigitalConfigElement.INPUT_PULLUP.defaultValue()
+
+        if yaml is not None:
+            self.parseYAML(yaml)
+
+    def parseYAML(self, doc):
+        if DigitalConfigElement.PIN_DEBOUNCE.value[0] in doc:
+            self.pinDebounce = int(doc[DigitalConfigElement.PIN_DEBOUNCE.value[0]])
+        if DigitalConfigElement.INPUT_PULLUP.value[0] in doc:
+            self.inputPullup = bool(doc[DigitalConfigElement.INPUT_PULLUP.value[0]])
+
+        # Also parse the parent class YAML settings
+        super().parseYAML(doc)
 
     def __str__(self) -> str:
+        return (f'\npinID={self.pinID}, pinName={self.pinName}, pinType={self.pinType.name}, '
+                f'halPinDirection={self.halPinDirection}, halPinType={self.halPinType}, '
+                f'pinDebounce={self.pinDebounce}, inputPullup={self.inputPullup}')
 
-        return f'\npinID={self.pinID}, pinName = {self.pinName}, pinType={self.pinType.name}, '\
-            f'halPinDirection = {self.halPinDirection}, halPinType={self.halPinType}, pinDebounce={self.pinDebounce}'
-    
-    def parseYAML(self, doc):
-        if DigitalConfigElement.PIN_DEBOUNCE.value[0] in doc.keys():
-            self.pinDebounce = int(doc[DigitalConfigElement.PIN_DEBOUNCE.value[0]])
-        if DigitalConfigElement.INPUT_PULLUP.value[0] in doc.keys():
-            self.inputPullup = bool(doc[DigitalConfigElement.INPUT_PULLUP.value[0]])
-        
     def toJson(self):
-        s = ArduinoPin.toJson(self)
-        s['pd'] = self.pinDebounce
-        s['ip'] = self.inputPullup 
+        s = super().toJson()
+        s.update({
+            'pd': self.pinDebounce,
+            'ip': self.inputPullup
+        })
         return s
 
 '''
@@ -348,128 +358,99 @@ ConnectionFeatureTypes = {
 
 
 class MessageEncoder:
-
-    #def __init__(self):
-        #self.encodeBytes()
-
-    def encodeBytes(self, payload) -> bytes:
+    @staticmethod
+    def encodeBytes(payload) -> bytes:
         packed = msgpack.dumps(payload)
         encoded = cobs.encode(packed)
         return encoded
-        #logging.debug(f"PYDEBUG: cobs encoded: {b}")
-        '''
-        decoded = cobs.decode(b)#[:-1]
-        logging.debug(f"PYDEBUG: cobs decoded: {decoded}")
-        #strb = ''
-        #for b1 in decoded:
-        #    strb += f'{hex(b1)}, '
-        #print(strb)
-        self.payload = msgpack.loads(decoded)
-        #self.messageType = 
-        logging.debug(f"PYDEBUG: msgpack json decoded: {self.payload}")
-        if 'mt' not in self.payload:
-            raise Exception("PYDEBUG: Message type undefined.")
-        self.messageType = self.payload['mt']
-    
-
-        #mt_enc = msgpack.packb(mt)
-        data_enc = msgpack.packb(payload)  
-        #print(f'DATA = {data_enc}')
-        crc_enc = self.getCRC(data=data_enc)
-        eot_enc = b'\x00'
-        encoded =  cobs.encode( msgpack.packb(mt) + data_enc + crc_enc) + eot_enc
-        #print(f'ENCODED = {encoded}')
-        #print(f'DECODED AGAIN: {cobs.decode(encoded[:-1])}')
-        #strb = ''
-        #for b in bytes(encoded):
-        #    strb += f'[{hex(b)}]'
-        #print(strb)
-        return encoded
-        '''
 
 class ProtocolMessage:
-    def __init__(self, messageType:MessageType):
+    def __init__(self, messageType: MessageType):
         self.mt = messageType
         self.payload = None
-    
-    def packetize(self):
-        me = MessageEncoder()
-        return me.encodeBytes(self.payload) + b'\x00'
+
+    def packetize(self) -> bytes:
+        if self.payload is None:
+            raise ValueError("Payload cannot be None")
+        encoded_payload = MessageEncoder.encodeBytes(self.payload)
+        return encoded_payload + b'\x00'
+
+    def depacketize(self, data: bytes):
+        if not data.endswith(b'\x00'):
+            raise ValueError("Invalid packet: does not end with null terminator")
+        encoded_payload = data[:-1]
+        try:
+            packed = cobs.decode(encoded_payload)
+            self.payload = msgpack.loads(packed)
+        except (cobs.DecodeError, msgpack.UnpackException) as e:
+            raise ValueError(f"Failed to depacketize: {e}")
         
-    def depacketize(self):
-        pass
-            
 class ConfigMessage(ProtocolMessage):
-    def __init__(self, configJSON, seq:int, total:int, featureID:str):
+    def __init__(self, configJSON, seq: int, total: int, featureID: str):
         super().__init__(messageType=MessageType.MT_CONFIG)
-        self.payload = {}
-        self.payload['mt'] = MessageType.MT_CONFIG
-        self.payload['fi'] = featureID
-        self.payload['se'] = seq
-        self.payload['to'] = total
-        self.payload['cs'] = configJSON
+        self.payload = {
+            'mt': MessageType.MT_CONFIG,
+            'fi': featureID,
+            'se': seq,
+            'to': total,
+            'cs': configJSON
+        }
 
 class ConfigMessageNak(ProtocolMessage):
     def __init__(self, payload):
         super().__init__(messageType=MessageType.MT_CONFIG_NAK)
-        self.payload = payload #{}
-        if 'fi' not in payload:
-            raise Exception(f'Feature index undefined')
+        
+        required_fields = ['fi', 'se', 'ec', 'es']
+        for field in required_fields:
+            if field not in payload:
+                raise ValueError(f"{field} is undefined in payload")
+        
+        self.payload = payload
         self.featureID = payload['fi']
-        if 'se' not in payload:
-            raise Exception(f'Sequence index undefined')
         self.sequenceID = payload['se']
-        if 'ec' not in payload:
-            raise Exception(f'Error code undefined')
         self.errorCode = payload['ec']
-        if 'es' not in payload:
-            raise Exception(f'Error code string')
         self.errorString = payload['es']
 
 class ConfigMessageAck(ProtocolMessage):
     def __init__(self, payload):
         super().__init__(messageType=MessageType.MT_CONFIG_ACK)
-        self.payload = payload 
-        if 'fi' not in payload:
-            raise Exception(f'Feature index undefined')
+        
+        required_fields = ['fi', 'se', 'fa']
+        for field in required_fields:
+            if field not in payload:
+                raise ValueError(f"{field} is undefined in payload")
+        
+        self.payload = payload
         self.featureID = payload['fi']
-        if 'se' not in payload:
-            raise Exception(f'Sequence index undefined')
         self.sequenceID = payload['se']
-        if 'fa' not in payload:
-            raise Exception(f'Feature Array Index undefined')
         self.featureArrayIndex = payload['fa']
 
 class InviteSyncMessage(ProtocolMessage):
     def __init__(self, payload=None):
         super().__init__(messageType=MessageType.MT_INVITE_SYNC)
-        self.payload = payload
 
-        if payload != None:
+        if payload is not None:
             if 'pv' not in payload:
-                raise Exception(f'Protocol version undefined')
+                raise ValueError('Protocol version undefined')
+            self.payload = payload
             self.pv = payload['pv']
         else:
-            payload = { 'pv': f'{MCU_PROTOCOL_VERSION}' }
+            self.payload = { 'pv': f'{MCU_PROTOCOL_VERSION}' }
+            self.pv = self.payload['pv']
 
-        
-#class ConfigMessageAck(ProtocolMessage):
-#    def __init__(self, md:MessageDecoder):
-#        super().__init__(messageType=MessageType.MT_HANDSHAKE)
-#        pass
+
 
 class PinChangeMessage(ProtocolMessage):
-    def __init__(self, featureID:int=0, seqID:int=0, responseReq:int=0, message:str=''):
+    def __init__(self, featureID: int = 0, seqID: int = 0, responseReq: int = 0, message: str = ''):
         super().__init__(messageType=MessageType.MT_PINCHANGE)
-        self.payload = {}
-        self.payload['mt'] = MessageType.MT_PINCHANGE
-        self.payload['fi'] = featureID
-        self.payload['si'] = seqID
-        self.payload['rr'] = responseReq
-        self.payload['ms'] = message
-    #def __init__(self, md:MessageDecoder):
-    #    super().__init__(messageType=MessageType.MT_PINCHANGE)
-    #    self.payload = md.payload
+        self.payload = {
+            'mt': MessageType.MT_PINCHANGE,
+            'fi': featureID,
+            'si': seqID,
+            'rr': responseReq,
+            'ms': message
+        }
+
 class HeartbeatMessage(ProtocolMessage):
     def __init__(self, payload):
         super().__init__(messageType=MessageType.MT_HEARTBEAT)
@@ -478,84 +459,67 @@ class HeartbeatMessage(ProtocolMessage):
 class HandshakeMessage(ProtocolMessage):
     def __init__(self, payload):
         super().__init__(messageType=MessageType.MT_HANDSHAKE)
-        #{'mt': 3, 'pv': 1, 'fm': 1, 'to': 20000, 'ps': 0, 'ui': 'ND', 'dp': 53, 'ai': 19, 'ao': 2}
-        if 'pv' not in payload:
-            raise Exception(f'Protocol version undefined')
+        
+        required_fields = ['pv', 'fm', 'to', 'ps']
+        for field in required_fields:
+            if field not in payload:
+                raise ValueError(f"{field} is undefined in payload")
+        
         self.protocolVersion = payload['pv']
         if self.protocolVersion != MCU_PROTOCOL_VERSION:
-            raise Exception(f'Expected protocol version {MCU_PROTOCOL_VERSION}, got {self.protocolVersion}')
-        if 'fm' not in payload:
-            raise Exception(f'Enabled features undefined')
+            raise ValueError(f"Expected protocol version {MCU_PROTOCOL_VERSION}, got {self.protocolVersion}")
+
         self.enabledFeatures = FeatureMapDecoder(payload['fm'])
-        if 'to' not in payload:
-            raise Exception(f'Timeout undefined')
         self.timeout = payload['to']
-        if 'ps' not in payload:
-            raise Exception(f'Profile signature undefined')
         self.profileSignature = payload['ps']
-        if 'ui' in payload:
-            self.UID = payload['ui']
-        else:
-            self.UID = 'UNDEFINED'
-        if 'dp' in payload:
-            self.digitalPins = payload['dp']
-        else:
-            self.digitalPins = 0
-        if 'ai' in payload:
-            self.analogInputs = payload['ai']
-        else:
-            self.analogInputs = 0
-        if 'ao' in payload:
-            self.analogOutputs = payload['ao']
-        else:
-            self.analogOutputs = 0
+        self.UID = payload.get('ui', 'UNDEFINED')
+        self.digitalPins = payload.get('dp', 0)
+        self.analogInputs = payload.get('ai', 0)
+        self.analogOutputs = payload.get('ao', 0)
         
         self.payload = payload
-        '''
-        self.protocolVersion = md.payload[0]
-        if self.protocolVersion != protocol_ver:
-            raise Exception(f'Expected protocol version {protocol_ver}, got {self.protocolVersion}')
-        self.enabledFeatures = FeatureMapDecoder(md.payload[1])
-        self.timeout = md.payload[2]
-        #self.maxMsgSize = md.payload[3]
-        self.profileSignature = md.payload[3]
-        self.UID = md.payload[4]
-        self.digitalPins = md.payload[5]
-        self.analogInputs = md.payload[6]
-        self.analogOutputs = md.payload[7]
-        self.payload = md.payload
-        '''
-class MessageDecoder:
-    #def __init__(self, b:bytearray):
-    #    self.parseBytes(b)
-        
-    def parseBytes(self, b:bytearray) -> ProtocolMessage:
-        logging.debug(f"PYDEBUG: cobs encoded: {b}")
-        decoded = cobs.decode(b)#[:-1]
-        logging.debug(f"PYDEBUG: cobs decoded: {decoded}")
-        self.payload = msgpack.loads(decoded)
-        logging.debug(f"PYDEBUG: msgpack json decoded: {self.payload}")
-        if 'mt' not in self.payload:
-            raise Exception("PYDEBUG: Message type undefined.")
-        self.messageType = self.payload['mt']
-        if self.messageType == MessageType.MT_HANDSHAKE:
-            hm = HandshakeMessage(payload=self.payload)
-            return hm
-        elif self.messageType == MessageType.MT_HEARTBEAT:
-            hb = HeartbeatMessage(payload=self.payload)
-            return hb
-        elif self.messageType == MessageType.MT_CONFIG_NAK:
-            cn = ConfigMessageNak(payload=self.payload)
-            return cn
-        elif self.messageType == MessageType.MT_CONFIG_ACK:
-            ca = ConfigMessageAck(payload=self.payload)
-            return ca
-        elif self.messageType == MessageType.MT_PINCHANGE:
-            pc = PinChangeMessage(featureID=self.payload['fi'], seqID=self.payload['si'], responseReq=self.payload['rr'], message=self.payload['ms'])
-            return pc
-        else:
-            raise Exception(f"Error. Message Type Unsupported, type = {self.messageType}");
 
+class MessageDecoder:
+    @staticmethod
+    def parseBytes(b: bytearray) -> ProtocolMessage:
+        logging.debug(f"PYDEBUG: cobs encoded: {b}")
+        
+        try:
+            decoded = cobs.decode(b)
+            logging.debug(f"PYDEBUG: cobs decoded: {decoded}")
+        except cobs.DecodeError as e:
+            raise ValueError(f"Failed to decode COBS data: {e}")
+
+        try:
+            payload = msgpack.loads(decoded)
+            logging.debug(f"PYDEBUG: msgpack json decoded: {payload}")
+        except msgpack.ExtraData as e:
+            raise ValueError(f"Failed to unpack msgpack data: {e}")
+        except msgpack.FormatError as e:
+            raise ValueError(f"Failed to unpack msgpack data: {e}")
+
+        if 'mt' not in payload:
+            raise ValueError("PYDEBUG: Message type undefined.")
+        
+        messageType = payload['mt']
+
+        if messageType == MessageType.MT_HANDSHAKE:
+            return HandshakeMessage(payload=payload)
+        elif messageType == MessageType.MT_HEARTBEAT:
+            return HeartbeatMessage(payload=payload)
+        elif messageType == MessageType.MT_CONFIG_NAK:
+            return ConfigMessageNak(payload=payload)
+        elif messageType == MessageType.MT_CONFIG_ACK:
+            return ConfigMessageAck(payload=payload)
+        elif messageType == MessageType.MT_PINCHANGE:
+            return PinChangeMessage(
+                featureID=payload['fi'],
+                seqID=payload['si'],
+                responseReq=payload['rr'],
+                message=payload['ms']
+            )
+        else:
+            raise ValueError(f"Error. Message Type Unsupported, type = {messageType}")
 
 '''
     End Message/Protcol Objects and Helpers
@@ -1198,124 +1162,100 @@ di = DigitalInputFeauture()
 
         
 class SerialConnection(Connection):
-    def __init__(self, dev:str, myType = ConnectionType.SERIAL, profileSignature:int=0, baudRate:int = 115200, timeout:int=1):
+    def __init__(self, dev: str, myType=ConnectionType.SERIAL, profileSignature: int = 0, baudRate: int = 115200, timeout: int = 1):
         super().__init__(myType)
         logging.debug(f'PYDEBUG: SerialConnection __init__: dev={dev}, baudRate={baudRate}, timeout={timeout}')
         self.rxBuffer = bytearray()
         self.shutdown = False
         self.dev = dev
         self.daemon = None
-        self.serial = ''    
+        self.serial = None    
         self.baudRate = baudRate
         self.timeout = timeout  
         self.profileSignature = profileSignature
         self.status = ThreadStatus.STOPPED
-  
-        self.arduino = None #serial.Serial(dev, baudrate=baudRate, timeout=timeout, xonxoff=False, rtscts=False, dsrdtr=True)
-        #self.arduino.timeout = 1
-        
+        self.arduino = None
+
     def startRxTask(self):
         logging.debug(f'PYDEBUG: SerialConnection::startRxTask: dev={self.dev}')
-        if self.daemon != None:
-            raise Exception(f'PYDEBUG: SerialConnection::startRxTask: dev={self.dev}, error: RX thread already started!')
+        if self.daemon is not None:
+            raise RuntimeError(f'PYDEBUG: SerialConnection::startRxTask: dev={self.dev}, error: RX thread already started!')
         
         self.daemon = Thread(target=self.rxTask, daemon=False, name='Arduino RX')
         self.daemon.start()
-        
+
     def stopRxTask(self):
         logging.debug(f'PYDEBUG: SerialConnection::stopRxTask dev={self.dev}')
-        if self.daemon != None:
+        if self.daemon is not None:
             self.shutdown = True
             self.daemon.join()
             self.daemon = None
-        
-    def sendMessage(self, pm: ProtocolMessage):
-        logging.debug(f'PYDEBUG: SerialConnection::sendMessage, dev={self.dev}, Message={b}')
-        self.arduino.write(b)
-        #self.arduino.flush()
-        
+
     def sendMessage(self, b: bytes):
         logging.debug(f'PYDEBUG: SerialConnection::sendMessage, dev={self.dev}, Message={b}')
-        self.arduino.write(b)
-        #self.arduino.flush()
-    
-    def sendCommand(self, m:str):
-        cm = MessageEncoder().encodeBytes(mt=MessageType.MT_COMMAND, payload=[m, 1])
+        if self.arduino and self.arduino.is_open:
+            self.arduino.write(b)
+
+    def sendCommand(self, m: str):
+        cm = MessageEncoder().encodeBytes(payload=[MessageType.MT_COMMAND, m, 1])
         logging.debug(f'PYDEBUG: SerialConnection::sendCommand, dev={self.dev}, Command={bytes(cm)}')
         self.sendMessage(bytes(cm))
-        
+
     def rxTask(self):
         self.status = ThreadStatus.RUNNING
-        while(self.shutdown == False):
+        while not self.shutdown:
             try:
-                if self.arduino == None:
+                if self.arduino is None or not self.arduino.is_open:
                     self.arduino = serial.Serial(self.dev, baudrate=self.baudRate, timeout=self.timeout, xonxoff=False, rtscts=False, dsrdtr=True)
                     for port in serial.tools.list_ports.comports():
-                        if port.serial_number != None:
-                            if self.dev in port.device or port.serial_number in self.dev:
-                                self.serial = port.serial_number
-                    self.sendInviteSyncMessage() # Send sync invite to arduino. This avoids the Arduino waiting for a timeout to occur before eventually re-trying the handshake routine (shaves off upwards of 10 seconds)
+                        if port.serial_number and (self.dev in port.device or port.serial_number in self.dev):
+                            self.serial = port.serial_number
+                    self.sendInviteSyncMessage()
 
                 num_bytes = self.arduino.in_waiting
                 self.updateState()
-                #logging.debug(f'SerialConnection::rxTask, dev={self.dev}, in_waiting={num_bytes}')
                 if num_bytes > 0:
                     self.rxBuffer += self.arduino.read(num_bytes)
-                    while(True):  
+                    while True:
                         newlinepos = self.rxBuffer.find(b'\r\n')
                         termpos = self.rxBuffer.find(b'\x00')
 
-                        readDebug = False
-                        readMessage = False
                         if newlinepos == -1 and termpos == -1:
                             break
-                        elif newlinepos != -1 and termpos != -1: 
-                            if newlinepos < termpos:
-                                readDebug = True
-                            else:
-                               readMessage = True
-                        elif newlinepos != -1:
-                            readDebug = True
-                        elif termpos != -1:
-                            readMessage = True
-                        else:
-                            break
+
+                        readDebug = newlinepos != -1 and (termpos == -1 or newlinepos < termpos)
+                        readMessage = termpos != -1 and (newlinepos == -1 or termpos < newlinepos)
 
                         if readDebug:
-                            [chunk, self.rxBuffer] = self.rxBuffer.split(b'\r\n', maxsplit=1)
-                            logging.debug( f'[{self.alias}]: {bytes(chunk).decode("utf8", errors="ignore")}')
+                            chunk, self.rxBuffer = self.rxBuffer.split(b'\r\n', maxsplit=1)
+                            logging.debug(f'[{self.alias}]: {bytes(chunk).decode("utf8", errors="ignore")}')
                         elif readMessage:
-                            [chunk, self.rxBuffer] = self.rxBuffer.split(b'\x00', maxsplit=1)
+                            chunk, self.rxBuffer = self.rxBuffer.split(b'\x00', maxsplit=1)
                             logging.debug(f'PYDEBUG: SerialConnection::rxTask, dev={self.dev}, chunk bytes: {chunk}')
                             try:
-                                #pass
                                 md = self.parseBytes(chunk)
                                 self.onMessageRecv(m=md)
                             except Exception as ex:
-                                just_the_string = traceback.format_exc()
-                                logging.debug(f'PYDEBUG: SerialConnection::rxTask, dev={self.dev}, Exception: {str(just_the_string)}')
+                                logging.debug(f'PYDEBUG: SerialConnection::rxTask, dev={self.dev}, Exception: {traceback.format_exc()}')
 
             except OSError as oserror:
-                print( f'OS Error = : {str(oserror)}')
-                just_the_string = traceback.format_exc()
-                logging.debug(f'PYDEBUG: SerialConnection::rxTask, dev={self.dev}, Exception: {str(just_the_string)}, OS Error: {str(oserror)}')
+                logging.error(f'OS Error = : {str(oserror)}')
+                logging.debug(f'PYDEBUG: SerialConnection::rxTask, dev={self.dev}, Exception: {traceback.format_exc()}, OS Error: {str(oserror)}')
                 
                 self.daemon = None
                 self.arduino = None
-                #self.configVersion = 0 # Force config send on reconnect; TODO: Consider making this less janky
-                self.setState(newState=ConnectionState.DISCONNECTED)
+                self.setState(ConnectionState.DISCONNECTED)
                 self.status = ThreadStatus.CRASHED
-                break #break out of while
+                break
+
             except Exception as error:
-                just_the_string = traceback.format_exc()
-                logging.debug(f'PYDEBUG: SerialConnection::rxTask, dev={self.dev}, Exception: {str(just_the_string)}')
+                logging.debug(f'PYDEBUG: SerialConnection::rxTask, dev={self.dev}, Exception: {traceback.format_exc()}')
                 
                 self.daemon = None
                 self.arduino = None
-                #self.configVersion = 0 # Force config send on reconnect; TODO: Consider making this less janky
-                self.setState(newState=ConnectionState.DISCONNECTED)
+                self.setState(ConnectionState.DISCONNECTED)
                 self.status = ThreadStatus.CRASHED
-                break #break out of while
+                break
 '''
 class HalPinConnection:
     def __init__(self, component, pinName:str, pinType:HalPinTypes, pinDirection:HalPinDirection):
