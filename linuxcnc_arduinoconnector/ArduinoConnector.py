@@ -439,18 +439,62 @@ class InviteSyncMessage(ProtocolMessage):
             self.pv = self.payload['pv']
 
 
+class PinInfoElement:
+    def __init__(self, message):
+        required_fields = ['l', 'p', 'v']
+        for field in required_fields:
+            if field not in message:
+                raise ValueError(f"{field} is undefined in message")
+        self.logicalID = message['l']
+        self.pinID = message['p']
+        self.pinValue = message['v']
+        
+    def  __repr__(self):
+        return f"PinInfoElement(logicalID={self.logicalID}, pinID={self.pinID}, pinValue={self.pinValue})"
 
+def parse_pin_info_elements(json_string):
+    try:
+        # Parse the JSON string
+        data = json.loads(json_string)
+        
+        # Create a list of PinInfoElement objects
+        elements = [PinInfoElement(item) for item in data]
+        
+        return elements
+    except json.JSONDecodeError:
+        print("Invalid JSON string")
+        return None
+    
 class PinChangeMessage(ProtocolMessage):
-    def __init__(self, featureID: int = 0, seqID: int = 0, responseReq: int = 0, message: str = ''):
+    def __init__(self, featureID: int = 0, seqID: int = 0, responseReq: int = 0, message: str = '', payload=None):
         super().__init__(messageType=MessageType.MT_PINCHANGE)
-        self.payload = {
-            'mt': MessageType.MT_PINCHANGE,
-            'fi': featureID,
-            'si': seqID,
-            'rr': responseReq,
-            'ms': message
-        }
-
+        if payload is None:
+            self.payload = {
+                'mt': MessageType.MT_PINCHANGE,
+                'fi': featureID,
+                'si': seqID,
+                'rr': responseReq,
+                'ms': message
+            }
+        else:
+            #self.payload = payload
+            required_fields = ['fi', 'si', 'rr', 'ms']
+            for field in required_fields:
+                if field not in payload:
+                    raise ValueError(f"{field} is undefined in payload")
+            self.payload = payload
+            self.featureID = payload['fi']
+            self.seqID = payload['si']
+            self.responseReq = payload['rr']
+            required_fields = ['l', 'p', 'v']
+            #self.message = payload['ms']
+            self.pinInfo = parse_pin_info_elements(payload['ms'])
+            #pass
+        #self.payload = payload
+        #self.featureID = payload['fi']
+        #self.sequenceID = payload['se']
+        #self.featureArrayIndex = payload['fa']
+        
 class HeartbeatMessage(ProtocolMessage):
     def __init__(self, payload):
         super().__init__(messageType=MessageType.MT_HEARTBEAT)
@@ -513,10 +557,7 @@ class MessageDecoder:
             return ConfigMessageAck(payload=payload)
         elif messageType == MessageType.MT_PINCHANGE:
             return PinChangeMessage(
-                featureID=payload['fi'],
-                seqID=payload['si'],
-                responseReq=payload['rr'],
-                message=payload['ms']
+                payload=payload
             )
         else:
             raise ValueError(f"Error. Message Type Unsupported, type = {messageType}")
@@ -550,11 +591,11 @@ IO FEATURE OBJECTS
 '''
    
 class IOFeatureConfigItem():
-    def __init__(self, pinConfig:ArduinoPin, maxRetries:int=3, retryInterval:int=3) -> None:
+    def __init__(self, pinConfig:ArduinoPin, maxRetries:int=3, retryInterval:int=10) -> None:
         self.pinConfig = pinConfig
         self.retryCount = maxRetries
         self.lastTickCount = 0
-        self.retryInterval = 3
+        self.retryInterval = retryInterval
         self.seqID = pinConfig.pinID
         
 '''
@@ -698,7 +739,12 @@ class DigitalInputs(IOFeature):
     def OnMessageRecv(self, pm:ProtocolMessage):
         super().OnMessageRecv(pm)
         if (pm.mt == MessageType.MT_PINCHANGE):
-            pass
+           # maybe_message = #PinChangeMessage#MessageDecoder.parseBytes(pm.payload)
+            print(f'PINCHANGE: {pm.payload}')
+            for p in pm.pinInfo:
+                print(f'PININFO: {p}')
+
+            pass    
     
     def OnConnected(self):
         super().OnConnected()
@@ -727,7 +773,32 @@ class DigitalOutputs(IOFeature):
         IOFeature.__init__(self, featureName=str(Features.DIGITAL_OUTPUTS), featureConfigName=Features.DIGITAL_OUTPUTS.configName(), featureID=int(Features.DIGITAL_OUTPUTS))
     
     def YamlParser(self):
-        return lambda yaml, featureID : DigitalPin(yaml=yaml, featureID=featureID, halPinDirection=HalPinDirection.HAL_IN) 
+        return lambda yaml, featureID : DigitalPin(yaml=yaml, featureID=featureID, halPinDirection=HalPinDirection.HAL_IN)
+    
+    def OnMessageRecv(self, pm:ProtocolMessage):
+        super().OnMessageRecv(pm)
+        #if (pm.mt == MessageType.MT_PINCHANGE):
+           # maybe_message = #PinChangeMessage#MessageDecoder.parseBytes(pm.payload)
+        #    print(f'PINCHANGE: {pm.payload}')
+        #    for p in pm.pinInfo:
+        #        print(f'PININFO: {p}')
+
+        #    pass    
+    
+    def OnConnected(self):
+        super().OnConnected()
+    
+    def OnDisconnected(self):
+        super().OnDisconnected()
+    
+    def Setup(self):
+        super().Setup()
+    
+    def Loop(self):
+        super().Loop()
+        if (self.FeatureReady() == True and self.ConfigComplete() == True):
+            #self.Debug('Feature is ready for processing.')
+            pass
 '''
     AnalogInputs
 '''
@@ -752,13 +823,13 @@ class AnalogOutputs(IOFeature):
 # logic can be executed as needed for Config updates, pin updates, etc.
  
 di = DigitalInputs()
-#do = DigitalOutputs()
+do = DigitalOutputs()
 #ai = AnalogInputs()
 #ao = AnalogOutputs()
 
 # the featureList holds the IOFeature object copies for reference during yaml parsing.
 featureList = [ di, 
-                #do,
+                do,
                 #ai,
                 #ao
               ]
@@ -1457,7 +1528,10 @@ class ArduinoConnection:
             # perhaps device was unplugged..
             found = False
             for port in serial.tools.list_ports.comports():
-                if self.settings.dev in port or (port.serial_number != None and self.serialConn.serial in port.serial_number):
+                #print(port)
+                #if port.device == '/dev/ttyUSB0':
+                #    pass
+                if self.settings.dev in port or (port.serial_number != None and self.serialConn.serial != None and self.serialConn.serial in port.serial_number):
                     found = True
             if found == False:
                 retry = 5

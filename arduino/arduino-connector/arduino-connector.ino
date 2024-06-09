@@ -189,8 +189,15 @@ void setup() {
   //serialClient.RegisterCSCallback(Callbacks::onConnectionStageChange);
   //serialClient.RegisterPinChangeCallback(Callbacks::onPinChange);
   featureController.ExcecuteFeatureSetups();
-  Features::DigitalInputs * din = new Features::DigitalInputs();
-  featureController.RegisterFeature(din);
+  #ifdef DINPUTS
+    Features::DigitalInputs * din = new Features::DigitalInputs();
+    featureController.RegisterFeature(din);
+  #endif
+  #ifdef DOUTPUTS
+    Features::DigitalOutputs * dout = new Features::DigitalOutputs();
+    featureController.RegisterFeature(dout);
+  #endif
+
   digitalWrite(LED_BUILTIN, LOW);// Signal startup success to builtin LED
   serialClient.DoWork(); 
 }

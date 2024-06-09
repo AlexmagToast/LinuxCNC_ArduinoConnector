@@ -1,3 +1,31 @@
+mcu:
+  alias: NodeMCU
+  component_name: nodemcu # Name of component to use in HAL
+  dev: /dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_0001-if00-port0
+  enabled: true
+  hal_emulation: true
+  connection: 
+    baudrate: 115200
+    type: Serial
+
+  io_map:     
+    digitalInputs:
+      - pin_id: 14
+        pin_name: din.5 #hal pin name
+        input_pullup: true
+        pin_debounce: 50
+      - pin_id: 12
+        pin_name: din.6 #hal pin name
+        input_pullup: true
+        pin_debounce: 50
+
+    digitalOutputs:
+      - pin_id: 13
+        pin_name: dout.7 #hal pin name
+        pin_connected_state: 0
+        pin_disconnected_state: 1
+        pin_initial_state: 0
+---
 mcu: 
   alias: Arduino Mega2560
   component_name: arduinomega2560 # Name of component to use in HAL
@@ -11,7 +39,10 @@ mcu:
   connection: 
     baudrate: 115200
     type: Serial
-    
+
+  
+
+  
   io_map:     
     digitalOutputs:
       - pin_id: 10
@@ -110,272 +141,29 @@ mcu:
 mcu: 
   alias: M4 Grand Central
   component_name: arduinom4 # Name of component to use in HAL
-  dev: /dev/serial/by-id/usb-Adafruit_Grand_Central_M4_AB5B58B75335353334202020FF184219-if00
+  dev: /dev/serial/by-id/usb-Adafruit_Adafruit_Grand_Central_M4_AB5B58B75335353334202020FF184219-if00
   enabled: false
   hal_emulation: true
   io_map:
     digitalOutputs:
       - pin_id: 2
         pin_name: dout.02 #hal pin name
-        input_pullup: true
-        pin_debounce: 0
-        pin_enabled: false
-        pin_connected_state: 0
-        pin_disconnected_state: 1
-        pin_initial_state: -1
-
-    analogInputs:
-      - pin_id: 69
-        pin_name: ain.2
-        pin_initial_state: 0
-      - pin_id: 70
-        pin_name: ain.3
-        pin_initial_state: 0
-    analogOutputs:
-      - pin_id: 67
-        pin_name: aout.0 #hal pin name           #optional
-        pin_type: HAL_FLOAT #hal pin type     #optional     #does anything else make sense?
-        pin_smoothing: 200 #smoothing const   #optional
-        pin_min_val: 10 #minimum value         #optional     these could be used to convert the value to 0-10 for example
-        pin_max_val: 4096 #maximum value      #optional
-        pin_initial_state: 0
-      - pin_id: 68
-        pin_name: aout.1 #hal pin name           #optional
-        pin_type: HAL_FLOAT #hal pin type     #optional     #does anything else make sense?
-        pin_smoothing: 200 #smoothing const   #optional
-        pin_min_val: 10 #minimum value         #optional     these could be used to convert the value to 0-10 for example
-        pin_max_val: 4096 #maximum value      #optional
-        pin_initial_state: 0
-
-    digitalInputsdisabled:
-      - pin_id: 3
-        pin_name: din.03 #hal pin name
-        input_pullup: true
-        pin_debounce: 0
         pin_enabled: true
-        pin_connected_state: 0
-        pin_disconnected_state: 1
-        pin_initial_state: -1
+        pin_connected_state: 1
+        pin_disconnected_state: 0
+        pin_initial_state: 0
 
+    digitalInputs:
       - pin_id: 4
         pin_name: din.04 #hal pin name
         input_pullup: true
         pin_debounce: 0
+        pin_enabled: true 
+        pin_connected_state: 0
+        pin_disconnected_state: 1
+        pin_initial_state: -1
 
-      - pin_id: 5
-        pin_name: din.05 #hal pin name
-        input_pullup: true
-        pin_debounce: 0
-
-      - pin_id: 6
-        pin_name: din.06 #hal pin name
-        input_pullup: true
-        pin_debounce: 0
-
-      - pin_id: 7
-        pin_name: din.07 #hal pin name
-        input_pullup: true
-        pin_debounce: 0
-
-      - pin_id: 8
-        pin_name: din.08 #hal pin name
-        input_pullup: true
-        pin_debounce: 0
-
-      - pin_id: 9
-        pin_name: din.09 #hal pin name
-        input_pullup: true
-        pin_debounce: 0
-
-      - pin_id: 10
-        pin_name: din.10 #hal pin name
-        input_pullup: true
-        pin_debounce: 0
-
-      - pin_id: 11
-        pin_name: din.11 #hal pin name
-        input_pullup: true
-        pin_debounce: 0
-
-      - pin_id: 12
-        pin_name: din.12 #hal pin name
-        input_pullup: true
-        pin_debounce: 0
-
-      - pin_id: 13
-        pin_name: din.13 #hal pin name
-        input_pullup: true
-        pin_debounce: 0
-
-      - pin_id: 14
-        pin_name: din.14 #hal pin name
-        input_pullup: true
-        pin_debounce: 0
-
-      - pin_id: 15
-        pin_name: din.15 #hal pin name
-        input_pullup: true
-        pin_debounce: 0
-
-      - pin_id: 16
-        pin_name: din.16 #hal pin name
-        input_pullup: true
-        pin_debounce: 0
-
-      - pin_id: 17
-        pin_name: din.17 #hal pin name
-        input_pullup: true
-        pin_debounce: 0
-
-      - pin_id: 18
-        pin_name: din.18 #hal pin name
-        input_pullup: true
-        pin_debounce: 0
-
-      - pin_id: 19
-        pin_name: din.19 #hal pin name
-        input_pullup: true
-        pin_debounce: 0
-
-      - pin_id: 20
-        pin_name: din.20 #hal pin name
-        input_pullup: true
-        pin_debounce: 0
-        pin_connected_state: 1
-      - pin_id: 21
-        pin_name: din.21 #hal pin name
-        input_pullup: true
-        pin_debounce: 0
-
-      - pin_id: 22
-        pin_name: din.22 #hal pin name
-        input_pullup: true
-        pin_debounce: 0
-
-      - pin_id: 23
-        pin_name: din.23 #hal pin name
-        pin_debounce: 0
-
-      - pin_id: 24
-        pin_name: din.24 #hal pin name
-        pin_debounce: 0
-
-      - pin_id: 25
-        pin_name: din.25 #hal pin name
-        pin_debounce: 0
-
-      - pin_id: 26
-        pin_name: din.26 #hal pin name
-        pin_debounce: 0
-
-      - pin_id: 27
-        pin_name: din.27 #hal pin name
-        pin_debounce: 0
-
-      - pin_id: 28
-        pin_name: din.28 #hal pin name
-        pin_debounce: 0
-
-      - pin_id: 29
-        pin_name: din.29 #hal pin name
-        pin_debounce: 0
-
-      - pin_id: 30
-        pin_name: din.30 #hal pin name
-        pin_debounce: 0
-
-      - pin_id: 31
-        pin_name: din.31 #hal pin name
-        pin_debounce: 0
-
-      - pin_id: 32
-        pin_name: din.32 #hal pin name
-        pin_debounce: 0
-
-      - pin_id: 33
-        pin_name: din.33 #hal pin name
-        pin_debounce: 0
-
-      - pin_id: 34
-        pin_name: din.34 #hal pin name
-        pin_debounce: 0
-
-      - pin_id: 35
-        pin_name: din.35 #hal pin name
-        pin_debounce: 0
-
-      - pin_id: 36
-        pin_name: din.36 #hal pin name
-        pin_debounce: 0
-
-      - pin_id: 37
-        pin_name: din.37 #hal pin name
-        pin_debounce: 0
-
-      - pin_id: 38
-        pin_name: din.38 #hal pin name
-        pin_debounce: 0
-
-      - pin_id: 39
-        pin_name: din.39 #hal pin name
-        pin_debounce: 0
-
-      - pin_id: 40
-        pin_name: din.40 #hal pin name
-        pin_debounce: 0
-
-      - pin_id: 41
-        pin_name: din.41 #hal pin name
-        pin_debounce: 0
-
-      - pin_id: 42
-        pin_name: din.42 #hal pin name
-        pin_debounce: 0
-
-      - pin_id: 43
-        pin_name: din.43 #hal pin name
-        pin_debounce: 0
-
-      - pin_id: 44
-        pin_name: din.44 #hal pin name
-        pin_debounce: 0
-
-      - pin_id: 45
-        pin_name: din.45 #hal pin name
-        pin_debounce: 0
-
-      - pin_id: 46
-        pin_name: din.46 #hal pin name
-        pin_debounce: 0
-
-      - pin_id: 47
-        pin_name: din.47 #hal pin name
-        pin_debounce: 0
-
-      - pin_id: 48
-        pin_name: din.48 #hal pin name
-        pin_debounce: 0
-
-      - pin_id: 49
-        pin_name: din.49 #hal pin name
-        pin_debounce: 0
-
-      - pin_id: 50
-        pin_name: din.50 #hal pin name
-        pin_debounce: 0
-
-      - pin_id: 51
-        pin_name: din.51 #hal pin name
-        pin_debounce: 0
-
-      - pin_id: 52
-        pin_name: din.52 #hal pin name
-        pin_debounce: 0
-
-      - pin_id: 53
-        pin_name: din.53 #hal pin name
-        pin_debounce: 0
-
+  
 
 ---
 mcu: 
@@ -486,7 +274,7 @@ mcu:
   #/dev/tty.usbmodemF412FA68D6802
   dev: /dev/cu.usbmodemF412FA68D6802 
   #dev: /dev/serial/by-id/usb-Arduino_UNO_WiFi_R4_CMSIS-DAP_F412FA68D680-if01
-  enabled: true
+  enabled: false
   hal_emulation: true
   #connection: 
   #  baudrate: 9600

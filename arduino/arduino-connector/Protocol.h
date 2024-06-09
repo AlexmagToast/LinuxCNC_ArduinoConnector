@@ -179,7 +179,7 @@ struct PinChangeMessage : IMessage {
     void fromJSON(const JsonDocument& doc) {
         if (doc.containsKey("fi")) {
             featureID = doc["fi"].as<uint8_t>();
-        }
+        }   
         if (doc.containsKey("si")) {
             seqID = doc["si"].as<uint8_t>();
         }

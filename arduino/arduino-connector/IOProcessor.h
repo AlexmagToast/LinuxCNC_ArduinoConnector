@@ -66,8 +66,8 @@ namespace Callbacks
 
             for (JsonObject pa_item : doc["pa"].as<JsonArray>()) {
               
-              int lid = pa_item["lid"]; // 0, 1
-              int pid = pa_item["pid"]; // 0, 1
+              int lid = pa_item["l"]; // 0, 1
+              int pid = pa_item["p"]; // 0, 1
               int v = pa_item["v"]; // 1, 0
 
               if(lid > ConfigManager::GetDigitalOutputPinsLen())
@@ -124,8 +124,8 @@ namespace Callbacks
 
             for (JsonObject pa_item : doc["pa"].as<JsonArray>()) {
               
-              int lid = pa_item["lid"]; // 0, 1
-              int pid = pa_item["pid"]; // 0, 1
+              int lid = pa_item["l"]; // 0, 1
+              int pid = pa_item["p"]; // 0, 1
               int v = pa_item["v"]; // 1, 0
 
               if(lid > ConfigManager::GetAnalogOutputPinsLen())

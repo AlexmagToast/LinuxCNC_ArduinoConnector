@@ -31,8 +31,8 @@
 
 namespace Features
 {
-    #ifdef DINPUTS
-
+    
+    #if defined(DINPUTS) || defined(DOUTPUTS)
     struct DigitalPin: public Pin
     {
         uint32_t ts;
@@ -45,24 +45,26 @@ namespace Features
         int8_t pinCurrentState;
         unsigned long t;
     };
-
-    class DigitalInputs: public Feature
+    #endif
+    #ifdef DOUTPUTS
+    class DigitalOutputs: public Feature
     {
         public:
-        DigitalInputs() : Feature(DINPUTS, String("DIGITAL_INPUTS"), DEFAULT_LOOP_FREQUENCY)
+        DigitalOutputs() : Feature(DOUTPUTS, String("DIGITAL_OUTPUTS"), DEFAULT_LOOP_FREQUENCY)
         {
             #ifdef DEBUG
-                Serial.println("DigitalInputs::DigitalInputs");
+                Serial.println("DigitalOutputs::DigitalOutputs");
                 Serial.flush();
             #endif
         }
 
         virtual void loop()
         {
+            /*
             unsigned long currentMills = millis();
             String output; // Used below to output Io update messages
             JsonDocument doc;
-            JsonArray pa; 
+            JsonArray pa = doc.to<JsonArray>();
            // loop through pins and perform reads
             auto pins = GetPins();
             for( int x = 0; x < GetPinCount(); x++ )
@@ -91,32 +93,227 @@ namespace Features
 
                     //doc.clear();
 
-                    //JsonObject pa_0 = pa.add<JsonObject>();
-                    //pa_0["lid"] = x;
-                    //pa_0["pid"] = atoi(pin.pid.c_str());
-                    //pa_0["v"] = v;
-                    doc[F("lid")] = x;
-                    doc[F("pid")] = atoi(pin.pid.c_str());
-                    doc[F("v")] = v;
+                    JsonObject pa_0 = pa.add<JsonObject>();
+                    pa_0["l"] = x;
+                    pa_0["p"] = atoi(pin.pid.c_str());
+                    pa_0["v"] = v;
+                    //doc[F("l")] = x;
+                    //doc[F("p")] = atoi(pin.pid.c_str());
+                    //doc[F("v")] = v;
 
                     //doc.shrinkToFit();  // optional
                     //if(pa.size() > 0)
                     //{
-                    output = "";
-                    serializeJson(doc, output);
-                    #ifdef DEBUG_VERBOSE
-                        DEBUG_DEV.print(F("JSON = "));
-                        DEBUG_DEV.println(output);
-                    #endif
-                    uint8_t seqID = 0;
-                    uint8_t resp = 0; // Future TODO: Consider requiring ACK/NAK, maybe.
-                    uint8_t f = DINPUTS;
-                    //String o = String(output.c_str());
-                    serialClient.SendPinChangeMessage(f, seqID, resp, output);
+ 
                     //  pa.clear();
                     //}
                 }
             }
+            if (pa.size() > 0)
+            {
+
+                output = "";
+                serializeJson(doc, output);
+                #ifdef DEBUG_VERBOSE
+                    DEBUG_DEV.print(F("JSON = "));
+                    DEBUG_DEV.println(output);
+                #endif
+                uint8_t seqID = 0;
+                uint8_t resp = 0; // Future TODO: Consider requiring ACK/NAK, maybe.
+                uint8_t f = DINPUTS;
+                //String o = String(output.c_str());
+                serialClient.SendPinChangeMessage(f, seqID, resp, output);
+            }
+            */
+        }
+
+        virtual void setup()
+        {
+            #ifdef DEBUG
+                Serial.println("DigitalOutputs::setup");
+            #endif
+
+            // Perform any setup here.
+
+            // Then set the feature to ready, otherwise it will not be available to process incoming messages or perform local
+            // tasks such as pin reads.
+            SetFeatureReady(true);
+        }
+
+        protected:
+
+        // onConnected gets called when the python host has connected and completed handshaking
+        virtual void onConnected()
+        {
+            #ifdef DEBUG
+                Serial.println("DigitalOutputs::onConnected");
+            #endif
+        }
+
+        // onDisconnected gets called when the python host has disconnected
+        virtual void onDisconnected()
+        {
+            #ifdef DEBUG
+                Serial.println("DigitalOutputs::onDisconnected");
+            #endif
+        }
+
+        virtual uint8_t InitFeaturePin(uint8_t fid, uint8_t lid, String& pid, JsonDocument& json, String& fail_reason, Pin ** p)
+        {
+            DigitalPin * dp = new DigitalPin();
+            dp->fid = fid;
+            dp->lid = lid;
+            //dp->pid = pid;
+            //{"mt":7,"fi":4,"se":85,"to":99,"cs":{"fi":4,"id":87,"li":85,"is":-1,"cs":-1,"ds":-1,"pd":5,"ip":true}}
+            if(json.containsKey("id"))
+            {
+                String idstring = json[F("id")];
+                dp->pid = idstring;
+            }
+            else
+            {
+               // dp->pinInitialState = -1;
+               fail_reason = "Missing pin 'id' key in JSON";
+               return ERR_INVALID_JSON;
+            }
+            if(json.containsKey("is"))
+            {
+                dp->pinInitialState = json["is"];
+                //Serial.println("DigitalOutputs::I");
+                digitalWrite(atoi(dp->pid.c_str()), dp->pinInitialState);
+            }
+            else
+            {
+                dp->pinInitialState = -1;
+            }
+            if(json.containsKey("cs"))
+            {
+                dp->pinConnectedState = json["cs"];
+            }
+            else
+            {
+                dp->pinConnectedState = -1;
+            }
+            if(json.containsKey("ds"))
+            {
+                dp->pinDisconnectedState = json["ds"];
+            }
+            else
+            {
+                dp->pinDisconnectedState = -1;
+            }
+                
+            pinMode(atoi(dp->pid.c_str()), OUTPUT);
+            
+            #ifdef DEBUG
+                DEBUG_DEV.print("DigitalOutputs::InitFeaturePin: ");
+                DEBUG_DEV.print("fid: ");
+                DEBUG_DEV.print(fid);
+                DEBUG_DEV.print(", lid: ");
+                DEBUG_DEV.print(lid);
+                DEBUG_DEV.print(", pid: ");
+                DEBUG_DEV.print(pid);
+                #ifdef DEBUG_VERBOSE
+                    DEBUG_DEV.print(", is: ");
+                    DEBUG_DEV.print(dp->pinInitialState);
+                    DEBUG_DEV.print(", cs: ");
+                    DEBUG_DEV.print(dp->pinConnectedState);
+                    DEBUG_DEV.print(", ds: ");
+                    DEBUG_DEV.print(dp->pinDisconnectedState);
+                #endif
+            #endif
+            //dp->pinConnectedState = 1;
+            //dp->pinDisconnectedState = 0;
+            //dp->debounce = 0;
+            //dp->inputPullup = 0;
+            //dp->pinCurrentState = 0;
+            //dp->t = 0;
+            *p = dp;
+            fail_reason = "";
+            return 0;
+        }
+
+    };
+    #endif
+
+    #ifdef DINPUTS
+    class DigitalInputs: public Feature
+    {
+        public:
+        DigitalInputs() : Feature(DINPUTS, String("DIGITAL_INPUTS"), DEFAULT_LOOP_FREQUENCY)
+        {
+            #ifdef DEBUG
+                Serial.println("DigitalInputs::DigitalInputs");
+                Serial.flush();
+            #endif
+        }
+
+        virtual void loop()
+        {
+            unsigned long currentMills = millis();
+            String output; // Used below to output Io update messages
+            JsonDocument doc;
+            JsonArray pa = doc.to<JsonArray>();
+           // loop through pins and perform reads
+            auto pins = GetPins();
+            for( int x = 0; x < GetPinCount(); x++ )
+            {
+                DigitalPin & pin = *static_cast<DigitalPin*>(pins[x]);
+                int pin_id = atoi(pin.pid.c_str());
+                int v = digitalRead(atoi(pin.pid.c_str()));
+
+                if(pin.pinCurrentState != v && (currentMills - pin.t) >= pin.debounce)
+                {
+                    #ifdef DEBUG_VERBOSE
+                        DEBUG_DEV.print(F("DINPUTS PIN CHANGE!"));
+                        DEBUG_DEV.print(F("PIN:"));
+                        DEBUG_DEV.println(pin.pid);
+                        DEBUG_DEV.print(F("Current value: "));
+                        DEBUG_DEV.println(pin.pinCurrentState);
+                        DEBUG_DEV.print(F("New value: "));
+                        DEBUG_DEV.println(v);
+                    #endif
+
+                    pin.pinCurrentState = v;
+                    pin.t = currentMills;
+
+                    // send update out
+                    //serialClient
+
+                    //doc.clear();
+
+                    JsonObject pa_0 = pa.add<JsonObject>();
+                    pa_0["l"] = x;
+                    pa_0["p"] = atoi(pin.pid.c_str());
+                    pa_0["v"] = v;
+                    //doc[F("l")] = x;
+                    //doc[F("p")] = atoi(pin.pid.c_str());
+                    //doc[F("v")] = v;
+
+                    //doc.shrinkToFit();  // optional
+                    //if(pa.size() > 0)
+                    //{
+ 
+                    //  pa.clear();
+                    //}
+                }
+            }
+            if (pa.size() > 0)
+            {
+
+                output = "";
+                serializeJson(doc, output);
+                #ifdef DEBUG_VERBOSE
+                    DEBUG_DEV.print(F("JSON = "));
+                    DEBUG_DEV.println(output);
+                #endif
+                uint8_t seqID = 0;
+                uint8_t resp = 0; // Future TODO: Consider requiring ACK/NAK, maybe.
+                uint8_t f = DINPUTS;
+                //String o = String(output.c_str());
+                serialClient.SendPinChangeMessage(f, seqID, resp, output);
+            }
+
 
         }
 

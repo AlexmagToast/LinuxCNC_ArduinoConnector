@@ -379,8 +379,8 @@ protected:
             return ERR_INVALID_JSON;
         }
         // Extract lid and pid from pinDoc
-        uint8_t lid = pinDoc["lid"];
-        String pid = pinDoc["pid"];
+        uint8_t lid = pinDoc["l"];
+        String pid = pinDoc["p"];
         // AddPin based on config's featureID, lid and pid
         //auto pin = InitFeaturePin(config->featureID, lid, pid, pinDoc);
         Pin * p;
