@@ -216,6 +216,10 @@ class ArduinoPin:
 
         if not self.pinName:
             self.pinName = f"{self.pinType.value}"
+        
+        modulename = 'linuxcnc'
+        if modulename not in sys.modules:
+            print(f'You have not imported the {modulename} module')
 
     def __str__(self) -> str:
         return (f'pinName = {self.pinName}, pinType = {self.pinType.name}, halPinType = {self.halPinType}, '
