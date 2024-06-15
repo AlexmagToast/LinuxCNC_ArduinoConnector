@@ -24,12 +24,9 @@
 # SOFTWARE.
 import json
 import os
-#import random
 from re import T
 import getopt, sys
-#import subprocess
 import zlib
-#import threading
 import serial
 import msgpack
 from strenum import StrEnum
@@ -41,15 +38,11 @@ import crc8
 import traceback
 import logging
 import numpy
-#import socket
 from cobs import cobs
 import yaml
 from pathlib import Path
-#import linuxcnc
-#import hal
 import copy
 from abc import ABCMeta, abstractmethod
-#from qtvcp.core import Info
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -216,10 +209,13 @@ class ArduinoPin:
 
         if not self.pinName:
             self.pinName = f"{self.pinType.value}"
-        
-        modulename = 'linuxcnc'
-        if modulename not in sys.modules:
-            print(f'You have not imported the {modulename} module')
+        #try:
+        #    import blahblah
+        #except ImportError:
+        #    print(f'You have not imported the blahblah module')
+        #modulename = 'linuxcnc'
+        #if modulename not in sys.modules:
+        #    print(f'You have not imported the {modulename} module')
 
     def __str__(self) -> str:
         return (f'pinName = {self.pinName}, pinType = {self.pinType.name}, halPinType = {self.halPinType}, '
@@ -842,6 +838,14 @@ featureList = [ di,
 END IO FEATURE OBJECTS
 '''
 
+def try_load_linuxcnc():
+    try:
+        modulename = 'linuxcnc'
+        if modulename not in sys.modules:
+        #    print(f'You have not imported the {modulename} module')
+            import linuxcnc
+    except ImportError:
+        raise ImportError('Error. linuxcnc module not found. Hal emulation requires linuxcnc module.')
 '''
     MCU state control objects and helper classes
 '''
@@ -856,6 +860,11 @@ class ArduinoSettings:
         self.yamlProfileSignature = 0# CRC32 for now
         self.enabled = True
         self.hal_emulation = hal_emulation
+        if self.hal_emulation == False:
+            try:
+                try_load_linuxcnc()
+            except ImportError:
+                raise ImportError('Error. linuxcnc module not found. Hal emulation requires linuxcnc module.')
 
 
     def printIOMap(self) -> str:
