@@ -212,14 +212,14 @@ namespace Features
                 DEBUG_DEV.print(", lid: ");
                 DEBUG_DEV.print(lid);
                 DEBUG_DEV.print(", pid: ");
-                DEBUG_DEV.print(pid);
+                DEBUG_DEV.println(pid);
                 #ifdef DEBUG_VERBOSE
                     DEBUG_DEV.print(", is: ");
                     DEBUG_DEV.print(dp->pinInitialState);
                     DEBUG_DEV.print(", cs: ");
                     DEBUG_DEV.print(dp->pinConnectedState);
                     DEBUG_DEV.print(", ds: ");
-                    DEBUG_DEV.print(dp->pinDisconnectedState);
+                    DEBUG_DEV.println(dp->pinDisconnectedState);
                 #endif
             #endif
             //dp->pinConnectedState = 1;
