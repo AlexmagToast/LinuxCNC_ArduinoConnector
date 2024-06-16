@@ -2,7 +2,7 @@ mcu:
   alias: NodeMCU
   component_name: nodemcu # Name of component to use in HAL
   dev: /dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_0001-if00-port0
-  enabled: true
+  enabled: false
   hal_emulation: true
   connection: 
     baudrate: 115200
@@ -141,8 +141,9 @@ mcu:
 mcu: 
   alias: M4 Grand Central
   component_name: arduinom4 # Name of component to use in HAL
-  dev: /dev/serial/by-id/usb-Adafruit_Adafruit_Grand_Central_M4_AB5B58B75335353334202020FF184219-if00
-  enabled: false
+  #dev: /dev/serial/by-id/usb-Adafruit_Adafruit_Grand_Central_M4_AB5B58B75335353334202020FF184219-if00
+  dev: /dev/tty.usbmodem2101 
+  enabled: true
   hal_emulation: true
   io_map:
     digitalOutputs:
@@ -274,7 +275,7 @@ mcu:
   #/dev/tty.usbmodemF412FA68D6802
   #dev: /dev/cu.usbmodemF412FA68D6802 
   dev: /dev/serial/by-id/usb-Arduino_UNO_WiFi_R4_CMSIS-DAP_F412FA68D680-if01
-  enabled: true
+  enabled: false
   hal_emulation: true
   #connection: 
   #  baudrate: 9600

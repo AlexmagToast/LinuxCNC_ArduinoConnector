@@ -117,7 +117,7 @@ public:
 */
   virtual void SendPinChangeMessage(uint8_t& featureID, uint8_t& seqID, uint8_t& responseReq, String& message)
   {
-    //DEBUG_DEV.println("SENDING PIN MESSAGE!");
+    //this->println("SENDING PIN MESSAGE!");
     
     protocol::pcm.featureID = featureID;
     protocol::pcm.responseReq = responseReq;
@@ -257,18 +257,31 @@ public:
 
   // Stream class methods
 virtual size_t write(uint8_t byte) override {
-  if (_bufferIndex < _bufferSize) {
-    _buffer[_bufferIndex++] = byte;
-    if (byte == '\n') {
-      String debugMessage = String(_buffer).substring(0, _bufferIndex);
-      _sendDebugMessage(debugMessage);
-      _bufferIndex = 0; // Reset buffer index after calling _sendDebugMessage
-    }
+  #ifndef DEBUG
+  return 1;
+  #endif
+
+  if (byte == '\r') {
+    return 1; // Ignore \r characters
+  }
+  
+  if (byte == '\n') {
+    // Construct the debug message from the buffer up to but not including the \n character
+    String debugMessage = String(_buffer).substring(0, _bufferIndex);
+    #ifdef DEBUG
+    _sendDebugMessage(debugMessage);
+    #endif
+    _bufferIndex = 0; // Reset buffer index after calling _sendDebugMessage
     return 1;
   }
+  
+  if (_bufferIndex < _bufferSize) {
+    _buffer[_bufferIndex++] = byte;
+    return 1;
+  }
+  
   return 0;  // Buffer is full
 }
-
   virtual int read() override {
     // Implement your read logic here
     // Example: read a byte from a buffer
@@ -346,12 +359,12 @@ protected:
   void _onHandshakeMessage(const protocol::HandshakeMessage& n)
   {
       #ifdef DEBUG_VERBOSE
-      DEBUG_DEV.println(F("-RX HANDSHAKE MESSAGE DUMP-"));
-      DEBUG_DEV.print(F("Protocol Version: 0x"));
-      DEBUG_DEV.println(n.protocolVersion, HEX);
-      DEBUG_DEV.print(F("Profile Signature:"));
-      DEBUG_DEV.println(n.profileSignature);
-      DEBUG_DEV.println(F(" - RX END HANDSHAKE MESSAGE DUMP -"));
+      this->println(F("-RX HANDSHAKE MESSAGE DUMP-"));
+      this->print(F("Protocol Version: 0x"));
+      this->println(n.protocolVersion);
+      this->print(F("Profile Signature:"));
+      this->println(n.profileSignature);
+      this->println(F(" - RX END HANDSHAKE MESSAGE DUMP -"));
       #endif
       _handshakeReceived = 1;
   }
@@ -359,7 +372,7 @@ protected:
   void _onHeartbeatMessage(const protocol::HeartbeatMessage& n)
   {
       //#ifdef DEBUG_VERBOSE
-      //DEBUG_DEV.println(F("RX HEARTBEAT MESSAGE"));
+      //this->println(F("RX HEARTBEAT MESSAGE"));
       //#endif
       _heartbeatReceived = 1;
   }
@@ -368,12 +381,12 @@ protected:
   void _onCommandMessage(const protocol::CommandMessage& n)
   {
       #ifdef DEBUG_VERBOSE
-      DEBUG_DEV.println(" ---- RX COMMAND MESSAGE DUMP ----");
-      DEBUG_DEV.print(" Command: ");
-      DEBUG_DEV.println(n.cmd);
-      //DEBUG_DEV.print(" Board Index: ");
-      //DEBUG_DEV.println(n.boardIndex);
-      DEBUG_DEV.println(" ---- RX END COMMAND MESSAGE DUMP ----");
+      this->println(" ---- RX COMMAND MESSAGE DUMP ----");
+      this->print(" Command: ");
+      this->println(n.cmd);
+      //this->print(" Board Index: ");
+      //this->println(n.boardIndex);
+      this->println(" ---- RX END COMMAND MESSAGE DUMP ----");
       #endif
       protocol::cm.cmd = n.cmd;
       //protocol::cm.boardIndex = n.boardIndex-1;
@@ -391,16 +404,16 @@ protected:
   void _onPinChangeMessage(const protocol::PinChangeMessage& n)
   {
     #ifdef DEBUG_VERBOSE
-      DEBUG_DEV.println(F(" - RX PINCHANGE MESSAGE DUMP -"));
-      DEBUG_DEV.print(F("FEATURE ID:"));
-      DEBUG_DEV.println(n.featureID);  
-      DEBUG_DEV.print(F("SEQ ID:"));
-      DEBUG_DEV.println(n.seqID);  
-      DEBUG_DEV.print(F("RESPONSE REQ:"));
-      DEBUG_DEV.println(n.responseReq);       
-      DEBUG_DEV.print(F("MESSAGE:"));
-      DEBUG_DEV.println(n.message);  
-      DEBUG_DEV.println(F(" - RX END PINCHANGE MESSAGE DUMP -"));
+      this->println(F(" - RX PINCHANGE MESSAGE DUMP -"));
+      this->print(F("FEATURE ID:"));
+      this->println(n.featureID);  
+      this->print(F("SEQ ID:"));
+      this->println(n.seqID);  
+      this->print(F("RESPONSE REQ:"));
+      this->println(n.responseReq);       
+      this->print(F("MESSAGE:"));
+      this->println(n.message);  
+      this->println(F(" - RX END PINCHANGE MESSAGE DUMP -"));
     #endif
       if(_pinChangeAction != NULL)
       {
@@ -411,13 +424,12 @@ protected:
   void _setState(int new_state)
   {
     #ifdef DEBUG
-      //DEBUG_DEV.flush();
-      DEBUG_DEV.print(F("Connection transitioning from current state of ["));
-      DEBUG_DEV.print(this->stateToString(this->_myState));
-      DEBUG_DEV.print(F("] to ["));
-      DEBUG_DEV.print(this->stateToString(new_state));
-      DEBUG_DEV.println(F("]"));
-      DEBUG_DEV.flush();
+      this->print(F("Connection transitioning from current state of ["));
+      this->print(this->stateToString(this->_myState));
+      this->print(F("] to ["));
+      this->print(this->stateToString(new_state));
+      this->println(F("]"));
+      this->flush();
     #endif
     this->_myState = new_state;
     if( this->_csAction != NULL )
@@ -429,13 +441,12 @@ protected:
   void printBuffer(uint8_t* buffer, size_t size) {
     for (uint8_t i = 0; i < size; i++) {
       if (buffer[i] < 0x10) {
-        Serial.print(0);
+        this->print(0);
       }
-      Serial.print(buffer[i], HEX);
-      Serial.print(" ");
+      this->print(buffer[i], HEX);
+      this->print(" ");
     }
-    Serial.println("");
-    COM_DEV.flush();
+    this->println("");
   }
 
    
@@ -443,21 +454,21 @@ protected:
   {
     JsonDocument doc;
     #ifdef DEBUG_VERBOSE
-      DEBUG_DEV.println(F("ENCODED RX="));
+      this->println(F("ENCODED RX="));
       printBuffer(d, size);
     #endif
     size_t sz = cobs::decode(d, size-1);
     #ifdef DEBUG_VERBOSE
-      DEBUG_DEV.println(F("DECODED RX="));
+      this->println(F("DECODED RX="));
       printBuffer(d, sz);
     #endif
   
     DeserializationError error = deserializeMsgPack(doc, (int8_t*)&d[1], sz);
     if (error) {
       #ifdef DEBUG
-      DEBUG_DEV.print(F("deserializeJson() failed: "));
-      DEBUG_DEV.println(error.f_str());
-      DEBUG_DEV.flush();
+      this->print(F("deserializeJson() failed: "));
+      this->println(error.f_str());
+      this->flush();
       #endif
       return;
     }
@@ -466,25 +477,24 @@ protected:
     uint16_t mt = doc[F("mt")];
     
     #ifdef DEBUG_VERBOSE
-      COM_DEV.println(F("JSON RX="));
-      serializeJson(doc, DEBUG_DEV);
-      COM_DEV.println(F(""));
-      COM_DEV.flush();
+      this->println(F("JSON RX="));
+      serializeJson(doc, *this);
+      this->println(F(""));
     #endif
     
-    //DEBUG_DEV.println(mt);
+    //this->println(mt);
     switch(mt)
     {
       case protocol::MessageTypes::MT_INVITE_SYNC:
       {
         #ifdef DEBUG
-          DEBUG_DEV.println(F("RX MT_INVITE_SYNC"));
+          this->println(F("RX MT_INVITE_SYNC"));
         #endif
         //if(_myState == ConnectionState::CS_CONNECTED)
         //{
           // Trigger a reconnect if the python side sends a handshake message when we 'think' we are already connected.
           #ifdef DEBUG
-          DEBUG_DEV.println(F("RX MT_INVITE_SYNC, RESTARTING CONNECTION LOOP!"));
+          this->println(F("RX MT_INVITE_SYNC, RESTARTING CONNECTION LOOP!"));
           #endif
           this->_setState(CS_DISCONNECTED);
         //}
@@ -493,7 +503,7 @@ protected:
       case protocol::MessageTypes::MT_HANDSHAKE:
       {
         #ifdef DEBUG
-          DEBUG_DEV.println(F("RX MT_HANDSHAKE"));
+          this->println(F("RX MT_HANDSHAKE"));
         #endif
         protocol::HandshakeMessage hmm;
         hmm.fromJSON(doc);
@@ -503,7 +513,7 @@ protected:
       case protocol::MessageTypes::MT_HEARTBEAT:
       {
         #ifdef DEBUG
-          DEBUG_DEV.println(F("RX MT_HEARTBEAT"));
+          this->println(F("RX MT_HEARTBEAT"));
         #endif
         //protocol::HeartbeatMessage h;
         //hmm.fromJSON(doc);
@@ -513,19 +523,19 @@ protected:
       case protocol::MessageTypes::MT_CONFIG:
       {
         #ifdef DEBUG
-          DEBUG_DEV.println(F("RX MT_CONFIG"));
+          this->println(F("RX MT_CONFIG"));
 
         #endif
         protocol::ConfigMessage ccf;
         ccf.fromJSON(doc);
         #ifdef DEBUG_VERBOSE
-            DEBUG_DEV.println(F("CONFIG MESSAGE DUMP:"));
-            DEBUG_DEV.print(F("SEQ:"));
-            DEBUG_DEV.println(ccf.seq);
-            DEBUG_DEV.print(F("TOTAL:"));
-            DEBUG_DEV.println(ccf.total);
-            DEBUG_DEV.print(F("CONFIG STRING:"));
-            DEBUG_DEV.println(ccf.configString);
+            this->println(F("CONFIG MESSAGE DUMP:"));
+            this->print(F("SEQ:"));
+            this->println(ccf.seq);
+            this->print(F("TOTAL:"));
+            this->println(ccf.total);
+            this->print(F("CONFIG STRING:"));
+            this->println(ccf.configString);
         #endif
         _onConfigMessage(ccf);
         break;
@@ -533,7 +543,7 @@ protected:
       case protocol::MessageTypes::MT_PINCHANGE:
       {
         #ifdef DEBUG
-          DEBUG_DEV.println(F("RX MT_PINCHANGE"));
+          this->println(F("RX MT_PINCHANGE"));
         #endif
         protocol::PinChangeMessage p;
         p.fromJSON(doc);
@@ -561,24 +571,24 @@ protected:
     #endif
     #ifdef DEBUG_VERBOSE  
     
-      DEBUG_DEV.println(F("TX HANDSHAKE MESSAGE DUMP"));
-      DEBUG_DEV.print(F("Protocol Version: 0x"));
-      DEBUG_DEV.println(protocol::hm.protocolVersion, HEX);
-      //DEBUG_DEV.print(" Feature Map: 0x");
-      //DEBUG_DEV.println(protocol::hm.featureMap, HEX);
-      DEBUG_DEV.print(F("Timeout:"));
-      DEBUG_DEV.println(protocol::hm.timeout);
-      //DEBUG_DEV.print(" MaxMsgSize: ");
-      //DEBUG_DEV.println(protocol::hm.maxMsgSize);
-      DEBUG_DEV.print(F("ProfileSignature:"));
-      DEBUG_DEV.println(protocol::hm.profileSignature);
-      //DEBUG_DEV.print(" Board Index: ");
-     //DEBUG_DEV.println(protocol::hm.boardIndex);
+      this->println(F("TX HANDSHAKE MESSAGE DUMP"));
+      this->print(F("Protocol Version: 0x"));
+      this->println(protocol::hm.protocolVersion, HEX);
+      //this->print(" Feature Map: 0x");
+      //this->println(protocol::hm.featureMap, HEX);
+      this->print(F("Timeout:"));
+      this->println(protocol::hm.timeout);
+      //this->print(" MaxMsgSize: ");
+      //this->println(protocol::hm.maxMsgSize);
+      this->print(F("ProfileSignature:"));
+      this->println(protocol::hm.profileSignature);
+      //this->print(" Board Index: ");
+     //this->println(protocol::hm.boardIndex);
       #ifndef INTEGRATED_CALLBACKS_LOWMEMORY
-      DEBUG_DEV.print(F("Board UID:"));
-      DEBUG_DEV.println(protocol::hm.uid);
+      this->print(F("Board UID:"));
+      this->println(protocol::hm.uid);
       #endif
-      DEBUG_DEV.println(F("TX END HANDSHAKE MESSAGE DUMP"));
+      this->println(F("TX END HANDSHAKE MESSAGE DUMP"));
     
     #endif
 
@@ -610,10 +620,10 @@ protected:
     protocol::hb.toJSON(doc);
     //doc["ut"] = diff;
     #ifdef DEBUG_VERBOSE
-      DEBUG_DEV.println(F("TX HEARTBEAT MESSAGE DUMP"));
-      DEBUG_DEV.print(F("MCU Uptime: "));
-      DEBUG_DEV.println(protocol::hb.mcuUptime);
-      DEBUG_DEV.println(F("TX END HEARTBEAT MESSAGE DUMP"));
+      this->println(F("TX HEARTBEAT MESSAGE DUMP"));
+      this->print(F("MCU Uptime: "));
+      this->println(protocol::hb.mcuUptime);
+      this->println(F("TX END HEARTBEAT MESSAGE DUMP"));
     #endif
     size_t sz = _jsonToMsgPack(doc, buffer, size);
     return sz;
@@ -626,14 +636,14 @@ protected:
     protocol::pcm.toJSON(doc);
     size_t sz = _jsonToMsgPack(doc, buffer, size);
     #ifdef DEBUG_VERBOSE
-      DEBUG_DEV.println(F("TX PINCHANGE MESSAGE DUMP"));
-      DEBUG_DEV.print(F("FEATURE ID:"));
-      DEBUG_DEV.println(protocol::pcm.featureID);  
-      DEBUG_DEV.print(F("ACK REQ:"));
-      DEBUG_DEV.println(protocol::pcm.responseReq);       
-      DEBUG_DEV.print(F("MESSAGE:"));
-      DEBUG_DEV.println(protocol::pcm.message);  
-      DEBUG_DEV.println(F("TX END PINCHANGE MESSAGE DUMP"));
+      this->println(F("TX PINCHANGE MESSAGE DUMP"));
+      this->print(F("FEATURE ID:"));
+      this->println(protocol::pcm.featureID);  
+      this->print(F("ACK REQ:"));
+      this->println(protocol::pcm.responseReq);       
+      this->print(F("MESSAGE:"));
+      this->println(protocol::pcm.message);  
+      this->println(F("TX END PINCHANGE MESSAGE DUMP"));
     #endif
     return sz;
   }
@@ -643,12 +653,12 @@ protected:
   protocol::PinStatusMessage& _getPinStatusMessage()
   {
     #ifdef DEBUG_VERBOSE
-      DEBUG_DEV.println(" ---- TX PINSTATUS MESSAGE DUMP ----");
-      DEBUG_DEV.print(" STATUS: ");
-      DEBUG_DEV.println(protocol::pm.status);      
-      //DEBUG_DEV.print(" Board Index: ");
-      //DEBUG_DEV.println(protocol::pm.boardIndex);
-      DEBUG_DEV.println(" ---- TX END PINSTATUS MESSAGE DUMP ----");
+      this->println(" ---- TX PINSTATUS MESSAGE DUMP ----");
+      this->print(" STATUS: ");
+      this->println(protocol::pm.status);      
+      //this->print(" Board Index: ");
+      //this->println(protocol::pm.boardIndex);
+      this->println(" ---- TX END PINSTATUS MESSAGE DUMP ----");
     #endif
     return protocol::pm;
   }
@@ -659,12 +669,12 @@ protected:
     /*
     protocol::dm.message = message;
     // No need to wrap in DEBUG define as the entire method is only compiled in when DEBUG is defined
-    DEBUG_DEV.println(F("- TX DEBUG MESSAGE DUMP -"));
-    //DEBUG_DEV.print(" Board Index: ");
-    //DEBUG_DEV.println(protocol::dm.boardIndex);
-    DEBUG_DEV.print(F(" Message: "));s
-    DEBUG_DEV.println(protocol::dm.message);
-    DEBUG_DEV.println(F("- TX END DEBUG MESSAGE DUMP -"));
+    this->println(F("- TX DEBUG MESSAGE DUMP -"));
+    //this->print(" Board Index: ");
+    //this->println(protocol::dm.boardIndex);
+    this->print(F(" Message: "));s
+    this->println(protocol::dm.message);
+    this->println(F("- TX END DEBUG MESSAGE DUMP -"));
     return protocol::dm;
     */
 
@@ -673,12 +683,12 @@ protected:
     protocol::dm.toJSON(doc);
     size_t sz = _jsonToMsgPack(doc, buffer, size);
     #ifdef DEBUG_VERBOSE
-    DEBUG_DEV.println(F("X DEBUG MESSAGE DUMP"));
-    //DEBUG_DEV.print(" Board Index: ");
-    //DEBUG_DEV.println(protocol::dm.boardIndex);
-    DEBUG_DEV.print(F(" Message: "));
-    DEBUG_DEV.println(protocol::dm.message);
-    DEBUG_DEV.println(F("TX END DEBUG MESSAGE DUMP"));
+    this->println(F("X DEBUG MESSAGE DUMP"));
+    //this->print(" Board Index: ");
+    //this->println(protocol::dm.boardIndex);
+    this->print(F(" Message: "));
+    this->println(protocol::dm.message);
+    this->println(F("TX END DEBUG MESSAGE DUMP"));
     #endif
     return sz;
   }
