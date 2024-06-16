@@ -252,8 +252,7 @@ public:
         const uint8_t loopEventOption=LoopEventOptions::PostConfigSync)
     {
         #ifdef DEBUG
-            Serial.println("DigitalInputs::DigitalInputs");
-            Serial.flush();
+            DEBUG_DEV.println("DigitalInputs::DigitalInputs");
         #endif
         _featureID = featureID;
         _loopFrequency = loopFrequency;

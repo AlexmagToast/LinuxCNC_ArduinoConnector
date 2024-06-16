@@ -2,7 +2,7 @@ mcu:
   alias: NodeMCU
   component_name: nodemcu # Name of component to use in HAL
   dev: /dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_0001-if00-port0
-  enabled: true
+  enabled: false
   hal_emulation: true
   connection: 
     baudrate: 115200
@@ -141,7 +141,8 @@ mcu:
 mcu: 
   alias: M4 Grand Central
   component_name: arduinom4 # Name of component to use in HAL
-  dev: /dev/serial/by-id/usb-Adafruit_Adafruit_Grand_Central_M4_AB5B58B75335353334202020FF184219-if00
+  #dev: /dev/serial/by-id/usb-Adafruit_Adafruit_Grand_Central_M4_AB5B58B75335353334202020FF184219-if00
+  dev: /dev/tty.usbmodem2101 
   enabled: false
   hal_emulation: true
   io_map:
@@ -272,9 +273,9 @@ mcu:
   #dev: /dev/tty.usbmodemF412FA68D6802
   #dev: /dev/cu.usbmodem14201 
   #/dev/tty.usbmodemF412FA68D6802
-  #dev: /dev/cu.usbmodemF412FA68D6802 
-  dev: /dev/serial/by-id/usb-Arduino_UNO_WiFi_R4_CMSIS-DAP_F412FA68D680-if01
-  enabled: false
+  dev: /dev/cu.usbmodemF412FA68D6802 
+  #dev: /dev/serial/by-id/usb-Arduino_UNO_WiFi_R4_CMSIS-DAP_F412FA68D680-if01
+  enabled: true
   hal_emulation: true
   #connection: 
   #  baudrate: 9600
@@ -296,7 +297,21 @@ mcu:
         pin_name: dout.6
       - pin_id: 7
         pin_name: dout.7 #hal pin name
+      - pin_id: 8
+        pin_name: dout.8 #hal pin name
+      - pin_id: 9
+        pin_name: dout.9 #hal pin name
+      - pin_id: 10  
+        pin_name: dout.10 #hal pin name
+      - pin_id: 11
+        pin_name: dout.11 #hal pin name
+      - pin_id: 12
+        pin_name: dout.12 #hal pin name
+      - pin_id: 13
+        pin_name: dout.13 #hal pin name
 
+
+        
 ---
 mcu: 
   alias: Arduino Zero

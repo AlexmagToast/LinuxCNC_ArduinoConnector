@@ -160,8 +160,12 @@ class ConnectionType:
         pass
 
 class ArduinoPin:
-    def __init__(self, pinName:str='', featureID:int=0, pinID:str='', pinType:PinTypes=PinTypes.UNDEFINED, 
-                 halPinType:HalPinTypes=HalPinTypes.UNDEFINED, halPinDirection:HalPinDirection=HalPinDirection.UNDEFINED, 
+    def __init__(self, pinName:str='', 
+                 featureID:int=0, 
+                 pinID:str='', 
+                 pinType:PinTypes=PinTypes.UNDEFINED, 
+                 halPinType:HalPinTypes=HalPinTypes.UNDEFINED, 
+                 halPinDirection:HalPinDirection=HalPinDirection.UNDEFINED, 
                  yaml:dict=None):
         self.pinName = pinName
         self.pinType = pinType
@@ -424,6 +428,19 @@ class ConfigMessageAck(ProtocolMessage):
         self.featureID = payload['fi']
         self.sequenceID = payload['se']
         self.featureArrayIndex = payload['fa']
+        
+class DebugMessage(ProtocolMessage):
+    def __init__(self, payload):
+        super().__init__(messageType=MessageType.MT_DEBUG)
+        
+        required_fields = ['ds']
+        for field in required_fields:
+            if field not in payload:
+                raise ValueError(f"{field} is undefined in payload")
+        self.payload = payload
+        self.message = payload['ds']
+        
+
 
 class InviteSyncMessage(ProtocolMessage):
     def __init__(self, payload=None):
@@ -555,6 +572,8 @@ class MessageDecoder:
             return ConfigMessageNak(payload=payload)
         elif messageType == MessageType.MT_CONFIG_ACK:
             return ConfigMessageAck(payload=payload)
+        elif messageType == MessageType.MT_DEBUG:
+            return DebugMessage(payload=payload)
         elif messageType == MessageType.MT_PINCHANGE:
             return PinChangeMessage(
                 payload=payload
@@ -1096,7 +1115,8 @@ class Connection(MessageDecoder):
                 debugstr = f'PYDEBUG Error. Received message of type {name} from arduino prior to completing handshake. Ignoring.'
                 logging.debug(debugstr)
                 return
-              
+        if m.mt == MessageType.MT_DEBUG:
+            logging.debug(f'PYDEBUG onMessageRecv() - Received MT_DEBUG, Values = {m.payload}')
         if m.mt == MessageType.MT_HEARTBEAT:
             logging.debug(f'PYDEBUG onMessageRecv() - Received MT_HEARTBEAT, Values = {m.payload}')
             #bi = m.payload[0]-1 # board index is always sent over incremeented by one
@@ -1301,7 +1321,7 @@ class SerialConnection(Connection):
                 if num_bytes > 0:
                     self.rxBuffer += self.arduino.read(num_bytes)
                     while True:
-                        newlinepos = self.rxBuffer.find(b'\r\n')
+                        newlinepos = -1; # TODO: get rid of all of this raw serial strings debugging self.rxBuffer.find(b'\r\n')
                         termpos = self.rxBuffer.find(b'\x00')
 
                         if newlinepos == -1 and termpos == -1:

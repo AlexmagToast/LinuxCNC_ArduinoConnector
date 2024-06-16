@@ -53,8 +53,8 @@ namespace Features
         DigitalOutputs() : Feature(DOUTPUTS, String("DIGITAL_OUTPUTS"), DEFAULT_LOOP_FREQUENCY)
         {
             #ifdef DEBUG
-                Serial.println("DigitalOutputs::DigitalOutputs");
-                Serial.flush();
+                DEBUG_DEV.println("DigitalOutputs::DigitalOutputs");
+                //Serial.flush();
             #endif
         }
 
@@ -130,7 +130,7 @@ namespace Features
         virtual void setup()
         {
             #ifdef DEBUG
-                Serial.println("DigitalOutputs::setup");
+                DEBUG_DEV.println("DigitalOutputs::setup");
             #endif
 
             // Perform any setup here.
@@ -146,7 +146,7 @@ namespace Features
         virtual void onConnected()
         {
             #ifdef DEBUG
-                Serial.println("DigitalOutputs::onConnected");
+                DEBUG_DEV.println("DigitalOutputs::onConnected");
             #endif
         }
 
@@ -154,7 +154,7 @@ namespace Features
         virtual void onDisconnected()
         {
             #ifdef DEBUG
-                Serial.println("DigitalOutputs::onDisconnected");
+                DEBUG_DEV.println("DigitalOutputs::onDisconnected");
             #endif
         }
 
@@ -179,7 +179,6 @@ namespace Features
             if(json.containsKey("is"))
             {
                 dp->pinInitialState = json["is"];
-                //Serial.println("DigitalOutputs::I");
                 digitalWrite(atoi(dp->pid.c_str()), dp->pinInitialState);
             }
             else
@@ -243,8 +242,8 @@ namespace Features
         DigitalInputs() : Feature(DINPUTS, String("DIGITAL_INPUTS"), DEFAULT_LOOP_FREQUENCY)
         {
             #ifdef DEBUG
-                Serial.println("DigitalInputs::DigitalInputs");
-                Serial.flush();
+                DEBUG_DEV.println("DigitalInputs::DigitalInputs");
+                //Serial.flush();
             #endif
         }
 
@@ -272,8 +271,9 @@ namespace Features
                         DEBUG_DEV.println(pin.pinCurrentState);
                         DEBUG_DEV.print(F("New value: "));
                         DEBUG_DEV.println(v);
+                        
                     #endif
-
+                    //serialClient.println(F("DINPUTS PIN CHANGE!"));
                     pin.pinCurrentState = v;
                     pin.t = currentMills;
 
@@ -320,7 +320,7 @@ namespace Features
         virtual void setup()
         {
             #ifdef DEBUG
-                Serial.println("DigitalInputs::setup");
+                DEBUG_DEV.println("DigitalInputs::setup");
             #endif
 
             // Perform any setup here.
@@ -336,7 +336,7 @@ namespace Features
         virtual void onConnected()
         {
             #ifdef DEBUG
-                Serial.println("DigitalInputs::onConnected");
+                DEBUG_DEV.println("DigitalInputs::onConnected");
             #endif
         }
 
@@ -344,7 +344,7 @@ namespace Features
         virtual void onDisconnected()
         {
             #ifdef DEBUG
-                Serial.println("DigitalInputs::onDisconnected");
+                DEBUG_DEV.println("DigitalInputs::onDisconnected");
             #endif
         }
 
