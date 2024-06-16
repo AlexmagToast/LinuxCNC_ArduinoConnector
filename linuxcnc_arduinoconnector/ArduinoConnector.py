@@ -160,8 +160,12 @@ class ConnectionType:
         pass
 
 class ArduinoPin:
-    def __init__(self, pinName:str='', featureID:int=0, pinID:str='', pinType:PinTypes=PinTypes.UNDEFINED, 
-                 halPinType:HalPinTypes=HalPinTypes.UNDEFINED, halPinDirection:HalPinDirection=HalPinDirection.UNDEFINED, 
+    def __init__(self, pinName:str='', 
+                 featureID:int=0, 
+                 pinID:str='', 
+                 pinType:PinTypes=PinTypes.UNDEFINED, 
+                 halPinType:HalPinTypes=HalPinTypes.UNDEFINED, 
+                 halPinDirection:HalPinDirection=HalPinDirection.UNDEFINED, 
                  yaml:dict=None):
         self.pinName = pinName
         self.pinType = pinType
