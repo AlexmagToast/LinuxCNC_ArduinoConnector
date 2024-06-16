@@ -51,7 +51,7 @@ enum ConnectionState
 };
 
 
-class ConnectionBase : public RXBuffer {
+class ConnectionBase : public RXBuffer, public Stream {
   using m_cmcb = void (*)(protocol::ConfigMessage&);
   using m_pcmcb = void (*)(const protocol::PinChangeMessage&);
   using m_cscb = void (*)(int);
@@ -60,11 +60,14 @@ public:
 
   ConnectionBase(uint16_t retryPeriod) : RXBuffer(), _retryPeriod(retryPeriod)
   {
-
+    _buffer = new char[_bufferSize];
   }
   //virtual void onMessage(uint8_t* d, const size_t& size)=0;
 
-
+  ~ConnectionBase()
+  {
+    delete[] _buffer;
+  }
   void RegisterConfigCallback(m_cmcb act)
   {
     _configAction = act;
@@ -251,6 +254,51 @@ public:
     return protocol::cm;
   }
 */
+
+  // Stream class methods
+virtual size_t write(uint8_t byte) override {
+  if (_bufferIndex < _bufferSize) {
+    _buffer[_bufferIndex++] = byte;
+    if (byte == '\n') {
+      String debugMessage = String(_buffer).substring(0, _bufferIndex);
+      _sendDebugMessage(debugMessage);
+      _bufferIndex = 0; // Reset buffer index after calling _sendDebugMessage
+    }
+    return 1;
+  }
+  return 0;  // Buffer is full
+}
+
+  virtual int read() override {
+    // Implement your read logic here
+    // Example: read a byte from a buffer
+    if (_bufferIndex > 0) {
+      return _buffer[--_bufferIndex];  // Simplistic read logic
+    }
+    return -1;  // Return -1 if none available
+  }
+
+  virtual int available() override {
+    // Implement your logic to return the number of bytes available for reading
+    // Example: return the number of bytes in the buffer
+    return _bufferIndex;
+  }
+
+  virtual int peek() override {
+    // Implement your peek logic here
+    // Example: return the next byte in the buffer without removing it
+    if (_bufferIndex > 0) {
+      return _buffer[_bufferIndex - 1];
+    }
+    return -1;
+  }
+
+  virtual void flush() override {
+    // Implement your flush logic here
+    // Example: clear the buffer
+    _bufferIndex = 0;
+  }
+
 protected:
   virtual uint8_t _onInit()
   {
@@ -606,17 +654,33 @@ protected:
   }
 */
   #ifdef DEBUG
-  protocol::DebugMessage& _getDebugMessage(String& message)
+  size_t _getDebugMessage(uint8_t * buffer, size_t size, String& message)
   {
+    /*
     protocol::dm.message = message;
     // No need to wrap in DEBUG define as the entire method is only compiled in when DEBUG is defined
     DEBUG_DEV.println(F("- TX DEBUG MESSAGE DUMP -"));
     //DEBUG_DEV.print(" Board Index: ");
     //DEBUG_DEV.println(protocol::dm.boardIndex);
-    DEBUG_DEV.print(F(" Message: "));
+    DEBUG_DEV.print(F(" Message: "));s
     DEBUG_DEV.println(protocol::dm.message);
     DEBUG_DEV.println(F("- TX END DEBUG MESSAGE DUMP -"));
     return protocol::dm;
+    */
+
+    JsonDocument doc;
+    protocol::dm.message = message;
+    protocol::dm.toJSON(doc);
+    size_t sz = _jsonToMsgPack(doc, buffer, size);
+    #ifdef DEBUG_VERBOSE
+    DEBUG_DEV.println(F("X DEBUG MESSAGE DUMP"));
+    //DEBUG_DEV.print(" Board Index: ");
+    //DEBUG_DEV.println(protocol::dm.boardIndex);
+    DEBUG_DEV.print(F(" Message: "));
+    DEBUG_DEV.println(protocol::dm.message);
+    DEBUG_DEV.println(F("TX END DEBUG MESSAGE DUMP"));
+    #endif
+    return sz;
   }
   #endif
   
@@ -653,6 +717,8 @@ protected:
     m_cscb _csAction = NULL;
     m_pcmcb _pinChangeAction = NULL;
 
-
+    char* _buffer;  // Pointer to the buffer
+    size_t _bufferIndex;  // Current index in the buffer
+    size_t _bufferSize = 255;  // Size of the buffer
 };
 #endif

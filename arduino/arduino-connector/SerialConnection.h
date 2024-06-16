@@ -163,6 +163,13 @@ public:
   #ifdef DEBUG
   virtual void _sendDebugMessage(String& message)
   {
+    uint8_t buffer[256];
+    
+    //size_t sz = _getDebugMessage(buffer, sizeof(buffer));
+    size_t sz = _getDebugMessage(buffer, sizeof(buffer), message);
+    //printBuffer(buffer, 25);
+    COM_DEV.write(buffer, sz);
+    COM_DEV.flush();
 
   }
   #endif

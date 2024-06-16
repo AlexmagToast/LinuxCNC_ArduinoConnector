@@ -59,7 +59,7 @@ SerialConnection serialClient(SERIAL_RX_TIMEOUT, f);
 
 
 void setup() {
-  pinMode(LED_BUILTIN, OUTPUT); // Initialize builtin LED for error feedback/diagnostics 
+  //pinMode(LED_BUILTIN, OUTPUT); // Initialize builtin LED for error feedback/diagnostics 
 
   //DEBUG_DEV.begin(19200);
   COM_DEV.begin(115200);
@@ -198,7 +198,7 @@ void setup() {
     featureController.RegisterFeature(dout);
   #endif
 
-  digitalWrite(LED_BUILTIN, LOW);// Signal startup success to builtin LED
+  //digitalWrite(LED_BUILTIN, LOW);// Signal startup success to builtin LED
   serialClient.DoWork(); 
 }
 
