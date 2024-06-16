@@ -2,7 +2,7 @@ mcu:
   alias: NodeMCU
   component_name: nodemcu # Name of component to use in HAL
   dev: /dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_0001-if00-port0
-  enabled: false
+  enabled: True
   hal_emulation: true
   connection: 
     baudrate: 115200
@@ -25,6 +25,7 @@ mcu:
         pin_connected_state: 0
         pin_disconnected_state: 1
         pin_initial_state: 0
+        pin_enabled: false
 ---
 mcu: 
   alias: Arduino Mega2560
@@ -275,7 +276,7 @@ mcu:
   #/dev/tty.usbmodemF412FA68D6802
   dev: /dev/cu.usbmodemF412FA68D6802 
   #dev: /dev/serial/by-id/usb-Arduino_UNO_WiFi_R4_CMSIS-DAP_F412FA68D680-if01
-  enabled: true
+  enabled: false
   hal_emulation: true
   #connection: 
   #  baudrate: 9600

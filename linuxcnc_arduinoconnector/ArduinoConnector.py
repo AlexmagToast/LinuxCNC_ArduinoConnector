@@ -22,6 +22,7 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
+import curses
 import json
 import os
 from re import T
@@ -43,8 +44,9 @@ import yaml
 from pathlib import Path
 import copy
 from abc import ABCMeta, abstractmethod
+import serial.tools.list_ports
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.CRITICAL, format='%(message)s\r\n')
 
 # Filename of default yaml profile.
 DEFAULT_PROFILE = "config.yaml"
@@ -479,7 +481,7 @@ def parse_pin_info_elements(json_string):
         
         return elements
     except json.JSONDecodeError:
-        print("Invalid JSON string")
+        logging.debug("Invalid JSON string")
         return None
     
 class PinChangeMessage(ProtocolMessage):
@@ -702,7 +704,7 @@ class IOFeature(metaclass=ABCMeta):
         if self.ConfigSyncError() != True and len(self.pinConfigSyncMap.values()) > 0:
             p = next(iter(self.pinConfigSyncMap.values()))
             if (time.time() - p.lastTickCount) > p.retryInterval:
-                print( f'{time.time() - p.lastTickCount}' )
+                #print( f'{time.time() - p.lastTickCount}' )
                 if p.retryCount > 0:
                     p.retryCount -= 1
                     # do send
@@ -759,11 +761,11 @@ class DigitalInputs(IOFeature):
         super().OnMessageRecv(pm)
         if (pm.mt == MessageType.MT_PINCHANGE):
            # maybe_message = #PinChangeMessage#MessageDecoder.parseBytes(pm.payload)
-            print(f'PINCHANGE: {pm.payload}')
+            logging.debug(f'PINCHANGE: {pm.payload}')
             for p in pm.pinInfo:
-                print(f'PININFO: {p}')
+                logging.debug(f'PININFO: {p}')
 
-            pass    
+            #pass    
     
     def OnConnected(self):
         super().OnConnected()
@@ -1101,7 +1103,7 @@ class Connection(MessageDecoder):
                 self.sendMessage(resp)
             except Exception as ex:
                 just_the_string = traceback.format_exc()
-                print(just_the_string)
+                #logging.debug(just_the_string)
                 logging.debug(f'PYDEBUG: error: {str(ex)}')
         
         if self.connectionState != ConnectionState.CONNECTED:
@@ -1567,7 +1569,7 @@ class ArduinoConnection:
                 if self.settings.dev in port or (port.serial_number != None and self.serialConn.serial != None and self.serialConn.serial in port.serial_number):
                     found = True
             if found == False:
-                retry = 5
+                retry = 2.5
                 logging.debug(f'PYDEBUG: ArduinoConnection::doWork, dev={self.settings.dev}, alias={self.settings.alias}. Error: Serial device not found! Retrying in {retry} seconds..')
                 time.sleep(retry) # TODO: Make retry settable via the yaml config?
 
@@ -1622,7 +1624,7 @@ class ArduinoConnection:
 arduino_map = []
 
 def listDevices():
-    import serial.tools.list_ports
+    
     for port in serial.tools.list_ports.comports():
         print(f'Device: {port}')
 
@@ -1657,8 +1659,168 @@ class ThreadStatus(StrEnum):
     def __str__(self) -> str:
         return self.value
 
+def display_arduino_statuses(stdscr, arduino_connections, scroll_offset, selected_index):
+    # Initialize colors
+    curses.start_color()
+    curses.init_pair(1, curses.COLOR_WHITE, curses.COLOR_RED)    # Red background
+    curses.init_pair(2, curses.COLOR_WHITE, curses.COLOR_GREEN)  # Green background
+    curses.init_pair(3, curses.COLOR_BLACK, curses.COLOR_YELLOW) # Yellow background
+    curses.init_pair(4, curses.COLOR_BLACK, curses.COLOR_WHITE)  # Highlight background
 
-def main():
+    curses.curs_set(0)
+
+    stdscr.clear()
+
+    height, width = stdscr.getmaxyx()
+    max_widths = {
+        "alias": 17,
+        "component_name": 22,
+        "device": 15,
+        "status": 13,
+        "hal_emulation": 8,  # Adjusted width for "HalEmu?"
+        "features": width - (17 + 22 + 15 + 13 + 8 + 11)  # Remaining width for features, minus 11 for separators
+    }
+
+    def truncate(text, max_length):
+        return text if len(text) <= max_length else text[:max_length-3] + '...'
+
+    row = 0
+    stdscr.addstr(row, 0, "Arduino Connection Statuses:")
+    row += 1
+    stdscr.addstr(row, 0, "{:<{alias}} | {:<{component_name}} | {:<{device}} | {:<{status}} | {:<{hal_emulation}} | {}".format(
+        "Alias", "Component Name", "Device", "Status", "HalEmu?", "Features",
+        **max_widths))
+    row += 1
+    stdscr.addstr(row, 0, "-" * width)
+    row += 1
+
+    # Separate enabled and disabled connections
+    enabled_connections = [conn for conn in arduino_connections if conn.settings.enabled]
+    disabled_connections = [conn for conn in arduino_connections if not conn.settings.enabled]
+
+    all_connections = enabled_connections + disabled_connections
+
+    for index, connection in enumerate(all_connections):
+        alias = truncate(connection.settings.alias, max_widths["alias"])
+        component_name = truncate(connection.settings.component_name, max_widths["component_name"])
+        device = connection.settings.dev
+        hal_emulation = truncate(str(connection.settings.hal_emulation), max_widths["hal_emulation"])
+        features = truncate(", ".join([f"{k.featureName} [{len(v)}]" for k, v in connection.settings.io_map.items()]), max_widths["features"])
+
+        if connection.settings.enabled:
+            status = truncate(connection.serialConn.connectionState, max_widths["status"])
+        else:
+            status = "DISABLED"
+
+        # Determine the color pair for the status
+        if status == "DISCONNECTED":
+            color_pair = curses.color_pair(1)  # Red background
+        elif status == "CONNECTED":
+            color_pair = curses.color_pair(2)  # Green background
+        elif status == "DISABLED":
+            color_pair = curses.color_pair(0)  # Default background
+        else:
+            color_pair = curses.color_pair(3)  # Yellow background
+
+        # Handle scrolling for device
+        if len(device) > max_widths["device"]:
+            if scroll_offset < len(device) + max_widths["device"]:
+                device_display = device[scroll_offset:scroll_offset + max_widths["device"]]
+                if len(device_display) < max_widths["device"]:
+                    device_display = device_display + ' ' * (max_widths["device"] - len(device_display))
+            else:
+                scroll_position = scroll_offset - (len(device) + max_widths["device"])
+                device_display = device[scroll_position:scroll_position + max_widths["device"]]
+                if len(device_display) < max_widths["device"]:
+                    device_display = device_display + ' ' * (max_widths["device"] - len(device_display))
+        else:
+            device_display = device.ljust(max_widths["device"])
+
+        # Highlight the selected row
+        if index == selected_index:
+            stdscr.addstr(row, 0, "{:<{alias}} | {:<{component_name}} | {:<{device}} | ".format(
+                alias, component_name, device_display,
+                **max_widths), curses.color_pair(4))
+            if status == "DISABLED":
+                stdscr.addstr("{:<{status}}".format(status, **max_widths), curses.color_pair(4))
+            else:
+                stdscr.addstr("{:<{status}}".format(status, **max_widths), curses.color_pair(4) | color_pair)
+            stdscr.addstr(" | {:<{hal_emulation}} | {}".format(hal_emulation, features, **max_widths), curses.color_pair(4))
+        else:
+            stdscr.addstr(row, 0, "{:<{alias}} | {:<{component_name}} | {:<{device}} | ".format(
+                alias, component_name, device_display,
+                **max_widths))
+            if status == "DISABLED":
+                stdscr.addstr("{:<{status}}".format(status, **max_widths))
+            else:
+                stdscr.addstr("{:<{status}}".format(status, **max_widths), color_pair)
+            stdscr.addstr(" | {:<{hal_emulation}} | {}".format(hal_emulation, features, **max_widths))
+        row += 1
+
+    stdscr.refresh()
+
+def display_connection_details(stdscr, connection):
+    stdscr.clear()
+    height, width = stdscr.getmaxyx()
+    
+    stdscr.addstr(0, 0, f"Details for {connection.settings.alias}")
+
+    row = 2
+    stdscr.addstr(row, 0, "Pins:")
+    row += 1
+
+    pin_headers = ["Pin Name", "Pin Type", "HAL Pin Type", "HAL Pin Direction", "Pin ID", "Current Value"]
+    pin_column_widths = [15, 10, 15, 15, 10, 15]
+
+    total_width = sum(pin_column_widths) + len(pin_headers) - 1
+    available_width = width - 1
+    truncate_length = lambda text, max_length: text if len(text) <= max_length else text[:max_length-3] + '...'
+
+    if total_width > available_width:
+        scaling_factor = available_width / total_width
+        pin_column_widths = [int(w * scaling_factor) for w in pin_column_widths]
+
+    stdscr.addstr(row, 0, "{:<{width0}} | {:<{width1}} | {:<{width2}} | {:<{width3}} | {:<{width4}} | {:<{width5}}".format(
+        *[truncate_length(header, pin_column_widths[i]) for i, header in enumerate(pin_headers)],
+        width0=pin_column_widths[0],
+        width1=pin_column_widths[1],
+        width2=pin_column_widths[2],
+        width3=pin_column_widths[3],
+        width4=pin_column_widths[4],
+        width5=pin_column_widths[5]
+    ))
+    row += 1
+    stdscr.addstr(row, 0, "-" * width)
+    row += 1
+
+    for feature, pins in connection.settings.io_map.items():
+        for pin in pins:
+            if not pin.pinEnabled:
+                current_value = "DISABLED"
+            else:
+                current_value = str(getattr(pin, 'halPinCurrentValue', 'N/A'))  # Example way to get current value, adjust as needed
+            stdscr.addstr(row, 0, "{:<{width0}} | {:<{width1}} | {:<{width2}} | {:<{width3}} | {:<{width4}} | {:<{width5}}".format(
+                truncate_length(pin.pinName, pin_column_widths[0]),
+                truncate_length(str(pin.pinType), pin_column_widths[1]),
+                truncate_length(str(pin.halPinType), pin_column_widths[2]),
+                truncate_length(str(pin.halPinDirection), pin_column_widths[3]),
+                truncate_length(str(pin.pinID), pin_column_widths[4]),
+                truncate_length(current_value, pin_column_widths[5]),
+                width0=pin_column_widths[0],
+                width1=pin_column_widths[1],
+                width2=pin_column_widths[2],
+                width3=pin_column_widths[3],
+                width4=pin_column_widths[4],
+                width5=pin_column_widths[5]
+            ))
+            row += 1
+            if row >= height - 2:
+                stdscr.addstr(row, 0, "... (truncated)")
+                break
+
+    stdscr.addstr(height - 1, 0, "Press any key to return")
+    stdscr.refresh()
+def main(stdscr):
     # Remove 1st argument from the
     # list of command line arguments
     argumentList = sys.argv[1:]
@@ -1708,7 +1870,7 @@ def main():
 
         except Exception as err:
             just_the_string = traceback.format_exc()
-            print(just_the_string)
+            #print(just_the_string)
             logging.debug(f'PYDEBUG: error: {str(just_the_string)}')
             sys.exit()
     else:
@@ -1718,7 +1880,7 @@ def main():
         print ('No Arduino profiles found in profile yaml!')
         sys.exit()
     
-    listDevices()
+    #listDevices()
 
     arduino_connections = []
     try:
@@ -1733,10 +1895,47 @@ def main():
         #print(str(err))
         sys.exit()
 
+    scroll_offset = 0
+    selected_index = 0
+    details_mode = False
+    stdscr.nodelay(1)  # Set nodelay mode
+    # Initialize last_update to the current time
+    last_update = time.time()
     while(True):
         try:
+            # Get the current time
+            current_time = time.time()
             for ac in arduino_connections:
                 ac.doWork()
+                # Check if 0.5 seconds have passed
+            d = current_time - last_update
+            if current_time - last_update >= 0.5:
+
+                # Call display_arduino_statuses
+                if not details_mode:
+                    display_arduino_statuses(stdscr, arduino_connections, scroll_offset, selected_index)
+                scroll_offset = (scroll_offset + 1) % (max(len(conn.settings.dev) for conn in arduino_connections) + 15)
+                # Reset the last update time
+                last_update = current_time
+
+            key = stdscr.getch()
+            if key == ord('q'):
+                break
+            elif not details_mode and key == curses.KEY_UP and selected_index > 0:
+                selected_index -= 1
+            elif not details_mode and key == curses.KEY_DOWN and selected_index < len(arduino_connections) - 1:
+                selected_index += 1
+            elif not details_mode and (key == curses.KEY_ENTER or key in [10, 13]):
+                details_mode = True
+                stdscr.nodelay(0)  # Disable nodelay mode for details display
+                display_connection_details(stdscr, arduino_connections[selected_index])
+            elif details_mode and key != -1:
+                details_mode = False
+                stdscr.nodelay(1)  # Re-enable nodelay mode
+            time.sleep(0.01)
+            
+            #display_arduino_statuses(arduino_connections)
+            #scroll_offset = (scroll_offset + 1) % (max(len(conn.settings.dev) for conn in arduino_connections) + 15)
             time.sleep(0.01)
         except KeyboardInterrupt:
             for ac in arduino_connections:
@@ -1746,7 +1945,10 @@ def main():
             arduino_connections.clear()
             #print(str(err))
             just_the_string = traceback.format_exc()
-            print(just_the_string)
+            logging.critical(f'PYDEBUG: error: {str(just_the_string)}')
+            pass
+            #print(just_the_string)
+            
             #sys.exit()
             
 
@@ -1757,4 +1959,4 @@ def main():
     #    lines = f.readlines()
 
 if __name__ == "__main__":
-    main()
+   curses.wrapper(main)
