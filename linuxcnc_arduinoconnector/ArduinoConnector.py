@@ -864,11 +864,11 @@ class ArduinoSettings:
         self.yamlProfileSignature = 0# CRC32 for now
         self.enabled = True
         self.hal_emulation = hal_emulation
-        if self.hal_emulation == False:
-            try:
-                try_load_linuxcnc()
-            except ImportError:
-                raise ImportError('Error. linuxcnc module not found. Hal emulation requires linuxcnc module.')
+        #if self.hal_emulation == False:
+        #    try:
+        #        try_load_linuxcnc()
+        #    except ImportError:
+        #        raise ImportError('Error. linuxcnc module not found. Hal emulation requires linuxcnc module.')
 
 
     def printIOMap(self) -> str:
