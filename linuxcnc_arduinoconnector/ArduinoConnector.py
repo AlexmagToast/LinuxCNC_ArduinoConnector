@@ -1866,7 +1866,7 @@ async def main_async(stdscr, arduino_connections):
                 details_mode = False
                 stdscr.nodelay(1)  # Re-enable nodelay mode
 
-            await asyncio.sleep(0.01)
+            #await asyncio.sleep(0.01)
 
         except KeyboardInterrupt:
             for ac in arduino_connections:
