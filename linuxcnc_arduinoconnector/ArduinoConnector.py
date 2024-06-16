@@ -1821,7 +1821,8 @@ def display_connection_details(stdscr, connection):
 
     stdscr.addstr(height - 1, 0, "Press any key to return")
     stdscr.refresh()
-    
+import concurrent.futures
+
 async def do_work_async(ac):
     loop = asyncio.get_event_loop()
     with concurrent.futures.ThreadPoolExecutor() as pool:
@@ -1833,23 +1834,28 @@ async def main_async(stdscr, arduino_connections):
     details_mode = False
     stdscr.nodelay(1)  # Set nodelay mode
     last_update = time.time()
-    tasks = []
+    task_status = {ac: None for ac in arduino_connections}
 
     while True:
         try:
             current_time = time.time()
             for ac in arduino_connections:
-                if not any(task.done() for task in tasks):
-                    task = asyncio.create_task(do_work_async(ac))
-                    tasks.append(task)
+                if task_status[ac] is None or task_status[ac].done():
+                    task_status[ac] = asyncio.create_task(do_work_async(ac))
             
-            tasks = [task for task in tasks if not task.done()]
-
-            if current_time - last_update >= .5:
+            if current_time - last_update >= .01:
                 if not details_mode:
-                    display_arduino_statuses(stdscr, arduino_connections, scroll_offset, selected_index)
-                scroll_offset = (scroll_offset + 1) % (max(len(conn.settings.dev) for conn in arduino_connections) + 15)
-                last_update = current_time
+                    # Sort connections by enabled/disabled status
+                    enabled_connections = [conn for conn in arduino_connections if conn.settings.enabled]
+                    disabled_connections = [conn for conn in arduino_connections if not conn.settings.enabled]
+                    sorted_connections = enabled_connections + disabled_connections
+                    
+                    # Display statuses using sorted_connections
+                    display_arduino_statuses(stdscr, sorted_connections, scroll_offset, selected_index)
+            if current_time - last_update >= .5:
+                if not details_mode:     
+                    scroll_offset = (scroll_offset + 1) % (max(len(conn.settings.dev) for conn in arduino_connections) + 15)
+                    last_update = current_time
 
             key = stdscr.getch()
             if key == ord('q'):
@@ -1861,12 +1867,13 @@ async def main_async(stdscr, arduino_connections):
             elif not details_mode and (key == curses.KEY_ENTER or key in [10, 13]):
                 details_mode = True
                 stdscr.nodelay(0)  # Disable nodelay mode for details display
-                display_connection_details(stdscr, arduino_connections[selected_index])
+                # Use the sorted_connections to find the selected connection
+                display_connection_details(stdscr, sorted_connections[selected_index])
             elif details_mode and key != -1:
                 details_mode = False
                 stdscr.nodelay(1)  # Re-enable nodelay mode
 
-            #await asyncio.sleep(0.01)
+            await asyncio.sleep(0.01)
 
         except KeyboardInterrupt:
             for ac in arduino_connections:
@@ -1878,12 +1885,29 @@ async def main_async(stdscr, arduino_connections):
             logging.critical(f'PYDEBUG: error: {str(just_the_string)}')
             pass
         
+def debug_print(message):
+    # Save the current program state (curses mode)
+    curses.def_prog_mode()
+    # End curses mode temporarily
+    curses.endwin()
+    # Print the debug message to the console
+    print(message)
+    # Flush the output to ensure it appears immediately
+    sys.stdout.flush()
+    # Restore the program state (curses mode)
+    curses.reset_prog_mode()
+    
 def main(stdscr):
     argumentList = sys.argv[1:]
     options = "hdp:"
     long_options = ["Help", "Devices", "Profile="]
     target_profile = None
     devs = []
+    
+    # these lines enable debug messages to the console
+    #curses.curs_set(0)
+    #stdscr.clear()
+    #stdscr.refresh()
 
     try:
         arguments, values = getopt.getopt(argumentList, options, long_options)
