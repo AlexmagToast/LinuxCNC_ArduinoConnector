@@ -46,7 +46,7 @@ from pathlib import Path
 import copy
 from abc import ABCMeta, abstractmethod
 import serial.tools.list_ports
-
+import concurrent.futures
 logging.basicConfig(level=logging.CRITICAL, format='%(message)s\r\n')
 
 # Filename of default yaml profile.
@@ -1763,10 +1763,48 @@ def display_arduino_statuses(stdscr, arduino_connections, scroll_offset, selecte
 def display_connection_details(stdscr, connection):
     stdscr.clear()
     height, width = stdscr.getmaxyx()
-    
-    stdscr.addstr(0, 0, f"Details for {connection.settings.alias}")
 
-    row = 2
+    # Initialize colors
+    curses.start_color()
+    curses.init_pair(1, curses.COLOR_WHITE, curses.COLOR_RED)    # Red background
+    curses.init_pair(2, curses.COLOR_WHITE, curses.COLOR_GREEN)  # Green background
+    curses.init_pair(3, curses.COLOR_BLACK, curses.COLOR_YELLOW) # Yellow background
+    curses.init_pair(4, curses.COLOR_BLACK, curses.COLOR_WHITE)  # Highlight background
+
+    alias_display = connection.settings.alias
+    if not connection.settings.enabled:
+        alias_display += " [DISABLED]"
+
+    component_name = connection.settings.component_name
+    device = connection.settings.dev
+    hal_emulation = str(connection.settings.hal_emulation)
+    status = connection.serialConn.connectionState if connection.settings.enabled else "DISABLED"
+
+    row = 0
+    stdscr.addstr(row, 0, f"Details for {alias_display}")
+    row += 2  # Add a blank line
+
+    stdscr.addstr(row, 0, f"Component Name: {component_name}")
+    row += 1
+    stdscr.addstr(row, 0, f"Device: {device}")
+    row += 1
+    stdscr.addstr(row, 0, f"HalEmu?: {hal_emulation}")
+    row += 1
+
+    # Determine the color pair for the status
+    if status == "DISCONNECTED":
+        color_pair = curses.color_pair(1)  # Red background
+    elif status == "CONNECTED":
+        color_pair = curses.color_pair(2)  # Green background
+    elif status == "DISABLED":
+        color_pair = curses.color_pair(0)  # Default background
+    else:
+        color_pair = curses.color_pair(3)  # Yellow background
+
+    stdscr.addstr(row, 0, "Status: ")
+    stdscr.addstr(f"{status}", color_pair)
+    row += 2  # Add a blank line
+
     stdscr.addstr(row, 0, "Pins:")
     row += 1
 
@@ -1821,7 +1859,6 @@ def display_connection_details(stdscr, connection):
 
     stdscr.addstr(height - 1, 0, "Press any key to return")
     stdscr.refresh()
-import concurrent.futures
 
 async def do_work_async(ac):
     loop = asyncio.get_event_loop()
@@ -1866,13 +1903,14 @@ async def main_async(stdscr, arduino_connections):
                 selected_index += 1
             elif not details_mode and (key == curses.KEY_ENTER or key in [10, 13]):
                 details_mode = True
-                stdscr.nodelay(0)  # Disable nodelay mode for details display
+                stdscr.nodelay(1)  # Disable nodelay mode for details display
                 # Use the sorted_connections to find the selected connection
                 display_connection_details(stdscr, sorted_connections[selected_index])
             elif details_mode and key != -1:
                 details_mode = False
                 stdscr.nodelay(1)  # Re-enable nodelay mode
-
+            elif details_mode:
+                display_connection_details(stdscr, sorted_connections[selected_index])
             await asyncio.sleep(0.01)
 
         except KeyboardInterrupt:
