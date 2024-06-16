@@ -22,6 +22,7 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
+import asyncio
 import curses
 import json
 import os
@@ -1820,102 +1821,34 @@ def display_connection_details(stdscr, connection):
 
     stdscr.addstr(height - 1, 0, "Press any key to return")
     stdscr.refresh()
-def main(stdscr):
-    # Remove 1st argument from the
-    # list of command line arguments
-    argumentList = sys.argv[1:]
     
-    # Options
-    options = "hdp:"
-    
-    # Long options
-    long_options = ["Help", "Devices", "Profile="]
-    target_profile = None
-    devs = []
+async def do_work_async(ac):
+    loop = asyncio.get_event_loop()
+    with concurrent.futures.ThreadPoolExecutor() as pool:
+        await loop.run_in_executor(pool, ac.doWork)
 
-    
-
-    try:
-        # Parsing argument
-        arguments, values = getopt.getopt(argumentList, options, long_options)
-     
-        # checking each argument
-        for currentArgument, currentValue in arguments:
-    
-            if currentArgument in ("-h", "--Help"):
-                print ("Displaying Help")
-                
-            elif currentArgument in ("-d", "--devices"):
-                print('Listing available Serial devices:')
-                listDevices()
-                sys.exit()
-                ##print ("Displaying file_name:", sys.argv[0])
-                
-            elif currentArgument in ("-p", "--profile"):
-                logging.debug(f'PYDEBUG: Profile: {currentValue}')
-                target_profile = currentValue
-             
-    except getopt.error as err:
-        # output error, and return with an error code
-        just_the_string = traceback.format_exc()
-        #print(just_the_string)
-        logging.debug(f'PYDEBUG: error: {str(just_the_string)}')
-        #print (str(err))
-        sys.exit()
-
-    if target_profile is not None:
-        # user provided a profile path to utilize
-        try:
-            devs = ArduinoYamlParser.parseYaml(path=target_profile)
-
-        except Exception as err:
-            just_the_string = traceback.format_exc()
-            #print(just_the_string)
-            logging.debug(f'PYDEBUG: error: {str(just_the_string)}')
-            sys.exit()
-    else:
-        devs = locateProfile()
-
-    if len(devs) == 0:
-        print ('No Arduino profiles found in profile yaml!')
-        sys.exit()
-    
-    #listDevices()
-
-    arduino_connections = []
-    try:
-        for a in devs:
-            c = ArduinoConnection(a)
-            arduino_connections.append(c)
-            logging.info(f'PYDEBUG: Loaded Arduino profile: {str(c)}')
-    except Exception as err:
-        just_the_string = traceback.format_exc()
-        #print(just_the_string)
-        logging.debug(f'PYDEBUG: error: {str(just_the_string)}')
-        #print(str(err))
-        sys.exit()
-
+async def main_async(stdscr, arduino_connections):
     scroll_offset = 0
     selected_index = 0
     details_mode = False
     stdscr.nodelay(1)  # Set nodelay mode
-    # Initialize last_update to the current time
     last_update = time.time()
-    while(True):
+    tasks = []
+
+    while True:
         try:
-            # Get the current time
             current_time = time.time()
             for ac in arduino_connections:
-                ac.doWork()
-                # Check if 0.5 seconds have passed
-            d = current_time - last_update
-            if current_time - last_update >= 0.5:
+                if not any(task.done() for task in tasks):
+                    task = asyncio.create_task(do_work_async(ac))
+                    tasks.append(task)
+            
+            tasks = [task for task in tasks if not task.done()]
 
-                # Call display_arduino_statuses
+            if current_time - last_update >= .5:
                 if not details_mode:
                     display_arduino_statuses(stdscr, arduino_connections, scroll_offset, selected_index)
                 scroll_offset = (scroll_offset + 1) % (max(len(conn.settings.dev) for conn in arduino_connections) + 15)
-                # Reset the last update time
                 last_update = current_time
 
             key = stdscr.getch()
@@ -1932,31 +1865,69 @@ def main(stdscr):
             elif details_mode and key != -1:
                 details_mode = False
                 stdscr.nodelay(1)  # Re-enable nodelay mode
-            time.sleep(0.01)
-            
-            #display_arduino_statuses(arduino_connections)
-            #scroll_offset = (scroll_offset + 1) % (max(len(conn.settings.dev) for conn in arduino_connections) + 15)
-            time.sleep(0.01)
+
+            await asyncio.sleep(0.01)
+
         except KeyboardInterrupt:
             for ac in arduino_connections:
                 ac.serialConn.stopRxTask()
             raise SystemExit
         except Exception as err:
             arduino_connections.clear()
-            #print(str(err))
             just_the_string = traceback.format_exc()
             logging.critical(f'PYDEBUG: error: {str(just_the_string)}')
             pass
-            #print(just_the_string)
-            
-            #sys.exit()
-            
+        
+def main(stdscr):
+    argumentList = sys.argv[1:]
+    options = "hdp:"
+    long_options = ["Help", "Devices", "Profile="]
+    target_profile = None
+    devs = []
 
+    try:
+        arguments, values = getopt.getopt(argumentList, options, long_options)
+        for currentArgument, currentValue in arguments:
+            if currentArgument in ("-h", "--Help"):
+                print("Displaying Help")
+            elif currentArgument in ("-d", "--devices"):
+                print('Listing available Serial devices:')
+                listDevices()
+                sys.exit()
+            elif currentArgument in ("-p", "--profile"):
+                logging.debug(f'PYDEBUG: Profile: {currentValue}')
+                target_profile = currentValue
+    except getopt.error as err:
+        just_the_string = traceback.format_exc()
+        logging.debug(f'PYDEBUG: error: {str(just_the_string)}')
+        sys.exit()
 
-    #pass
-    # logging.debug(f'Looking for config.yaml in
-    #with open(Path.home() / ".ssh" / "known_hosts") as f:
-    #    lines = f.readlines()
+    if target_profile is not None:
+        try:
+            devs = ArduinoYamlParser.parseYaml(path=target_profile)
+        except Exception as err:
+            just_the_string = traceback.format_exc()
+            logging.debug(f'PYDEBUG: error: {str(just_the_string)}')
+            sys.exit()
+    else:
+        devs = locateProfile()
+
+    if len(devs) == 0:
+        print('No Arduino profiles found in profile yaml!')
+        sys.exit()
+
+    arduino_connections = []
+    try:
+        for a in devs:
+            c = ArduinoConnection(a)
+            arduino_connections.append(c)
+            logging.info(f'PYDEBUG: Loaded Arduino profile: {str(c)}')
+    except Exception as err:
+        just_the_string = traceback.format_exc()
+        logging.debug(f'PYDEBUG: error: {str(just_the_string)}')
+        sys.exit()
+
+    asyncio.run(main_async(stdscr, arduino_connections))
 
 if __name__ == "__main__":
    curses.wrapper(main)
