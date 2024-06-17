@@ -1742,23 +1742,18 @@ def display_arduino_statuses(stdscr, arduino_connections, scroll_offset, selecte
             stdscr.addstr(row, 0, "{:<{alias}} | {:<{component_name}} | {:<{device}} | ".format(
                 alias, component_name, device_display,
                 **max_widths), curses.color_pair(4))
-            if status == "DISABLED":
-                stdscr.addstr("{:<{status}}".format(status, **max_widths), curses.color_pair(4))
-            else:
-                stdscr.addstr("{:<{status}}".format(status, **max_widths), curses.color_pair(4) | color_pair)
+            stdscr.addstr("{:<{status}}".format(status, **max_widths), curses.color_pair(4) | color_pair)
             stdscr.addstr(" | {:<{hal_emulation}} | {}".format(hal_emulation, features, **max_widths), curses.color_pair(4))
         else:
             stdscr.addstr(row, 0, "{:<{alias}} | {:<{component_name}} | {:<{device}} | ".format(
                 alias, component_name, device_display,
                 **max_widths))
-            if status == "DISABLED":
-                stdscr.addstr("{:<{status}}".format(status, **max_widths))
-            else:
-                stdscr.addstr("{:<{status}}".format(status, **max_widths), color_pair)
+            stdscr.addstr("{:<{status}}".format(status, **max_widths), color_pair)
             stdscr.addstr(" | {:<{hal_emulation}} | {}".format(hal_emulation, features, **max_widths))
         row += 1
 
     stdscr.refresh()
+
 
 def display_connection_details(stdscr, connection):
     stdscr.clear()
