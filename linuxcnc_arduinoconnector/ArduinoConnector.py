@@ -24,6 +24,7 @@
 # SOFTWARE.
 import asyncio
 import curses
+from datetime import datetime, timedelta
 import json
 import os
 from re import T
@@ -519,6 +520,7 @@ class HeartbeatMessage(ProtocolMessage):
     def __init__(self, payload):
         super().__init__(messageType=MessageType.MT_HEARTBEAT)
         self.payload = payload
+        self.uptime = payload['ut']
         
 class HandshakeMessage(ProtocolMessage):
     def __init__(self, payload):
@@ -1077,7 +1079,8 @@ class Connection(MessageDecoder):
         self.rxQueue = Queue(RX_MAX_QUEUE_SIZE)
         self._messageReceivedCallbacks = {}
         self._connectionStateCallbacks = []
-        
+        self.connLastFormed = None #datetime of when the connection was last formed   
+        self.arduinoReportedUptime = 0     
 
     def sendCommand(self, m:str):
         cm = MessageEncoder().encodeBytes(mt=MessageType.MT_COMMAND, payload=[m, 1])
@@ -1123,7 +1126,7 @@ class Connection(MessageDecoder):
         if m.mt == MessageType.MT_HEARTBEAT:
             logging.debug(f'PYDEBUG onMessageRecv() - Received MT_HEARTBEAT, Values = {m.payload}')
             #bi = m.payload[0]-1 # board index is always sent over incremeented by one
-
+            self.arduinoReportedUptime = m.uptime
             self.lastMessageReceived = time.time()
             hb = MessageEncoder().encodeBytes(payload=m.payload) + b'\x00'
             self.sendMessage(bytes(hb))
@@ -1172,6 +1175,8 @@ class Connection(MessageDecoder):
     def updateState(self):
         if self.connectionState == ConnectionState.DISCONNECTED or self.connectionState == ConnectionState.ERROR:
             #self.lastMessageReceived = time.process_time()
+            self.connLastFormed = None
+            self.arduinoReportedUptime = 0 
             self.setState(ConnectionState.CONNECTING)
             
         elif self.connectionState == ConnectionState.CONNECTING:
@@ -1180,6 +1185,8 @@ class Connection(MessageDecoder):
             #    arduino.setState(ConnectionState.CONNECTING)
         elif self.connectionState == ConnectionState.CONNECTED:
             d = time.time() - self.lastMessageReceived
+            if self.connLastFormed is None:
+                self.connLastFormed = datetime.now()
             if (time.time() - self.lastMessageReceived) >= self.timeout:
                 self.setState(ConnectionState.DISCONNECTED)
                 self.sendInviteSyncMessage() # Send sync invite to arduino. This avoids the Arduino waiting for a timeout to occur before eventually re-trying the handshake routine (shaves off upwards of 10 seconds)
@@ -1403,6 +1410,7 @@ class ArduinoConnection:
         self.settings = settings
         self.serialConn = SerialConnection(dev=settings.dev, baudRate=settings.baud_rate, profileSignature=self.settings.yamlProfileSignature, timeout=settings.connection_timeout)
         self.serialConn.alias = settings.alias
+        self.serialDeviceAvailable = False
         '''
                 while( True ):
             try:
@@ -1569,16 +1577,20 @@ class ArduinoConnection:
                 #    pass
                 if self.settings.dev in port or (port.serial_number != None and self.serialConn.serial != None and self.serialConn.serial in port.serial_number):
                     found = True
+                    self.serialDeviceAvailable = True
             if found == False:
+                self.serialDeviceAvailable = False
                 retry = 2.5
                 logging.debug(f'PYDEBUG: ArduinoConnection::doWork, dev={self.settings.dev}, alias={self.settings.alias}. Error: Serial device not found! Retrying in {retry} seconds..')
                 time.sleep(retry) # TODO: Make retry settable via the yaml config?
+                
 
             else:
                 logging.debug(f'PYDEBUG: ArduinoConnection::doWork, dev={self.settings.dev}, alias={self.settings.alias}, Serial device found, restarting RX thread..')
                 time.sleep(1) # TODO: Consider making this delay settable? Trying to avoid hammering the serial port when its in a strange state
                 self.serialConn.startRxTask()
-        
+        if self.serialConn.connectionState == ConnectionState.CONNECTED:
+            self.serialDeviceAvailable = True
         for f in self.settings.io_map.keys():
             if self.serialConn.connectionState == ConnectionState.CONNECTED and f.ConfigSyncError() == True:
                 logging.debug(f'PYDEBUG: ArduinoConnection::doWork, dev={self.settings.dev}, alias={self.settings.alias}, Feature {f.featureName} reported sync error. Terminating connection..')
@@ -1725,14 +1737,18 @@ def display_arduino_statuses(stdscr, arduino_connections, scroll_offset, selecte
 
         # Handle scrolling for device
         if len(device) > max_widths["device"]:
-            if scroll_offset < len(device) + max_widths["device"]:
+            if scroll_offset < len(device):
                 device_display = device[scroll_offset:scroll_offset + max_widths["device"]]
-                if len(device_display) < max_widths["device"]:
+                if scroll_offset + max_widths["device"] < len(device):
+                    device_display = device_display[:-2] + '..'
+                else:
                     device_display = device_display + ' ' * (max_widths["device"] - len(device_display))
             else:
-                scroll_position = scroll_offset - (len(device) + max_widths["device"])
+                scroll_position = scroll_offset - len(device)
                 device_display = device[scroll_position:scroll_position + max_widths["device"]]
-                if len(device_display) < max_widths["device"]:
+                if scroll_position + max_widths["device"] < len(device):
+                    device_display = device_display[:-2] + '..'
+                else:
                     device_display = device_display + ' ' * (max_widths["device"] - len(device_display))
         else:
             device_display = device.ljust(max_widths["device"])
@@ -1754,6 +1770,11 @@ def display_arduino_statuses(stdscr, arduino_connections, scroll_offset, selecte
 
     stdscr.refresh()
 
+def format_elapsed_time(elapsed_time):
+    days = elapsed_time.days
+    hours, remainder = divmod(elapsed_time.seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    return f"{days}d {hours}h {minutes}m {seconds}s"
 
 def display_connection_details(stdscr, connection):
     stdscr.clear()
@@ -1772,8 +1793,31 @@ def display_connection_details(stdscr, connection):
 
     component_name = connection.settings.component_name
     device = connection.settings.dev
+    is_serial_port_available = connection.serialDeviceAvailable if connection.settings.enabled else "N/A"
     hal_emulation = str(connection.settings.hal_emulation)
     status = connection.serialConn.connectionState if connection.settings.enabled else "DISABLED"
+    
+    # Determine arduinoReportedUptime value
+    if connection.settings.enabled and status == "CONNECTED":
+        arduino_reported_uptime = connection.serialConn.arduinoReportedUptime
+        if arduino_reported_uptime:
+            elapsed_uptime = timedelta(minutes=arduino_reported_uptime)
+            uptime_str = format_elapsed_time(elapsed_uptime)
+        else:
+            uptime_str = "N/A"
+    else:
+        uptime_str = "N/A"
+
+    # Determine connLastFormed value
+    if connection.settings.enabled and status == "CONNECTED":
+        conn_last_formed = connection.serialConn.connLastFormed
+        if conn_last_formed:
+            elapsed_time = datetime.now() - conn_last_formed
+            elapsed_str = format_elapsed_time(elapsed_time)
+        else:
+            elapsed_str = "N/A"
+    else:
+        elapsed_str = "N/A"
 
     row = 0
     stdscr.addstr(row, 0, f"Details for {alias_display}")
@@ -1782,6 +1826,8 @@ def display_connection_details(stdscr, connection):
     stdscr.addstr(row, 0, f"Component Name: {component_name}")
     row += 1
     stdscr.addstr(row, 0, f"Device: {device}")
+    row += 1
+    stdscr.addstr(row, 0, f"Serial Port Available: {is_serial_port_available}")
     row += 1
     stdscr.addstr(row, 0, f"HalEmu?: {hal_emulation}")
     row += 1
@@ -1798,6 +1844,10 @@ def display_connection_details(stdscr, connection):
 
     stdscr.addstr(row, 0, "Status: ")
     stdscr.addstr(f"{status}", color_pair)
+    row += 1
+    stdscr.addstr(row, 0, f"Arduino Reported Uptime: {uptime_str}")
+    row += 1
+    stdscr.addstr(row, 0, f"Connection to Arduino Uptime: {elapsed_str}")
     row += 2  # Add a blank line
 
     stdscr.addstr(row, 0, "Pins:")
@@ -1854,7 +1904,6 @@ def display_connection_details(stdscr, connection):
 
     stdscr.addstr(height - 1, 0, "Press any key to return")
     stdscr.refresh()
-
 async def do_work_async(ac):
     loop = asyncio.get_event_loop()
     with concurrent.futures.ThreadPoolExecutor() as pool:

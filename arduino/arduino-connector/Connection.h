@@ -616,7 +616,7 @@ protected:
     char buf[32];
     sprintf(buf,"%02d:%02d:%02d:%02d", runDays, runHours,runMinutes,runSeconds);
     */
-    protocol::hb.mcuUptime = millis() / 1000;
+    protocol::hb.mcuUptime = millis() / 1000 / 60;
     protocol::hb.toJSON(doc);
     //doc["ut"] = diff;
     #ifdef DEBUG_VERBOSE
