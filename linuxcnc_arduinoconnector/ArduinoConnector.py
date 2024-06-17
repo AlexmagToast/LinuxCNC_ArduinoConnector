@@ -763,10 +763,18 @@ class DigitalInputs(IOFeature):
     def OnMessageRecv(self, pm:ProtocolMessage):
         super().OnMessageRecv(pm)
         if (pm.mt == MessageType.MT_PINCHANGE):
+        
            # maybe_message = #PinChangeMessage#MessageDecoder.parseBytes(pm.payload)
             logging.debug(f'PINCHANGE: {pm.payload}')
-            for p in pm.pinInfo:
-                logging.debug(f'PININFO: {p}')
+            for pi in pm.pinInfo:
+                # find the pin in the pinList
+                for p in self.pinList:
+                    if p.pinID == pi.pinID:
+                        p.halPinCurrentValue = pi.pinValue
+                        logging.debug(f'PININFO: {pi}')
+                        break
+            #for p in pm.pinInfo:
+            #    logging.debug(f'PININFO: {p}')
 
             #pass    
     
@@ -1351,7 +1359,8 @@ class SerialConnection(Connection):
                                 self.onMessageRecv(m=md)
                             except Exception as ex:
                                 logging.debug(f'PYDEBUG: SerialConnection::rxTask, dev={self.dev}, Exception: {traceback.format_exc()}')
-
+                else:
+                    time.sleep(0.01)
             except OSError as oserror:
                 logging.error(f'OS Error = : {str(oserror)}')
                 logging.debug(f'PYDEBUG: SerialConnection::rxTask, dev={self.dev}, Exception: {traceback.format_exc()}, OS Error: {str(oserror)}')
@@ -1955,7 +1964,7 @@ async def main_async(stdscr, arduino_connections):
                 stdscr.nodelay(1)  # Re-enable nodelay mode
             elif details_mode:
                 display_connection_details(stdscr, sorted_connections[selected_index])
-            await asyncio.sleep(0.01)
+            await asyncio.sleep(0.05)
 
         except KeyboardInterrupt:
             for ac in arduino_connections:
