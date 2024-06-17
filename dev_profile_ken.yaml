@@ -114,10 +114,10 @@ mcu:
 mcu: 
   alias: Arduino R4 Minima
   component_name: arduinoMinima # Name of component to use in HAL
-  #dev: /dev/cu.usbmodem14201  # Used for initial programming
+  dev: /dev/cu.usbmodem11201  # Used for initial programming
   #dev: /dev/cu.usbmodemF412FA68D6802 
-  dev: /dev/serial/by-id/usb-Arduino_UNO_R4_Minima_33073017373238352A0433324B572D44-if00
-  enabled: false
+  #dev: /dev/serial/by-id/usb-Arduino_UNO_R4_Minima_33073017373238352A0433324B572D44-if00
+  enabled: true
   hal_emulation: true
   #connection: 
   #  baudrate: 9600
