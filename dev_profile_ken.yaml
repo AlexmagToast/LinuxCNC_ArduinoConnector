@@ -1,8 +1,9 @@
 mcu:
   alias: NodeMCU
   component_name: nodemcu # Name of component to use in HAL
-  dev: /dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_0001-if00-port0
-  enabled: false
+  #dev: /dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_0001-if00-port0
+  dev: /dev/cu.usbserial-0001
+  enabled: true
   hal_emulation: true
   connection: 
     baudrate: 115200
@@ -30,11 +31,11 @@ mcu:
 mcu: 
   alias: Arduino Mega2560
   component_name: arduinomega2560 # Name of component to use in HAL
-  #dev: /dev/cu.usbmodem14201  # Used for initial programming
+  dev: /dev/cu.usbmodem11101
   #dev: /dev/cu.usbmodemF412FA68D6802 
-  dev: /dev/serial/by-id/usb-Arduino__www.arduino.cc__0042_55739323037351E04120-if00
+  #dev: /dev/serial/by-id/usb-Arduino__www.arduino.cc__0042_55739323037351E04120-if00
   #dev: /dev/serial/by-id/usb-FTDI_FT232R_USB_UART_B001AYY4-if00-port0
-  enabled: false
+  enabled: true
   hal_emulation: true # Setting hal_emulation to true will result in the HAL components not being loaded / utilized.
 
   connection: 
@@ -117,7 +118,7 @@ mcu:
   dev: /dev/cu.usbmodem11201  # Used for initial programming
   #dev: /dev/cu.usbmodemF412FA68D6802 
   #dev: /dev/serial/by-id/usb-Arduino_UNO_R4_Minima_33073017373238352A0433324B572D44-if00
-  enabled: true
+  enabled: false
   hal_emulation: true
   #connection: 
   #  baudrate: 9600
@@ -143,8 +144,8 @@ mcu:
   alias: M4 Grand Central
   component_name: arduinom4 # Name of component to use in HAL
   #dev: /dev/serial/by-id/usb-Adafruit_Adafruit_Grand_Central_M4_AB5B58B75335353334202020FF184219-if00
-  dev: /dev/tty.usbmodem2101 
-  enabled: false
+  dev: /dev/cu.usbmodem1122301
+  enabled: true
   hal_emulation: true
   io_map:
     digitalOutputs:
@@ -236,11 +237,41 @@ mcu:
         input_pullup: true
 ---
 mcu: 
-  alias: Arduino Nano RP2040
+  alias: Arduino RaspberryPi Pico
+  component_name: arduinoPiPico # Name of component to use in HAL
+  #dev: /dev/cu.usbmodem14201  # Used for initial programming
+  #dev: /dev/cu.usbmodemF412FA68D6802 
+  dev: /dev/cu.usbmodem101
+  #dev: /dev/serial/by-id/usb-Arduino_RaspberryPi_Pico_410461DE2A511323-if00
+  enabled: true
+  hal_emulation: true
+  #connection: 
+  #  baudrate: 9600
+  io_map:
+        
+    digitalInputs:
+      - pin_id: 4
+        pin_name: din.4 #hal pin name
+        input_pullup: true
+        pin_debounce: 0
+      - pin_id: 5
+        pin_name: din.5 #hal pin name
+        input_pullup: true
+        pin_debounce: 0
+
+    digitalOutputs:
+      - pin_id: 2
+        pin_name: dout.2
+      - pin_id: 3
+        pin_name: dout.3 #hal pin name
+---
+mcu: 
+  alias: Arduino RP2040Connect
   component_name: arduino2040 # Name of component to use in HAL
   #dev: /dev/cu.usbmodem14201  # Used for initial programming
   #dev: /dev/cu.usbmodemF412FA68D6802 
-  dev: /dev/serial/by-id/usb-Arduino_RaspberryPi_Pico_410461DE2A511323-if00
+  #dev: /dev/serial/by-id/usb-Arduino_RaspberryPi_Pico_410461DE2A511323-if00
+  dev: /dev/cu.usbmodem1122201
   enabled: false
   hal_emulation: true
   #connection: 
@@ -262,6 +293,7 @@ mcu:
         pin_name: dout.2
       - pin_id: 3
         pin_name: dout.3 #hal pin name
+
 
 
 ---
