@@ -1680,7 +1680,6 @@ class ThreadStatus(StrEnum):
     CRASHED = "CRASHED"
     def __str__(self) -> str:
         return self.value
-
 def display_arduino_statuses(stdscr, arduino_connections, scroll_offset, selected_index):
     # Initialize colors
     curses.start_color()
@@ -1702,6 +1701,10 @@ def display_arduino_statuses(stdscr, arduino_connections, scroll_offset, selecte
         "hal_emulation": 8,  # Adjusted width for "HalEmu?"
         "features": width - (17 + 22 + 15 + 13 + 8 + 11)  # Remaining width for features, minus 11 for separators
     }
+
+    # Check if the console is too small height-wise to show the column names and at least one row
+    if height < 4:  # 1 row for the title, 1 row for the column names, 1 row for the separator, and at least 1 data row
+        return
 
     def truncate(text, max_length):
         return text if len(text) <= max_length else text[:max_length-3] + '...'
