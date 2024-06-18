@@ -3,7 +3,7 @@ mcu:
   component_name: nodemcu # Name of component to use in HAL
   #dev: /dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_0001-if00-port0
   dev: /dev/cu.usbserial-0001
-  enabled: true
+  enabled: false
   hal_emulation: true
   connection: 
     baudrate: 115200
@@ -35,15 +35,12 @@ mcu:
   #dev: /dev/cu.usbmodemF412FA68D6802 
   #dev: /dev/serial/by-id/usb-Arduino__www.arduino.cc__0042_55739323037351E04120-if00
   #dev: /dev/serial/by-id/usb-FTDI_FT232R_USB_UART_B001AYY4-if00-port0
-  enabled: true
+  enabled: false
   hal_emulation: true # Setting hal_emulation to true will result in the HAL components not being loaded / utilized.
 
   connection: 
     baudrate: 115200
     type: Serial
-
-  
-
   
   io_map:     
     digitalOutputs:
@@ -145,7 +142,7 @@ mcu:
   component_name: arduinom4 # Name of component to use in HAL
   #dev: /dev/serial/by-id/usb-Adafruit_Adafruit_Grand_Central_M4_AB5B58B75335353334202020FF184219-if00
   dev: /dev/cu.usbmodem1122301
-  enabled: true
+  enabled: false
   hal_emulation: true
   io_map:
     digitalOutputs:
@@ -243,7 +240,7 @@ mcu:
   #dev: /dev/cu.usbmodemF412FA68D6802 
   dev: /dev/cu.usbmodem101
   #dev: /dev/serial/by-id/usb-Arduino_RaspberryPi_Pico_410461DE2A511323-if00
-  enabled: true
+  enabled: false
   hal_emulation: true
   #connection: 
   #  baudrate: 9600
