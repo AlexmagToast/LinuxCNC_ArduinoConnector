@@ -443,7 +443,7 @@ protected:
       if (buffer[i] < 0x10) {
         this->print(0);
       }
-      this->print(buffer[i], HEX);
+      this->print(buffer[i]);
       this->print(" ");
     }
     this->println("");
@@ -573,7 +573,7 @@ protected:
     
       this->println(F("TX HANDSHAKE MESSAGE DUMP"));
       this->print(F("Protocol Version: 0x"));
-      this->println(protocol::hm.protocolVersion, HEX);
+      this->println(protocol::hm.protocolVersion);
       //this->print(" Feature Map: 0x");
       //this->println(protocol::hm.featureMap, HEX);
       this->print(F("Timeout:"));
@@ -619,12 +619,13 @@ protected:
     protocol::hb.mcuUptime = millis() / 1000 / 60;
     protocol::hb.toJSON(doc);
     //doc["ut"] = diff;
-    #ifdef DEBUG_VERBOSE
-      this->println(F("TX HEARTBEAT MESSAGE DUMP"));
-      this->print(F("MCU Uptime: "));
-      this->println(protocol::hb.mcuUptime);
-      this->println(F("TX END HEARTBEAT MESSAGE DUMP"));
-    #endif
+    //#ifdef DEBUG_VERBOSE
+    //  this->println(F("TX HEARTBEAT MESSAGE DUMP"));
+      //this->print(F("MCU Uptime: "));
+      //this->print(protocol::hb.mcuUptime);
+    //  this->println(F("TX END HEARTBEAT MESSAGE DUMP"));
+      //this->flush();
+    //#endif
     size_t sz = _jsonToMsgPack(doc, buffer, size);
     return sz;
   }
@@ -682,14 +683,14 @@ protected:
     protocol::dm.message = message;
     protocol::dm.toJSON(doc);
     size_t sz = _jsonToMsgPack(doc, buffer, size);
-    #ifdef DEBUG_VERBOSE
-    this->println(F("X DEBUG MESSAGE DUMP"));
+    //#ifdef DEBUG_VERBOSE
+    //this->println(F("X DEBUG MESSAGE DUMP"));
     //this->print(" Board Index: ");
     //this->println(protocol::dm.boardIndex);
-    this->print(F(" Message: "));
-    this->println(protocol::dm.message);
-    this->println(F("TX END DEBUG MESSAGE DUMP"));
-    #endif
+    //this->print(F(" Message: "));
+    //this->println(protocol::dm.message);
+    //this->println(F("TX END DEBUG MESSAGE DUMP"));
+    //#endif
     return sz;
   }
   #endif

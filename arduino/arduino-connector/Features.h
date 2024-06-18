@@ -211,7 +211,7 @@ namespace Features
                 DEBUG_DEV.print(", lid: ");
                 DEBUG_DEV.print(lid);
                 DEBUG_DEV.print(", pid: ");
-                DEBUG_DEV.println(pid);
+                DEBUG_DEV.println(dp->pid);
                 #ifdef DEBUG_VERBOSE
                     DEBUG_DEV.print(", is: ");
                     DEBUG_DEV.print(dp->pinInitialState);

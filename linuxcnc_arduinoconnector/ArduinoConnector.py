@@ -48,7 +48,7 @@ import copy
 from abc import ABCMeta, abstractmethod
 import serial.tools.list_ports
 import concurrent.futures
-logging.basicConfig(level=logging.CRITICAL, format='%(message)s\r\n')
+logging.basicConfig(level=logging.DEBUG, format='%(message)s\r\n')
 
 # Filename of default yaml profile.
 DEFAULT_PROFILE = "config.yaml"
@@ -1925,7 +1925,8 @@ async def main_async(stdscr, arduino_connections):
     scroll_offset = 0
     selected_index = 0
     details_mode = False
-    stdscr.nodelay(1)  # Set nodelay mode
+    if stdscr is not None:
+        stdscr.nodelay(1)  # Set nodelay mode
     last_update = time.time()
     task_status = {ac: None for ac in arduino_connections}
 
@@ -1936,6 +1937,9 @@ async def main_async(stdscr, arduino_connections):
                 if task_status[ac] is None or task_status[ac].done():
                     task_status[ac] = asyncio.create_task(do_work_async(ac))
             
+            if stdscr is None:
+                await asyncio.sleep(0.05)
+                continue
             if current_time - last_update >= .01:
                 if not details_mode:
                     # Sort connections by enabled/disabled status
@@ -1949,7 +1953,7 @@ async def main_async(stdscr, arduino_connections):
                 if not details_mode:     
                     scroll_offset = (scroll_offset + 1) % (max(len(conn.settings.dev) for conn in arduino_connections) + 15)
                     last_update = current_time
-
+            
             key = stdscr.getch()
             if key == ord('q'):
                 break
@@ -1978,7 +1982,7 @@ async def main_async(stdscr, arduino_connections):
             just_the_string = traceback.format_exc()
             logging.critical(f'PYDEBUG: error: {str(just_the_string)}')
             pass
-        
+'''
 def debug_print(message):
     # Save the current program state (curses mode)
     curses.def_prog_mode()
@@ -1990,8 +1994,10 @@ def debug_print(message):
     sys.stdout.flush()
     # Restore the program state (curses mode)
     curses.reset_prog_mode()
+'''
+
     
-def main(stdscr):
+def main(stdscr=None):
     argumentList = sys.argv[1:]
     options = "hdp:"
     long_options = ["Help", "Devices", "Profile="]
@@ -1999,9 +2005,10 @@ def main(stdscr):
     devs = []
     
     # these lines enable debug messages to the console
-    #curses.curs_set(0)
-    #stdscr.clear()
-    #stdscr.refresh()
+    #if stdscr is not None:
+    #    curses.curs_set(0)
+    #    stdscr.clear()
+    #    stdscr.refresh()
 
     try:
         arguments, values = getopt.getopt(argumentList, options, long_options)
@@ -2049,3 +2056,4 @@ def main(stdscr):
 
 if __name__ == "__main__":
    curses.wrapper(main)
+   #main()
