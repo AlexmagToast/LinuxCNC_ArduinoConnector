@@ -556,7 +556,6 @@ protected:
   size_t _jsonToMsgPack(JsonDocument& doc, uint8_t * buffer, size_t s)
   {
     size_t sz = serializeMsgPack(doc, (uint8_t*)&buffer[1], s-1);
-    //COM_DEV.println(sz);
     sz = cobs::encode(buffer, sz+1);
     buffer[sz] = 0x00;
     return sz+1;
@@ -619,13 +618,13 @@ protected:
     protocol::hb.mcuUptime = millis() / 1000 / 60;
     protocol::hb.toJSON(doc);
     //doc["ut"] = diff;
-    //#ifdef DEBUG_VERBOSE
-    //  this->println(F("TX HEARTBEAT MESSAGE DUMP"));
-      //this->print(F("MCU Uptime: "));
+    #ifdef DEBUG_VERBOSE
+      this->println(F("TX HEARTBEAT MESSAGE DUMP"));
+      this->println(F("MCU Uptime: "));
       //this->print(protocol::hb.mcuUptime);
-    //  this->println(F("TX END HEARTBEAT MESSAGE DUMP"));
+      this->println(F("TX END HEARTBEAT MESSAGE DUMP"));
       //this->flush();
-    //#endif
+    #endif
     size_t sz = _jsonToMsgPack(doc, buffer, size);
     return sz;
   }
@@ -667,30 +666,10 @@ protected:
   #ifdef DEBUG
   size_t _getDebugMessage(uint8_t * buffer, size_t size, String& message)
   {
-    /*
-    protocol::dm.message = message;
-    // No need to wrap in DEBUG define as the entire method is only compiled in when DEBUG is defined
-    this->println(F("- TX DEBUG MESSAGE DUMP -"));
-    //this->print(" Board Index: ");
-    //this->println(protocol::dm.boardIndex);
-    this->print(F(" Message: "));s
-    this->println(protocol::dm.message);
-    this->println(F("- TX END DEBUG MESSAGE DUMP -"));
-    return protocol::dm;
-    */
-
     JsonDocument doc;
     protocol::dm.message = message;
     protocol::dm.toJSON(doc);
     size_t sz = _jsonToMsgPack(doc, buffer, size);
-    //#ifdef DEBUG_VERBOSE
-    //this->println(F("X DEBUG MESSAGE DUMP"));
-    //this->print(" Board Index: ");
-    //this->println(protocol::dm.boardIndex);
-    //this->print(F(" Message: "));
-    //this->println(protocol::dm.message);
-    //this->println(F("TX END DEBUG MESSAGE DUMP"));
-    //#endif
     return sz;
   }
   #endif

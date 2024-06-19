@@ -169,7 +169,11 @@ public:
     size_t sz = _getDebugMessage(buffer, sizeof(buffer), message);
     //printBuffer(buffer, 25);
     COM_DEV.write(buffer, sz);
+    // write nul character to serial
+    COM_DEV.write((uint8_t)0x00);
     COM_DEV.flush();
+    //COM_DEV.write(0x00, 1);
+    //Serial.flush();
 
   }
   #endif

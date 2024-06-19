@@ -48,7 +48,7 @@ import copy
 from abc import ABCMeta, abstractmethod
 import serial.tools.list_ports
 import concurrent.futures
-logging.basicConfig(level=logging.DEBUG, format='%(message)s\r\n')
+logging.basicConfig(level=logging.CRITICAL, format='%(message)s\r\n')
 
 # Filename of default yaml profile.
 DEFAULT_PROFILE = "config.yaml"
