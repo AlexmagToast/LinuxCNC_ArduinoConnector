@@ -26,9 +26,8 @@ def display_arduino_statuses(stdscr, arduino_connections, scroll_offset, selecte
             "component_name": 22,
             "device": 15,
             "status": 13,
-            "hal_emulation": 8,  # Adjusted width for "HalEmu?"
             "linuxcnc_status": 10,  # Width for LinuxCNC status
-            "features": width - (17 + 22 + 15 + 13 + 8 + 10 + 11)  # Remaining width for features, minus 11 for separators
+            "features": width - (17 + 22 + 15 + 13 + 10 + 9)  # Remaining width for features, minus 9 for separators
         }
 
         # Check if the console is too small height-wise to show the column names and at least one row
@@ -43,8 +42,8 @@ def display_arduino_statuses(stdscr, arduino_connections, scroll_offset, selecte
         row = 0
         stdscr.addstr(row, 0, "Arduino Connection Statuses:")
         row += 1
-        stdscr.addstr(row, 0, "{:<{alias}} | {:<{component_name}} | {:<{device}} | {:<{status}} | {:<{hal_emulation}} | {:<{linuxcnc_status}} | {}".format(
-            "Alias", "Component Name", "Device", "Arduino Status", "HalEmu?", "LinuxCNC", "Features",
+        stdscr.addstr(row, 0, "{:<{alias}} | {:<{component_name}} | {:<{device}} | {:<{status}} | {:<{linuxcnc_status}} | {}".format(
+            "Alias", "Component Name", "Device", "Arduino Status", "LinuxCNC", "Features",
             **max_widths))
         row += 1
         stdscr.addstr(row, 0, "-" * width)
@@ -70,7 +69,6 @@ def display_arduino_statuses(stdscr, arduino_connections, scroll_offset, selecte
             alias = truncate(connection.settings.alias, max_widths["alias"])
             component_name = truncate(connection.settings.component_name, max_widths["component_name"])
             device = connection.settings.dev
-            hal_emulation = truncate(str(connection.settings.hal_emulation), max_widths["hal_emulation"])
             features = truncate(", ".join([f"{k.featureName} [{len(v)}]" for k, v in connection.settings.io_map.items()]), max_widths["features"])
 
             if connection.settings.enabled:
@@ -79,10 +77,16 @@ def display_arduino_statuses(stdscr, arduino_connections, scroll_offset, selecte
                 status = "DISABLED"
 
             # Determine the LinuxCNC status
-            if connection.settings.hal_emulation:
+            if not connection.settings.enabled:
                 linuxcnc_status = "N/A"
+                linuxcnc_color_pair = curses.color_pair(0)  # Default background
             else:
-                linuxcnc_status = "OK" if not connection.linuxcnc_error else "ERROR"
+                if connection.settings.hal_emulation:
+                    linuxcnc_status = "N/A"
+                    linuxcnc_color_pair = curses.color_pair(0)  # Default background
+                else:
+                    linuxcnc_status = "OK" if not connection.linuxcnc_error else "ERROR"
+                    linuxcnc_color_pair = curses.color_pair(2) if linuxcnc_status == "OK" else curses.color_pair(1)
 
             # Determine the color pair for the status
             if status == "DISCONNECTED":
@@ -93,14 +97,6 @@ def display_arduino_statuses(stdscr, arduino_connections, scroll_offset, selecte
                 color_pair = curses.color_pair(0)  # Default background
             else:
                 color_pair = curses.color_pair(3)  # Yellow background
-
-            # Determine the color pair for the LinuxCNC status
-            if linuxcnc_status == "ERROR":
-                linuxcnc_color_pair = curses.color_pair(1)  # Red background
-            elif linuxcnc_status == "OK":
-                linuxcnc_color_pair = curses.color_pair(2)  # Green background
-            else:
-                linuxcnc_color_pair = curses.color_pair(0)  # Default background
 
             # Handle scrolling for device
             if len(device) > max_widths["device"]:
@@ -126,17 +122,15 @@ def display_arduino_statuses(stdscr, arduino_connections, scroll_offset, selecte
                     alias, component_name, device_display,
                     **max_widths), curses.color_pair(4))
                 stdscr.addstr("{:<{status}}".format(status, **max_widths), curses.color_pair(4) | color_pair)
-                stdscr.addstr(" | {:<{hal_emulation}} | ".format(hal_emulation, **max_widths), curses.color_pair(4))
-                stdscr.addstr("{:<{linuxcnc_status}}".format(linuxcnc_status, **max_widths), curses.color_pair(4) | linuxcnc_color_pair)
-                stdscr.addstr(" | {}".format(features, **max_widths), curses.color_pair(4))
+                stdscr.addstr(" | {:<{linuxcnc_status}} | ".format(linuxcnc_status, **max_widths), curses.color_pair(4) | linuxcnc_color_pair)
+                stdscr.addstr("{}".format(features, **max_widths), curses.color_pair(4))
             else:
                 stdscr.addstr(row, 0, "{:<{alias}} | {:<{component_name}} | {:<{device}} | ".format(
                     alias, component_name, device_display,
                     **max_widths))
                 stdscr.addstr("{:<{status}}".format(status, **max_widths), color_pair)
-                stdscr.addstr(" | {:<{hal_emulation}} | ".format(hal_emulation, **max_widths))
-                stdscr.addstr("{:<{linuxcnc_status}}".format(linuxcnc_status, **max_widths), linuxcnc_color_pair)
-                stdscr.addstr(" | {}".format(features, **max_widths))
+                stdscr.addstr(" | {:<{linuxcnc_status}} | ".format(linuxcnc_status, **max_widths), linuxcnc_color_pair)
+                stdscr.addstr("{}".format(features, **max_widths))
             row += 1
 
         if truncated:
@@ -148,7 +142,7 @@ def display_arduino_statuses(stdscr, arduino_connections, scroll_offset, selecte
         stdscr.clear()
         stdscr.addstr(0, 0, f"Unable to show console UI due to an exception. Details: {str(just_the_string)}")
         stdscr.refresh()
-        
+
 def display_connection_details(stdscr, connection):
     stdscr.clear()
     height, width = stdscr.getmaxyx()
@@ -167,7 +161,6 @@ def display_connection_details(stdscr, connection):
     component_name = connection.settings.component_name
     device = connection.settings.dev
     is_serial_port_available = connection.serialDeviceAvailable if connection.settings.enabled else "N/A"
-    hal_emulation = str(connection.settings.hal_emulation)
     status = connection.serialConn.connectionState if connection.settings.enabled else "DISABLED"
     
     # Determine arduinoReportedUptime value
@@ -193,7 +186,7 @@ def display_connection_details(stdscr, connection):
         elapsed_str = "N/A"
 
     # Determine the LinuxCNC status
-    if connection.settings.hal_emulation:
+    if not connection.settings.enabled:
         linuxcnc_status = "N/A"
     else:
         linuxcnc_status = "OK" if not connection.linuxcnc_error else "ERROR"
@@ -215,8 +208,6 @@ def display_connection_details(stdscr, connection):
     stdscr.addstr(row, 0, f"Device: {device}")
     row += 1
     stdscr.addstr(row, 0, f"Serial Port Available: {is_serial_port_available}")
-    row += 1
-    stdscr.addstr(row, 0, f"HalEmu?: {hal_emulation}")
     row += 1
 
     # Determine the color pair for the status
