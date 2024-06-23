@@ -1,3 +1,41 @@
+import subprocess
+import pkg_resources
+import sys
+class DebuggerExit(Exception):
+    pass
+
+def exit_program():
+    print("Exiting program due to missing packages.")
+    if sys.gettrace() is not None:
+        raise DebuggerExit("Exiting program due to missing packages.")
+    else:
+        sys.exit(1)
+def check_requirements(requirements_file='requirements.txt'):
+    with open(requirements_file, 'r') as file:
+        requirements = file.readlines()
+    missing_packages = []
+    for requirement in requirements:
+        requirement = requirement.strip()
+        if requirement:
+            try:
+                pkg_resources.require(requirement)
+            except pkg_resources.DistributionNotFound:
+                missing_packages.append(requirement)
+    if missing_packages:
+        print(f"The following packages are missing: {', '.join(missing_packages)}")
+        user_input = input("Do you want to install the missing packages? (y/n) [n]: ").strip().lower()
+        if user_input in ['yes', 'y']:
+            print("Attempting to install missing packages...")
+            subprocess.check_call([sys.executable, "-m", "pip", "install", *missing_packages])
+            print("All required packages are now installed.")
+        else:
+            print("Exiting program due to missing packages.")
+            sys.exit(1)
+
+# Check requirements before running any logic
+check_requirements()
+
+# Your main program logic here
 import asyncio
 import concurrent.futures
 import curses
