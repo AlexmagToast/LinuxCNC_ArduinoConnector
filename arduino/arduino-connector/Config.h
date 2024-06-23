@@ -61,12 +61,6 @@
 #define INTEGRATED_CALLBACKS_LOWMEMORY
 #endif
 
-#ifndef EEPROM_ENABLED
-  String uuid("ND");
-#endif
-
-
-//#define DEBUG_VERBOSE
 const uint16_t SERIAL_STARTUP_DELAY = 5000; // In milliseconds
 const uint16_t SERIAL_RX_TIMEOUT = 5000; // In milliseconds. On handhshake, the python side is told to use this value, times two, to determine connection timeouts. 
 
@@ -80,13 +74,8 @@ const uint32_t ERR_INVALID_PIN_ID = 0x00000004;
 const uint32_t ERR_INVALID_PARAMETER = 0x00000005;
 const uint32_t ERR_INVALID_JSON = 0x00000006;
 
-
 const uint16_t RX_BUFFER_SIZE = 256;
 
-
-
-
-//#define DEBUG_DEV Serial
 #define COM_DEV Serial
 #include "ArduinoJson.h"
 #include "SerialConnection.h"
@@ -95,7 +84,3 @@ SerialConnection serialClient(SERIAL_RX_TIMEOUT);
 #define DEBUG_DEV serialClient
 
 #endif
-/*
-  EXPIREMENTAL
-*/
-//#define ENABLE_RAPIDCHANGE
