@@ -8,5 +8,9 @@ __pycache__/
 # Ignore __pycache__ directories
 __pycache__/
 
+# Ignore __pycache__ directories at any level
+**/__pycache__/
+
 # Ignore specific compiled Python files for specific versions
 __init__.cpython-*.pyc
+
