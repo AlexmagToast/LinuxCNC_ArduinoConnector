@@ -13,5 +13,3 @@ __pycache__/
 
 # Ignore specific compiled Python files for specific versions
 __init__.cpython-*.pyc
-
-linuxcnc_arduinoconnector/__pycache__/__init__.cpython-311.pyc
