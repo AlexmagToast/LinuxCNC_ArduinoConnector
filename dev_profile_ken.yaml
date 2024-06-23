@@ -4,7 +4,7 @@ mcu:
   dev: /dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_0001-if00-port0
   #dev: /dev/cu.usbserial-0001
   enabled: true
-  hal_emulation: true
+  hal_emulation: false
   connection: 
     baudrate: 115200
     type: Serial

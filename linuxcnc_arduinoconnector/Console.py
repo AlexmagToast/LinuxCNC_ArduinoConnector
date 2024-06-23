@@ -5,6 +5,8 @@ import traceback
 
 from linuxcnc_arduinoconnector.Utils import format_elapsed_time
 
+# File: /home/ken/git-repos/LinuxCNC_ArduinoConnector/linuxcnc_arduinoconnector/Console.py
+
 def display_arduino_statuses(stdscr, arduino_connections, scroll_offset, selected_index):
     try:
         # Initialize colors
@@ -25,7 +27,8 @@ def display_arduino_statuses(stdscr, arduino_connections, scroll_offset, selecte
             "device": 15,
             "status": 13,
             "hal_emulation": 8,  # Adjusted width for "HalEmu?"
-            "features": width - (17 + 22 + 15 + 13 + 8 + 11)  # Remaining width for features, minus 11 for separators
+            "linuxcnc_status": 10,  # Width for LinuxCNC status
+            "features": width - (17 + 22 + 15 + 13 + 8 + 10 + 11)  # Remaining width for features, minus 11 for separators
         }
 
         # Check if the console is too small height-wise to show the column names and at least one row
@@ -40,8 +43,8 @@ def display_arduino_statuses(stdscr, arduino_connections, scroll_offset, selecte
         row = 0
         stdscr.addstr(row, 0, "Arduino Connection Statuses:")
         row += 1
-        stdscr.addstr(row, 0, "{:<{alias}} | {:<{component_name}} | {:<{device}} | {:<{status}} | {:<{hal_emulation}} | {}".format(
-            "Alias", "Component Name", "Device", "Status", "HalEmu?", "Features",
+        stdscr.addstr(row, 0, "{:<{alias}} | {:<{component_name}} | {:<{device}} | {:<{status}} | {:<{hal_emulation}} | {:<{linuxcnc_status}} | {}".format(
+            "Alias", "Component Name", "Device", "Arduino Status", "HalEmu?", "LinuxCNC", "Features",
             **max_widths))
         row += 1
         stdscr.addstr(row, 0, "-" * width)
@@ -75,6 +78,12 @@ def display_arduino_statuses(stdscr, arduino_connections, scroll_offset, selecte
             else:
                 status = "DISABLED"
 
+            # Determine the LinuxCNC status
+            if connection.settings.hal_emulation:
+                linuxcnc_status = "N/A"
+            else:
+                linuxcnc_status = "OK" if not connection.linuxcnc_error else "ERROR"
+
             # Determine the color pair for the status
             if status == "DISCONNECTED":
                 color_pair = curses.color_pair(1)  # Red background
@@ -84,6 +93,14 @@ def display_arduino_statuses(stdscr, arduino_connections, scroll_offset, selecte
                 color_pair = curses.color_pair(0)  # Default background
             else:
                 color_pair = curses.color_pair(3)  # Yellow background
+
+            # Determine the color pair for the LinuxCNC status
+            if linuxcnc_status == "ERROR":
+                linuxcnc_color_pair = curses.color_pair(1)  # Red background
+            elif linuxcnc_status == "OK":
+                linuxcnc_color_pair = curses.color_pair(2)  # Green background
+            else:
+                linuxcnc_color_pair = curses.color_pair(0)  # Default background
 
             # Handle scrolling for device
             if len(device) > max_widths["device"]:
@@ -109,13 +126,17 @@ def display_arduino_statuses(stdscr, arduino_connections, scroll_offset, selecte
                     alias, component_name, device_display,
                     **max_widths), curses.color_pair(4))
                 stdscr.addstr("{:<{status}}".format(status, **max_widths), curses.color_pair(4) | color_pair)
-                stdscr.addstr(" | {:<{hal_emulation}} | {}".format(hal_emulation, features, **max_widths), curses.color_pair(4))
+                stdscr.addstr(" | {:<{hal_emulation}} | ".format(hal_emulation, **max_widths), curses.color_pair(4))
+                stdscr.addstr("{:<{linuxcnc_status}}".format(linuxcnc_status, **max_widths), curses.color_pair(4) | linuxcnc_color_pair)
+                stdscr.addstr(" | {}".format(features, **max_widths), curses.color_pair(4))
             else:
                 stdscr.addstr(row, 0, "{:<{alias}} | {:<{component_name}} | {:<{device}} | ".format(
                     alias, component_name, device_display,
                     **max_widths))
                 stdscr.addstr("{:<{status}}".format(status, **max_widths), color_pair)
-                stdscr.addstr(" | {:<{hal_emulation}} | {}".format(hal_emulation, features, **max_widths))
+                stdscr.addstr(" | {:<{hal_emulation}} | ".format(hal_emulation, **max_widths))
+                stdscr.addstr("{:<{linuxcnc_status}}".format(linuxcnc_status, **max_widths), linuxcnc_color_pair)
+                stdscr.addstr(" | {}".format(features, **max_widths))
             row += 1
 
         if truncated:
@@ -171,6 +192,20 @@ def display_connection_details(stdscr, connection):
     else:
         elapsed_str = "N/A"
 
+    # Determine the LinuxCNC status
+    if connection.settings.hal_emulation:
+        linuxcnc_status = "N/A"
+    else:
+        linuxcnc_status = "OK" if not connection.linuxcnc_error else "ERROR"
+
+    # Determine the color pair for the LinuxCNC status
+    if linuxcnc_status == "ERROR":
+        linuxcnc_color_pair = curses.color_pair(1)  # Red background
+    elif linuxcnc_status == "OK":
+        linuxcnc_color_pair = curses.color_pair(2)  # Green background
+    else:
+        linuxcnc_color_pair = curses.color_pair(0)  # Default background
+
     row = 0
     stdscr.addstr(row, 0, f"Details for {alias_display}")
     row += 2  # Add a blank line
@@ -194,8 +229,11 @@ def display_connection_details(stdscr, connection):
     else:
         color_pair = curses.color_pair(3)  # Yellow background
 
-    stdscr.addstr(row, 0, "Status: ")
+    stdscr.addstr(row, 0, "Arduino Status: ")
     stdscr.addstr(f"{status}", color_pair)
+    row += 1
+    stdscr.addstr(row, 0, "LinuxCNC Status: ")
+    stdscr.addstr(f"{linuxcnc_status}", linuxcnc_color_pair)
     row += 1
     stdscr.addstr(row, 0, f"Arduino Reported Uptime: {uptime_str}")
     row += 1
@@ -250,9 +288,5 @@ def display_connection_details(stdscr, connection):
                 width5=pin_column_widths[5]
             ))
             row += 1
-            if row >= height - 2:
-                stdscr.addstr(row, 0, "... (truncated)")
-                break
 
-    stdscr.addstr(height - 1, 0, "Press any key to return")
     stdscr.refresh()

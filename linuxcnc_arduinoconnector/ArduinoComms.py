@@ -6,6 +6,7 @@ import time
 import traceback
 import serial
 from strenum import StrEnum
+from linuxcnc_arduinoconnector.HalInterface import HalInterface
 from linuxcnc_arduinoconnector.ConfigModels import ArduinoSettings
 from linuxcnc_arduinoconnector.ProtocolModels import ConnectionState, ConnectionType, InviteSyncMessage, MessageDecoder, MessageEncoder, MessageType, ProtocolMessage
 import serial.tools.list_ports
@@ -356,36 +357,16 @@ class HalPinConnection:
 
 
 
-
-class ArduinoConnection:
+class ArduinoConnection(HalInterface):
     def __init__(self, settings:ArduinoSettings):
+        super().__init__()  #  call the HalInterface constructor
         self.settings = settings
         self.serialConn = SerialConnection(dev=settings.dev, baudRate=settings.baud_rate, profileSignature=self.settings.yamlProfileSignature, timeout=settings.connection_timeout)
         self.serialConn.alias = settings.alias
         self.serialDeviceAvailable = False
-        '''
-                while( True ):
-            try:
-                self.component = hal.component(self.settings.component_name)
-                logging.debug(f'PYDEBUG: ArduinoConnection::doWork, dev={self.settings.dev}, alias={self.settings.alias}, Successfully loaded component {self.settings.component_name} into HAL')
-                break
-            except hal.error as ex:
-                logging.debug(f'PYDEBUG: ArduinoConnection::doWork, dev={self.settings.dev}, alias={self.settings.alias}, Detected existing instance of {self.settings.component_name} in HAL, calling halcmd unload..')
-                subprocess.run(["halcmd", f"unload {self.settings.component_name}"])
-        '''
-        '''
-        self.component = hal.component(self.settings.component_name) # Future TODO: Implement unload function as shown above.  Appear to need to handle CTRL+C in main loop to respect the unload request
-                
-        for k, v in settings.io_map.items():
-            for v1 in v:
-                if v1.pinEnabled == True: 
-                    v1.halPinConnection = HalPinConnection(component=self.component, pinName=v1.pinName, pinType=v1.halPinType, pinDirection=v1.halPinDirection)
-
-        self.component.ready()  
-        
-        '''
 
         if self.settings.enabled == True:
+            
             self.serialConn.messageReceivedSubscribe(mt=MessageType.MT_PINCHANGE, callback=lambda m: self.onMessage(m))
             self.serialConn.messageReceivedSubscribe(mt=MessageType.MT_CONFIG_ACK, callback=lambda m: self.onMessage(m))
             self.serialConn.messageReceivedSubscribe(mt=MessageType.MT_CONFIG_NAK, callback=lambda m: self.onMessage(m))
@@ -397,6 +378,7 @@ class ArduinoConnection:
                     f.debugSubscribe(callback=lambda d: self.onDebug(d))
                     f.Setup()
                     f.sendMessageSubscribe(callback=lambda m: self.sendMessage(m))
+                    self.registerPins(f)
             except Exception as ex:
                 just_the_string = traceback.format_exc()
                 logging.debug(f'PYDEBUG: Error [{settings.alias}: {str(just_the_string)}') 
@@ -404,6 +386,10 @@ class ArduinoConnection:
     def __str__(self) -> str:
         return f'Arduino Alias = {self.settings.alias}, Component Name = {self.settings.component_name}, Enabled = {self.settings.enabled}'
     
+    def register_pins(self, feature):
+        for pin in feature.pinList:
+            self.register_pin(pin.pinName, pin.halPinType, pin.halPinDirection)
+            
     def sendMessage(self, pm:ProtocolMessage):
         self.serialConn.sendMessage(pm)
         

@@ -1,16 +1,26 @@
-# arduino_connector/__init__.py
-
-# Import key classes and functions to make them accessible at the package level
-from .YamlParser import ArduinoYamlParser
-from .ConfigModels import ArduinoSettings
-from .ArduinoComms import SerialConnection
-
 # Package metadata
 __version__ = "0.1.0"
 __author__ = "Alexander Richter, Ken Thompson"
 
+from .ArduinoComms import ArduinoConnection
+from .ConfigModels import ArduinoSettings
+from .Console import display_arduino_statuses, display_connection_details
+from .Features import DigitalInputs, DigitalOutputs
+from .ProtocolModels import ConnectionState, ConnectionType, ProtocolMessage
+from .Utils import listDevices, locateProfile
+from .YamlParser import ArduinoYamlParser
+
 __all__ = [
-    "ArduinoYamlParser",
+    "ArduinoConnection",
     "ArduinoSettings",
-    "SerialConnection"
+    "display_arduino_statuses",
+    "display_connection_details",
+    "DigitalInputs",
+    "DigitalOutputs",
+    "ConnectionState",
+    "ConnectionType",
+    "ProtocolMessage",
+    "listDevices",
+    "locateProfile",
+    "ArduinoYamlParser"
 ]
