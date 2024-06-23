@@ -3,7 +3,7 @@ mcu:
   component_name: nodemcu # Name of component to use in HAL
   dev: /dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_0001-if00-port0
   #dev: /dev/cu.usbserial-0001
-  enabled: true
+  enabled: false
   hal_emulation: true
   connection: 
     baudrate: 115200
@@ -27,6 +27,25 @@ mcu:
         pin_disconnected_state: 1
         pin_initial_state: 0
         pin_enabled: false
+---
+mcu:
+  alias: esp32-cam
+  component_name: esp32cam # Name of component to use in HAL
+  #dev: /dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_0001-if00-port0
+  dev: /dev/cu.usbserial-1120
+  enabled: true
+  hal_emulation: true
+  connection: 
+    baudrate: 115200
+    type: Serial
+
+  io_map:     
+    digitalInputs:
+      - pin_id: 14
+        pin_name: din.5 #hal pin name
+        input_pullup: true
+        pin_debounce: 50
+
 ---
 mcu: 
   alias: Arduino Mega2560
@@ -58,7 +77,79 @@ mcu:
         pin_name: din.03 #hal pin name
         input_pullup: true
         pin_debounce: 0
-        pin_enabled: false
+        pin_enabled: true
+        pin_connected_state: 0
+        pin_disconnected_state: 1
+        pin_initial_state: -1
+      - pin_id: 4
+        pin_name: din.04 #hal pin name
+        input_pullup: true
+        pin_debounce: 0
+        pin_enabled: true
+        pin_connected_state: 0
+        pin_disconnected_state: 1
+        pin_initial_state: -1
+      - pin_id: 5
+        pin_name: din.05 #hal pin name
+        input_pullup: true
+        pin_debounce: 0
+        pin_enabled: true
+        pin_connected_state: 0
+        pin_disconnected_state: 1
+        pin_initial_state: -1
+      - pin_id: 6
+        pin_name: din.06 #hal pin name
+        input_pullup: true
+        pin_debounce: 0
+        pin_enabled: true
+        pin_connected_state: 0
+        pin_disconnected_state: 1
+        pin_initial_state: -1
+      - pin_id: 7
+        pin_name: din.07 #hal pin name
+        input_pullup: true
+        pin_debounce: 0
+        pin_enabled: true
+        pin_connected_state: 0
+        pin_disconnected_state: 1
+        pin_initial_state: -1
+      - pin_id: 8
+        pin_name: din.08 #hal pin name
+        input_pullup: true
+        pin_debounce: 0
+        pin_enabled: true
+        pin_connected_state: 0
+        pin_disconnected_state: 1
+        pin_initial_state: -1
+      - pin_id: 9 
+        pin_name: din.09 #hal pin name
+        input_pullup: true
+        pin_debounce: 0
+        pin_enabled: true
+        pin_connected_state: 0
+        pin_disconnected_state: 1
+        pin_initial_state: -1
+      - pin_id: 11 
+        pin_name: din.11 #hal pin name
+        input_pullup: true
+        pin_debounce: 0
+        pin_enabled: true
+        pin_connected_state: 0
+        pin_disconnected_state: 1
+        pin_initial_state: -1
+      - pin_id: 12
+        pin_name: din.12 #hal pin name
+        input_pullup: true
+        pin_debounce: 0
+        pin_enabled: true
+        pin_connected_state: 0
+        pin_disconnected_state: 1
+        pin_initial_state: -1
+      - pin_id: 13
+        pin_name: din.13 #hal pin name
+        input_pullup: true
+        pin_debounce: 0
+        pin_enabled: true
         pin_connected_state: 0
         pin_disconnected_state: 1
         pin_initial_state: -1

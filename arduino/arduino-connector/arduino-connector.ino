@@ -70,10 +70,12 @@ void setup() {
   //}
   delay(SERIAL_STARTUP_DELAY);
   #ifdef DEBUG
-    DEBUG_DEV.println(F("STARTING UP!! V8"));
+    DEBUG_DEV.println(F("STARTING UP!!"));
     //DEBUG_DEV.println("HERE WE GO");
     DEBUG_DEV.flush();
   #endif
+
+
   /*
   if( EEPROM.length() == 0 )
   {

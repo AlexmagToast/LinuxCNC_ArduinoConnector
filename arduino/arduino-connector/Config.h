@@ -84,6 +84,8 @@ const uint32_t ERR_INVALID_JSON = 0x00000006;
 const uint16_t RX_BUFFER_SIZE = 256;
 
 
+
+
 //#define DEBUG_DEV Serial
 #define COM_DEV Serial
 #include "ArduinoJson.h"

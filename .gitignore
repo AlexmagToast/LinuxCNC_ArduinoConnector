@@ -3,3 +3,4 @@
 **/[Ss]ecret.h
 **/*.pyc
 *.pyc
+__pycache__/

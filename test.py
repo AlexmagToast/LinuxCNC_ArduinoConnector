@@ -12,7 +12,7 @@ from linuxcnc_arduinoconnector.Console import display_arduino_statuses, display_
 from linuxcnc_arduinoconnector.Utils import listDevices, locateProfile
 from linuxcnc_arduinoconnector.YamlParser import ArduinoYamlParser
 
-logging.basicConfig(level=logging.CRITICAL, format='%(message)s\r\n')
+logging.basicConfig(level=logging.DEBUG, format='%(message)s\r\n')
 
 arduino_map = []
 
@@ -146,5 +146,5 @@ def main(stdscr=None):
     asyncio.run(main_async(stdscr, arduino_connections))
 
 if __name__ == "__main__":
-   curses.wrapper(main)
-   #main()
+   #curses.wrapper(main)
+   main()
