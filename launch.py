@@ -86,16 +86,24 @@ async def main_async(stdscr, arduino_connections):
     
 def main(stdscr=None):
     argumentList = sys.argv[1:]
-    options = "hdp:"
-    long_options = ["Help", "Devices", "Profile="]
+    options = "hdo:p:"
+    long_options = ["Help", "Devices", "Output=", "Profile="]
     target_profile = None
     devs = []
-    
-    # these lines enable debug messages to the console
-    #if stdscr is not None:
-    #    curses.curs_set(0)
-    #    stdscr.clear()
-    #    stdscr.refresh()
+    if stdscr == None:
+        # Check for output=console first
+        try:
+            arguments, values = getopt.getopt(argumentList, options, long_options)
+            for currentArgument, currentValue in arguments:
+                if currentArgument in ("-o", "--Output") and currentValue == "console":
+                    # prevent logging to console while showing the curses ui
+                    logging.getLogger().setLevel(logging.CRITICAL)
+                    curses.wrapper(main)
+                    return
+        except getopt.error as err:
+            just_the_string = traceback.format_exc()
+            logging.debug(f'PYDEBUG: error: {str(just_the_string)}')
+            sys.exit()
 
     try:
         arguments, values = getopt.getopt(argumentList, options, long_options)
@@ -109,6 +117,7 @@ def main(stdscr=None):
             elif currentArgument in ("-p", "--profile"):
                 logging.debug(f'PYDEBUG: Profile: {currentValue}')
                 target_profile = currentValue
+            
     except getopt.error as err:
         just_the_string = traceback.format_exc()
         logging.debug(f'PYDEBUG: error: {str(just_the_string)}')
@@ -146,5 +155,4 @@ def main(stdscr=None):
     asyncio.run(main_async(stdscr, arduino_connections))
 
 if __name__ == "__main__":
-   #curses.wrapper(main)
    main()

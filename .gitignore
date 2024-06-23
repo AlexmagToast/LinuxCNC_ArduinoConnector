@@ -1,6 +1,12 @@
 .vscode
 .vscode/arduino.json
 **/[Ss]ecret.h
-**/*.pyc
-*.pyc
 __pycache__/
+# Ignore all .pyc files
+*.pyc
+
+# Ignore __pycache__ directories
+__pycache__/
+
+# Ignore specific compiled Python files for specific versions
+__init__.cpython-*.pyc

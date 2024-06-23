@@ -1,115 +1,133 @@
-
 import curses
 from datetime import timedelta, datetime
-
+import logging
+import traceback
 
 from linuxcnc_arduinoconnector.Utils import format_elapsed_time
 
-
 def display_arduino_statuses(stdscr, arduino_connections, scroll_offset, selected_index):
-    # Initialize colors
-    curses.start_color()
-    curses.init_pair(1, curses.COLOR_WHITE, curses.COLOR_RED)    # Red background
-    curses.init_pair(2, curses.COLOR_WHITE, curses.COLOR_GREEN)  # Green background
-    curses.init_pair(3, curses.COLOR_BLACK, curses.COLOR_YELLOW) # Yellow background
-    curses.init_pair(4, curses.COLOR_BLACK, curses.COLOR_WHITE)  # Highlight background
+    try:
+        # Initialize colors
+        curses.start_color()
+        curses.init_pair(1, curses.COLOR_WHITE, curses.COLOR_RED)    # Red background
+        curses.init_pair(2, curses.COLOR_WHITE, curses.COLOR_GREEN)  # Green background
+        curses.init_pair(3, curses.COLOR_BLACK, curses.COLOR_YELLOW) # Yellow background
+        curses.init_pair(4, curses.COLOR_BLACK, curses.COLOR_WHITE)  # Highlight background
 
-    curses.curs_set(0)
+        curses.curs_set(0)
 
-    stdscr.clear()
+        stdscr.clear()
 
-    height, width = stdscr.getmaxyx()
-    max_widths = {
-        "alias": 17,
-        "component_name": 22,
-        "device": 15,
-        "status": 13,
-        "hal_emulation": 8,  # Adjusted width for "HalEmu?"
-        "features": width - (17 + 22 + 15 + 13 + 8 + 11)  # Remaining width for features, minus 11 for separators
-    }
+        height, width = stdscr.getmaxyx()
+        max_widths = {
+            "alias": 17,
+            "component_name": 22,
+            "device": 15,
+            "status": 13,
+            "hal_emulation": 8,  # Adjusted width for "HalEmu?"
+            "features": width - (17 + 22 + 15 + 13 + 8 + 11)  # Remaining width for features, minus 11 for separators
+        }
 
-    # Check if the console is too small height-wise to show the column names and at least one row
-    if height < 4:  # 1 row for the title, 1 row for the column names, 1 row for the separator, and at least 1 data row
-        return
+        # Check if the console is too small height-wise to show the column names and at least one row
+        if height < 5:  # 1 row for the title, 1 row for the column names, 1 row for the separator, and at least 1 data row
+            stdscr.addstr(0, 0, "Error: Terminal height is too short to display the statuses.")
+            stdscr.refresh()
+            return
 
-    def truncate(text, max_length):
-        return text if len(text) <= max_length else text[:max_length-3] + '...'
+        def truncate(text, max_length):
+            return text if len(text) <= max_length else text[:max_length-3] + '...'
 
-    row = 0
-    stdscr.addstr(row, 0, "Arduino Connection Statuses:")
-    row += 1
-    stdscr.addstr(row, 0, "{:<{alias}} | {:<{component_name}} | {:<{device}} | {:<{status}} | {:<{hal_emulation}} | {}".format(
-        "Alias", "Component Name", "Device", "Status", "HalEmu?", "Features",
-        **max_widths))
-    row += 1
-    stdscr.addstr(row, 0, "-" * width)
-    row += 1
-
-    # Separate enabled and disabled connections
-    enabled_connections = [conn for conn in arduino_connections if conn.settings.enabled]
-    disabled_connections = [conn for conn in arduino_connections if not conn.settings.enabled]
-
-    all_connections = enabled_connections + disabled_connections
-
-    for index, connection in enumerate(all_connections):
-        alias = truncate(connection.settings.alias, max_widths["alias"])
-        component_name = truncate(connection.settings.component_name, max_widths["component_name"])
-        device = connection.settings.dev
-        hal_emulation = truncate(str(connection.settings.hal_emulation), max_widths["hal_emulation"])
-        features = truncate(", ".join([f"{k.featureName} [{len(v)}]" for k, v in connection.settings.io_map.items()]), max_widths["features"])
-
-        if connection.settings.enabled:
-            status = truncate(connection.serialConn.connectionState, max_widths["status"])
-        else:
-            status = "DISABLED"
-
-        # Determine the color pair for the status
-        if status == "DISCONNECTED":
-            color_pair = curses.color_pair(1)  # Red background
-        elif status == "CONNECTED":
-            color_pair = curses.color_pair(2)  # Green background
-        elif status == "DISABLED":
-            color_pair = curses.color_pair(0)  # Default background
-        else:
-            color_pair = curses.color_pair(3)  # Yellow background
-
-        # Handle scrolling for device
-        if len(device) > max_widths["device"]:
-            if scroll_offset < len(device):
-                device_display = device[scroll_offset:scroll_offset + max_widths["device"]]
-                if scroll_offset + max_widths["device"] < len(device):
-                    device_display = device_display[:-2] + '..'
-                else:
-                    device_display = device_display + ' ' * (max_widths["device"] - len(device_display))
-            else:
-                scroll_position = scroll_offset - len(device)
-                device_display = device[scroll_position:scroll_position + max_widths["device"]]
-                if scroll_position + max_widths["device"] < len(device):
-                    device_display = device_display[:-2] + '..'
-                else:
-                    device_display = device_display + ' ' * (max_widths["device"] - len(device_display))
-        else:
-            device_display = device.ljust(max_widths["device"])
-
-        # Highlight the selected row
-        if index == selected_index:
-            stdscr.addstr(row, 0, "{:<{alias}} | {:<{component_name}} | {:<{device}} | ".format(
-                alias, component_name, device_display,
-                **max_widths), curses.color_pair(4))
-            stdscr.addstr("{:<{status}}".format(status, **max_widths), curses.color_pair(4) | color_pair)
-            stdscr.addstr(" | {:<{hal_emulation}} | {}".format(hal_emulation, features, **max_widths), curses.color_pair(4))
-        else:
-            stdscr.addstr(row, 0, "{:<{alias}} | {:<{component_name}} | {:<{device}} | ".format(
-                alias, component_name, device_display,
-                **max_widths))
-            stdscr.addstr("{:<{status}}".format(status, **max_widths), color_pair)
-            stdscr.addstr(" | {:<{hal_emulation}} | {}".format(hal_emulation, features, **max_widths))
+        row = 0
+        stdscr.addstr(row, 0, "Arduino Connection Statuses:")
+        row += 1
+        stdscr.addstr(row, 0, "{:<{alias}} | {:<{component_name}} | {:<{device}} | {:<{status}} | {:<{hal_emulation}} | {}".format(
+            "Alias", "Component Name", "Device", "Status", "HalEmu?", "Features",
+            **max_widths))
+        row += 1
+        stdscr.addstr(row, 0, "-" * width)
         row += 1
 
-    stdscr.refresh()
-    
-    
-    
+        # Separate enabled and disabled connections
+        enabled_connections = [conn for conn in arduino_connections if conn.settings.enabled]
+        disabled_connections = [conn for conn in arduino_connections if not conn.settings.enabled]
+
+        all_connections = enabled_connections + disabled_connections
+
+        # Calculate the number of rows available for displaying connections
+        available_rows = height - row - 1  # Subtracting the current row and one for the truncated message
+
+        # Check if we need to truncate the list
+        if len(all_connections) > available_rows:
+            all_connections = all_connections[:available_rows - 1]  # Leave space for the truncated message
+            truncated = True
+        else:
+            truncated = False
+
+        for index, connection in enumerate(all_connections):
+            alias = truncate(connection.settings.alias, max_widths["alias"])
+            component_name = truncate(connection.settings.component_name, max_widths["component_name"])
+            device = connection.settings.dev
+            hal_emulation = truncate(str(connection.settings.hal_emulation), max_widths["hal_emulation"])
+            features = truncate(", ".join([f"{k.featureName} [{len(v)}]" for k, v in connection.settings.io_map.items()]), max_widths["features"])
+
+            if connection.settings.enabled:
+                status = truncate(connection.serialConn.connectionState, max_widths["status"])
+            else:
+                status = "DISABLED"
+
+            # Determine the color pair for the status
+            if status == "DISCONNECTED":
+                color_pair = curses.color_pair(1)  # Red background
+            elif status == "CONNECTED":
+                color_pair = curses.color_pair(2)  # Green background
+            elif status == "DISABLED":
+                color_pair = curses.color_pair(0)  # Default background
+            else:
+                color_pair = curses.color_pair(3)  # Yellow background
+
+            # Handle scrolling for device
+            if len(device) > max_widths["device"]:
+                if scroll_offset < len(device):
+                    device_display = device[scroll_offset:scroll_offset + max_widths["device"]]
+                    if scroll_offset + max_widths["device"] < len(device):
+                        device_display = device_display[:-2] + '..'
+                    else:
+                        device_display = device_display + ' ' * (max_widths["device"] - len(device_display))
+                else:
+                    scroll_position = scroll_offset - len(device)
+                    device_display = device[scroll_position:scroll_position + max_widths["device"]]
+                    if scroll_position + max_widths["device"] < len(device):
+                        device_display = device_display[:-2] + '..'
+                    else:
+                        device_display = device_display + ' ' * (max_widths["device"] - len(device_display))
+            else:
+                device_display = device.ljust(max_widths["device"])
+
+            # Highlight the selected row
+            if index == selected_index:
+                stdscr.addstr(row, 0, "{:<{alias}} | {:<{component_name}} | {:<{device}} | ".format(
+                    alias, component_name, device_display,
+                    **max_widths), curses.color_pair(4))
+                stdscr.addstr("{:<{status}}".format(status, **max_widths), curses.color_pair(4) | color_pair)
+                stdscr.addstr(" | {:<{hal_emulation}} | {}".format(hal_emulation, features, **max_widths), curses.color_pair(4))
+            else:
+                stdscr.addstr(row, 0, "{:<{alias}} | {:<{component_name}} | {:<{device}} | ".format(
+                    alias, component_name, device_display,
+                    **max_widths))
+                stdscr.addstr("{:<{status}}".format(status, **max_widths), color_pair)
+                stdscr.addstr(" | {:<{hal_emulation}} | {}".format(hal_emulation, features, **max_widths))
+            row += 1
+
+        if truncated:
+            stdscr.addstr(row, 0, "List truncated. Not all connections are shown.")
+
+        stdscr.refresh()
+    except Exception as e:
+        just_the_string = traceback.format_exc()
+        stdscr.clear()
+        stdscr.addstr(0, 0, f"Unable to show console UI due to an exception. Details: {str(just_the_string)}")
+        stdscr.refresh()
+        
 def display_connection_details(stdscr, connection):
     stdscr.clear()
     height, width = stdscr.getmaxyx()

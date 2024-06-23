@@ -3,7 +3,7 @@ mcu:
   component_name: nodemcu # Name of component to use in HAL
   dev: /dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_0001-if00-port0
   #dev: /dev/cu.usbserial-0001
-  enabled: false
+  enabled: true
   hal_emulation: true
   connection: 
     baudrate: 115200
@@ -33,7 +33,7 @@ mcu:
   component_name: esp32cam # Name of component to use in HAL
   #dev: /dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_0001-if00-port0
   dev: /dev/cu.usbserial-1120
-  enabled: true
+  enabled: false
   hal_emulation: true
   connection: 
     baudrate: 115200
