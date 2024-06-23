@@ -27,7 +27,7 @@
 #ifndef CONNECTION_H_
 #define CONNECTION_H_
 #pragma once
-#include "Arduino.h"
+//#include "Arduino.h"
 #include "Config.h"
 #include "Protocol.h"
 #include "RXBuffer.h"

@@ -1,0 +1,27 @@
+// Example of a launch.json file for use during debugging
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            //"preLaunchTask": "linuxcncenv",
+            "name": "Python",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "launch.py",
+            "console": "integratedTerminal",
+            "args":"-p dev_profile_ken.yaml"
+        },
+        {
+            //"preLaunchTask": "linuxcncenv",
+            "name": "Python (Console UI)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "launch.py",
+            "console": "integratedTerminal",
+            "args":"-o console -p dev_profile_ken.yaml"
+        }
+    ]
+}
