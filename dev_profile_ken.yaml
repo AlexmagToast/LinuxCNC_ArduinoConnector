@@ -20,13 +20,7 @@ mcu:
         input_pullup: true
         pin_debounce: 50
 
-    digitalOutputs:
-      - pin_id: 13
-        pin_name: dout.7 #hal pin name
-        pin_connected_state: 0
-        pin_disconnected_state: 1
-        pin_initial_state: 0
-        pin_enabled: false
+
 ---
 mcu:
   alias: esp32-cam
