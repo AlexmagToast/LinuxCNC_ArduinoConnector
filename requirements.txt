@@ -5,3 +5,4 @@ numpy
 msgpack
 cobs
 pyyaml
+textual

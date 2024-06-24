@@ -378,7 +378,7 @@ class ArduinoConnection(HalInterface):
                     f.debugSubscribe(callback=lambda d: self.onDebug(d))
                     f.Setup()
                     f.sendMessageSubscribe(callback=lambda m: self.sendMessage(m))
-                    self.registerPins(f)
+                    #self.registerPins(f)
             except Exception as ex:
                 just_the_string = traceback.format_exc()
                 logging.debug(f'PYDEBUG: Error [{settings.alias}: {str(just_the_string)}') 

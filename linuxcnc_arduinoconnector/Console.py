@@ -5,20 +5,112 @@ import traceback
 
 from linuxcnc_arduinoconnector.Utils import format_elapsed_time
 
-# File: /home/ken/git-repos/LinuxCNC_ArduinoConnector/linuxcnc_arduinoconnector/Console.py
+class UIElement:
+    def __init__(self, stdscr):
+        self.stdscr = stdscr
+
+    def draw(self):
+        raise NotImplementedError("Subclasses should implement this!")
+
+class TextElement(UIElement):
+    def __init__(self, stdscr, text, row, col, color_pair=0):
+        super().__init__(stdscr)
+        self.text = text
+        self.row = row
+        self.col = col
+        self.color_pair = color_pair
+
+    def draw(self):
+        height, width = self.stdscr.getmaxyx()
+        # Fill the entire width with the background color
+        self.stdscr.addstr(self.row, 0, ' ' * width, curses.color_pair(self.color_pair))
+        self.stdscr.addstr(self.row, self.col, self.text, curses.color_pair(self.color_pair))
+        
+class TableElement(UIElement):
+    def __init__(self, stdscr, headers, data, start_row, start_col, max_widths, selected_index=None):
+        super().__init__(stdscr)
+        self.headers = headers
+        self.data = data
+        self.start_row = start_row
+        self.start_col = start_col
+        self.max_widths = max_widths
+        self.selected_index = selected_index
+
+    def draw(self):
+        row = self.start_row
+        col = self.start_col
+        self.stdscr.addstr(row, col, self.format_row(self.headers, self.max_widths))
+        row += 1
+        self.stdscr.addstr(row, col, "-" * sum(self.max_widths.values()))
+        row += 1
+
+        for index, row_data in enumerate(self.data):
+            status = row_data[3]  # Assuming the status is in the 4th column
+            if status == "CONNECTED":
+                status_color_pair = curses.color_pair(2)  # Green background
+            elif status == "DISCONNECTED":
+                status_color_pair = curses.color_pair(3)  # yellow background
+            elif status == "CONNECTING":
+                status_color_pair = curses.color_pair(3)  # yellow background
+            elif status == "ERROR":
+                status_color_pair = curses.color_pair(1)  # red background
+            else:
+                status_color_pair = curses.color_pair(0)  # Default color
+
+            formatted_row = self.format_row(row_data, self.max_widths)
+            if index == self.selected_index:
+                self.stdscr.addstr(row, col, formatted_row, curses.color_pair(4))
+            else:
+                # Draw the row without color
+                self.stdscr.addstr(row, col, formatted_row)
+                # Overwrite the status part with the colored status
+                status_col_start = sum(self.max_widths[key] + 3 for key in list(self.max_widths.keys())[:3])  # Calculate the start position of the status column
+                self.stdscr.addstr(row, col + status_col_start, f"{status:<{self.max_widths['status']}}", status_color_pair)
+            row += 1
+
+    def format_row(self, row_data, max_widths):
+        return " | ".join([f"{str(item)[:max_widths[key]]:<{max_widths[key]}}" for key, item in zip(max_widths.keys(), row_data)])
+class StatusBar(UIElement):
+    def __init__(self, stdscr, text):
+        super().__init__(stdscr)
+        self.text = text
+
+    def draw(self):
+        height, width = self.stdscr.getmaxyx()
+        # Split the text into parts to apply different styles
+        parts = self.text.split(' ')
+        col = 0
+        for part in parts:
+            if part in ['^C', '↑', '↓', '⏎']:
+                self.stdscr.addstr(height - 1, col, part, curses.color_pair(6))
+            else:
+                self.stdscr.addstr(height - 1, col, part)
+            col += len(part) + 1  # Move to the next position, including space
+
+class ConsoleUI:
+    def __init__(self, stdscr):
+        self.stdscr = stdscr
+        self.elements = []
+
+    def add_element(self, element):
+        self.elements.append(element)
+
+    def draw(self):
+        self.stdscr.clear()
+        for element in self.elements:
+            element.draw()
+        self.stdscr.refresh()
 
 def display_arduino_statuses(stdscr, arduino_connections, scroll_offset, selected_index):
     try:
-        # Initialize colors
         curses.start_color()
-        curses.init_pair(1, curses.COLOR_WHITE, curses.COLOR_RED)    # Red background
-        curses.init_pair(2, curses.COLOR_WHITE, curses.COLOR_GREEN)  # Green background
-        curses.init_pair(3, curses.COLOR_BLACK, curses.COLOR_YELLOW) # Yellow background
-        curses.init_pair(4, curses.COLOR_BLACK, curses.COLOR_WHITE)  # Highlight background
-
+        curses.init_pair(1, curses.COLOR_WHITE, curses.COLOR_RED)
+        curses.init_pair(2, curses.COLOR_WHITE, curses.COLOR_GREEN)
+        curses.init_pair(3, curses.COLOR_BLACK, curses.COLOR_YELLOW)
+        curses.init_pair(4, curses.COLOR_BLACK, curses.COLOR_WHITE)
+        curses.init_pair(5, curses.COLOR_WHITE, curses.COLOR_BLUE)
+        curses.init_pair(6, curses.COLOR_BLACK, curses.COLOR_WHITE)
         curses.curs_set(0)
-
-        stdscr.clear()
 
         height, width = stdscr.getmaxyx()
         max_widths = {
@@ -26,117 +118,61 @@ def display_arduino_statuses(stdscr, arduino_connections, scroll_offset, selecte
             "component_name": 22,
             "device": 15,
             "status": 13,
-            "linuxcnc_status": 10,  # Width for LinuxCNC status
-            "features": width - (17 + 22 + 15 + 13 + 10 + 9)  # Remaining width for features, minus 9 for separators
+            "linuxcnc_status": 10,
+            "features": width - (17 + 22 + 15 + 13 + 10 + 9)
         }
 
-        # Check if the console is too small height-wise to show the column names and at least one row
-        if height < 5:  # 1 row for the title, 1 row for the column names, 1 row for the separator, and at least 1 data row
+        if height < 5:
             stdscr.addstr(0, 0, "Error: Terminal height is too short to display the statuses.")
             stdscr.refresh()
             return
 
-        def truncate(text, max_length):
-            return text if len(text) <= max_length else text[:max_length-3] + '...'
+        ui = ConsoleUI(stdscr)
+        ui.add_element(TextElement(stdscr, "Arduino Connector V2.0", 0, 0, 5))
 
-        row = 0
-        stdscr.addstr(row, 0, "Arduino Connection Statuses:")
-        row += 1
-        stdscr.addstr(row, 0, "{:<{alias}} | {:<{component_name}} | {:<{device}} | {:<{status}} | {:<{linuxcnc_status}} | {}".format(
-            "Alias", "Component Name", "Device", "Arduino Status", "LinuxCNC", "Features",
-            **max_widths))
-        row += 1
-        stdscr.addstr(row, 0, "-" * width)
-        row += 1
+        headers = ["Alias", "Component Name", "Device", "Arduino Status", "LinuxCNC", "Features"]
+        data = []
 
-        # Separate enabled and disabled connections
         enabled_connections = [conn for conn in arduino_connections if conn.settings.enabled]
         disabled_connections = [conn for conn in arduino_connections if not conn.settings.enabled]
-
         all_connections = enabled_connections + disabled_connections
 
-        # Calculate the number of rows available for displaying connections
-        available_rows = height - row - 1  # Subtracting the current row and one for the truncated message
-
-        # Check if we need to truncate the list
+        available_rows = height - 5
         if len(all_connections) > available_rows:
-            all_connections = all_connections[:available_rows - 1]  # Leave space for the truncated message
+            all_connections = all_connections[:available_rows - 1]
             truncated = True
         else:
             truncated = False
 
         for index, connection in enumerate(all_connections):
-            alias = truncate(connection.settings.alias, max_widths["alias"])
-            component_name = truncate(connection.settings.component_name, max_widths["component_name"])
-            device = connection.settings.dev
-            features = truncate(", ".join([f"{k.featureName} [{len(v)}]" for k, v in connection.settings.io_map.items()]), max_widths["features"])
+            alias = connection.settings.alias[:max_widths["alias"]]
+            component_name = connection.settings.component_name[:max_widths["component_name"]]
+            device = connection.settings.dev[:max_widths["device"]]
+            features = ", ".join([f"{k.featureName} [{len(v)}]" for k, v in connection.settings.io_map.items()])[:max_widths["features"]]
 
             if connection.settings.enabled:
-                status = truncate(connection.serialConn.connectionState, max_widths["status"])
+                status = connection.serialConn.connectionState[:max_widths["status"]]
             else:
                 status = "DISABLED"
 
-            # Determine the LinuxCNC status
             if not connection.settings.enabled:
                 linuxcnc_status = "N/A"
-                linuxcnc_color_pair = curses.color_pair(0)  # Default background
             else:
                 if connection.settings.hal_emulation:
                     linuxcnc_status = "N/A"
-                    linuxcnc_color_pair = curses.color_pair(0)  # Default background
                 else:
                     linuxcnc_status = "OK" if not connection.linuxcnc_error else "ERROR"
-                    linuxcnc_color_pair = curses.color_pair(2) if linuxcnc_status == "OK" else curses.color_pair(1)
 
-            # Determine the color pair for the status
-            if status == "DISCONNECTED":
-                color_pair = curses.color_pair(1)  # Red background
-            elif status == "CONNECTED":
-                color_pair = curses.color_pair(2)  # Green background
-            elif status == "DISABLED":
-                color_pair = curses.color_pair(0)  # Default background
-            else:
-                color_pair = curses.color_pair(3)  # Yellow background
+            data.append([alias, component_name, device, status, linuxcnc_status, features])
 
-            # Handle scrolling for device
-            if len(device) > max_widths["device"]:
-                if scroll_offset < len(device):
-                    device_display = device[scroll_offset:scroll_offset + max_widths["device"]]
-                    if scroll_offset + max_widths["device"] < len(device):
-                        device_display = device_display[:-2] + '..'
-                    else:
-                        device_display = device_display + ' ' * (max_widths["device"] - len(device_display))
-                else:
-                    scroll_position = scroll_offset - len(device)
-                    device_display = device[scroll_position:scroll_position + max_widths["device"]]
-                    if scroll_position + max_widths["device"] < len(device):
-                        device_display = device_display[:-2] + '..'
-                    else:
-                        device_display = device_display + ' ' * (max_widths["device"] - len(device_display))
-            else:
-                device_display = device.ljust(max_widths["device"])
-
-            # Highlight the selected row
-            if index == selected_index:
-                stdscr.addstr(row, 0, "{:<{alias}} | {:<{component_name}} | {:<{device}} | ".format(
-                    alias, component_name, device_display,
-                    **max_widths), curses.color_pair(4))
-                stdscr.addstr("{:<{status}}".format(status, **max_widths), curses.color_pair(4) | color_pair)
-                stdscr.addstr(" | {:<{linuxcnc_status}} | ".format(linuxcnc_status, **max_widths), curses.color_pair(4) | linuxcnc_color_pair)
-                stdscr.addstr("{}".format(features, **max_widths), curses.color_pair(4))
-            else:
-                stdscr.addstr(row, 0, "{:<{alias}} | {:<{component_name}} | {:<{device}} | ".format(
-                    alias, component_name, device_display,
-                    **max_widths))
-                stdscr.addstr("{:<{status}}".format(status, **max_widths), color_pair)
-                stdscr.addstr(" | {:<{linuxcnc_status}} | ".format(linuxcnc_status, **max_widths), linuxcnc_color_pair)
-                stdscr.addstr("{}".format(features, **max_widths))
-            row += 1
+        ui.add_element(TableElement(stdscr, headers, data, 2, 0, max_widths, selected_index))
 
         if truncated:
-            stdscr.addstr(row, 0, "List truncated. Not all connections are shown.")
+            ui.add_element(TextElement(stdscr, "List truncated. Not all connections are shown.", height - 2, 0))
 
-        stdscr.refresh()
+        ui.add_element(StatusBar(stdscr, "^C Exit  ↑ Select  ↓ Select  ⏎ Show Details"))
+
+        ui.draw()
     except Exception as e:
         just_the_string = traceback.format_exc()
         stdscr.clear()
@@ -148,12 +184,11 @@ def display_connection_details(stdscr, connection):
         stdscr.clear()
         height, width = stdscr.getmaxyx()
 
-        # Initialize colors
         curses.start_color()
-        curses.init_pair(1, curses.COLOR_WHITE, curses.COLOR_RED)    # Red background
-        curses.init_pair(2, curses.COLOR_WHITE, curses.COLOR_GREEN)  # Green background
-        curses.init_pair(3, curses.COLOR_BLACK, curses.COLOR_YELLOW) # Yellow background
-        curses.init_pair(4, curses.COLOR_BLACK, curses.COLOR_WHITE)  # Highlight background
+        curses.init_pair(1, curses.COLOR_WHITE, curses.COLOR_RED)
+        curses.init_pair(2, curses.COLOR_WHITE, curses.COLOR_GREEN)
+        curses.init_pair(3, curses.COLOR_BLACK, curses.COLOR_YELLOW)
+        curses.init_pair(4, curses.COLOR_BLACK, curses.COLOR_WHITE)
 
         alias_display = connection.settings.alias
         if not connection.settings.enabled:
@@ -164,7 +199,6 @@ def display_connection_details(stdscr, connection):
         is_serial_port_available = connection.serialDeviceAvailable if connection.settings.enabled else "N/A"
         status = connection.serialConn.connectionState if connection.settings.enabled else "DISABLED"
 
-        # Determine arduinoReportedUptime value
         if connection.settings.enabled and status == "CONNECTED":
             arduino_reported_uptime = connection.serialConn.arduinoReportedUptime
             if arduino_reported_uptime:
@@ -175,7 +209,6 @@ def display_connection_details(stdscr, connection):
         else:
             uptime_str = "N/A"
 
-        # Determine connLastFormed value
         if connection.settings.enabled and status == "CONNECTED":
             conn_last_formed = connection.serialConn.connLastFormed
             if conn_last_formed:
@@ -186,23 +219,14 @@ def display_connection_details(stdscr, connection):
         else:
             elapsed_str = "N/A"
 
-        # Determine the LinuxCNC status
         if not connection.settings.enabled:
             linuxcnc_status = "N/A"
         else:
             linuxcnc_status = "OK" if not connection.linuxcnc_error else "ERROR"
 
-        # Determine the color pair for the LinuxCNC status
-        if linuxcnc_status == "ERROR":
-            linuxcnc_color_pair = curses.color_pair(1)  # Red background
-        elif linuxcnc_status == "OK":
-            linuxcnc_color_pair = curses.color_pair(2)  # Green background
-        else:
-            linuxcnc_color_pair = curses.color_pair(0)  # Default background
+        linuxcnc_color_pair = curses.color_pair(2) if linuxcnc_status == "OK" else curses.color_pair(1)
 
-        # Calculate the number of lines needed
-        num_lines = 12 + len(connection.settings.io_map) * 2  # Adjust based on actual content
-
+        num_lines = 12 + len(connection.settings.io_map) * 2
         if height < num_lines:
             stdscr.addstr(0, 0, "Error: Terminal height is too short to display the connection details.")
             stdscr.refresh()
@@ -210,7 +234,7 @@ def display_connection_details(stdscr, connection):
 
         row = 0
         stdscr.addstr(row, 0, f"Details for {alias_display}")
-        row += 2  # Add a blank line
+        row += 2
 
         stdscr.addstr(row, 0, f"Component Name: {component_name}")
         row += 1
@@ -219,16 +243,7 @@ def display_connection_details(stdscr, connection):
         stdscr.addstr(row, 0, f"Serial Port Available: {is_serial_port_available}")
         row += 1
 
-        # Determine the color pair for the status
-        if status == "DISCONNECTED":
-            color_pair = curses.color_pair(1)  # Red background
-        elif status == "CONNECTED":
-            color_pair = curses.color_pair(2)  # Green background
-        elif status == "DISABLED":
-            color_pair = curses.color_pair(0)  # Default background
-        else:
-            color_pair = curses.color_pair(3)  # Yellow background
-
+        color_pair = curses.color_pair(2) if status == "CONNECTED" else curses.color_pair(1) if status == "DISCONNECTED" else curses.color_pair(0)
         stdscr.addstr(row, 0, "Arduino Status: ")
         stdscr.addstr(f"{status}", color_pair)
         row += 1
@@ -238,7 +253,7 @@ def display_connection_details(stdscr, connection):
         stdscr.addstr(row, 0, f"Arduino Reported Uptime: {uptime_str}")
         row += 1
         stdscr.addstr(row, 0, f"Connection to Arduino Uptime: {elapsed_str}")
-        row += 2  # Add a blank line
+        row += 2
 
         stdscr.addstr(row, 0, "Pins:")
         row += 1
@@ -269,10 +284,7 @@ def display_connection_details(stdscr, connection):
 
         for feature, pins in connection.settings.io_map.items():
             for pin in pins:
-                if not pin.pinEnabled:
-                    current_value = "DISABLED"
-                else:
-                    current_value = str(getattr(pin, 'halPinCurrentValue', 'N/A'))  # Example way to get current value, adjust as needed
+                current_value = "DISABLED" if not pin.pinEnabled else str(getattr(pin, 'halPinCurrentValue', 'N/A'))
                 stdscr.addstr(row, 0, "{:<{width0}} | {:<{width1}} | {:<{width2}} | {:<{width3}} | {:<{width4}} | {:<{width5}}".format(
                     truncate_length(pin.pinName, pin_column_widths[0]),
                     truncate_length(str(pin.pinType), pin_column_widths[1]),
