@@ -5,4 +5,3 @@ numpy
 msgpack
 cobs
 pyyaml
-curses-util
