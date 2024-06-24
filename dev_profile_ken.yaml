@@ -48,7 +48,7 @@ mcu:
   #dev: /dev/cu.usbmodemF412FA68D6802 
   #dev: /dev/serial/by-id/usb-Arduino__www.arduino.cc__0042_55739323037351E04120-if00
   #dev: /dev/serial/by-id/usb-FTDI_FT232R_USB_UART_B001AYY4-if00-port0
-  enabled: true
+  enabled: false
   hal_emulation: true # Setting hal_emulation to true will result in the HAL components not being loaded / utilized.
 
   connection: 
@@ -390,7 +390,7 @@ mcu:
   #/dev/tty.usbmodemF412FA68D6802
   dev: /dev/cu.usbmodemF412FA68D6802 
   #dev: /dev/serial/by-id/usb-Arduino_UNO_WiFi_R4_CMSIS-DAP_F412FA68D680-if01
-  enabled: false
+  enabled: true
   hal_emulation: true
   #connection: 
   #  baudrate: 9600
@@ -407,7 +407,7 @@ mcu:
         pin_debounce: 5
      
 
-    digitalOutputs:
+    digitalOutputsDisabled:
       - pin_id: 6
         pin_name: dout.6
       - pin_id: 7
