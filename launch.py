@@ -164,8 +164,8 @@ def main(stdscr=None):
     if target_profile is not None:
         try:
             devs = ArduinoYamlParser.parseYaml(path=target_profile)
-            for a in devs:
-                arduino_map.append(ArduinoConnection(a))
+            ##for a in devs:
+            #   arduino_map.append(ArduinoConnection(a))
         except Exception as err:
             just_the_string = traceback.format_exc()
             logging.debug(f'PYDEBUG: error: {str(just_the_string)}')
