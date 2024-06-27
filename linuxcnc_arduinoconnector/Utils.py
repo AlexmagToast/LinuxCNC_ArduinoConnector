@@ -14,6 +14,10 @@ from linuxcnc_arduinoconnector.ConfigModels import DEFAULT_PROFILE
 
 def try_load_linuxcnc():
     try:
+        modulename = 'hal'
+        if modulename not in sys.modules:
+        #    print(f'You have not imported the {modulename} module')
+            import hal
         modulename = 'linuxcnc'
         if modulename not in sys.modules:
         #    print(f'You have not imported the {modulename} module')

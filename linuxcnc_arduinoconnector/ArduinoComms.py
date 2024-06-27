@@ -372,13 +372,13 @@ class ArduinoConnection(HalInterface):
             self.serialConn.messageReceivedSubscribe(mt=MessageType.MT_CONFIG_NAK, callback=lambda m: self.onMessage(m))
 
             self.serialConn.connectionStateSubscribe(callback=lambda s: self.onConnectionStateChange(s))
-            
+            self.component = self.register_component(self.settings.component_name)
             try:
                 for f in self.settings.io_map.keys():
                     f.debugSubscribe(callback=lambda d: self.onDebug(d))
                     f.Setup()
                     f.sendMessageSubscribe(callback=lambda m: self.sendMessage(m))
-                    #self.registerPins(f)
+                    self.register_pins(f)
             except Exception as ex:
                 just_the_string = traceback.format_exc()
                 logging.debug(f'PYDEBUG: Error [{settings.alias}: {str(just_the_string)}') 
@@ -388,7 +388,7 @@ class ArduinoConnection(HalInterface):
     
     def register_pins(self, feature):
         for pin in feature.pinList:
-            self.register_pin(pin.pinName, pin.halPinType, pin.halPinDirection)
+            self.register_pin(component=self.component, pin_name=pin.pinName, pin_type=pin.halPinType, pin_direction=pin.halPinDirection)
             
     def sendMessage(self, pm:ProtocolMessage):
         self.serialConn.sendMessage(pm)
