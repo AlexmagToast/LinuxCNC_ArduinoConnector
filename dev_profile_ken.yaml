@@ -48,7 +48,7 @@ mcu:
   #dev: /dev/cu.usbmodemF412FA68D6802 
   #dev: /dev/serial/by-id/usb-Arduino__www.arduino.cc__0042_55739323037351E04120-if00
   #dev: /dev/serial/by-id/usb-FTDI_FT232R_USB_UART_B001AYY4-if00-port0
-  enabled: true
+  enabled: false
   hal_emulation: true # Setting hal_emulation to true will result in the HAL components not being loaded / utilized.
 
   connection: 
@@ -216,7 +216,7 @@ mcu:
         input_pullup: true
         pin_debounce: 5
 
-    digitalOutputs:
+    digitalOutputsDisabled:
       - pin_id: 6
         pin_name: dout.6
       - pin_id: 7
@@ -353,28 +353,24 @@ mcu:
   #dev: /dev/cu.usbmodem14201  # Used for initial programming
   #dev: /dev/cu.usbmodemF412FA68D6802 
   #dev: /dev/serial/by-id/usb-Arduino_RaspberryPi_Pico_410461DE2A511323-if00
-  dev: /dev/cu.usbmodem1122201
-  enabled: false
+  dev: /dev/cu.usbmodem11101
+  enabled: true
   hal_emulation: true
   #connection: 
   #  baudrate: 9600
   io_map:
         
     digitalInputs:
-      - pin_id: 4
+      - pin_id: D4
         pin_name: din.4 #hal pin name
         input_pullup: true
         pin_debounce: 0
-      - pin_id: 5
+      - pin_id: D5
         pin_name: din.5 #hal pin name
         input_pullup: true
         pin_debounce: 0
 
-    digitalOutputs:
-      - pin_id: 2
-        pin_name: dout.2
-      - pin_id: 3
-        pin_name: dout.3 #hal pin name
+
 
 
 

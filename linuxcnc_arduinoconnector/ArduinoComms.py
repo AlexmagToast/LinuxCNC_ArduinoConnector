@@ -58,7 +58,8 @@ class Connection(MessageDecoder):
                 just_the_string = traceback.format_exc()
                 #logging.debug(just_the_string)
                 logging.debug(f'PYDEBUG: error: {str(ex)}')
-        
+        elif m.mt == MessageType.MT_DEBUG:
+            logging.debug(f'PYDEBUG onMessageRecv() - Received MT_DEBUG, Values = {m.payload}')
         if self.connectionState != ConnectionState.CONNECTED:
                 name = 'UNKNOWN_TYPE'
                 try:
@@ -70,8 +71,7 @@ class Connection(MessageDecoder):
                 debugstr = f'PYDEBUG Error. Received message of type {name} from arduino prior to completing handshake. Ignoring.'
                 logging.debug(debugstr)
                 return
-        if m.mt == MessageType.MT_DEBUG:
-            logging.debug(f'PYDEBUG onMessageRecv() - Received MT_DEBUG, Values = {m.payload}')
+
         if m.mt == MessageType.MT_HEARTBEAT:
             logging.debug(f'PYDEBUG onMessageRecv() - Received MT_HEARTBEAT, Values = {m.payload}')
             #bi = m.payload[0]-1 # board index is always sent over incremeented by one
@@ -392,6 +392,7 @@ class ArduinoConnection(HalInterface):
             
     def sendMessage(self, pm:ProtocolMessage):
         self.serialConn.sendMessage(pm)
+        
         
     def onDebug(self, d:str):
         logging.debug(f'PYDEBUG: [{self.settings.alias}]: {d}') 

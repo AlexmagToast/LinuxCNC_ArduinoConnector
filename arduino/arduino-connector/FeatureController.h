@@ -50,6 +50,7 @@ struct Pin
 {
     uint8_t fid;
     uint8_t lid;
+    int8_t mid; // ID mapped from defines, -1 if unmapped
     String pid;
 };
 

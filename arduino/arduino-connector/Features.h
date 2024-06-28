@@ -28,6 +28,7 @@
 #define FEATURES_H_
 #include "FeatureController.h"
 #include "Config.h"
+#include "PinMap.h"
 
 namespace Features
 {
@@ -163,12 +164,15 @@ namespace Features
             DigitalPin * dp = new DigitalPin();
             dp->fid = fid;
             dp->lid = lid;
+
+            dp->mid = -1;//convertPinString(atoi(pid.c_str()));
             //dp->pid = pid;
             //{"mt":7,"fi":4,"se":85,"to":99,"cs":{"fi":4,"id":87,"li":85,"is":-1,"cs":-1,"ds":-1,"pd":5,"ip":true}}
             if(json.containsKey("id"))
             {
                 String idstring = json[F("id")];
                 dp->pid = idstring;
+                dp->mid = convertPinString(idstring.c_str());
             }
             else
             {
@@ -179,7 +183,10 @@ namespace Features
             if(json.containsKey("is"))
             {
                 dp->pinInitialState = json["is"];
-                digitalWrite(atoi(dp->pid.c_str()), dp->pinInitialState);
+                if(dp->mid==-1)
+                    digitalWrite(atoi(dp->pid.c_str()), dp->pinInitialState);
+                else
+                    digitalWrite(dp->mid, dp->pinInitialState);
             }
             else
             {
@@ -201,23 +208,34 @@ namespace Features
             {
                 dp->pinDisconnectedState = -1;
             }
-                
-            pinMode(atoi(dp->pid.c_str()), OUTPUT);
+
+            if (dp->mid == -1)
+            {
+                pinMode(atoi(dp->pid.c_str()), OUTPUT);
+            }
+            else
+            {
+                pinMode(dp->mid, OUTPUT);
+            }
+
+            
             
             #ifdef DEBUG
-                DEBUG_DEV.print("DigitalOutputs::InitFeaturePin: ");
-                DEBUG_DEV.print("fid: ");
+                DEBUG_DEV.print(F("DigitalOutputs::InitFeaturePin: "));
+                DEBUG_DEV.print(F("fid: "));
                 DEBUG_DEV.print(fid);
-                DEBUG_DEV.print(", lid: ");
+                DEBUG_DEV.print(F(", lid: "));
                 DEBUG_DEV.print(lid);
-                DEBUG_DEV.print(", pid: ");
+                DEBUG_DEV.print(F(", pid: "));
                 DEBUG_DEV.println(dp->pid);
+                DEBUG_DEV.println(F("mid: "));
+                DEBUG_DEV.println(dp->mid);
                 #ifdef DEBUG_VERBOSE
-                    DEBUG_DEV.print(", is: ");
+                    DEBUG_DEV.print(F(", is: ");
                     DEBUG_DEV.print(dp->pinInitialState);
-                    DEBUG_DEV.print(", cs: ");
+                    DEBUG_DEV.print(F(", cs: "));
                     DEBUG_DEV.print(dp->pinConnectedState);
-                    DEBUG_DEV.print(", ds: ");
+                    DEBUG_DEV.print(F(", ds: "));
                     DEBUG_DEV.println(dp->pinDisconnectedState);
                 #endif
             #endif
@@ -258,8 +276,20 @@ namespace Features
             for( int x = 0; x < GetPinCount(); x++ )
             {
                 DigitalPin & pin = *static_cast<DigitalPin*>(pins[x]);
-                int pin_id = atoi(pin.pid.c_str());
-                int v = digitalRead(atoi(pin.pid.c_str()));
+                //int ii = convertPinString(pin.pid.c_str());
+                //DEBUG_DEV.print("ii = ");
+                //DEBUG_DEV.println(ii);
+                int i = convertPinString(pin.pid.c_str());
+                int v = 0;
+                if (pin.mid != -1)
+                {
+                    v = digitalRead(pin.mid);
+                }
+                else
+                {
+                    v = digitalRead(atoi(pin.pid.c_str()));
+                }
+
 
                 if(pin.pinCurrentState != v && (currentMills - pin.t) >= pin.debounce)
                 {
@@ -267,6 +297,8 @@ namespace Features
                         DEBUG_DEV.print(F("DINPUTS PIN CHANGE!"));
                         DEBUG_DEV.print(F("PIN:"));
                         DEBUG_DEV.println(pin.pid);
+                        DEBUG_DEV.print(F("PIN_MID:"));
+                        DEBUG_DEV.println(pin.mid);
                         DEBUG_DEV.print(F("Current value: "));
                         DEBUG_DEV.println(pin.pinCurrentState);
                         DEBUG_DEV.print(F("New value: "));
@@ -353,12 +385,15 @@ namespace Features
             DigitalPin * dp = new DigitalPin();
             dp->fid = fid;
             dp->lid = lid;
+            dp->mid = -1;
+
             //dp->pid = pid;
             //{"mt":7,"fi":4,"se":85,"to":99,"cs":{"fi":4,"id":87,"li":85,"is":-1,"cs":-1,"ds":-1,"pd":5,"ip":true}}
             if(json.containsKey("id"))
             {
                 String idstring = json[F("id")];
                 dp->pid = idstring;
+                dp->mid = convertPinString(idstring.c_str());
             }
             else
             {
@@ -403,38 +438,49 @@ namespace Features
                 if (json["ip"] == true)
                 {
                     dp->inputPullup = 1;
-                    pinMode(atoi(dp->pid.c_str()), INPUT_PULLUP);
+                    if(dp->mid==-1)
+                        pinMode(atoi(dp->pid.c_str()), INPUT_PULLUP);
+                    else
+                        pinMode(dp->mid, INPUT_PULLUP);
+                    
                 }
                 else
                 {
                     dp->inputPullup = 0;
-                    pinMode(atoi(dp->pid.c_str()), INPUT);
+                    if (dp->mid == -1)
+                        pinMode(atoi(dp->pid.c_str()), INPUT);
+                    else
+                        pinMode(dp->mid, INPUT);    
                 }
-                //dp->inputPullup = json["ip"];
             }
             else
             {
                 dp->inputPullup = 0;
-                pinMode(atoi(dp->pid.c_str()), INPUT);
+                if (dp->mid == -1)
+                    pinMode(atoi(dp->pid.c_str()), INPUT);
+                else
+                    pinMode(dp->mid, INPUT);
             }
             #ifdef DEBUG
-                DEBUG_DEV.print("DigitalInputs::InitFeaturePin: ");
-                DEBUG_DEV.print("fid: ");
+                DEBUG_DEV.print(F("DigitalInputs::InitFeaturePin: "));
+                DEBUG_DEV.print(F("fid: "));
                 DEBUG_DEV.print(fid);
-                DEBUG_DEV.print(", lid: ");
+                DEBUG_DEV.print(F(", lid: "));
                 DEBUG_DEV.print(lid);
-                DEBUG_DEV.print(", pid: ");
+                DEBUG_DEV.print(F(", pid: "));
                 DEBUG_DEV.print(pid);
+                DEBUG_DEV.print(F(", mid: "));
+                DEBUG_DEV.print(dp->mid);
                 #ifdef DEBUG_VERBOSE
-                    DEBUG_DEV.print(", is: ");
+                    DEBUG_DEV.print(F(", is: "));
                     DEBUG_DEV.print(dp->pinInitialState);
-                    DEBUG_DEV.print(", cs: ");
+                    DEBUG_DEV.print(F(", cs: "));
                     DEBUG_DEV.print(dp->pinConnectedState);
-                    DEBUG_DEV.print(", ds: ");
+                    DEBUG_DEV.print(F(", ds: "));
                     DEBUG_DEV.print(dp->pinDisconnectedState);
-                    DEBUG_DEV.print(", pd: ");
+                    DEBUG_DEV.print(F(", pd: "));
                     DEBUG_DEV.print(dp->debounce);
-                    DEBUG_DEV.print(", ip: ");
+                    DEBUG_DEV.print(F(", ip: "));
                     DEBUG_DEV.println(dp->inputPullup);
                 #endif
             #endif
