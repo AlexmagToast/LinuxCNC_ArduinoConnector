@@ -279,7 +279,7 @@ namespace Features
                 //int ii = convertPinString(pin.pid.c_str());
                 //DEBUG_DEV.print("ii = ");
                 //DEBUG_DEV.println(ii);
-                int i = convertPinString(pin.pid.c_str());
+                //int i = convertPinString(pin.pid.c_str());
                 int v = 0;
                 if (pin.mid != -1)
                 {
@@ -316,7 +316,7 @@ namespace Features
 
                     JsonObject pa_0 = pa.add<JsonObject>();
                     pa_0["l"] = x;
-                    pa_0["p"] = atoi(pin.pid.c_str());
+                    pa_0["p"] = pin.pid.c_str();
                     pa_0["v"] = v;
                     //doc[F("l")] = x;
                     //doc[F("p")] = atoi(pin.pid.c_str());
