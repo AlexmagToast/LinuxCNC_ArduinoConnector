@@ -44,6 +44,8 @@ import logging
 import sys
 import time
 import traceback
+import os
+import shlex
 
 from linuxcnc_arduinoconnector.ArduinoComms import ArduinoConnection
 from linuxcnc_arduinoconnector.Console import display_arduino_statuses, display_connection_details
@@ -121,27 +123,85 @@ async def main_async(stdscr, arduino_connections):
             logging.critical(f'PYDEBUG: error: {str(just_the_string)}')
             pass
 
+def launch_ui_in_new_console(additional_args=[]):
+    python_executable = sys.executable
+    script_path = os.path.abspath(__file__)
+    args_str = " ".join(additional_args)
     
+    if sys.platform.startswith('win'):
+        cmd = f'start cmd /c "{python_executable} {script_path} -o console {args_str}"'
+        subprocess.Popen(cmd, shell=True)
+    elif sys.platform.startswith('linux') or sys.platform == 'darwin':
+        if sys.platform.startswith('linux'):
+            terminals = [
+                ('x-terminal-emulator', '-e'),
+                ('gnome-terminal', '--'),
+                ('konsole', '-e'),
+                ('xfce4-terminal', '-e'),
+                ('mate-terminal', '-e'),
+                ('terminator', '-e'),
+                ('urxvt', '-e'),
+                ('xterm', '-e'),
+            ]
+            
+            for term, arg in terminals:
+                if subprocess.call(['which', term], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) == 0:
+                    cmd = f'{term} {arg} {python_executable} {script_path} -o console {args_str}'
+                    break
+            else:
+                print("No suitable terminal found. Running in current console.")
+                return False
+        elif sys.platform == 'darwin':
+            cmd = f"open -a Terminal.app {python_executable} {script_path} -o console {args_str}"
+        
+        try:
+            subprocess.Popen(shlex.split(cmd))
+        except Exception as e:
+            print(f"Error launching UI: {e}")
+            print("Running in current console.")
+            return False
+    else:
+        print("Unsupported platform for launching separate console.")
+        print("Running in current console.")
+        return False
+    
+    return True
+
 def main(stdscr=None):
     argumentList = sys.argv[1:]
     options = "hdo:p:"
     long_options = ["Help", "Devices", "Output=", "Profile="]
     target_profile = None
     devs = []
+    launch_separate_console = False
+    additional_args = []
+
     if stdscr == None:
         # Check for output=console first
         try:
             arguments, values = getopt.getopt(argumentList, options, long_options)
             for currentArgument, currentValue in arguments:
-                if currentArgument in ("-o", "--Output") and currentValue == "console":
-                    # prevent logging to console while showing the curses ui
-                    logging.getLogger().setLevel(logging.CRITICAL)
-                    curses.wrapper(main)
-                    return
+                if currentArgument in ("-o", "--Output"):
+                    if currentValue == "console":
+                        # prevent logging to console while showing the curses ui
+                        logging.getLogger().setLevel(logging.CRITICAL)
+                        curses.wrapper(main)
+                        return
+                    elif currentValue == "terminal":
+                        launch_separate_console = True
+                elif currentArgument not in ("-h", "-d"):
+                    additional_args.extend([currentArgument, currentValue])
+            
+            # Add any remaining values to additional_args
+            additional_args.extend(values)
         except getopt.error as err:
             just_the_string = traceback.format_exc()
             logging.debug(f'PYDEBUG: error: {str(just_the_string)}')
             sys.exit()
+
+        if launch_separate_console:
+            launch_ui_in_new_console(additional_args)
+            return
 
     try:
         arguments, values = getopt.getopt(argumentList, options, long_options)
@@ -164,8 +224,6 @@ def main(stdscr=None):
     if target_profile is not None:
         try:
             devs = ArduinoYamlParser.parseYaml(path=target_profile)
-            ##for a in devs:
-            #   arduino_map.append(ArduinoConnection(a))
         except Exception as err:
             just_the_string = traceback.format_exc()
             logging.debug(f'PYDEBUG: error: {str(just_the_string)}')
