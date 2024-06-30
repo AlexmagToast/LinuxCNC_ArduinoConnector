@@ -2,7 +2,7 @@ import curses
 from datetime import timedelta, datetime
 import logging
 import traceback
-
+import time
 from linuxcnc_arduinoconnector.Utils import format_elapsed_time
 
 class UIElement:
@@ -22,12 +22,12 @@ class TextElement(UIElement):
 
     def draw(self):
         height, width = self.stdscr.getmaxyx()
-        # Fill the entire width with the background color
         self.stdscr.addstr(self.row, 0, ' ' * width, curses.color_pair(self.color_pair))
         self.stdscr.addstr(self.row, self.col, self.text, curses.color_pair(self.color_pair))
         
+        
 class TableElement(UIElement):
-    def __init__(self, stdscr, headers, data, start_row, start_col, max_widths, selected_index=None):
+    def __init__(self, stdscr, headers, data, start_row, start_col, max_widths, selected_index=None, scroll_offset=0):
         super().__init__(stdscr)
         self.headers = headers
         self.data = data
@@ -35,11 +35,12 @@ class TableElement(UIElement):
         self.start_col = start_col
         self.max_widths = max_widths
         self.selected_index = selected_index
+        self.scroll_offset = scroll_offset
 
     def draw(self):
         row = self.start_row
         col = self.start_col
-        self.stdscr.addstr(row, col, self.format_row(self.headers, self.max_widths))
+        self.stdscr.addstr(row, col, self.format_row(self.headers))
         row += 1
         self.stdscr.addstr(row, col, "-" * sum(self.max_widths.values()))
         row += 1
@@ -48,28 +49,42 @@ class TableElement(UIElement):
             status = row_data[3]  # Assuming the status is in the 4th column
             if status == "CONNECTED":
                 status_color_pair = curses.color_pair(2)  # Green background
-            elif status == "DISCONNECTED":
-                status_color_pair = curses.color_pair(3)  # yellow background
-            elif status == "CONNECTING":
-                status_color_pair = curses.color_pair(3)  # yellow background
+            elif status in ["DISCONNECTED", "CONNECTING"]:
+                status_color_pair = curses.color_pair(3)  # Yellow background
             elif status == "ERROR":
-                status_color_pair = curses.color_pair(1)  # red background
+                status_color_pair = curses.color_pair(1)  # Red background
             else:
                 status_color_pair = curses.color_pair(0)  # Default color
 
-            formatted_row = self.format_row(row_data, self.max_widths)
+            formatted_row = []
+            for key, item in zip(self.max_widths.keys(), row_data):
+                if key == 'device':
+                    # Apply scrolling to the device value
+                    item_str = str(item)
+                    if len(item_str) > self.max_widths[key]:
+                        start = self.scroll_offset % len(item_str)
+                        scrolled = item_str[start:] + item_str[:start]
+                        formatted_item = scrolled[:self.max_widths[key]-2] + '..'
+                    else:
+                        formatted_item = item_str.ljust(self.max_widths[key])
+                else:
+                    formatted_item = str(item)[:self.max_widths[key]].ljust(self.max_widths[key])
+                formatted_row.append(formatted_item)
+
+            formatted_row_str = " | ".join(formatted_row)
+            
             if index == self.selected_index:
-                self.stdscr.addstr(row, col, formatted_row, curses.color_pair(4))
+                self.stdscr.addstr(row, col, formatted_row_str, curses.color_pair(4))
             else:
                 # Draw the row without color
-                self.stdscr.addstr(row, col, formatted_row)
+                self.stdscr.addstr(row, col, formatted_row_str)
                 # Overwrite the status part with the colored status
                 status_col_start = sum(self.max_widths[key] + 3 for key in list(self.max_widths.keys())[:3])  # Calculate the start position of the status column
                 self.stdscr.addstr(row, col + status_col_start, f"{status:<{self.max_widths['status']}}", status_color_pair)
             row += 1
 
-    def format_row(self, row_data, max_widths):
-        return " | ".join([f"{str(item)[:max_widths[key]]:<{max_widths[key]}}" for key, item in zip(max_widths.keys(), row_data)])
+    def format_row(self, row_data):
+        return " | ".join(str(item).ljust(self.max_widths[key]) for key, item in zip(self.max_widths.keys(), row_data))
 class StatusBar(UIElement):
     def __init__(self, stdscr, text):
         super().__init__(stdscr)
@@ -77,7 +92,6 @@ class StatusBar(UIElement):
 
     def draw(self):
         height, width = self.stdscr.getmaxyx()
-        # Split the text into parts to apply different styles
         parts = self.text.split(' ')
         col = 0
         for part in parts:
@@ -85,7 +99,7 @@ class StatusBar(UIElement):
                 self.stdscr.addstr(height - 1, col, part, curses.color_pair(6))
             else:
                 self.stdscr.addstr(height - 1, col, part)
-            col += len(part) + 1  # Move to the next position, including space
+            col += len(part) + 1
 
 class ConsoleUI:
     def __init__(self, stdscr):
@@ -101,6 +115,7 @@ class ConsoleUI:
             element.draw()
         self.stdscr.refresh()
 
+    
 def display_arduino_statuses(stdscr, arduino_connections, scroll_offset, selected_index):
     try:
         curses.start_color()
@@ -144,10 +159,10 @@ def display_arduino_statuses(stdscr, arduino_connections, scroll_offset, selecte
         else:
             truncated = False
 
-        for index, connection in enumerate(all_connections):
+        for connection in all_connections:
             alias = connection.settings.alias[:max_widths["alias"]]
             component_name = connection.settings.component_name[:max_widths["component_name"]]
-            device = connection.settings.dev[:max_widths["device"]]
+            device = connection.settings.dev#[:max_widths["device"]]
             features = ", ".join([f"{k.featureName} [{len(v)}]" for k, v in connection.settings.io_map.items()])[:max_widths["features"]]
 
             if connection.settings.enabled:
@@ -165,7 +180,7 @@ def display_arduino_statuses(stdscr, arduino_connections, scroll_offset, selecte
 
             data.append([alias, component_name, device, status, linuxcnc_status, features])
 
-        ui.add_element(TableElement(stdscr, headers, data, 2, 0, max_widths, selected_index))
+        ui.add_element(TableElement(stdscr, headers, data, 2, 0, max_widths, selected_index, scroll_offset))
 
         if truncated:
             ui.add_element(TextElement(stdscr, "List truncated. Not all connections are shown.", height - 2, 0))
@@ -178,6 +193,7 @@ def display_arduino_statuses(stdscr, arduino_connections, scroll_offset, selecte
         stdscr.clear()
         stdscr.addstr(0, 0, f"Unable to show console UI due to an exception. Details: {str(just_the_string)}")
         stdscr.refresh()
+
 
 def display_connection_details(stdscr, connection):
     try:
