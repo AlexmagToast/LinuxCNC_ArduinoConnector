@@ -1,6 +1,68 @@
+#!/usr/bin/env python3
+# Stage 1, check for debug environment variables
+import os
+
+log_to_file = False
+# Hint for later use of this env variable, echo 'export ARDUINO_CONNECTOR_ENABLE_LOG=1' >> ~/.bashrc && source ~/.bashrc
+if os.environ.get('ARDUINO_CONNECTOR_ENABLE_LOG') is not None:
+    log_to_file = True
+
+#logging_fmt = '%(message)s\r\n'
+logging_fmt = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+if os.environ.get('ARDUINO_CONNECTOR_LOG_FORMAT') is not None:
+    logging_fmt = os.environ.get('ARDUINO_CONNECTOR_LOG_FORMAT') 
+    
+log_file_path = '' # Path to where log files should be stored when enabled
+if os.environ.get('ARDUINO_CONNECTOR_LOGFILE_PATH') is not None:
+    log_file_path = os.environ.get('ARDUINO_CONNECTOR_LOG_PATH')
+    
+log_file_name = 'arduino_connector.log' # Path to where log files should be stored when enabled
+if os.environ.get('ARDUINO_CONNECTOR_LOGFILE_NAME') is not None:
+    log_file_name = os.environ.get('ARDUINO_CONNECTOR_LOGFILE_NAME')
+    
+file_logger = None
+if log_to_file:
+    from linuxcnc_arduinoconnector.LoggingUtils import setup_logger
+    file_logger = setup_logger('file_logger', log_file_path=os.path.join(log_file_path, log_file_name), log_format=logging_fmt)
+    file_logger.debug('Starting up!')
+#import logging
+#logging.basicConfig(level=logging.DEBUG, format='%(message)s\r\n')
+
+
+enable_remote_debugger = False
+if os.environ.get('ARDUINO_CONNECTOR_ENABLE_REMOTE_DEBUG') is not None:
+    enable_remote_debugger = True
+
+enable_wait_on_remote_debug = False
+if os.environ.get('ARDUINO_CONNECTOR_WAIT_ON_REMOTE_DEBUG') is not None:
+    enable_wait_on_remote_debug = True
+
+remote_debug_listen_port = 5678
+if os.environ.get('ARDUINO_CONNECTOR_REMOTE_DEBUG_PORT') is not None:
+    remote_debug_listen_port = os.environ.get('ARDUINO_CONNECTOR_REMOTE_DEBUG_PORT')
+
+def launch_debugger(wait_on_connect=False, port=5678):
+    import debugpy
+    debugpy.listen(('0.0.0.0',port))
+    print(f'Remote Debug Enabled, listening on port {port}')
+    debugpy.wait_for_client()
+
+if enable_remote_debugger:
+    launch_debugger(wait_on_connect=enable_wait_on_remote_debug, port=remote_debug_listen_port)
+
+
+# Stage 2, determine what launched this script. If its linuxcnc, then we need to handle errors in an appropriate way
+from linuxcnc_arduinoconnector.Utils import get_parent_process_name, try_load_linuxcnc
+launchedByLinuxCNC = False
+# get_parent_process_name() returns 'systemd' if Linuxcnc launches it, otherwise its something else like 'bash' 
+if get_parent_process_name() == 'systemd' and try_load_linuxcnc(): # try_load_linux will throw an exception if it fails
+    launchedByLinuxCNC = True
+
+# Stage 3, check for dependent modules.
 import subprocess
 import pkg_resources
 import sys
+
 class DebuggerExit(Exception):
     pass
 
@@ -40,7 +102,7 @@ import asyncio
 import concurrent.futures
 import curses
 import getopt
-import logging
+
 import sys
 import time
 import traceback
@@ -52,7 +114,7 @@ from linuxcnc_arduinoconnector.Console import display_arduino_statuses, display_
 from linuxcnc_arduinoconnector.Utils import listDevices, locateProfile
 from linuxcnc_arduinoconnector.YamlParser import ArduinoYamlParser
 
-logging.basicConfig(level=logging.DEBUG, format='%(message)s\r\n')
+
 
 arduino_map = []
 

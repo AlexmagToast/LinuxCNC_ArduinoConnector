@@ -5,6 +5,9 @@ from pathlib import Path
 import sys
 import zlib
 
+import os
+import psutil
+
 import serial
 
 from linuxcnc_arduinoconnector.ArduinoComms import ArduinoConnection
@@ -69,3 +72,33 @@ def format_elapsed_time(elapsed_time):
     hours, remainder = divmod(elapsed_time.seconds, 3600)
     minutes, seconds = divmod(remainder, 60)
     return f"{days}d {hours}h {minutes}m {seconds}s"
+
+
+
+
+def get_parent_process_name():
+    # Method 1: Using os module
+    parentpid = os.getppid()
+    try:
+        parent = psutil.Process(parentpid)
+        return parent.name()
+    except psutil.NoSuchProcess:
+        return None
+
+def get_parent_process_cmdline():
+    # Method 2: Using psutil to get full command line
+    parent_pid = os.getppid()
+    try:
+        parent = psutil.Process(parent_pid)
+        return parent.cmdline()
+    except psutil.NoSuchProcess:
+        return None
+
+def check_parent_executable(target_executable):
+    parent_name = get_parent_process_name()
+    if parent_name and parent_name == target_executable:
+        print(f"Script was launched by {target_executable}")
+        return True
+    else:
+        print(f"Script was not launched by {target_executable}")
+        return False
