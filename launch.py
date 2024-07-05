@@ -4,21 +4,25 @@ import os
 
 log_to_file = False
 # Hint for later use of this env variable, echo 'export ARDUINO_CONNECTOR_ENABLE_LOG=1' >> ~/.bashrc && source ~/.bashrc
-if os.environ.get('ARDUINO_CONNECTOR_ENABLE_LOG') is not None:
+maybe_env_set = os.environ.get('ARDUINO_CONNECTOR_ENABLE_LOG')
+if maybe_env_set is not None and maybe_env_set == '1':
     log_to_file = True
 
 #logging_fmt = '%(message)s\r\n'
 logging_fmt = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-if os.environ.get('ARDUINO_CONNECTOR_LOG_FORMAT') is not None:
-    logging_fmt = os.environ.get('ARDUINO_CONNECTOR_LOG_FORMAT') 
+maybe_env_set = os.environ.get('ARDUINO_CONNECTOR_LOG_FORMAT')
+if maybe_env_set is not None:
+    logging_fmt = maybe_env_set
     
 log_file_path = '' # Path to where log files should be stored when enabled
-if os.environ.get('ARDUINO_CONNECTOR_LOGFILE_PATH') is not None:
-    log_file_path = os.environ.get('ARDUINO_CONNECTOR_LOG_PATH')
+maybe_env_set  = os.environ.get('ARDUINO_CONNECTOR_LOGFILE_PATH')
+if maybe_env_set is not None:
+    log_file_path = maybe_env_set
     
 log_file_name = 'arduino_connector.log' # Path to where log files should be stored when enabled
-if os.environ.get('ARDUINO_CONNECTOR_LOGFILE_NAME') is not None:
-    log_file_name = os.environ.get('ARDUINO_CONNECTOR_LOGFILE_NAME')
+maybe_env_set  = os.environ.get('ARDUINO_CONNECTOR_LOGFILE_NAME')
+if maybe_env_set is not None:
+    log_file_name = maybe_env_set
     
 file_logger = None
 if log_to_file:
@@ -28,10 +32,12 @@ if log_to_file:
 #import logging
 #logging.basicConfig(level=logging.DEBUG, format='%(message)s\r\n')
 
-
 enable_remote_debugger = False
+maybe_env_set = os.environ.get('ARDUINO_CONNECTOR_ENABLE_REMOTE_DEBUG')
+
 if os.environ.get('ARDUINO_CONNECTOR_ENABLE_REMOTE_DEBUG') is not None:
     enable_remote_debugger = True
+    
 
 enable_wait_on_remote_debug = False
 if os.environ.get('ARDUINO_CONNECTOR_WAIT_ON_REMOTE_DEBUG') is not None:
