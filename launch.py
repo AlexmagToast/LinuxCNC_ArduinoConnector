@@ -1,26 +1,28 @@
 #!/usr/bin/env python3
 # Stage 1, check for debug environment variables
 import os
+from linuxcnc_arduinoconnector.Config import EnvParams
 
+# Stage 1, set up logging
 log_to_file = False
 # Hint for later use of this env variable, echo 'export ARDUINO_CONNECTOR_ENABLE_LOG=1' >> ~/.bashrc && source ~/.bashrc
-maybe_env_set = os.environ.get('ARDUINO_CONNECTOR_ENABLE_LOG')
+maybe_env_set = os.environ.get(EnvParams.ARDUINO_CONNECTOR_ENABLE_LOG)
 if maybe_env_set is not None and maybe_env_set == '1':
     log_to_file = True
 
 #logging_fmt = '%(message)s\r\n'
 logging_fmt = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-maybe_env_set = os.environ.get('ARDUINO_CONNECTOR_LOG_FORMAT')
+maybe_env_set = os.environ.get(EnvParams.ARDUINO_CONNECTOR_LOG_FORMAT)
 if maybe_env_set is not None:
     logging_fmt = maybe_env_set
     
 log_file_path = '' # Path to where log files should be stored when enabled
-maybe_env_set  = os.environ.get('ARDUINO_CONNECTOR_LOGFILE_PATH')
+maybe_env_set  = os.environ.get(EnvParams.ARDUINO_CONNECTOR_LOG_FILE_PATH)
 if maybe_env_set is not None:
     log_file_path = maybe_env_set
     
 log_file_name = 'arduino_connector.log' # Path to where log files should be stored when enabled
-maybe_env_set  = os.environ.get('ARDUINO_CONNECTOR_LOGFILE_NAME')
+maybe_env_set  = os.environ.get(EnvParams.ARDUINO_CONNECTOR_LOGFILE_NAME)
 if maybe_env_set is not None:
     log_file_name = maybe_env_set
     
@@ -33,29 +35,47 @@ if log_to_file:
 #logging.basicConfig(level=logging.DEBUG, format='%(message)s\r\n')
 
 enable_remote_debugger = False
-maybe_env_set = os.environ.get('ARDUINO_CONNECTOR_ENABLE_REMOTE_DEBUG')
-
-if os.environ.get('ARDUINO_CONNECTOR_ENABLE_REMOTE_DEBUG') is not None:
+maybe_env_set = os.environ.get(EnvParams.ARDUINO_CONNECTOR_ENABLE_REMOTE_DEBUG)
+if maybe_env_set is not None and (maybe_env_set.lower() == 'true' or maybe_env_set == '1'):
     enable_remote_debugger = True
+    if file_logger is not None:
+        file_logger.debug(f'Remote Debug Enabled based on presence of Env Variable: {EnvParams.ARDUINO_CONNECTOR_ENABLE_REMOTE_DEBUG}')
     
-
 enable_wait_on_remote_debug = False
-if os.environ.get('ARDUINO_CONNECTOR_WAIT_ON_REMOTE_DEBUG') is not None:
+maybe_env_set = os.environ.get(EnvParams.ARDUINO_CONNECTOR_WAIT_ON_REMOTE_DEBUG)
+if maybe_env_set is not None and (maybe_env_set.lower() == 'true' or maybe_env_set == '1'):
     enable_wait_on_remote_debug = True
+    if file_logger is not None:
+        file_logger.debug(f'Remote Debug Wait Enabled based on presence of Env Variable: {EnvParams.ARDUINO_CONNECTOR_WAIT_ON_REMOTE_DEBUG}')
+
+remote_debug_bind_address = '0.0.0.0'
+maybe_env_set = os.environ.get(EnvParams.ARDUINO_CONNECTOR_REMOTE_DEBUG_BIND_ADDRESS)
+if maybe_env_set is not None:
+    remote_debug_bind_address = maybe_env_set
+    if file_logger is not None:
+        file_logger.debug(f'Remote Debug Bind Address set to {remote_debug_bind_address} based on presence of Env Variable: {EnvParams.ARDUINO_CONNECTOR_REMOTE_DEBUG_BIND_ADDRESS}')
 
 remote_debug_listen_port = 5678
-if os.environ.get('ARDUINO_CONNECTOR_REMOTE_DEBUG_PORT') is not None:
-    remote_debug_listen_port = os.environ.get('ARDUINO_CONNECTOR_REMOTE_DEBUG_PORT')
+maybe_env_set = os.environ.get(EnvParams.ARDUINO_CONNECTOR_REMOTE_DEBUG_PORT)
+if maybe_env_set is not None:
+    remote_debug_listen_port = int(maybe_env_set)
+    if file_logger is not None:
+        file_logger.debug(f'Remote Debug Listen Port set to {remote_debug_listen_port} based on presence of Env Variable: {EnvParams.ARDUINO_CONNECTOR_REMOTE_DEBUG_PORT}')
 
 def launch_debugger(wait_on_connect=False, port=5678):
     import debugpy
-    debugpy.listen(('0.0.0.0',port))
-    print(f'Remote Debug Enabled, listening on port {port}')
-    debugpy.wait_for_client()
+    debugpy.listen((remote_debug_bind_address,port))
+    #print(f'Remote Debug Enabled, listening on port {port}')
+    if file_logger is not None:
+        file_logger.debug(f'Remote Debug Enabled, bound to {remote_debug_bind_address} and listening on port {port}')
+    if wait_on_connect:
+        #print('Waiting for remote debugger to connect...')
+        if file_logger is not None:
+            file_logger.debug('Waiting for remote debugger to connect...')
+        debugpy.wait_for_client()
 
 if enable_remote_debugger:
     launch_debugger(wait_on_connect=enable_wait_on_remote_debug, port=remote_debug_listen_port)
-
 
 # Stage 2, determine what launched this script. If its linuxcnc, then we need to handle errors in an appropriate way
 from linuxcnc_arduinoconnector.Utils import get_parent_process_name, try_load_linuxcnc
