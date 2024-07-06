@@ -2,14 +2,48 @@
 # Stage 1, check for debug environment variables
 import os
 from linuxcnc_arduinoconnector.Config import *
+from linuxcnc_arduinoconnector.Utils import get_parent_process_cmdline, get_parent_process_name, try_load_linuxcnc
 
 # Pre stage, look to see if the local config is set to enable logging by default. This can be helpful 
-# First stage, figure out if LinuxCNC launched this script. If Linuxcnc is the host, then the user's profile will provide the settings to use.
 file_logger = None
 if DEFAULT_LOGGING_ENABLED:
     from linuxcnc_arduinoconnector.LoggingUtils import setup_logger
-    file_logger = setup_logger('file_logger', log_file_path=os.path.join(log_file_path, log_file_name), log_format=logging_fmt)
-    file_logger.debug('Starting up!')
+    file_logger = setup_logger('file_logger', log_file_path=os.path.join(DEFAULT_LOG_FILE_PATH, DEFAULT_LOG_FILE_NAME), log_format=DEFAULT_LOGGING_FORMAT)
+    file_logger.debug('Logging enabled based on override from Config.py, see DEFAULT_LOGGING_ENABLED')
+
+if DEFAULT_REMOTE_DEBUG_ENABLED:
+    import debugpy
+    port = DEFAULT_REMOTE_DEBUG_PORT
+    debugpy.listen((DEFAULT_REMOTE_DEBUG_BIND_ADDRESS,port))
+    #rint(f'Remote Debug Enabled based on override from Config.py, listening on port {port}')
+    if file_logger is not None:
+        file_logger.debug(f'Remote Debug Enabled based on override from Config.py, bound to {DEFAULT_REMOTE_DEBUG_BIND_ADDRESS} and listening on port {port}')
+    if DEFAULT_REMOTE_DEBUG_WAIT_ON_CONNECT:
+        if file_logger is not None:
+            file_logger.debug('Waiting for remote debugger to connect...')
+        debugpy.wait_for_client()
+
+# First stage, figure out if LinuxCNC launched this script. If Linuxcnc is the host, then the user's profile will provide the settings to use.
+launchedByLinuxCNC = False
+# get_parent_process_name() returns 'systemd' if Linuxcnc launches it, otherwise its something else like 'bash' 
+#test = get_parent_process_cmdline()
+maybe_linuxcnc = get_parent_process_name()
+if maybe_linuxcnc== 'systemd' and try_load_linuxcnc(): # try_load_linux will throw an exception if it fails
+    launchedByLinuxCNC = True
+    if file_logger is not None:
+        file_logger.debug('Detected execution by LinuxCNC')
+else:
+    if file_logger is not None:
+        file_logger.debug(f'Detected execution outside of LinuxCNC, parent process name {maybe_linuxcnc}')        
+
+if launchedByLinuxCNC:
+    # Lets access the user's config if we can.
+    from qtvcp.core import Info
+    INFO = Info()
+    #self.iniFile = 
+    machineName = INFO.INI.find('EMC', 'MACHINE')
+    pass
+
 
 '''
 Since Linuxcnc launches the python script using a systemd daemon, environment variables are not accessible! Dang it.
@@ -96,16 +130,7 @@ if file_logger is not None:
 if enable_remote_debugger:
     launch_debugger(wait_on_connect=enable_wait_on_remote_debug, port=remote_debug_listen_port)
 # Stage 2, determine what launched this script. If its linuxcnc, then we need to handle errors in an appropriate way
-from linuxcnc_arduinoconnector.Utils import get_parent_process_name, try_load_linuxcnc
-launchedByLinuxCNC = False
-# get_parent_process_name() returns 'systemd' if Linuxcnc launches it, otherwise its something else like 'bash' 
-if get_parent_process_name() == 'systemd' and try_load_linuxcnc(): # try_load_linux will throw an exception if it fails
-    launchedByLinuxCNC = True
-    if file_logger is not None:
-        file_logger.debug('Detected execution by LinuxCNC')
-else:
-    if file_logger is not None:
-        file_logger.debug(f'Detected execution outside of LinuxCNC, parent process name {get_parent_process_name()}')
+
 '''
 
 
@@ -125,6 +150,7 @@ def exit_program():
         raise DebuggerExit("Exiting program due to missing packages.")
     else:
         sys.exit(1)
+        
 def check_requirements(requirements_file='requirements.txt'):
     with open(requirements_file, 'r') as file:
         requirements = file.readlines()

@@ -27,6 +27,7 @@ def try_load_linuxcnc():
             import linuxcnc
     except ImportError:
         raise ImportError('Error. linuxcnc module not found. Hal emulation requires linuxcnc module.')
+    return True
     
 # taken from https://stackoverflow.com/questions/1742866/compute-crc-of-file-in-python
 def forLoopCrc(fpath):
