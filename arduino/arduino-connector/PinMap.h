@@ -26,159 +26,62 @@ int convertPinString(const char* pinStr) {
   // Handle 'D' pins
   if (pinStr[0] == 'D') {
     switch (pinNum) {
-      #ifdef D0
+    #if defined(D0) || __has_include(<pins_arduino.h>)
       case 0: return D0;
-      #endif
-      #ifdef D1
+    #else
+      case 0: return 0;
+    #endif
+    #if defined(D1) || __has_include(<pins_arduino.h>)
       case 1: return D1;
-      #endif
-      #ifdef D2
+    #else
+      case 1: return 1;
+    #endif
+    #if defined(D2) || __has_include(<pins_arduino.h>)
       case 2: return D2;
-      #endif
-      #ifdef D3
+    #else
+      case 2: return 2;
+    #endif
+    #if defined(D3) || __has_include(<pins_arduino.h>)
       case 3: return D3;
-      #endif
-      #ifdef D4
+    #else
+      case 3: return 3;
+    #endif
+    #if defined(D4) || __has_include(<pins_arduino.h>)
       case 4: return D4;
-      #endif
-      #ifdef D5
+    #else
+      case 4: return 4;
+    #endif
+    #if defined(D5) || __has_include(<pins_arduino.h>)
       case 5: return D5;
-      #endif
-      #ifdef D6
+    #else
+      case 5: return 5;
+    #endif
+    #if defined(D6) || __has_include(<pins_arduino.h>)
       case 6: return D6;
-      #endif
-      #ifdef D7
+    #else
+      case 6: return 6;
+    #endif
+    #if defined(D7) || __has_include(<pins_arduino.h>)
       case 7: return D7;
-      #endif
-      #ifdef D8
+    #else
+      case 7: return 7;
+    #endif
+    #if defined(D8) || __has_include(<pins_arduino.h>)
       case 8: return D8;
-      #endif
-      #ifdef D9
+    #else
+      case 8: return 8;
+    #endif
+    #if defined(D9) || __has_include(<pins_arduino.h>)
       case 9: return D9;
-      #endif
-      #ifdef D10
+    #else
+      case 9: return 9;
+    #endif
+    #if defined(D10) || __has_include(<pins_arduino.h>)
       case 10: return D10;
-      #endif
-      #ifdef D11
-      case 11: return D11;
-      #endif
-      #ifdef D12
-      case 12: return D12;
-      #endif
-      #ifdef D13
-      case 13: return D13;
-      #endif
-      #ifdef D14
-      case 14: return D14;
-      #endif
-      #ifdef D15
-      case 15: return D15;
-      #endif
-      #ifdef D16
-      case 16: return D16;
-      #endif
-      #ifdef D17
-      case 17: return D17;
-      #endif
-      #ifdef D18
-      case 18: return D18;
-      #endif
-      #ifdef D19
-      case 19: return D19;
-      #endif
-      #ifdef D20
-      case 20: return D20;
-      #endif
-      #ifdef D21
-      case 21: return D21;
-      #endif
-      #ifdef D22
-      case 22: return D22;
-      #endif
-      #ifdef D23
-      case 23: return D23;
-      #endif
-      #ifdef D24
-      case 24: return D24;
-      #endif
-      #ifdef D25
-      case 25: return D25;
-      #endif
-      #ifdef D26
-      case 26: return D26;
-      #endif
-      #ifdef D27
-      case 27: return D27;
-      #endif
-      #ifdef D28
-      case 28: return D28;
-      #endif
-      #ifdef D29
-      case 29: return D29;
-      #endif
-      #ifdef D30
-      case 30: return D30;
-      #endif
-      #ifdef D31
-      case 31: return D31;
-      #endif
-      #ifdef D32
-      case 32: return D32;
-      #endif
-      #ifdef D33
-      case 33: return D33;
-      #endif
-      #ifdef D34
-      case 34: return D34;
-      #endif
-      #ifdef D35
-      case 35: return D35;
-      #endif
-      #ifdef D36
-      case 36: return D36;
-      #endif
-      #ifdef D37
-      case 37: return D37;
-      #endif
-      #ifdef D38
-      case 38: return D38;
-      #endif
-      #ifdef D39
-      case 39: return D39;
-      #endif
-      #ifdef D40
-      case 40: return D40;
-      #endif
-      #ifdef D41
-      case 41: return D41;
-      #endif
-      #ifdef D42
-      case 42: return D42;
-      #endif
-      #ifdef D43
-      case 43: return D43;
-      #endif
-      #ifdef D44
-      case 44: return D44;
-      #endif
-      #ifdef D45
-      case 45: return D45;
-      #endif
-      #ifdef D46
-      case 46: return D46;
-      #endif
-      #ifdef D47
-      case 47: return D47;
-      #endif
-      #ifdef D48
-      case 48: return D48;
-      #endif
-      #ifdef D49
-      case 49: return D49;
-      #endif
-      #ifdef D50
-      case 50: return D50;
-      #endif
+    #else
+      case 10: return 10;
+    #endif
+    
     }
     return pinNum;  // Return the number if pin is not defined
   }
