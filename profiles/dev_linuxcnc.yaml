@@ -6,6 +6,6 @@ mcu:
   hal_emulation: true
   io_map:           
     digitalInputs:
-      - pin_id: D4
+      - pin_id: D5
         pin_name: ir-sensor-in #hal pin name
         input_pullup: true

@@ -3,6 +3,7 @@ import logging
 import os
 from pathlib import Path
 import sys
+import traceback
 import zlib
 
 import os
@@ -103,3 +104,60 @@ def check_parent_executable(target_executable):
     else:
         print(f"Script was not launched by {target_executable}")
         return False
+
+async def do_work_async(ac):
+    import asyncio
+    import concurrent.futures
+    loop = asyncio.get_event_loop()
+    with concurrent.futures.ThreadPoolExecutor() as pool:
+        await loop.run_in_executor(pool, ac.doWork)
+
+async def main_async(arduino_connections):
+    import asyncio
+    task_status = {ac: None for ac in arduino_connections}
+    while True:
+        try:           
+            for ac in arduino_connections:
+                if task_status[ac] is None or task_status[ac].done():
+                    task_status[ac] = asyncio.create_task(do_work_async(ac))
+            await asyncio.sleep(0.05)
+            continue
+
+        except KeyboardInterrupt:
+            for ac in arduino_connections:
+                ac.serialConn.stopRxTask()
+            raise SystemExit
+        except Exception as err:
+            arduino_connections.clear()
+            just_the_string = traceback.format_exc()
+            logging.critical(f'PYDEBUG: error: {str(just_the_string)}')
+            pass
+        
+        
+def launch_connector(target_profile:str):
+    
+    try:
+        from linuxcnc_arduinoconnector.YamlParser import ArduinoYamlParser
+        devs = ArduinoYamlParser.parseYaml(path=target_profile)
+    except Exception as err:
+        just_the_string = traceback.format_exc()
+        raise Exception(just_the_string)
+        sys.exit()
+
+    if len(devs) == 0:
+        raise Exception('No Arduino profiles found in profile yaml!')
+        sys.exit()
+
+    arduino_connections = []
+    try:
+        for a in devs:
+            c = ArduinoConnection(a)
+            arduino_connections.append(c)
+            #logging.info(f'PYDEBUG: Loaded Arduino profile: {str(c)}')
+    except Exception as err:
+        just_the_string = traceback.format_exc()
+        #logging.debug(f'PYDEBUG: error: {str(just_the_string)}')
+        sys.exit()
+        
+    import asyncio
+    asyncio.run(main_async(arduino_connections))
