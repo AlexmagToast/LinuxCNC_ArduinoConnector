@@ -38,11 +38,11 @@
 void setup() {
   COM_DEV.begin(115200);
   delay(SERIAL_STARTUP_DELAY);
-  #ifdef DEBUG
-    DEBUG_DEV.println(F("STARTING UP!!"));
+  //#ifdef DEBUG
+  //  DEBUG_DEV.println(F("STARTING UP!!"));
     //DEBUG_DEV.println("HERE WE GO");
-    DEBUG_DEV.flush();
-  #endif
+  //  DEBUG_DEV.flush();
+ // #endif
   
   serialClient.RegisterConfigCallback(Callbacks::onConfig);
   featureController.ExcecuteFeatureSetups();
