@@ -13,7 +13,7 @@ DEFAULT_LOGGING_FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 DEFAULT_LOG_FILE_NAME = 'arduino_connector.log'
 DEFAULT_LOG_FILE_PATH = '/home/ken/git-repos/LinuxCNC_ArduinoConnector'
 
-DEFAULT_REMOTE_DEBUG_ENABLED = False
+DEFAULT_REMOTE_DEBUG_ENABLED = True
 DEFAULT_REMOTE_DEBUG_PORT = 5678
 DEFAULT_REMOTE_DEBUG_BIND_ADDRESS = '0.0.0.0'
 DEFAULT_REMOTE_DEBUG_WAIT_ON_CONNECT = True

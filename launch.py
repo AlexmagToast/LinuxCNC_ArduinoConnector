@@ -20,11 +20,12 @@ def launch_remote_debugger_listen(bind_addres:str, wait_on_connect=False, port=5
         debugpy.listen((bind_addres,port))
         #rint(f'Remote Debug Enabled based on override from Config.py, listening on port {port}')
         if file_logger is not None:
-            file_logger.debug(f'Remote Debug Enabled based on override from Config.py, bound to {bind_addres} and listening on port {port}')
+            file_logger.debug(f'Remote Debug Enabled based on override from Config.py or linuxcnc profile, bound to {bind_addres} and listening on port {port}')
         if wait_on_connect:
             if file_logger is not None:
                 file_logger.debug('Waiting for remote debugger to connect...')
             debugpy.wait_for_client()
+            pass
     except Exception as e:
         if file_logger is not None:
             file_logger.error(f'Error launching remote debugger: {e}')
@@ -76,11 +77,17 @@ if launchedByLinuxCNC:
     maybe_remote_debug = inifile.find(DEFAULT_LINUXCNC_PROFILE_INI_HEADER, DEFAULT_LINUXCNC_PROFILE_INI_REMOTE_DEBUG_KEY) or False
     if maybe_remote_debug == '1':
         maybe_remote_debug = True
+    else:
+        maybe_remote_debug = False
     maybe_wait_on_remote_debug = inifile.find(DEFAULT_LINUXCNC_PROFILE_INI_HEADER, DEFAULT_LINUXCNC_PROFILE_INI_WAIT_ON_REMOTE_DEBUG_CONNECT_KEY) or False
     if maybe_wait_on_remote_debug == '1':
         maybe_wait_on_remote_debug = True
+    else:
+        maybe_wait_on_remote_debug = False
     if maybe_remote_debug:
         launch_remote_debugger_listen(DEFAULT_REMOTE_DEBUG_BIND_ADDRESS, maybe_wait_on_remote_debug, DEFAULT_REMOTE_DEBUG_PORT)
+    #from linuxcnc_arduinoconnector.Utils import launch_ui_in_new_console
+    #launch_ui_in_new_console(additional_args=['-p', yaml_path])
     launch_connector(yaml_path)
     #machine_name = inifile.find("EMC", "MACHINE") or "unknown"
     pass
@@ -215,7 +222,7 @@ def check_requirements(requirements_file='requirements.txt'):
             sys.exit(1)
 
 # Check requirements before running any logic
-check_requirements()
+#check_requirements()
 
 # Your main program logic here
 import asyncio
@@ -233,53 +240,6 @@ from linuxcnc_arduinoconnector.ArduinoComms import ArduinoConnection
 from linuxcnc_arduinoconnector.Console import display_arduino_statuses, display_connection_details
 from linuxcnc_arduinoconnector.Utils import listDevices, locateProfile
 from linuxcnc_arduinoconnector.YamlParser import ArduinoYamlParser
-
-
-
-def launch_ui_in_new_console(additional_args=[]):
-    python_executable = sys.executable
-    script_path = os.path.abspath(__file__)
-    args_str = " ".join(additional_args)
-    
-    if sys.platform.startswith('win'):
-        cmd = f'start cmd /c "{python_executable} {script_path} -o console {args_str}"'
-        subprocess.Popen(cmd, shell=True)
-    elif sys.platform.startswith('linux') or sys.platform == 'darwin':
-        if sys.platform.startswith('linux'):
-            terminals = [
-                ('x-terminal-emulator', '-e'),
-                ('gnome-terminal', '--'),
-                ('konsole', '-e'),
-                ('xfce4-terminal', '-e'),
-                ('mate-terminal', '-e'),
-                ('terminator', '-e'),
-                ('urxvt', '-e'),
-                ('xterm', '-e'),
-            ]
-            
-            for term, arg in terminals:
-                if subprocess.call(['which', term], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) == 0:
-                    cmd = f'{term} {arg} {python_executable} {script_path} -o console {args_str}'
-                    break
-            else:
-                print("No suitable terminal found. Running in current console.")
-                return False
-        elif sys.platform == 'darwin':
-            cmd = f"open -a Terminal.app {python_executable} {script_path} -o console {args_str}"
-        
-        try:
-            subprocess.Popen(shlex.split(cmd))
-        except Exception as e:
-            print(f"Error launching UI: {e}")
-            print("Running in current console.")
-            return False
-    else:
-        print("Unsupported platform for launching separate console.")
-        print("Running in current console.")
-        return False
-    
-    return True
-
 
 arduino_map = []
 
@@ -386,6 +346,7 @@ def main(stdscr=None):
             sys.exit()
 
         if launch_separate_console:
+            from linuxcnc_arduinoconnector.Utils import launch_ui_in_new_console
             launch_ui_in_new_console(additional_args)
             return
 

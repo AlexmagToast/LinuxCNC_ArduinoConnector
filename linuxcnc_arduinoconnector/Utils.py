@@ -56,7 +56,7 @@ def locateProfile() -> list[ArduinoConnection]:
         logging.debug(f'PYDEBUG: Found config: {DEFAULT_PROFILE} in local directory')
         arduino_profiles = ArduinoYamlParser.parseYaml(path=DEFAULT_PROFILE)
     else:
-        err = f'PYDEBUG: No porfile yaml found!'
+        err = f'PYDEBUG: No profile yaml found!'
         logging.error(err)
         raise Exception(err)
     if len(arduino_profiles) == 0:
@@ -104,6 +104,52 @@ def check_parent_executable(target_executable):
     else:
         print(f"Script was not launched by {target_executable}")
         return False
+
+def launch_ui_in_new_console(additional_args=[]):
+    import subprocess
+    import shlex
+    python_executable = sys.executable
+    script_path = os.path.abspath(__file__)
+    args_str = " ".join(additional_args)
+    
+    if sys.platform.startswith('win'):
+        cmd = f'start cmd /c "{python_executable} {script_path} -o console {args_str}"'
+        subprocess.Popen(cmd, shell=True)
+    elif sys.platform.startswith('linux') or sys.platform == 'darwin':
+        if sys.platform.startswith('linux'):
+            terminals = [
+                ('x-terminal-emulator', '-e'),
+                ('gnome-terminal', '--'),
+                ('konsole', '-e'),
+                ('xfce4-terminal', '-e'),
+                ('mate-terminal', '-e'),
+                ('terminator', '-e'),
+                ('urxvt', '-e'),
+                ('xterm', '-e'),
+            ]
+            
+            for term, arg in terminals:
+                if subprocess.call(['which', term], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) == 0:
+                    cmd = f'{term} {arg} {python_executable} {script_path} -o console {args_str}'
+                    break
+            else:
+                print("No suitable terminal found. Running in current console.")
+                return False
+        elif sys.platform == 'darwin':
+            cmd = f"open -a Terminal.app {python_executable} {script_path} -o console {args_str}"
+        
+        try:
+            subprocess.Popen(shlex.split(cmd))
+        except Exception as e:
+            print(f"Error launching UI: {e}")
+            print("Running in current console.")
+            return False
+    else:
+        print("Unsupported platform for launching separate console.")
+        print("Running in current console.")
+        return False
+    
+    return True
 
 async def do_work_async(ac):
     import asyncio
@@ -161,3 +207,4 @@ def launch_connector(target_profile:str):
         
     import asyncio
     asyncio.run(main_async(arduino_connections))
+
