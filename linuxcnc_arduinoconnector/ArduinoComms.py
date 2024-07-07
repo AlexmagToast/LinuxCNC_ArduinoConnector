@@ -388,7 +388,7 @@ class ArduinoConnection(HalInterface):
     
     def register_pins(self, feature): # TODO: Fix code so it actually saves pin from hal interface and also calls the update on pin change
         for pin in feature.pinList:
-            self.register_pin(component=self.component, pin_name=pin.pinName, pin_type=pin.halPinType, pin_direction=pin.halPinDirection)
+            pin.halPinConnection = self.register_pin(component=self.component, pin_name=pin.pinName, pin_type=pin.halPinType, pin_direction=pin.halPinDirection)
             
     def sendMessage(self, pm:ProtocolMessage):
         self.serialConn.sendMessage(pm)

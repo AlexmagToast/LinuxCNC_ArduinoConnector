@@ -191,6 +191,8 @@ class DigitalInputs(IOFeature):
                 for p in self.pinList:
                     if p.pinID == pi.pinID:
                         p.halPinCurrentValue = pi.pinValue
+                        if p.halPinConnection != None:
+                            p.halPinConnection.set(p.halPinCurrentValue)
                         logging.debug(f'PININFO: {pi}')
                         break
             #for p in pm.pinInfo:
