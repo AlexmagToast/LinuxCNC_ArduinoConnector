@@ -183,8 +183,6 @@ class DigitalInputs(IOFeature):
     def OnMessageRecv(self, pm:ProtocolMessage):
         super().OnMessageRecv(pm)
         if (pm.mt == MessageType.MT_PINCHANGE):
-        
-           # maybe_message = #PinChangeMessage#MessageDecoder.parseBytes(pm.payload)
             logging.debug(f'PINCHANGE: {pm.payload}')
             for pi in pm.pinInfo:
                 # find the pin in the pinList
@@ -195,10 +193,6 @@ class DigitalInputs(IOFeature):
                             p.halPinConnection.set(p.halPinCurrentValue)
                         logging.debug(f'PININFO: {pi}')
                         break
-            #for p in pm.pinInfo:
-            #    logging.debug(f'PININFO: {p}')
-
-            #pass    
     
     def OnConnected(self):
         super().OnConnected()

@@ -161,7 +161,8 @@ async def do_work_async(ac):
 async def main_async(arduino_connections):
     import asyncio
     task_status = {ac: None for ac in arduino_connections}
-    while True:
+    shutdown = False
+    while shutdown == False:
         try:           
             for ac in arduino_connections:
                 if task_status[ac] is None or task_status[ac].done():
@@ -172,6 +173,7 @@ async def main_async(arduino_connections):
         except KeyboardInterrupt:
             for ac in arduino_connections:
                 ac.serialConn.stopRxTask()
+            shutdown = True
             raise SystemExit
         except Exception as err:
             arduino_connections.clear()
@@ -206,5 +208,19 @@ def launch_connector(target_profile:str):
         sys.exit()
         
     import asyncio
-    asyncio.run(main_async(arduino_connections))
+    try:
+        asyncio.run(main_async(arduino_connections))
+    except KeyboardInterrupt:
+        
+        for ac in arduino_connections:
+            if hasattr(ac, 'serialConn'):
+                print(f"Keyboard interrupt detected. Closing serial connection {ac.serialConn.dev}.")
+                ac.serialConn.stopRxTask()
+            #print("Serial connections closed.")
+    except Exception as e:
+        print(f"An error occurred: {str(e)}")
+    finally:
+        print("Exiting Arduino Connector.")
+        sys.exit()
+    
 

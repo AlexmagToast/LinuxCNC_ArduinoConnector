@@ -386,7 +386,7 @@ class ArduinoConnection(HalInterface):
     def __str__(self) -> str:
         return f'Arduino Alias = {self.settings.alias}, Component Name = {self.settings.component_name}, Enabled = {self.settings.enabled}'
     
-    def register_pins(self, feature): # TODO: Fix code so it actually saves pin from hal interface and also calls the update on pin change
+    def register_pins(self, feature): 
         for pin in feature.pinList:
             pin.halPinConnection = self.register_pin(component=self.component, pin_name=pin.pinName, pin_type=pin.halPinType, pin_direction=pin.halPinDirection)
             
