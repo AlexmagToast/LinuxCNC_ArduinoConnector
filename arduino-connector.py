@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import serial, time, hal
+import serial, time, hal, yaml
 #	LinuxCNC_ArduinoConnector
 #	By Alexander Richter, info@theartoftinkering.com 2022
 
@@ -50,7 +50,7 @@ import serial, time, hal
 #	Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-c = hal.component("arduino") 	#name that we will cal pins from in hal
+c = hal.component("connector") 	#name that we will cal pins from in hal
 connection = '/dev/ttyACM0' 	#this is the port your Arduino is connected to. You can check with ""sudo dmesg | grep tty"" in Terminal
 
 
