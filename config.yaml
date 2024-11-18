@@ -110,28 +110,42 @@ mcu: #micro controller unit
         useDled: 1 #use digital LED instead of Output 13 #weird setting?
 
     digitalLed:
-      - pin_id: 4 # LED string connected to pin 4
-        pin_name: dled  #hal pin name       #optional
-        dled_count: 5 # no of LEDs
-        dled_on_colors: [[0,0,255],
-                  [255,0,0],
-                  [0,255,0],
-                  [0,255,0],
-                  [0,255,0],
-                  [0,255,0],
-                  [0,255,0],
-                  [0,255,0]] #?
-
-        dled_off_colors: [[0,0,0],
-                  [0,0,0],
-                  [255,0,0],
-                  [255,0,0],
-                  [255,0,0],
-                  [0,0,255],
-                  [0,0,255],
-                  [0,0,255]] #?
-
-        dled_fade: 10 #fade colors ?    #optional
+      - pin_id: 6 # LED connected to pin 4
+        Dled_name: DLED
+        Dled_on_color: [0,0,255]
+        Dled_off_color: [0,0,0]
+        Dled_mode: 0 #0 = on/off, 1 = rgb values
+        Dled_fade: 10 #fade time    #optional
+        Dled_init_state: 1 #turn on at boot
+        Dleds: 
+        - Dled_id: 16
+          Dled_name: Pimmel
+          Dled_on_color: [0,0,255]
+          Dled_off_color: [0,0,0]
+          Dled_mode: 0 #0 = on/off, 1 = rgb values
+          Dled_fade: 10 #fade time    #optional
+        - Dled_id: 1
+          Dled_on_color: [0,255,0]
+          Dled_off_color: [0,0,0]
+        - Dled_group: 
+            Dled_group_start_id: 2
+            Dled_group_end_id: 14
+            Dled_on_color: [255,10,10]
+            Dled_off_color: [90,80,70]
+            Dled_mode: 0 #0 = on/off, 1 = rgb values #optional
+            Dled_fade: 10 #fade colors ?    #optional
+        - Dled_id: 15
+          Dled_on_color: [255,255,255]
+          Dled_off_color: [0,0,0]
+          Dled_mode: 0 #0 = on/off, 1 = rgb values #optional
+          Dled_fade: 10 #fade colors ?    #optional
+        - Dled_group:
+            Dled_name: group_1
+            Dled_group_start_id: 17
+            Dled_group_end_id: 200
+            Dled_on_color: [01,02,03]
+            Dled_off_color: [0,0,0]
+            Dled_mode: 0 #0 = on/off, 1 = rgb values #optional
 
     
     matrixKeyboard:

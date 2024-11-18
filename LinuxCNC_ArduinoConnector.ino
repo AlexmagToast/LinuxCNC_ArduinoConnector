@@ -60,7 +60,7 @@ Communication Status      = 'E' -read/Write  -Pin State: 0:0
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-#include "firmware.h"
+#include "firmware2.h"
 
 
 //###Misc Settings###
@@ -89,8 +89,8 @@ const int debounceDelay = 50;
   int oldOutPWMState[PwmOutputs];
 #endif
 #ifdef AINPUTS
-  int oldAinput[AInputs];
-  unsigned long sumAinput[AInputs];
+  int oldAinput[ANALOG_INPUTS];
+  unsigned long sumAinput[ANALOG_INPUTS];
 #endif
 #ifdef LPOTIS
   int Lpoti[LPotis];
