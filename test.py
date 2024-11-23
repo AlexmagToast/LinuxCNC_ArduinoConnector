@@ -237,10 +237,14 @@ def process_config(configs, writeFirmwareConfig=False):
 
         ### Potentiometer
         if lPoti:
-            if debug == True:
-                print("Latching Potentiometer:")
-            LPotis = (len(lPoti))
+            LPotis = 0
+            for pin in lPoti:
+                if pin.get('pin_enabled', True):
+                    LPotis += 1
+            
             if LPotis > 0:
+                if debug == True:
+                    print("Latching Potentiometer:")
                 if writeFirmwareConfig == True:
                     file_handle.write(f'//Linear Poti\n')
                     file_handle.write(f'#define LPOTI\n')
@@ -257,40 +261,44 @@ def process_config(configs, writeFirmwareConfig=False):
 
 
 
-            for pin in lPoti:
-                if pin.get('pin_enabled', True):
-                    LPotiPinmap.append(pin.get('pin_id', pin))
-                    LPotiPinNames.append(pin.get('pin_name', f"lpoti-{pin}"))
-                    LPotiPinLatches.append(pin.get('pin_latch', 0))	
-                    LPotiPinTypes.append(pin.get('pin_type', 0))
-                    LPotiPinValues.append(pin.get('value_replace', 0))
-                    LPotiPinMargins.append(pin.get('pin_margin', 20))
-                    LPotiPinModes.append(pin.get('pin_mode', 0))
+                for pin in lPoti:
+                    if pin.get('pin_enabled', True):
+                        LPotiPinmap.append(pin.get('pin_id', pin))
+                        LPotiPinNames.append(pin.get('pin_name', f"lpoti-{pin}"))
+                        LPotiPinLatches.append(pin.get('pin_latch', 0))	
+                        LPotiPinTypes.append(pin.get('pin_type', 0))
+                        LPotiPinValues.append(pin.get('value_replace', 0))
+                        LPotiPinMargins.append(pin.get('pin_margin', 20))
+                        LPotiPinModes.append(pin.get('pin_mode', 0))
 
-                
-                    if debug == True:
-                        print(LPotiPinmap[-1])
-                        print(LPotiPinNames[-1])
-                        print(LPotiPinLatches[-1])
-                        print(LPotiPinTypes[-1])
-                        print(LPotiPinValues[-1])
-                        print(LPotiPinMargins[-1])
-                        print(LPotiPinModes[-1])
                     
-            if writeFirmwareConfig == True:
-                file_handle.write(f'    const int LPotiPinmap[] = {{{",".join(map(str, LPotiPinmap))}}};\n')
-                file_handle.write(f'    const int LPotiPinLatches[] = {{{",".join(map(str, LPotiPinLatches))}}};\n')
-                file_handle.write(f'    const int LPotiPinMargins[] = {{{",".join(map(str, LPotiPinMargins))}}};\n')
-            
+                        if debug == True:
+                            print(LPotiPinmap[-1])
+                            print(LPotiPinNames[-1])
+                            print(LPotiPinLatches[-1])
+                            print(LPotiPinTypes[-1])
+                            print(LPotiPinValues[-1])
+                            print(LPotiPinMargins[-1])
+                            print(LPotiPinModes[-1])
+                        
+                if writeFirmwareConfig == True:
+                    file_handle.write(f'    const int LPotiPinmap[] = {{{",".join(map(str, LPotiPinmap))}}};\n')
+                    file_handle.write(f'    const int LPotiPinLatches[] = {{{",".join(map(str, LPotiPinLatches))}}};\n')
+                    file_handle.write(f'    const int LPotiPinMargins[] = {{{",".join(map(str, LPotiPinMargins))}}};\n')
                 
-                file_handle.write(f'\n')
+                    
+                    file_handle.write(f'\n')
 
         ### Binary Selector Switch
         if binarySelectorSwitch:
-            if debug == True:
-                print("Binary Selector Switch:")
-            BSS = (len(binarySelectorSwitch))
+            BSS = 0
+            for pin in binarySelectorSwitch:
+                if pin.get('pin_enabled', True):
+                    BSS += 1
+            
             if BSS > 0:
+                if debug == True:
+                    print("Binary Selector Switch:")
                 if writeFirmwareConfig == True:
                     file_handle.write(f'//Binary Selector Switch\n')
                     file_handle.write(f'#define BINSEL\n')
@@ -303,21 +311,21 @@ def process_config(configs, writeFirmwareConfig=False):
                 BSSPinValues = []
 
 
-            for pin in binarySelectorSwitch:
-                if pin.get('pin_enabled', True):
-                    BSSPinmap.append(pin.get('pin_id', pin))
-                    BSSPinNames.append(pin.get('pin_name', f"bss-{pin}"))
-                    BSSPinPins.append(pin.get('pin_pins', 0))
-                    BSSPinTypes.append(pin.get('pin_type', 0))
-                    BSSPinValues.append(pin.get('pin_value', 0))
-                    
-            if writeFirmwareConfig == True:
-                file_handle.write(f'    const int BSSPinmap[] = {{{",".join(map(str, BSSPinmap))}}};\n')
+                for pin in binarySelectorSwitch:
+                    if pin.get('pin_enabled', True):
+                        BSSPinmap.append(pin.get('pin_id', pin))
+                        BSSPinNames.append(pin.get('pin_name', f"bss-{pin}"))
+                        BSSPinPins.append(pin.get('pin_pins', 0))
+                        BSSPinTypes.append(pin.get('pin_type', 0))
+                        BSSPinValues.append(pin.get('pin_value', 0))
+                        
+                if writeFirmwareConfig == True:
+                    file_handle.write(f'    const int BSSPinmap[] = {{{",".join(map(str, BSSPinmap))}}};\n')
 
-                formatted_values = ", ".join("{" + ",".join(map(str, sublist)) + "}" for sublist in BSSPinPins)
-                file_handle.write(f'    const int BSSPinPins[][5] = {{{formatted_values}}};\n')
+                    formatted_values = ", ".join("{" + ",".join(map(str, sublist)) + "}" for sublist in BSSPinPins)
+                    file_handle.write(f'    const int BSSPinPins[][5] = {{{formatted_values}}};\n')
 
-                file_handle.write(f'\n')
+                    file_handle.write(f'\n')
 
 
         ### Quadrature Encoder
@@ -398,7 +406,7 @@ def process_config(configs, writeFirmwareConfig=False):
                 if writeFirmwareConfig == True:
                     file_handle.write(f'    const int JSPinmap[] = {{{",".join(map(str, JSPinmap))}}};\n')
                     file_handle.write(f'    const int JSCenter[] = {{{",".join(map(str, JSPinCenter))}}};\n')
-                    file_handle.write(f'    const int JSDeadbands[] = {{{",".join(map(str, JSPinDeadbands))}}};\n')
+                    file_handle.write(f'    const int JSDeadband[] = {{{",".join(map(str, JSPinDeadbands))}}};\n')
                     file_handle.write(f'    const float JSScaling[] = {{{",".join(map(str, JSPinScaling))}}};\n')
                     file_handle.write(f'\n')
 
@@ -423,7 +431,7 @@ def process_config(configs, writeFirmwareConfig=False):
 
                 if writeFirmwareConfig == True:
                     file_handle.write(f'    const int StatusLed = {StatusLed};\n')
-                    file_handle.write(f'      const int StatLedErrDel[] = {{1000,10}};   //Blink Timing for Status LED Error (no connection)\n')
+                    file_handle.write(f'    int StatLedErrDel[] = {{1000,10}};   //Blink Timing for Status LED Error (no connection)\n')
                     file_handle.write(f'    const int UseDLedStatusLed = {StatusLedDled};\n')
                     file_handle.write(f'\n')
 
@@ -540,8 +548,13 @@ def process_config(configs, writeFirmwareConfig=False):
                     #file_handle.write(f'    const char* DLedPinNames[] = {{{",".join(map(lambda x: f\'"{x}"\', DLedPinNames))}}};\n')
                     file_handle.write(f'    const int DLedInits[{DLedIds[-1]+1}] = {{{",".join(map(str, DLedInits))}}};\n')
                     file_handle.write(f'    const int DLedPinModes[{DLedIds[-1]+1}] = {{{",".join(map(str, DLedModes))}}};\n')
-                    file_handle.write(f'    const int DLedPin_on_values[{DLedIds[-1]+1}][3] = {{{",".join(map(str, DLed_on_values))}}};\n')
-                    file_handle.write(f'    const int DLedPin_off_values[{DLedIds[-1]+1}][3] = {{{",".join(map(str, DLed_off_values))}}};\n')
+                    
+                    DLed_on_values_str = ",".join(map(str, DLed_on_values)).replace('[', '{').replace(']', '}')
+                    file_handle.write(f'    const int DLedPin_on_values[{DLedIds[-1]+1}][3] = {{{DLed_on_values_str}}};\n')
+                    DLed_off_values_str = ",".join(map(str, DLed_off_values)).replace('[', '{').replace(']', '}')
+                    file_handle.write(f'    const int DLedPin_off_values[{DLedIds[-1]+1}][3] = {{{DLed_off_values_str}}};\n')
+                    
+                    
                     file_handle.write(f'    const int DLedPin_Fades[{DLedIds[-1]+1}] = {{{",".join(map(str, DLed_Fades))}}};\n')
                     file_handle.write(f'\n')
 

@@ -70,9 +70,9 @@ const int debounceDelay = 50;
 
 //Variables for Saving States
 #ifdef INPUTS
-  int InState[Inputs];
-  int oldInState[Inputs];
-  unsigned long lastInputDebounce[Inputs];
+  int InState[DigitalInputs];
+  int oldInState[DigitalInputs];
+  unsigned long lastInputDebounce[DigitalInputs];
 #endif
 #ifdef SINPUTS
   int sInState[sInputs];
@@ -81,8 +81,8 @@ const int debounceDelay = 50;
   unsigned long lastsInputDebounce[sInputs];
 #endif
 #ifdef OUTPUTS
-  int OutState[Outputs];
-  int oldOutState[Outputs];
+  int OutState[DigitalOutputs];
+  int oldOutState[DigitalOutputs];
 #endif
 #ifdef PWMOUTPUTS
   int OutPWMState[PwmOutputs];
@@ -105,32 +105,32 @@ const int debounceDelay = 50;
 #ifdef MULTIPLEXLEDS
   byte KeyLedStates[numVccPins*numGndPins];
 #endif
-#if QUADENCS == 1
+#if QuadratureEncoders == 1
   const int QuadEncs = 1;
 #endif
-#if QUADENCS == 2
+#if QuadratureEncoders == 2
   const int QuadEncs = 2;
 #endif
-#if QUADENCS == 3
+#if QuadratureEncoders == 3
   const int QuadEncs = 3;
 #endif
-#if QUADENCS == 4
+#if QuadratureEncoders == 4
   const int QuadEncs = 4;
 #endif
-#if QUADENCS == 5
+#if QuadratureEncoders == 5
   const int QuadEncs = 5;
 #endif
 #ifdef QUADENC
-  long EncCount[QuadEncs];
-  long OldEncCount[QuadEncs];
+  long EncCount[QuadratureEncoders];
+  long OldEncCount[QuadratureEncoders];
 #endif
 
 
 #ifdef JOYSTICK
-long counter[JoySticks*2] = {0};      // Initialize an array for the counters
-long prevCounter[JoySticks*2] = {0};  // Initialize an array for the previous counters
-float incrementFactor[JoySticks*2] = {0.0}; // Initialize an array for the incrementFactors
-unsigned long lastUpdateTime[JoySticks*2] = {0}; // Store the time of the last update for each potentiometer
+long counter[Joysticks*2] = {0};      // Initialize an array for the counters
+long prevCounter[Joysticks*2] = {0};  // Initialize an array for the previous counters
+float incrementFactor[Joysticks*2] = {0.0}; // Initialize an array for the incrementFactors
+unsigned long lastUpdateTime[Joysticks*2] = {0}; // Store the time of the last update for each potentiometer
 
 #endif
 
@@ -178,45 +178,43 @@ void readJoySticks();
 void setup() {
 
 #ifdef INPUTS
-//setting Inputs with internal Pullup Resistors
-  for(int i= 0; i<Inputs;i++){
-    pinMode(InPinmap[i], INPUT_PULLUP);
+//setting Inputs
+  for(int i= 0; i<DigitalInputs;i++){
+    if(InPinPullups[i] == 0){
+      pinMode(InPinmap[i], INPUT);
+    }
+    else if(InPinPullups[i] == 1){
+      pinMode(InPinmap[i], INPUT_PULLUP);
+    }
     oldInState[i] = -1;
     }
 #endif
 
-#ifdef SINPUTS
-//setting Inputs with internal Pullup Resistors
-  for(int i= 0; i<sInputs;i++){
-    pinMode(sInPinmap[i], INPUT_PULLUP);
-    soldInState[i] = -1;
-    togglesinputs[i] = 0;
-  }
-
-#endif
 #ifdef AINPUTS
 
-  for(int i= 0; i<AInputs;i++){
+  for(int i= 0; i<ANALOG_INPUTS;i++){
     pinMode(AInPinmap[i], INPUT);
     oldAinput[i] = -1;
     sumAinput[i] = 0;
     }
 #endif
 #ifdef OUTPUTS
-  for(int o= 0; o<Outputs;o++){
+  for(int o= 0; o<DigitalOutputs;o++){
     pinMode(OutPinmap[o], OUTPUT);
-    oldOutState[o] = 0;
+    oldOutState[o] = OutPinInit[o];
+    //todo: add code to set initial state
     }
 #endif
 
 #ifdef PWMOUTPUTS
   for(int o= 0; o<PwmOutputs;o++){
     pinMode(PwmOutPinmap[o], OUTPUT);
-    oldOutPWMState[o] = 0;
+    oldOutPWMState[o] = PWMPinInit[o];
+    //todo: add code to set initial state
     }
 #endif
 #ifdef STATUSLED
-  pinMode(StatLedPin, OUTPUT);
+  pinMode(StatusLed, OUTPUT);
 #endif
 
 #ifdef BINSEL
@@ -273,7 +271,7 @@ void loop() {
   readKeypad(); //read Keyboard & send data
 #endif
 
-#ifdef QUADENC
+#ifdef QUADENCS
   readEncoders(); //read Encoders & send data
 #endif
 
@@ -288,24 +286,24 @@ void loop() {
 #ifdef JOYSTICK
 
 void readJoySticks() {
-  for (int i = 0; i < JoySticks*2; i++) {
+  for (int i = 0; i < Joysticks*2; i++) {
     unsigned long currentTime = millis(); // Get the current time
 
     // Check if it's time to update the counter for this potentiometer
     if (currentTime - lastUpdateTime[i] >= 100) { // Adjust 100 milliseconds based on your needs
       lastUpdateTime[i] = currentTime; // Update the last update time for this potentiometer
 
-      int potValue = analogRead(JoyStickPins[i]); // Read the potentiometer value
+      int potValue = analogRead(JSPinmap[i]); // Read the potentiometer value
 
       // Calculate the distance of the potentiometer value from the middle
-      int distanceFromMiddle = potValue - middleValue;
+      int distanceFromMiddle = potValue - JSCenter[i];
 
       // Apply deadband to ignore small variations around middleValue
-      if (abs(distanceFromMiddle) <= deadband) {
+      if (abs(distanceFromMiddle) <= JSDeadband[i]) {
         incrementFactor[i] = 0.0; // Set incrementFactor to 0 within the deadband range
       } else {
         // Apply non-linear scaling to distanceFromMiddle to get the incrementFactor
-        incrementFactor[i] = pow((distanceFromMiddle * scalingFactor), 3);
+        incrementFactor[i] = pow((distanceFromMiddle * JSScaling[i]), 3);
       }
 
       // Update the counter if the incrementFactor has reached a full number
@@ -316,7 +314,7 @@ void readJoySticks() {
 
       // Check if the counter value has changed
       if (counter[i] != prevCounter[i]) {
-        sendData('R',JoyStickPins[i],counter[i]);
+        sendData('R',JSPinmap[i],counter[i]);
         // Update the previous counter value with the current counter value
         prevCounter[i] = counter[i];
       }
@@ -325,7 +323,7 @@ void readJoySticks() {
 }
 #endif
 
-#ifdef QUADENC
+#ifdef QUADENCS
 void readEncoders(){
     if(QuadEncs>=1){
       #if QUADENCS >= 1
@@ -383,7 +381,7 @@ void comalive(){
       Serial.println("E0:0");
       delay(200);
       #ifdef STATUSLED
-        StatLedErr(1000,1000);
+        //StatLedErrDel[] = {1000,1000};
       #endif
     }
     connectionState = 1;
@@ -407,13 +405,13 @@ void comalive(){
    else{
       connectionState=1;
       #ifdef STATUSLED
-        if(DLEDSTATUSLED == 1){
+        if(UseDLedStatusLed == 1){
           #ifdef DLED
-            controlDLED(StatLedPin, 1);
+            controlDLED(StatusLed, 1);
           #endif
         }
         else{
-          digitalWrite(StatLedPin, HIGH);
+          digitalWrite(StatusLed, HIGH);
         }
       #endif
     }
@@ -427,18 +425,13 @@ void reconnect(){
   #endif
 
   #ifdef INPUTS
-    for (int x = 0; x < Inputs; x++){
+    for (int x = 0; x < DigitalInputs; x++){
       InState[x]= -1;
     }
   #endif
-  #ifdef SINPUTS
-    for (int x = 0; x < sInputs; x++){
-      soldInState[x]= -1;
-      togglesinputs[x] = 0;
-    }
-  #endif
+  
   #ifdef AINPUTS
-    for (int x = 0; x < AInputs; x++){
+    for (int x = 0; x < ANALOG_INPUTS; x++){
       oldAinput[x] = -1;
       sumAinput[x] = 0;
     }
@@ -485,6 +478,76 @@ void sendData(char sig, int pin, int state){
         Serial.println(state);
 }
 
+//
+void sendStates() {
+  uint8_t buffer[64];  // Adjust size as needed
+  uint8_t pos = 0;
+  uint8_t checksum = 0;
+
+  // Start marker
+  buffer[pos++] = 0xAA;
+
+  // Section 1: Binary pins
+  buffer[pos++] = 0; // Type: binary
+  uint8_t binaryPins[] = {1, 0, 1, 1, 0, 0, 1, 1}; // Example binary states
+  uint8_t binaryCount = sizeof(binaryPins) / sizeof(binaryPins[0]);
+  buffer[pos++] = binaryCount; // Number of binary pins
+  uint8_t packedBinary = 0;
+  for (uint8_t i = 0; i < binaryCount; i++) {
+    packedBinary |= (binaryPins[i] << (i % 8));
+    if ((i + 1) % 8 == 0 || i == binaryCount - 1) {
+      buffer[pos++] = packedBinary;
+      packedBinary = 0; // Reset for the next byte
+    }
+  }
+
+  // Section 2: Integer pins
+  buffer[pos++] = 1; // Type: integer
+  uint8_t integerPins[] = {1, 2}; // Pin IDs
+  int16_t integerValues[] = {512, 1024};
+  uint8_t integerCount = sizeof(integerPins) / sizeof(integerPins[0]);
+  buffer[pos++] = integerCount; // Number of integer pins
+  for (uint8_t i = 0; i < integerCount; i++) {
+    buffer[pos++] = integerPins[i]; // Pin ID
+    memcpy(&buffer[pos], &integerValues[i], sizeof(integerValues[i])); // Value
+    pos += sizeof(integerValues[i]);
+  }
+
+  // Section 3: Float pins
+  buffer[pos++] = 2; // Type: float
+  uint8_t floatPins[] = {3}; // Pin IDs
+  float floatValues[] = {3.14};
+  uint8_t floatCount = sizeof(floatPins) / sizeof(floatPins[0]);
+  buffer[pos++] = floatCount; // Number of float pins
+  for (uint8_t i = 0; i < floatCount; i++) {
+    buffer[pos++] = floatPins[i]; // Pin ID
+    memcpy(&buffer[pos], &floatValues[i], sizeof(floatValues[i])); // Value
+    pos += sizeof(floatValues[i]);
+  }
+
+  // Compute checksum
+  for (uint8_t i = 1; i < pos; i++) {
+    checksum += buffer[i];
+  }
+  buffer[pos++] = checksum;
+
+  // End marker
+  buffer[pos++] = 0xBB;
+
+  // Send message
+  Serial.write(buffer, pos);
+}
+
+void setup() {
+  Serial.begin(115200); // Initialize serial communication
+}
+
+void loop() {
+  sendMessage(); // Send grouped pin states
+  delay(100);    // Adjust as needed
+}
+
+
 void flushSerial(){
   while (Serial.available() > 0) {
   Serial.read();
@@ -497,17 +560,17 @@ void StatLedErr(int offtime, int ontime){
 
   if (newMillis - oldmillis >= offtime){
       #ifdef DLED
-        if(DLEDSTATUSLED == 1){
-          controlDLED(StatLedPin, 1);}
+        if(UseDLedStatusLed == 1){
+          controlDLED(StatusLed, 1);}
       #endif
-      if(DLEDSTATUSLED == 0){digitalWrite(StatLedPin, HIGH);}
+      if(UseDLedStatusLed == 0){digitalWrite(StatusLed, HIGH);}
     }
   if (newMillis - oldmillis >= offtime+ontime){{
       #ifdef DLED
-        if(DLEDSTATUSLED == 1){
-          controlDLED(StatLedPin, 0);}
+        if(UseDLedStatusLed == 1){
+          controlDLED(StatusLed, 0);}
       #endif
-      if(DLEDSTATUSLED == 0){digitalWrite(StatLedPin, LOW);}
+      if(UseDLedStatusLed == 0){digitalWrite(StatusLed, LOW);}
 
       oldmillis = newMillis;
 
@@ -585,34 +648,33 @@ void readLPoti(){
 }
 #endif
 
-
 #ifdef AINPUTS
-void readAInputs(){
+void readAInputs() {
   static unsigned int samplecount = 0;
+  static int currentInput = 0;
 
-   for(int i= 0;i<AInputs; i++){
-
-    if (samplecount < smooth) {
-      sumAinput[i] = sumAinput[i] + analogRead(AInPinmap[i]);
+  if (samplecount < AInPinSmoothing[currentInput]) {
+    sumAinput[currentInput] += analogRead(AInPinmap[currentInput]);
+    samplecount++;
+  } else {
+    sumAinput[currentInput] /= AInPinSmoothing[currentInput];
+    if (oldAinput[currentInput] != sumAinput[currentInput]) {
+      oldAinput[currentInput] = sumAinput[currentInput];
+      sendData('A', AInPinmap[currentInput], oldAinput[currentInput]);
     }
-    else {
-      sumAinput[i] = sumAinput[i] / smooth;
-      if(oldAinput[i]!= sumAinput[i]){
-        oldAinput[i] = sumAinput[i];
-        sendData('A',AInPinmap[i],oldAinput[i]);
-      }
-      sumAinput[i] = 0;
+    sumAinput[currentInput] = 0;
+    samplecount = 0;
+    currentInput++;
+    if (currentInput >= ANALOG_INPUTS) {
+      currentInput = 0;
     }
-   }
-
-  if(samplecount < smooth){ samplecount = samplecount + 1;}
-  else {samplecount = 0;}
-
+  }
 }
 #endif
+
 #ifdef INPUTS
 void readInputs(){
-    for(int i= 0;i<Inputs; i++){
+    for(int i= 0;i<DigitalInputs; i++){
       int State = digitalRead(InPinmap[i]);
       if(InState[i]!= State && millis()- lastInputDebounce[i] > debounceDelay){
         InState[i] = State;
