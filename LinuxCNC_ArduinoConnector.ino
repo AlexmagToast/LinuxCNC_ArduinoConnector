@@ -64,7 +64,6 @@ Communication Status      = 'E' -read/Write  -Pin State: 0:0
 
 
 //###Misc Settings###
-const int timeout = 10000;   // timeout after 10 sec not receiving Stuff
 const int debounceDelay = 50;
 
 
@@ -124,7 +123,12 @@ const int debounceDelay = 50;
   long EncCount[QuadratureEncoders];
   long OldEncCount[QuadratureEncoders];
 #endif
+#ifdef DIGITALLEDS
+  #include <Adafruit_NeoPixel.h>
+  Adafruit_NeoPixel strip(DLedChainLength, DLedPin, NEO_GRB + NEO_KHZ800);//Color sequence is different for LED Chipsets. Use RGB for WS2812  or GRB for PL9823.
 
+
+#endif
 
 #ifdef JOYSTICK
 long counter[Joysticks*2] = {0};      // Initialize an array for the counters
@@ -218,14 +222,14 @@ void setup() {
 #endif
 
 #ifdef BINSEL
-  pinMode(BinSelKnobPins[0], INPUT_PULLUP);
-  pinMode(BinSelKnobPins[1], INPUT_PULLUP);
-  pinMode(BinSelKnobPins[2], INPUT_PULLUP);
-  pinMode(BinSelKnobPins[3], INPUT_PULLUP);
-  pinMode(BinSelKnobPins[4], INPUT_PULLUP);
+  pinMode(BSSPinmap[0], INPUT_PULLUP);
+  pinMode(BSSPinmap[1], INPUT_PULLUP);
+  pinMode(BSSPinmap[2], INPUT_PULLUP);
+  pinMode(BSSPinmap[3], INPUT_PULLUP);
+  pinMode(BSSPinmap[4], INPUT_PULLUP);
 #endif
 
-#ifdef DLED
+#ifdef DIGITALLEDS
   initDLED();
 #endif
 
@@ -239,7 +243,7 @@ for(int col = 0; col < numCols; col++) {
 
 
 //Setup Serial
-  Serial.begin(115200);
+  Serial.begin(CONNECTION_BAUDRATE);
   while (!Serial){}
   comalive();
 }
@@ -274,7 +278,9 @@ void loop() {
 #ifdef QUADENCS
   readEncoders(); //read Encoders & send data
 #endif
-
+#ifdef DIGITALLEDS
+  initDLED();
+#endif
 #ifdef JOYSTICK
   readJoySticks(); //read Encoders & send data
 #endif
@@ -390,7 +396,7 @@ void comalive(){
       Serial.println("first connect");
     #endif
   }
-  if(millis() - lastcom > timeout){
+  if(millis() - lastcom > CONNECTION_TIMEOUT){
   #ifdef STATUSLED
      StatLedErr(500,200);
   #endif
@@ -406,7 +412,7 @@ void comalive(){
       connectionState=1;
       #ifdef STATUSLED
         if(UseDLedStatusLed == 1){
-          #ifdef DLED
+          #ifdef DIGITALLEDS
             controlDLED(StatusLed, 1);
           #endif
         }
@@ -538,15 +544,6 @@ void sendStates() {
   Serial.write(buffer, pos);
 }
 
-void setup() {
-  Serial.begin(115200); // Initialize serial communication
-}
-
-void loop() {
-  sendMessage(); // Send grouped pin states
-  delay(100);    // Adjust as needed
-}
-
 
 void flushSerial(){
   while (Serial.available() > 0) {
@@ -559,14 +556,14 @@ void StatLedErr(int offtime, int ontime){
   unsigned long newMillis = millis();
 
   if (newMillis - oldmillis >= offtime){
-      #ifdef DLED
+      #ifdef DIGITALLEDS
         if(UseDLedStatusLed == 1){
           controlDLED(StatusLed, 1);}
       #endif
       if(UseDLedStatusLed == 0){digitalWrite(StatusLed, HIGH);}
     }
   if (newMillis - oldmillis >= offtime+ontime){{
-      #ifdef DLED
+      #ifdef DIGITALLEDS
         if(UseDLedStatusLed == 1){
           controlDLED(StatusLed, 0);}
       #endif
@@ -593,26 +590,26 @@ void writePwmOutputs(int Pin, int Stat){
 
 #endif
 
-#ifdef DLED
+#ifdef DIGITALLEDS
 void initDLED(){
   strip.begin();
-  strip.setBrightness(DLEDBrightness);
+  strip.setBrightness(DledBrightness);
 
-    for (int i = 0; i < DLEDcount; i++) {
-    strip.setPixelColor(i, strip.Color(DledOffColors[i][0],DledOffColors[i][1],DledOffColors[i][2]));
+    for (int i = 0; i < DLedChainLength; i++) {
+    strip.setPixelColor(i, strip.Color(DLedPin_off_values[i][0],DLedPin_off_values[i][1],DLedPin_off_values[i][2]));
     }
   strip.show();
   #ifdef DEBUG
-    Serial.print("DLED initialised");
+    Serial.print("DIGITALLEDS initialised");
   #endif
 }
 
 void controlDLED(int Pin, int Stat){
   if(Stat == 1){
 
-    strip.setPixelColor(Pin, strip.Color(DledOnColors[Pin][0],DledOnColors[Pin][1],DledOnColors[Pin][2]));
+    strip.setPixelColor(Pin, strip.Color(DLedPin_on_values[Pin][0],DLedPin_on_values[Pin][1],DLedPin_on_values[Pin][2]));
     #ifdef DEBUG
-      Serial.print("DLED No.");
+      Serial.print("DIGITALLEDS No.");
       Serial.print(Pin);
       Serial.print(" set to:");
       Serial.println(Stat);
@@ -621,9 +618,9 @@ void controlDLED(int Pin, int Stat){
     }
     else{
 
-      strip.setPixelColor(Pin, strip.Color(DledOffColors[Pin][0],DledOffColors[Pin][1],DledOffColors[Pin][2]));
+      strip.setPixelColor(Pin, strip.Color(DLedPin_off_values[Pin][0],DLedPin_off_values[Pin][1],DLedPin_off_values[Pin][2]));
       #ifdef DEBUG
-        Serial.print("DLED No.");
+        Serial.print("DIGITALLEDS No.");
         Serial.print(Pin);
         Serial.print(" set to:");
         Serial.println(Stat);
@@ -713,19 +710,19 @@ void readsInputs(){
 #ifdef BINSEL
 int readAbsKnob(){
   int var = 0;
-  if(digitalRead(BinSelKnobPins[0])==1){
+  if(digitalRead(BSSPinmap[0])==1){
     var += 1;
   }
-  if(digitalRead(BinSelKnobPins[1])==1){
+  if(digitalRead(BSSPinmap[1])==1){
     var += 2;
   }
-  if(digitalRead(BinSelKnobPins[2])==1){
+  if(digitalRead(BSSPinmap[2])==1){
     var += 4;
   }
-  if(digitalRead(BinSelKnobPins[3])==1){
+  if(digitalRead(BSSPinmap[3])==1){
     var += 8;
   }
-  if(digitalRead(BinSelKnobPins[4])==1){
+  if(digitalRead(BSSPinmap[4])==1){
     var += 16;
   }
   if(var != oldAbsEncState){
@@ -832,12 +829,12 @@ void commandReceived(char cmd, uint16_t io, uint16_t value){
 
   }
   #endif
-  #ifdef DLED
+  #ifdef DIGITALLEDS
   if(cmd == 'D'){
     controlDLED(io,value);
     lastcom=millis();
     #ifdef debug
-      Serial.print("DLED:");
+      Serial.print("DIGITALLEDS:");
       Serial.print(io);
       Serial.print(" State:");
       Serial.println(DLEDstate[io]);

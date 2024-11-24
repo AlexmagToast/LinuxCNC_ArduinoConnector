@@ -42,6 +42,7 @@ mcu: #micro controller unit
     
     pwmOutputs:
       - pin_id: 12
+        pin_enabled: 0
         pin_name: pwmout #hal pin name        #optional
         pin_init_state: 0 #optional
         pin_mode: 0 #optional
@@ -51,6 +52,7 @@ mcu: #micro controller unit
 
     digitalInputs:
       - pin_id: 4
+        pin_enabled: 1
         pin_name: din #hal pin name           #optional
         pin_mode: 0 #trigger? #normal ? :D
         pin_pullup: 1
@@ -61,6 +63,15 @@ mcu: #micro controller unit
 
     digitalOutputs:
       - pin_id: 8
+        pin_enabled: 1
+        pin_name: din #hal pin name           #optional
+        pin_type: HAL_BIT #hal pin type       #optional
+        pin_init_state: 1 #turn on at boot  
+        pin_ondisconnected_state: -1 #optional, default -1, 0/1 or -1 (no change from existing state)
+        pin_onconnected_state: -1 #optional, default -1, 0/1 or -1 (no change from existing state)
+
+      - pin_id: 12
+        pin_enabled: 1
         pin_name: din #hal pin name           #optional
         pin_type: HAL_BIT #hal pin type       #optional
         pin_init_state: 1 #turn on at boot  
@@ -69,6 +80,7 @@ mcu: #micro controller unit
 
     lPoti: #create pins from single potentiometer
       - pin_id: 1
+        pin_enabled: 1
         pin_name: lpoti  #hal pin name        #optional
         lpoti_latches: 9 #create 9 virtual pins
         pin_type: HAL_S32 #hal pin type     #optional   HAL_BIT, HAL_S32 , HAL_FLOAT
@@ -76,14 +88,15 @@ mcu: #micro controller unit
         pin_margin: 20 #optional
         
       - pin_id: 2
+        pin_enabled: 1
         pin_name: lpoti2  #hal pin name        #optional
         lpoti_latches: 4 #create 4 virtual pins
         pin_type: HAL_FLOAT #hal pin type     #optional   HAL_BIT, HAL_S32 , HAL_FLOAT
         value_replace: [0.001,0.01,0.1,1]
         
     binarySelectorSwitch:
-      - pin_id: 0
-        pin_enabled: 0 #enable pin
+      - pin_id: 1
+        pin_enabled: 1 #enable pin
         pin_name: binSel  #hal pin name       #optional
         pin_pins: [2,6,4,3,5] #1,2,4,8,16 how to make this more dynamic?
         pin_type: HAL_FLOAT #hal pin type     #optional   HAL_BIT, HAL_S32 , HAL_FLOAT
@@ -91,6 +104,7 @@ mcu: #micro controller unit
 
     quadratureEncoder:
       - pin_id: 0
+        pin_enabled: 0
         pin_name: quadEnc  #hal pin name       #optional
         encoder_mode: counter #updown #vpins
         encoder_A_pin: 2  #?
@@ -105,6 +119,7 @@ mcu: #micro controller unit
 
     joystick:
       - pin_id: 2
+        pin_enabled: 1
         pin_name: joystick  #hal pin name       #optional
         joystick_center: 512  
         joystick_deadband: 20 #ignore values around joystick_center + - deadband 

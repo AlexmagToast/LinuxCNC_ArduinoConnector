@@ -22,9 +22,7 @@ def process_config(configs, writeFirmwareConfig=False):
     for i,config in enumerate(configs):
         mcu = config.get('mcu', {})
         alias = mcu.get('alias', f'MCU-{i}')
-        if(writeFirmwareConfig):
-            file_handle.write(f'//IO Settings of mcu no {i}\n')
-            file_handle.write("\n")
+
         component_name = mcu.get('component_name', 'arducon')
         dev = mcu.get('dev', 'Unknown')
         debug = mcu.get('debug', False)
@@ -32,6 +30,14 @@ def process_config(configs, writeFirmwareConfig=False):
         connection_type = mcu.get('connection_type', 'serial')
         connection_baudrate = mcu.get('connection_baudrate', 115200)
         connection_timeout = mcu.get('connection_timeout', 5000)
+        if(writeFirmwareConfig):
+            file_handle.write(f'//IO Settings of mcu no {i}\n//Alias :{alias}\n')
+            file_handle.write("\n")
+            file_handle.write(f'//Connection Settings\n')
+            file_handle.write(f'#define CONNECTION_TYPE {connection_type}\n')
+            file_handle.write(f'#define CONNECTION_BAUDRATE {connection_baudrate}\n')
+            file_handle.write(f'#define CONNECTION_TIMEOUT {connection_timeout}\n\n')
+            file_handle.write(f'//I/O Settings\n \n')
 
         if debug == True:
             
@@ -62,13 +68,28 @@ def process_config(configs, writeFirmwareConfig=False):
         rcServo = io_map.get('rcServo', [])
         Stepper = io_map.get('Stepper', [])
 
+        #create an arrays with all Pins for communication
+        allBitInPins = []
+        allIntInPins = []
+        allFloatPins = []
+
+        allBitOutPins = []
+        allIntOutPins = []
+        allFloatOutPins = []
+
+
 
         ### Analog Inputs
         if analog_inputs:
-            if debug == True:
-                print("Analog Inputs:")
-            AInputs = (len(analog_inputs))
+            AInputs = 0
+            for pin in analog_inputs:
+                if pin.get('pin_enabled', True):
+                    AInputs += 1
+
             if AInputs > 0:
+                if debug == True:
+                    print("Analog Inputs:")
+
                 if writeFirmwareConfig == True:
                     file_handle.write(f'//Analog Inputs\n')
                     file_handle.write(f'#define AINPUTS\n')
@@ -80,35 +101,42 @@ def process_config(configs, writeFirmwareConfig=False):
                 AInPinMinValues = []
                 AInPinMaxValues = []
 
-                
 
+                for pin in analog_inputs:
+                    if pin.get('pin_enabled', True):
+                        AInPinmap.append(pin.get('pin_id', pin))
+                        AInPinNames.append(pin.get('pin_name', f"ain-{pin}"))
+                        AInPinSmoothings.append(pin.get('pin_smoothing', 200))
+                        AInPinMinValues.append(pin.get('pin_min_val', 0))
+                        AInPinMaxValues.append(pin.get('pin_max_val', 255))
+                        allIntInPins.append(allIntInPins[-1] + 1 if allIntInPins else 0)
 
-            for pin in analog_inputs:
-                if pin.get('pin_enabled', True):
-                    AInPinmap.append(pin.get('pin_id', pin))
-                    AInPinNames.append(pin.get('pin_name', f"ain-{pin}"))
-                    AInPinSmoothings.append(pin.get('pin_smoothing', 200))
-                    AInPinMinValues.append(pin.get('pin_min_val', 0))
-                    AInPinMaxValues.append(pin.get('pin_max_val', 255))
+                    if debug == True:
+                        print(AInPinmap[-1])
+                        print(AInPinNames[-1])
+                        print(AInPinSmoothings[-1])
+                        print(AInPinMinValues[-1])
+                        print(AInPinMaxValues[-1])
+                        print(allIntInPins[-1])
 
-                if debug == True:
-                    print(AInPinmap[-1])
-                    print(AInPinNames[-1])
-                    print(AInPinSmoothings[-1])
-                    print(AInPinMinValues[-1])
-                    print(AInPinMaxValues[-1])
+                if writeFirmwareConfig == True:
+                    file_handle.write(f'    const int AInPinmap[] = {{{",".join(map(str, AInPinmap))}}};\n')
+                    file_handle.write(f'    const int AInPinSmoothing[] = {{{",".join(map(str, AInPinSmoothings))}}};\n')
+                    file_handle.write(f'    const int AInPinAdresses[] = {{{",".join(map(str, allIntInPins[-AInputs:]))}}};\n')
+                    file_handle.write('\n')    
 
-            if writeFirmwareConfig == True:
-                file_handle.write(f'    const int AInPinmap[] = {{{",".join(map(str, AInPinmap))}}};\n')
-                file_handle.write(f'    const int AInPinSmoothing[] = {{{",".join(map(str, AInPinSmoothings))}}};\n')
-                file_handle.write(f'\n')
 
         ### PWM Outputs
         if pwm_outputs:
-            if debug == True:
-                print("PWM Outputs:")
-            PwmOutputs = (len(pwm_outputs))
+            
+            PwmOutputs = 0
+            for pin in pwm_outputs:
+                if pin.get('pin_enabled', True):
+                    PwmOutputs += 1
+
             if PwmOutputs > 0:
+                if debug == True:
+                    print("PWM Outputs:")
                 if writeFirmwareConfig == True:
                     file_handle.write(f'//PWM Outputs\n')
                     file_handle.write(f'#define PWMOUTPUTS\n')
@@ -123,34 +151,38 @@ def process_config(configs, writeFirmwareConfig=False):
 
                 
 
-            for pin in pwm_outputs:
-                if pin.get('pin_enabled', True):
-                    PwmOutPinmap.append(pin.get('pin_id', pin))
-                    PWMPinNames.append(pin.get('pin_name', f"pwm-{pin}"))
-                    PWMPinInit.append(pin.get('pin_init_state', 0))
-                    PWMPinModes.append(pin.get('pin_mode', 0))
-                    PWMPin_on_values.append(pin.get('pin_on_value', 255))
-                    PWMPin_off_values.append(pin.get('pin_off_value', 0))
+                for pin in pwm_outputs:
+                    if pin.get('pin_enabled', True):
+                        PwmOutPinmap.append(pin.get('pin_id', pin))
+                        PWMPinNames.append(pin.get('pin_name', f"pwm-{pin}"))
+                        PWMPinInit.append(pin.get('pin_init_state', 0))
+                        PWMPinModes.append(pin.get('pin_mode', 0))
+                        PWMPin_on_values.append(pin.get('pin_on_value', 255))
+                        PWMPin_off_values.append(pin.get('pin_off_value', 0))
 
-                    if debug == True:
-                        print(PwmOutPinmap[-1])
-                        print(PWMPinNames[-1])
-                        print(PWMPinInit[-1])
-                        print(PWMPinModes[-1])
-                        print(PWMPin_on_values[-1])
-                        print(PWMPin_off_values[-1])
-                    
-            if writeFirmwareConfig == True:
-                file_handle.write(f'    const int PwmOutPinmap[] = {{{",".join(map(str, PwmOutPinmap))}}};\n')
-                file_handle.write(f'    const int PWMPinInit[] = {{{",".join(map(str, PWMPinInit))}}};\n')
-                file_handle.write(f'\n')
+                        if debug == True:
+                            print(PwmOutPinmap[-1])
+                            print(PWMPinNames[-1])
+                            print(PWMPinInit[-1])
+                            print(PWMPinModes[-1])
+                            print(PWMPin_on_values[-1])
+                            print(PWMPin_off_values[-1])
+                        
+                if writeFirmwareConfig == True:
+                    file_handle.write(f'    const int PwmOutPinmap[] = {{{",".join(map(str, PwmOutPinmap))}}};\n')
+                    file_handle.write(f'    const int PWMPinInit[] = {{{",".join(map(str, PWMPinInit))}}};\n')
+                    file_handle.write(f'\n')
 
         ### Digital Inputs
         if digital_inputs:
-            if debug == True:
-                print("Digital Inputs:")
-            Inputs = (len(digital_inputs))
+            Inputs = 0	
+            for pin in digital_inputs:
+                if pin.get('pin_enabled', True):
+                    Inputs += 1
+            
             if Inputs > 0:
+                if debug == True:
+                    print("Digital Inputs:")
                 if writeFirmwareConfig == True:
                     file_handle.write(f'//Digital Inputs\n')
                     file_handle.write(f'#define INPUTS\n')
@@ -165,37 +197,43 @@ def process_config(configs, writeFirmwareConfig=False):
 
                 
 
-            for pin in digital_inputs:
-                if pin.get('pin_enabled', True):
-                    InPinmap.append(pin.get('pin_id', pin))
-                    InPinNames.append(pin.get('pin_name', f"din-{pin}"))
-                    InPinModes.append(pin.get('pin_mode', 0))
-                    InPinDebounce.append(pin.get('pin_debounce', 20))
-                    InPinPullups.append(pin.get('pin_pullup', 1))
-                    InPinInverteds.append(pin.get('pin_inverted', 0))
+                for pin in digital_inputs:
+                    if pin.get('pin_enabled', True):
+                        InPinmap.append(pin.get('pin_id', pin))
+                        InPinNames.append(pin.get('pin_name', f"din-{pin}"))
+                        InPinModes.append(pin.get('pin_mode', 0))
+                        InPinDebounce.append(pin.get('pin_debounce', 20))
+                        InPinPullups.append(pin.get('pin_pullup', 1))
+                        InPinInverteds.append(pin.get('pin_inverted', 0))
+                        allBitInPins.append(allBitInPins[-1] + 1 if allBitInPins else 0)
 
-                    if debug == True:
-                        print(InPinmap[-1])
-                        print(InPinNames[-1])
-                        print(InPinModes[-1])
-                        print(InPinDebounce[-1])
-                        print(InPinPullups[-1])
-                        print(InPinInverteds[-1])
-                    
-            if writeFirmwareConfig == True:
-                file_handle.write(f'    const int InPinmap[] = {{{",".join(map(str, InPinmap))}}};\n')
-                file_handle.write(f'    const int InPinModes[] = {{{",".join(map(str, InPinModes))}}};\n')
-                file_handle.write(f'    const int InPinDebounce[] = {{{",".join(map(str, InPinDebounce))}}};\n')
-                file_handle.write(f'    const int InPinPullups[] = {{{",".join(map(str, InPinPullups))}}};\n')
-
-                file_handle.write(f'\n')
-        
+                        if debug == True:
+                            print(InPinmap[-1])
+                            print(InPinNames[-1])
+                            print(InPinModes[-1])
+                            print(InPinDebounce[-1])
+                            print(InPinPullups[-1])
+                            print(InPinInverteds[-1])
+                            print(allBitInPins[-1])
+                        
+                if writeFirmwareConfig == True:
+                    file_handle.write(f'    const int InPinmap[] = {{{",".join(map(str, InPinmap))}}};\n')
+                    file_handle.write(f'    const int InPinModes[] = {{{",".join(map(str, InPinModes))}}};\n')
+                    file_handle.write(f'    const int InPinDebounce[] = {{{",".join(map(str, InPinDebounce))}}};\n')
+                    file_handle.write(f'    const int InPinPullups[] = {{{",".join(map(str, InPinPullups))}}};\n')
+                    file_handle.write(f'    const int InPinAdresses[] = {{{",".join(map(str, allBitInPins[-Inputs:]))}}};\n')
+                    file_handle.write(f'\n')
+            
         ### Digital Outputs
         if digital_outputs:
-            if debug == True:
-                print("Digital Outputs:")
-            Outputs = (len(digital_outputs))
+            Outputs = 0
+            for pin in digital_outputs:
+                if pin.get('pin_enabled', True):
+                    Outputs += 1
+            
             if Outputs > 0:
+                if debug == True:
+                    print("Digital Outputs:")
                 if writeFirmwareConfig == True:
                     file_handle.write(f'//Digital Outputs\n')
                     file_handle.write(f'#define OUTPUTS\n')
@@ -210,30 +248,32 @@ def process_config(configs, writeFirmwareConfig=False):
 
 
 
-            for pin in digital_outputs:
-                if pin.get('pin_enabled', True):
-                    OutPinmap.append(pin.get('pin_id', pin))
-                    OutPinNames.append(pin.get('pin_name', f"out-{pin}"))
-                    OutPinInit.append(pin.get('pin_init_state', 0))
-                    OutPinTypes.append(pin.get('pin_type', 0))
-                    OutPinDisconnected_states.append(pin.get('pin_on_disconnected', -1))
-                    OutPinConnected_states.append(pin.get('pin_on_connected', -1))           
-
-                    
-                if debug == True:
-                    print(OutPinmap[-1])
-                    print(OutPinNames[-1])
-                    print(OutPinTypes[-1])
-                    print(OutPinInit[-1])
-                    print(OutPinDisconnected_states[-1])
-                    print(OutPinConnected_states[-1])         
-                    
-            if writeFirmwareConfig == True:
-                file_handle.write(f'    const int OutPinmap[] = {{{",".join(map(str, OutPinmap))}}};\n')
-                file_handle.write(f'    const int OutPinInit[] = {{{",".join(map(str, OutPinInit))}}};\n')
-                file_handle.write(f'    const int OutPinDisconnect[] = {{{",".join(map(str, OutPinDisconnected_states))}}};\n')
-                file_handle.write(f'    const int OutPinConnect[] = {{{",".join(map(str, OutPinConnected_states))}}};\n') 
-                file_handle.write(f'\n')
+                for pin in digital_outputs:
+                    if pin.get('pin_enabled', True):
+                        OutPinmap.append(pin.get('pin_id', pin))
+                        OutPinNames.append(pin.get('pin_name', f"out-{pin}"))
+                        OutPinInit.append(pin.get('pin_init_state', 0))
+                        OutPinTypes.append(pin.get('pin_type', 0))
+                        OutPinDisconnected_states.append(pin.get('pin_on_disconnected', 0))
+                        OutPinConnected_states.append(pin.get('pin_on_connected', 0))           
+                        allBitOutPins.append(allBitOutPins[-1] + 1 if allBitOutPins else 0)
+                        
+                    if debug == True:
+                        print(OutPinmap[-1])
+                        print(OutPinNames[-1])
+                        print(OutPinTypes[-1])
+                        print(OutPinInit[-1])
+                        print(OutPinDisconnected_states[-1])
+                        print(OutPinConnected_states[-1])
+                        print(allBitOutPins[-1])   
+                        
+                if writeFirmwareConfig == True:
+                    file_handle.write(f'    const int OutPinmap[] = {{{",".join(map(str, OutPinmap))}}};\n')
+                    file_handle.write(f'    const int OutPinInit[] = {{{",".join(map(str, OutPinInit))}}};\n')
+                    file_handle.write(f'    const int OutPinDisconnect[] = {{{",".join(map(str, OutPinDisconnected_states))}}};\n')
+                    file_handle.write(f'    const int OutPinConnect[] = {{{",".join(map(str, OutPinConnected_states))}}};\n')
+                    file_handle.write(f'    const int OutPinAdresses[] = {{{",".join(map(str, allBitOutPins[-Outputs:]))}}};\n')
+                    file_handle.write(f'\n')
 
         ### Potentiometer
         if lPoti:
@@ -246,7 +286,7 @@ def process_config(configs, writeFirmwareConfig=False):
                 if debug == True:
                     print("Latching Potentiometer:")
                 if writeFirmwareConfig == True:
-                    file_handle.write(f'//Linear Poti\n')
+                    file_handle.write(f'//latching Poti\n')
                     file_handle.write(f'#define LPOTI\n')
                     file_handle.write(f'#define LinearPotis {LPotis}\n')
             
@@ -270,6 +310,7 @@ def process_config(configs, writeFirmwareConfig=False):
                         LPotiPinValues.append(pin.get('value_replace', 0))
                         LPotiPinMargins.append(pin.get('pin_margin', 20))
                         LPotiPinModes.append(pin.get('pin_mode', 0))
+                        allBitInPins.append(allBitInPins[-1] + 1 if allBitInPins else 0)
 
                     
                         if debug == True:
@@ -280,12 +321,13 @@ def process_config(configs, writeFirmwareConfig=False):
                             print(LPotiPinValues[-1])
                             print(LPotiPinMargins[-1])
                             print(LPotiPinModes[-1])
+                            print(allBitInPins[-1])
                         
                 if writeFirmwareConfig == True:
                     file_handle.write(f'    const int LPotiPinmap[] = {{{",".join(map(str, LPotiPinmap))}}};\n')
                     file_handle.write(f'    const int LPotiPinLatches[] = {{{",".join(map(str, LPotiPinLatches))}}};\n')
                     file_handle.write(f'    const int LPotiPinMargins[] = {{{",".join(map(str, LPotiPinMargins))}}};\n')
-                
+                    file_handle.write(f'    const int LPotiPinAdresses[] = {{{",".join(map(str, allBitInPins[-LPotis:]))}}};\n')
                     
                     file_handle.write(f'\n')
 
@@ -315,25 +357,49 @@ def process_config(configs, writeFirmwareConfig=False):
                     if pin.get('pin_enabled', True):
                         BSSPinmap.append(pin.get('pin_id', pin))
                         BSSPinNames.append(pin.get('pin_name', f"bss-{pin}"))
-                        BSSPinPins.append(pin.get('pin_pins', 0))
+                        BSSPinPins.extend(pin.get('pin_pins', []))
                         BSSPinTypes.append(pin.get('pin_type', 0))
                         BSSPinValues.append(pin.get('pin_value', 0))
+                        for _ in range(len(BSSPinPins)):
+                            allBitInPins.append(allBitInPins[-1] + 1 if allBitInPins else 0)
+                        if debug == True:
+                            print(BSSPinmap[-1])
+                            print(BSSPinNames[-1])
+                            print(BSSPinPins[0])
+                            print(BSSPinTypes[-1])
+                            print(BSSPinValues[-1])
+                            print(allBitInPins[-1])
                         
                 if writeFirmwareConfig == True:
-                    file_handle.write(f'    const int BSSPinmap[] = {{{",".join(map(str, BSSPinmap))}}};\n')
-
-                    formatted_values = ", ".join("{" + ",".join(map(str, sublist)) + "}" for sublist in BSSPinPins)
-                    file_handle.write(f'    const int BSSPinPins[][5] = {{{formatted_values}}};\n')
-
+                    file_handle.write('    const int BSSPinmap[] = {')
+                    for i in range(len(BSSPinPins)):
+                        file_handle.write(f'{BSSPinPins[i]}')
+                        if i < len(BSSPinPins) - 1:
+                            file_handle.write(',')
+                    file_handle.write('};\n')
+                    file_handle.write('    const int BSSPinAdresses[] = {')
+                    for i in range(len(BSSPinPins)):
+                        allBitInPins.append(allBitInPins[-1] + 1 if allBitInPins else 0)
+                        file_handle.write(f'{allBitInPins[-1]}')
+                        if i < len(BSSPinPins) - 1:
+                            file_handle.write(',')
+                    file_handle.write('};\n')
+                
+                    
                     file_handle.write(f'\n')
 
 
         ### Quadrature Encoder
         if quadratureEncoder:
-            if debug == True:
-                print("Quadrature Encoder:")
-            QE = (len(quadratureEncoder))
+            
+            QE = 0
+            for pin in quadratureEncoder:
+                if pin.get('pin_enabled', True):
+                    QE += 1
+
             if QE > 0:
+                if debug == True:
+                    print("Quadrature Encoder:")
                 if writeFirmwareConfig == True:
                     file_handle.write(f'//Quadrature Encoder\n')
                     file_handle.write(f'#define QUADENC\n')
@@ -351,31 +417,36 @@ def process_config(configs, writeFirmwareConfig=False):
 
 
 
-            for pin in quadratureEncoder:
-                if pin.get('pin_enabled', True):
-                    QEPinmap.append(pin.get('pin_id', pin))
-                    QEPinNames.append(pin.get('pin_name', f"quadEnc.{pin}"))
-                    QEPinModes.append(pin.get('pin_mode', 0))
-                    QEPinPins.append(pin.get('pin_pins', 0))
-                    QEPin_steps.append(pin.get('pin_steps', 4))
-                    QEPinvirtualpins.append(pin.get('pin_virtualpins', 0))
-                    QEPinVirtualStartPins.append(pin.get('pin_virtualstartpins', 0))
-                    QEPinTypes.append(pin.get('pin_type', 0))
-                    QEPinValues.append(pin.get('pin_value', 0))
+                for pin in quadratureEncoder:
+                    if pin.get('pin_enabled', True):
+                        QEPinmap.append(pin.get('pin_id', pin))
+                        QEPinNames.append(pin.get('pin_name', f"quadEnc.{pin}"))
+                        QEPinModes.append(pin.get('pin_mode', 0))
+                        QEPinPins.append(pin.get('pin_pins', 0))
+                        QEPin_steps.append(pin.get('pin_steps', 4))
+                        QEPinvirtualpins.append(pin.get('pin_virtualpins', 0))
+                        QEPinVirtualStartPins.append(pin.get('pin_virtualstartpins', 0))
+                        QEPinTypes.append(pin.get('pin_type', 0))
+                        QEPinValues.append(pin.get('pin_value', 0))
 
-            if writeFirmwareConfig == True:
-                file_handle.write(f'    const int QEPinmap[] = {{{",".join(map(str, QEPinmap))}}};\n')
-                file_handle.write(f'    const int QEPinModes[] = {{{",".join(map(str, QEPinModes))}}};\n')
-                file_handle.write(f'    const int QEPinPins[] = {{{",".join(map(str, QEPinPins))}}};\n')
-                file_handle.write(f'    const int QEPinSteps[] = {{{",".join(map(str, QEPin_steps))}}};\n')
-                file_handle.write(f'\n')
+                if writeFirmwareConfig == True:
+                    file_handle.write(f'    const int QEPinmap[] = {{{",".join(map(str, QEPinmap))}}};\n')
+                    file_handle.write(f'    const int QEPinModes[] = {{{",".join(map(str, QEPinModes))}}};\n')
+                    file_handle.write(f'    const int QEPinPins[] = {{{",".join(map(str, QEPinPins))}}};\n')
+                    file_handle.write(f'    const int QEPinSteps[] = {{{",".join(map(str, QEPin_steps))}}};\n')
+                    file_handle.write(f'\n')
 
         ### Joystick
         if joystick:
-            if debug == True:
-                print("Joystick:")
-            JS = (len(joystick))
+            JS = 0
+            for pin in joystick:
+                if pin.get('pin_enabled', True):
+                    JS += 1
+
             if JS > 0:
+                
+                if debug == True:
+                    print("Joystick:")
                 if writeFirmwareConfig == True:
                     file_handle.write(f'//Joystick\n')
                     file_handle.write(f'#define JOYSTICK\n')
@@ -386,31 +457,34 @@ def process_config(configs, writeFirmwareConfig=False):
                 JSPinCenter = []
                 JSPinDeadbands = []
                 JSPinScaling = []
-                
+                    
 
-            for pin in joystick:
-                if pin.get('pin_enabled', True):
-                    JSPinmap.append(pin.get('pin_id', pin))
-                    JSPinNames.append(pin.get('pin_name', f"joystick-{pin}"))
-                    JSPinCenter.append(pin.get('pin_center', 512))
-                    JSPinDeadbands.append(pin.get('pin_deadband', 20))
-                    JSPinScaling.append(pin.get('pin_scaling', 0.01))
+                for pin in joystick:
+                    if pin.get('pin_enabled', True):
+                        JSPinmap.append(pin.get('pin_id', pin))
+                        JSPinNames.append(pin.get('pin_name', f"joystick-{pin}"))
+                        JSPinCenter.append(pin.get('pin_center', 512))
+                        JSPinDeadbands.append(pin.get('pin_deadband', 20))
+                        JSPinScaling.append(pin.get('pin_scaling', 0.01))
+                        allIntInPins.append(allIntInPins[-1] + 1 if allIntInPins else 0)
 
-                    if debug == True:
-                        print(JSPinmap[-1])
-                        print(JSPinNames[-1])
-                        print(JSPinCenter[-1])
-                        print(JSPinDeadbands[-1])
-                        print(JSPinScaling[-1])
+                        if debug == True:
+                            print(JSPinmap[-1])
+                            print(JSPinNames[-1])
+                            print(JSPinCenter[-1])
+                            print(JSPinDeadbands[-1])
+                            print(JSPinScaling[-1])
+                            print(allIntInPins[-1])
 
-                if writeFirmwareConfig == True:
-                    file_handle.write(f'    const int JSPinmap[] = {{{",".join(map(str, JSPinmap))}}};\n')
-                    file_handle.write(f'    const int JSCenter[] = {{{",".join(map(str, JSPinCenter))}}};\n')
-                    file_handle.write(f'    const int JSDeadband[] = {{{",".join(map(str, JSPinDeadbands))}}};\n')
-                    file_handle.write(f'    const float JSScaling[] = {{{",".join(map(str, JSPinScaling))}}};\n')
-                    file_handle.write(f'\n')
+                    if writeFirmwareConfig == True:
+                        file_handle.write(f'    const int JSPinmap[] = {{{",".join(map(str, JSPinmap))}}};\n')
+                        file_handle.write(f'    const int JSCenter[] = {{{",".join(map(str, JSPinCenter))}}};\n')
+                        file_handle.write(f'    const int JSDeadband[] = {{{",".join(map(str, JSPinDeadbands))}}};\n')
+                        file_handle.write(f'    const float JSScaling[] = {{{",".join(map(str, JSPinScaling))}}};\n')
+                        file_handle.write(f'    const int JSPinAdresses[] = {{{",".join(map(str, allIntInPins[-JS:]))}}};\n')
+                        file_handle.write(f'\n')
 
-            
+             
         ### Status LED
         if statusled:
             if debug == True:
@@ -438,10 +512,15 @@ def process_config(configs, writeFirmwareConfig=False):
 
         ### Digital LED
         if digitalLed:
-            if debug == True:
-                print("Digital LED:")
-            DLed = (len(digitalLed))
+            
+            DLed = 0
+            for pin in digitalLed:
+                if pin.get('pin_enabled', True):
+                    DLed += 1
+                    
             if DLed > 0:
+                if debug == True:
+                    print("Digital LED:")
                 if writeFirmwareConfig == True:
                     file_handle.write(f'#define DIGITALLEDS\n')
                 
@@ -470,7 +549,8 @@ def process_config(configs, writeFirmwareConfig=False):
                         DLedStandardFade = pin.get('Dled_fade', 0)
                         DLedStandardMode = pin.get('Dled_mode', 0)
                         DLedStandardInit = pin.get('Dled_init_state', 0)
-
+                        DledBrightness = pin.get('Dled_brightness', 70)
+                        DledChainLength = 0
 
                         for dled in pin.get('Dleds', []):
                             if 'Dled_group' in dled:
@@ -485,14 +565,16 @@ def process_config(configs, writeFirmwareConfig=False):
                                 Group_inits = dled_group.get('Dled_init_state', DLedStandardInit)
 
                                 Dled_Groupcounter += 1
-                                for i in range(start_id, end_id + 1):
-                                    DLedIds.append(i)
-                                    DLedNames.append(f"{Group_name}")
-                                    DLedInits.append(Group_inits)
-                                    DLedModes.append(Group_mode)
-                                    DLed_on_values.append(Group_OnColor)
-                                    DLed_off_values.append(Group_OffColor)
-                                    DLed_Fades.append(Group_fade)
+                                DLedIds.append(start_id)
+                                DLedNames.append(f"{Group_name}")
+                                DLedInits.append(Group_inits)
+                                DLedModes.append(Group_mode)
+                                DLed_on_values.append(Group_OnColor)
+                                DLed_off_values.append(Group_OffColor)
+                                DLed_Fades.append(Group_fade)
+
+                                if end_id > DledChainLength:
+                                    DledChainLength = end_id
                             else:
                                 DLedIds.append(dled.get('Dled_id', 0))
                                 DLedNames.append(dled.get('Dled_name', f"{DLedStandardName}-{dled.get('Dled_id')}"))
@@ -502,7 +584,10 @@ def process_config(configs, writeFirmwareConfig=False):
                                 DLed_off_values.append(dled.get('Dled_off_color', DLedStandardOffColor))
                                 DLed_Fades.append(dled.get('Dled_fade', DLedStandardFade))
 
-
+                                if DLedIds[-1] > DledChainLength:
+                                    DledChainLength = DLedIds[-1]
+                                
+                    
                     # Create a list of tuples containing all the data
                     dled_data = list(zip(DLedIds, DLedNames, DLedInits, DLedModes, DLed_on_values, DLed_off_values, DLed_Fades))
                     
@@ -531,6 +616,11 @@ def process_config(configs, writeFirmwareConfig=False):
                     DLed_off_values = list(DLed_off_values)
                     DLed_Fades = list(DLed_Fades)
 
+                    Dled_Adresses = []
+                    for i in range(len(DLedIds)):
+                        Dled_Adresses.append(allBitOutPins[-1] + i + 1)
+                    allBitOutPins.extend(Dled_Adresses)
+
                     if debug:
                         print(f"Dled Pin: {DLedPin}")
                         print(f"DLed Names: {DLedNames}")
@@ -540,35 +630,28 @@ def process_config(configs, writeFirmwareConfig=False):
                         print(f"DLed On Values: {DLed_on_values}")
                         print(f"DLed Off Values: {DLed_off_values}")
                         print(f"DLed Fades: {DLed_Fades}")
+                        print(f"DLed Adresses: {Dled_Adresses}")
+                        print(f"chain length: {DledChainLength}")
                     
 
 
-                if writeFirmwareConfig:
-                    file_handle.write(f'    const int DLedPin = {DLedPin};\n')
-                    #file_handle.write(f'    const char* DLedPinNames[] = {{{",".join(map(lambda x: f\'"{x}"\', DLedPinNames))}}};\n')
-                    file_handle.write(f'    const int DLedInits[{DLedIds[-1]+1}] = {{{",".join(map(str, DLedInits))}}};\n')
-                    file_handle.write(f'    const int DLedPinModes[{DLedIds[-1]+1}] = {{{",".join(map(str, DLedModes))}}};\n')
-                    
-                    DLed_on_values_str = ",".join(map(str, DLed_on_values)).replace('[', '{').replace(']', '}')
-                    file_handle.write(f'    const int DLedPin_on_values[{DLedIds[-1]+1}][3] = {{{DLed_on_values_str}}};\n')
-                    DLed_off_values_str = ",".join(map(str, DLed_off_values)).replace('[', '{').replace(']', '}')
-                    file_handle.write(f'    const int DLedPin_off_values[{DLedIds[-1]+1}][3] = {{{DLed_off_values_str}}};\n')
-                    
-                    
-                    file_handle.write(f'    const int DLedPin_Fades[{DLedIds[-1]+1}] = {{{",".join(map(str, DLed_Fades))}}};\n')
-                    file_handle.write(f'\n')
+                    if writeFirmwareConfig:
+                        file_handle.write(f'    const int DLedPin = {DLedPin};\n')
+                        file_handle.write(f'    const int DledBrightness = {DledBrightness};\n')
+                        file_handle.write(f'    const int DLedInits[{DLedIds[-1]+1}] = {{{",".join(map(str, DLedInits))}}};\n')
+                        file_handle.write(f'    const int DLedPinModes[{DLedIds[-1]+1}] = {{{",".join(map(str, DLedModes))}}};\n')
+                        
+                        DLed_on_values_str = ",".join(map(str, DLed_on_values)).replace('[', '{').replace(']', '}')
+                        file_handle.write(f'    const int DLedPin_on_values[{DLedIds[-1]+1}][3] = {{{DLed_on_values_str}}};\n')
+                        DLed_off_values_str = ",".join(map(str, DLed_off_values)).replace('[', '{').replace(']', '}')
+                        file_handle.write(f'    const int DLedPin_off_values[{DLedIds[-1]+1}][3] = {{{DLed_off_values_str}}};\n')
+                        
+                        file_handle.write(f'    const int DLedPin_Fades[{DLedIds[-1]+1}] = {{{",".join(map(str, DLed_Fades))}}};\n')
+                        file_handle.write(f'    const int DLedAdresses[{DLedIds[-1]+1}] = {{{",".join(map(str, Dled_Adresses))}}};\n')
+                        file_handle.write(f'    const int DLedChainLength = {DledChainLength};\n')
+                        file_handle.write(f'\n')
 
-            print("Digital LED:")
-            print(DLedPin)
-            print(DLedPinNames)
-            print("Dleds: ")
-            print(DLedIds)
-            print(DLedInits)
-            print(DLedModes)
-            print(DLed_on_values)
-            print(DLed_off_values)
-            print(DLed_Fades)
-            
+           
         ### Matrix Keyboard
 
 
