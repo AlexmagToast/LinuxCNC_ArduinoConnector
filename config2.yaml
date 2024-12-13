@@ -1,0 +1,339 @@
+mcu:
+  alias: Arduino 2560 Mega
+  component_name: arduino
+  connection:
+    baudrate: 115200
+    timeout: 5000
+    type: Serial
+  debug: true
+  dev: COM5
+  enabled: true
+  io_map:
+    LEDmultiplexing:
+    - Multiplexled_Gnd_Pins:
+      - 40
+      - 41
+      - 42
+      - 43
+      - 44
+      - 45
+      - 46
+      - 47
+      Multiplexled_Vcc_Pins:
+      - 30
+      - 31
+      - 32
+      - 33
+      - 34
+      - 35
+      - 36
+      - 37
+      pin_id: 0
+      pin_name: mled
+    Stepper:
+    - pin_id: 0
+      pin_mode: null
+      pin_name: stepper
+    analogInputs:
+    - pin_id: 0
+      pin_max_val: 4096
+      pin_min_val: 10
+      pin_name: ain
+      pin_smoothing: 200
+    - pin_id: 1
+    - pin_id: 3
+      pin_name: anain
+    - pin_id: 4
+    - pin_id: 5
+      pin_smoothing: 500
+    - pin_id: 6
+      pin_min_val: 100
+    - pin_id: 7
+      pin_max_val: 2048
+    - pin_id: 8
+      pin_max_val: 4096
+      pin_min_val: 1000
+      pin_name: aaaabbbb
+      pin_smoothing: 600
+    binarySelectorSwitch:
+    - pin_enabled: 1
+      pin_id: 1
+      pin_name: binSel
+      pin_pins:
+      - 2
+      - 6
+      - 4
+      - 3
+      - 5
+      pin_type: HAL_FLOAT
+      value_replace:
+      - 180
+      - 190
+      - 200
+      - 0
+      - 0
+      - 0
+      - 0
+      - 0
+      - 0
+      - 0
+      - 0
+      - 0
+      - 0
+      - 0
+      - 0
+      - 10
+      - 20
+      - 30
+      - 40
+      - 50
+      - 60
+      - 70
+      - 80
+      - 90
+      - 100
+      - 110
+      - 120
+      - 130
+      - 140
+      - 150
+      - 160
+      - 170
+    dallasThermistor:
+    - pin_id: 0
+      pin_mode: c
+      pin_name: dtemp
+      pin_pins:
+      - 2
+      - 3
+    digitalInputs:
+    - pin_debounce: 1
+      pin_enabled: 1
+      pin_id: 4
+      pin_init_state: 1
+      pin_invert: 0
+      pin_mode: 0
+      pin_name: din
+      pin_pullup: 1
+    digitalLed:
+    - Dled_fade: 10
+      Dled_init_state: 1
+      Dled_mode: 0
+      Dled_name: DLED
+      Dled_off_color:
+      - 0
+      - 0
+      - 0
+      Dled_on_color:
+      - 0
+      - 0
+      - 255
+      Dleds:
+      - Dled_fade: 10
+        Dled_id: 16
+        Dled_mode: 0
+        Dled_name: Pimmel
+        Dled_off_color:
+        - 0
+        - 0
+        - 0
+        Dled_on_color:
+        - 0
+        - 0
+        - 255
+      - Dled_id: 1
+        Dled_off_color:
+        - 0
+        - 0
+        - 0
+        Dled_on_color:
+        - 0
+        - 255
+        - 0
+      - Dled_group:
+          Dled_fade: 10
+          Dled_group_end_id: 14
+          Dled_group_start_id: 2
+          Dled_mode: 0
+          Dled_off_color:
+          - 90
+          - 80
+          - 70
+          Dled_on_color:
+          - 255
+          - 10
+          - 10
+      - Dled_fade: 10
+        Dled_id: 15
+        Dled_mode: 0
+        Dled_off_color:
+        - 0
+        - 0
+        - 0
+        Dled_on_color:
+        - 255
+        - 255
+        - 255
+      - Dled_group:
+          Dled_group_end_id: 200
+          Dled_group_start_id: 17
+          Dled_mode: 0
+          Dled_name: group_1
+          Dled_off_color:
+          - 0
+          - 0
+          - 0
+          Dled_on_color:
+          - 1
+          - 2
+          - 3
+      pin_id: 6
+    digitalOutputs:
+    - pin_enabled: 1
+      pin_id: 8
+      pin_init_state: 1
+      pin_name: din
+      pin_onconnected_state: -1
+      pin_ondisconnected_state: -1
+      pin_type: HAL_BIT
+    - pin_enabled: 1
+      pin_id: 12
+      pin_init_state: 1
+      pin_name: din
+      pin_onconnected_state: -1
+      pin_ondisconnected_state: -1
+      pin_type: HAL_BIT
+    glcd:
+    - pin_id: 0
+    joystick:
+    - joystick_center: 512
+      joystick_deadband: 20
+      joystick_scaling: 0.01
+      pin_enabled: 1
+      pin_id: 2
+      pin_name: joystick
+    lPoti:
+    - lpoti_latches: 9
+      pin_enabled: 1
+      pin_id: 1
+      pin_margin: 20
+      pin_name: lpoti
+      pin_type: HAL_S32
+      value_replace:
+      - 40
+      - 50
+      - 60
+      - 70
+      - 80
+      - 90
+      - 100
+      - 110
+      - 120
+    - lpoti_latches: 4
+      pin_enabled: 1
+      pin_id: 2
+      pin_name: lpoti2
+      pin_type: HAL_FLOAT
+      value_replace:
+      - 0.001
+      - 0.01
+      - 0.1
+      - 1
+    matrixKeyboard:
+    - Keyboard_cPins:
+      - 6
+      - 7
+      - 8
+      - 9
+      Keyboard_chars:
+      - '1'
+      - '2'
+      - '3'
+      - A
+      - '4'
+      - '5'
+      - '6'
+      - B
+      - '7'
+      - '8'
+      - '9'
+      - C
+      - Yay
+      - '0'
+      - '#'
+      - D
+      Keyboard_pin_types:
+      - 1
+      - 1
+      - 1
+      - 0
+      - 1
+      - 1
+      - 1
+      - 0
+      - 1
+      - 1
+      - 1
+      - 0
+      - 2
+      - 1
+      - 0
+      - 0
+      Keyboard_rPins:
+      - 2
+      - 3
+      - 4
+      - 5
+      pin_id: 0
+      pin_name: keypad
+    pwmOutputs:
+    - pin_enabled: 0
+      pin_id: 12
+      pin_init_state: 0
+      pin_mode: 0
+      pin_name: pwmout
+      pin_off_pwm: 0
+      pin_on_pwm: 255
+    quadratureEncoder:
+    - encoder_A_pin: 2
+      encoder_B_pin: 3
+      encoder_mode: counter
+      encoder_pins:
+      - 2
+      - 3
+      encoder_steps: 4
+      encoder_virtualpin_start: 2
+      encoder_virtualpins: 3
+      pin_enabled: 0
+      pin_id: 0
+      pin_name: quadEnc
+      pin_type: HAL_FLOAT
+      value_replace:
+      - 0.001
+      - 0.01
+      - 0.1
+      - 1
+    rcServo:
+    - pin-name: servo
+      pin_id: 3
+      pin_type: HAL_S32
+      servo_max: 90
+      servo_min: 20
+      servo_off_pos: 90
+      servo_on_pos: 34
+      servo_speed: 10
+    statusled:
+    - pin_id: 13
+      useDled: 1
+---
+mcu:
+  alias: Esp8826
+  component_name: arduino
+  connection:
+    baudrate: 115200
+    test: 21
+    timeout: 5000
+    type: Serial
+  debug: true
+  dev: COM6
+  enabled: true

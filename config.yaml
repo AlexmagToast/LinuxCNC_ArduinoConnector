@@ -1,7 +1,7 @@
 mcu: #micro controller unit
   alias: Arduino 2560 Mega
   component_name: arduino # Name of component to use in HAL
-  dev: /dev/cu.usbserial-0002 # Used for initial programming
+  dev: COM5 # Used for initial programming
   debug: true #optional
   enabled: True
   connection:
@@ -80,7 +80,7 @@ mcu: #micro controller unit
 
     lPoti: #create pins from single potentiometer
       - pin_id: 1
-        pin_enabled: 1
+        pin_enabled: 0
         pin_name: lpoti  #hal pin name        #optional
         lpoti_latches: 9 #create 9 virtual pins
         pin_type: HAL_S32 #hal pin type     #optional   HAL_BIT, HAL_S32 , HAL_FLOAT
@@ -88,7 +88,7 @@ mcu: #micro controller unit
         pin_margin: 20 #optional
         
       - pin_id: 2
-        pin_enabled: 1
+        pin_enabled: 0
         pin_name: lpoti2  #hal pin name        #optional
         lpoti_latches: 4 #create 4 virtual pins
         pin_type: HAL_FLOAT #hal pin type     #optional   HAL_BIT, HAL_S32 , HAL_FLOAT
@@ -96,7 +96,7 @@ mcu: #micro controller unit
         
     binarySelectorSwitch:
       - pin_id: 1
-        pin_enabled: 1 #enable pin
+        pin_enabled: 0 #enable pin
         pin_name: binSel  #hal pin name       #optional
         pin_pins: [2,6,4,3,5] #1,2,4,8,16 how to make this more dynamic?
         pin_type: HAL_FLOAT #hal pin type     #optional   HAL_BIT, HAL_S32 , HAL_FLOAT
@@ -119,7 +119,7 @@ mcu: #micro controller unit
 
     joystick:
       - pin_id: 2
-        pin_enabled: 1
+        pin_enabled: 0
         pin_name: joystick  #hal pin name       #optional
         joystick_center: 512  
         joystick_deadband: 20 #ignore values around joystick_center + - deadband 
@@ -217,3 +217,18 @@ mcu: #micro controller unit
     glcd:
       - pin_id: 0
         #running out of ideas rn, so this is a remiinder for later
+
+---
+mcu: #micro controller unit
+  alias: Esp8826
+  component_name: arduino # Name of component to use in HAL
+  dev: COM6 # Used for initial programming
+  debug: true #optional
+  enabled: True
+  connection:
+    ## A user can optionally define this section. If they don't, the config defaults to Serial, 115200 baud
+    type: Serial
+    baudrate: 115200                 #optional
+    #connection_serial2: 0                       #optional - not sure what you get with a second serial port
+    timeout: 5000 #optional, defaults to 5000 ms
+    test: 21

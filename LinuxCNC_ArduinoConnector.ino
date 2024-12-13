@@ -60,24 +60,15 @@ Communication Status      = 'E' -read/Write  -Pin State: 0:0
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-#include "firmware2.h"
-
-
-//###Misc Settings###
-const int debounceDelay = 50;
+#include "firmware0.h"
 
 
 //Variables for Saving States
+
 #ifdef INPUTS
   int InState[DigitalInputs];
   int oldInState[DigitalInputs];
   unsigned long lastInputDebounce[DigitalInputs];
-#endif
-#ifdef SINPUTS
-  int sInState[sInputs];
-  int soldInState[sInputs];
-  int togglesinputs[sInputs];
-  unsigned long lastsInputDebounce[sInputs];
 #endif
 #ifdef OUTPUTS
   int OutState[DigitalOutputs];
@@ -88,7 +79,8 @@ const int debounceDelay = 50;
   int oldOutPWMState[PwmOutputs];
 #endif
 #ifdef AINPUTS
-  int oldAinput[ANALOG_INPUTS];
+  //int oldAinput[ANALOG_INPUTS];
+  int AinputCounts[ANALOG_INPUTS];
   unsigned long sumAinput[ANALOG_INPUTS];
 #endif
 #ifdef LPOTIS
@@ -158,12 +150,12 @@ uint16_t io = 0;
 uint16_t value = 0;
 
 // Function Prototypes
+void sendStates();
 void readCommands();
 void commandReceived(char cmd, uint16_t io, uint16_t value);
 void multiplexLeds();
 void readKeypad();
 int readAbsKnob();
-void readsInputs();
 void readInputs();
 void readAInputs();
 void readLPoti();
@@ -178,6 +170,7 @@ void reconnect();
 void comalive();
 void readEncoders();
 void readJoySticks();
+void sendID();
 
 void setup() {
 
@@ -194,14 +187,6 @@ void setup() {
     }
 #endif
 
-#ifdef AINPUTS
-
-  for(int i= 0; i<ANALOG_INPUTS;i++){
-    pinMode(AInPinmap[i], INPUT);
-    oldAinput[i] = -1;
-    sumAinput[i] = 0;
-    }
-#endif
 #ifdef OUTPUTS
   for(int o= 0; o<DigitalOutputs;o++){
     pinMode(OutPinmap[o], OUTPUT);
@@ -245,22 +230,20 @@ for(int col = 0; col < numCols; col++) {
 //Setup Serial
   Serial.begin(CONNECTION_BAUDRATE);
   while (!Serial){}
-  comalive();
+  //comalive();
 }
 
 
 void loop() {
-
+  //sendStates();
   readCommands(); //receive and execute Commands
   comalive(); //if nothing is received for 10 sec. blink warning LED
-
+/*
 
 #ifdef INPUTS
   readInputs(); //read Inputs & send data
 #endif
-#ifdef SINPUTS
-  readsInputs(); //read Inputs & send data
-#endif
+
 #ifdef AINPUTS
   readAInputs();  //read Analog Inputs & send data
 #endif
@@ -287,6 +270,9 @@ void loop() {
 #ifdef MULTIPLEXLEDS
   multiplexLeds();// cycle through the 2D LED Matrix}
 #endif
+
+*/
+
 }
 
 #ifdef JOYSTICK
@@ -436,12 +422,6 @@ void reconnect(){
     }
   #endif
   
-  #ifdef AINPUTS
-    for (int x = 0; x < ANALOG_INPUTS; x++){
-      oldAinput[x] = -1;
-      sumAinput[x] = 0;
-    }
-  #endif
   #ifdef LPOTIS
     for (int x = 0; x < LPotis; x++){
       oldLpoti[x] = -1;
@@ -455,9 +435,7 @@ void reconnect(){
   #ifdef INPUTS
     readInputs(); //read Inputs & send data
   #endif
-  #ifdef SINPUTS
-    readsInputs(); //read Inputs & send data
-  #endif
+
   #ifdef AINPUTS
     readAInputs();  //read Analog Inputs & send data
   #endif
@@ -484,9 +462,8 @@ void sendData(char sig, int pin, int state){
         Serial.println(state);
 }
 
-//
 void sendStates() {
-  uint8_t buffer[64];  // Adjust size as needed
+  uint8_t buffer[numInPins];  // Adjust size as needed
   uint8_t pos = 0;
   uint8_t checksum = 0;
 
@@ -495,13 +472,12 @@ void sendStates() {
 
   // Section 1: Binary pins
   buffer[pos++] = 0; // Type: binary
-  uint8_t binaryPins[] = {1, 0, 1, 1, 0, 0, 1, 1}; // Example binary states
-  uint8_t binaryCount = sizeof(binaryPins) / sizeof(binaryPins[0]);
-  buffer[pos++] = binaryCount; // Number of binary pins
+  uint8_t binaryPins[] = {1, 0, 1, 1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1}; // Example binary states
+  buffer[pos++] = allBitInPins; // Number of binary pins
   uint8_t packedBinary = 0;
-  for (uint8_t i = 0; i < binaryCount; i++) {
+  for (uint8_t i = 0; i < allBitInPins; i++) {
     packedBinary |= (binaryPins[i] << (i % 8));
-    if ((i + 1) % 8 == 0 || i == binaryCount - 1) {
+    if ((i + 1) % 8 == 0 || i == allBitInPins - 1) {
       buffer[pos++] = packedBinary;
       packedBinary = 0; // Reset for the next byte
     }
@@ -509,8 +485,8 @@ void sendStates() {
 
   // Section 2: Integer pins
   buffer[pos++] = 1; // Type: integer
-  uint8_t integerPins[] = {1, 2}; // Pin IDs
-  int16_t integerValues[] = {512, 1024};
+  uint8_t integerPins[] = {1, 2, 2, 2, 2,6,3,5,6,7,78,8,8,4,34,35,}; // Pin IDs
+  int16_t integerValues[] = {512, 1024,123,123,3452,2345,632,123};
   uint8_t integerCount = sizeof(integerPins) / sizeof(integerPins[0]);
   buffer[pos++] = integerCount; // Number of integer pins
   for (uint8_t i = 0; i < integerCount; i++) {
@@ -521,8 +497,8 @@ void sendStates() {
 
   // Section 3: Float pins
   buffer[pos++] = 2; // Type: float
-  uint8_t floatPins[] = {3}; // Pin IDs
-  float floatValues[] = {3.14};
+  uint8_t floatPins[] = {3,6,72}; // Pin IDs
+  float floatValues[] = {3.14,23.12,144.012};
   uint8_t floatCount = sizeof(floatPins) / sizeof(floatPins[0]);
   buffer[pos++] = floatCount; // Number of float pins
   for (uint8_t i = 0; i < floatCount; i++) {
@@ -645,35 +621,12 @@ void readLPoti(){
 }
 #endif
 
-#ifdef AINPUTS
-void readAInputs() {
-  static unsigned int samplecount = 0;
-  static int currentInput = 0;
-
-  if (samplecount < AInPinSmoothing[currentInput]) {
-    sumAinput[currentInput] += analogRead(AInPinmap[currentInput]);
-    samplecount++;
-  } else {
-    sumAinput[currentInput] /= AInPinSmoothing[currentInput];
-    if (oldAinput[currentInput] != sumAinput[currentInput]) {
-      oldAinput[currentInput] = sumAinput[currentInput];
-      sendData('A', AInPinmap[currentInput], oldAinput[currentInput]);
-    }
-    sumAinput[currentInput] = 0;
-    samplecount = 0;
-    currentInput++;
-    if (currentInput >= ANALOG_INPUTS) {
-      currentInput = 0;
-    }
-  }
-}
-#endif
 
 #ifdef INPUTS
 void readInputs(){
     for(int i= 0;i<DigitalInputs; i++){
       int State = digitalRead(InPinmap[i]);
-      if(InState[i]!= State && millis()- lastInputDebounce[i] > debounceDelay){
+      if(InState[i]!= State && millis()- lastInputDebounce[i] > InPinDebounce[i]){
         InState[i] = State;
         sendData('I',InPinmap[i],InState[i]);
 
@@ -682,30 +635,7 @@ void readInputs(){
     }
 }
 #endif
-#ifdef SINPUTS
-void readsInputs(){
-  for(int i= 0;i<sInputs; i++){
-    sInState[i] = digitalRead(sInPinmap[i]);
-    if (sInState[i] != soldInState[i] && millis()- lastsInputDebounce[i] > debounceDelay){
-      // Button state has changed and debounce delay has passed
 
-      if (sInState[i] == LOW || soldInState[i]== -1) { // Stuff after || is only there to send States at Startup
-        // Button has been pressed
-        togglesinputs[i] = !togglesinputs[i];  // Toggle the LED state
-
-        if (togglesinputs[i]) {
-          sendData('I',sInPinmap[i],togglesinputs[i]);  // Turn the LED on
-        }
-        else {
-          sendData('I',sInPinmap[i],togglesinputs[i]);   // Turn the LED off
-        }
-      }
-      soldInState[i] = sInState[i];
-      lastsInputDebounce[i] = millis();
-    }
-  }
-}
-#endif
 
 #ifdef BINSEL
 int readAbsKnob(){
@@ -858,7 +788,19 @@ void commandReceived(char cmd, uint16_t io, uint16_t value){
 
 
   if(cmd == 'E'){
-    lastcom=millis();
+    if(io == 1){
+      if(value == 0){
+        sendID();
+      }
+      else{
+        lastcom=millis();
+        //connected and verified
+      }
+      
+    }
+    else{
+      lastcom=millis();
+  }
     if(connectionState == 2){
      reconnect();
     }
@@ -874,6 +816,9 @@ void commandReceived(char cmd, uint16_t io, uint16_t value){
   #endif
 }
 
+void sendID(){
+  Serial.println(FIRMWAREID);
+}
 
 void readCommands(){
     byte current;
