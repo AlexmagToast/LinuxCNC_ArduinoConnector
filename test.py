@@ -1,4 +1,5 @@
-import yaml, time, threading, os, serial, struct
+import yaml, time, threading, os, serial, struct, ino
+
 from queue import Queue
 
 def load_config(file_path):
@@ -29,13 +30,14 @@ def process_config(configs, writeFirmwareConfig=False):
             mcu = config.get('mcu', {})
             alias = mcu.get('alias', f'MCU-{i}')
 
-            component_name = mcu.get('component_name', 'arducon')
-            dev = mcu.get('dev', 'Unknown')
-            debug = mcu.get('debug', False)
-            enabled = mcu.get('enabled', True)
-            connection_type = mcu.get('connection_type', 'serial')
-            connection_baudrate = mcu.get('connection_baudrate', 115200)
-            connection_timeout = mcu.get('connection_timeout', 5000)
+            component_name = mcu.setdefault('component_name', 'arducon')
+            dev = mcu.setdefault('dev', 'Unknown')
+            debug = mcu.setdefault('debug', False)
+            enabled = mcu.setdefault('enabled', True)
+            connection_type = mcu.setdefault('connection_type', 'serial')
+            connection_baudrate = mcu.setdefault('connection_baudrate', 115200)
+            connection_timeout = mcu.setdefault('connection_timeout', 5000)
+
             if(writeFirmwareConfig):
                 file_handle.write(f'//IO Settings of mcu no {i}\n//Alias :{alias}\n')
                 file_handle.write("\n")
@@ -692,18 +694,18 @@ def process_config(configs, writeFirmwareConfig=False):
             ### Dallas Thermistor
 
             ## communication Setup
+            if writeFirmwareConfig == True:
+                file_handle.write("// Communication Setup\n")
+                file_handle.write(f'#define allBitInPins {len(allBitInPins)}\n')
+                file_handle.write(f'#define allIntInPins {len(allIntInPins)}\n')
+                file_handle.write(f'#define allFloatInPins {len(allFloatInPins)}\n')
 
-            file_handle.write("// Communication Setup\n")
-            file_handle.write(f'#define allBitInPins {len(allBitInPins)}\n')
-            file_handle.write(f'#define allIntInPins {len(allIntInPins)}\n')
-            file_handle.write(f'#define allFloatInPins {len(allFloatInPins)}\n')
+                file_handle.write(f'#define allBitOutPins {len(allBitOutPins)}\n')
+                file_handle.write(f'#define allIntOutPins {len(allIntOutPins)}\n')
+                file_handle.write(f'#define allFloatOutPins {len(allFloatOutPins)}\n')
 
-            file_handle.write(f'#define allBitOutPins {len(allBitOutPins)}\n')
-            file_handle.write(f'#define allIntOutPins {len(allIntOutPins)}\n')
-            file_handle.write(f'#define allFloatOutPins {len(allFloatOutPins)}\n')
-
-            file_handle.write(f'#define numInPins {len(allBitInPins) + len(allIntInPins) + len(allFloatInPins)}\n')
-            file_handle.write(f'#define numOutPins {len(allBitOutPins) + len(allIntOutPins) + len(allFloatOutPins)}\n')
+                file_handle.write(f'#define numInPins {len(allBitInPins) + len(allIntInPins) + len(allFloatInPins)}\n')
+                file_handle.write(f'#define numOutPins {len(allBitOutPins) + len(allIntOutPins) + len(allFloatOutPins)}\n')
             
             config['mcu']['firmware_ID'] = compute_hash(config)
             
@@ -734,184 +736,390 @@ def compute_hash(config):
         hash_value = (hash_value * 31 + byte) % (2**32)
     return hash_value
 
+import struct
+import serial
+
 def calculate_checksum(data):
-    """
-    Calculate checksum as the sum of all bytes modulo 256.
-    """
     return sum(data) % 256
 
-def pack_message(binary_pins, integer_pins, float_pins):
+
+########## Section for Serial Communication ##########
+
+
+
+
+def pack_message(id_value, binary_states , int16_states , uint16_states, int32_states, uint32_states, float_states, char_states, string_states, debug = False):
     """
-    Send a grouped binary message to the Arduino.
-    Groups binary, integer, and float pins for efficient communication.
+    This function packs the input data into a binary message format to send over a serial connection.
+    It can be tested by calling it with debug=True, which will print the packed message to Terminal.
+    The message starts with a Start byte 0xAA and ends with an cecksum Byte and an End byte 0xFF. 
+    Each variable type is provided as a list of values. 
+    For example:
+    - Input pin states are given as a list of 0 or 1 states: [0, 1, 0, 1].
+      First the number of Binary Pins is send as unsigned Int, then tall States are packed into bytes before being included in the message.
+        -> [4] [0, 1, 0, 1] -> [0x0004] [0x05]
+    - Analog pin states are given as a list of 16-bit integers: [-32768, 32767].
+        First the number of Analog Pins is send as unsigned Int, then tall States are packed into bytes before being included in the message.
+        -> [2] [-32768, 32767] -> [0x0002] [0x80 0x00 0x7F 0xFF]
+    etc. 
 
-    Mesaage format:
-    [Start marker] [Section 1: Binary pins] [Section 2: Integer pins] [Section 3: Float pins] [Checksum] [End marker]
-
+    The function returns a binary message with the following structure:
+    [start_byte]
+        [id_bytes]
+        [binary_length][binary_payload]
+        [int16_length][int16_payload]
+        [uint16_length][uint16_payload]
+        [int32_length][int32_payload]
+        [uint32_length][uint32_payload]
+        [float_length][float_payload]
+        [char_length][char_payload]
+        [string_length][string_payload]
+        [checksum]
+    [end_byte]
     """
-    message = bytearray()
 
-    # Start marker
-    message.append(0xAA)
+    if debug: #insert default values for testing
+        if id_value is None: id_value = 123456789  # Unsigned long
+        if binary_states is None: binary_states = [1, 0, 1, 1]
+        if int16_states is None: int16_states = [-32768, 32767]
+        if uint16_states is None: uint16_states = [0, 65535]
+        if int32_states is None: int32_states = [-2147483648, 2147483647]
+        if uint32_states is None: uint32_states = [0, 4294967295]
+        if float_states is None: float_states = [3.14, 2.718]
+        if char_states is None: char_states = ['A', 'Z']
+        if string_states is None: string_states = ["Hello", "World"]
 
-    # Section 1: Binary pins
-    
-    message.append(0)  # Type: binary
-    if (binary_pins is None):
-        message.append(0)  # Number of binary pins
-    else:
-        message.append(len(binary_pins))  # Number of binary pins
-        packed_binary = 0
-        for i, state in enumerate(binary_pins):
-            packed_binary |= (state << (i % 8))
-            if (i + 1) % 8 == 0 or i == len(binary_pins) - 1:
-                message.append(packed_binary)
-                packed_binary = 0
+    # Define start and end markers
+    start_byte = 0xAA
+    end_byte = 0xFF
 
-    # Section 2: Integer pins
-    message.append(1)  # Type: integer
-    if (integer_pins is None):
-        message.append(0)
-    else:
-        message.append(len(integer_pins))  # Number of integer pins
-    for value in integer_pins:
-        message += struct.pack('<h', value)  # 2-byte little-endian integer
+    # Encode ID as 4 bytes (unsigned long)
+    id_bytes = struct.pack('<L', id_value)
 
-    # Section 3: Float pins
-    message.append(2)  # Type: float
-    message.append(len(float_pins))  # Number of float pins
-    for value in float_pins:
-        message += struct.pack('<f', value)  # 4-byte little-endian float
+    # Encode binary states
+    binary_length = len(binary_states)  # Length of binary states
 
-    # Compute and append checksum
-    checksum = calculate_checksum(message[1:])  # Exclude the start marker
-    message.append(checksum)
+    # Initialize an empty list to store the packed bytes
+    binary_payload = []
 
-    # End marker
-    message.append(0xBB)
+    # Loop through the binary states in chunks of 8 bits
+    for i in range(0, binary_length, 8):
+        byte = 0
+        for bit_index in range(8):
+            if i + bit_index < binary_length:
+                byte |= (binary_states[i + bit_index] << bit_index)
+        binary_payload.append(byte)
+
+    # Convert the list of bytes to a bytes object
+    binary_payload = bytes(binary_payload)
+
+    # Encode 16-bit integers
+    int16_length = len(int16_states)
+    int16_payload = b''.join(struct.pack('<h', val) for val in int16_states)
+
+    # Encode 16-bit unsigned integers
+    uint16_length = len(uint16_states)
+    uint16_payload = b''.join(struct.pack('<H', val) for val in uint16_states)
+
+    # Encode 32-bit integers
+    int32_length = len(int32_states)
+    int32_payload = b''.join(struct.pack('<l', val) for val in int32_states)
+
+    # Encode 32-bit unsigned integers
+    uint32_length = len(uint32_states)
+    uint32_payload = b''.join(struct.pack('<L', val) for val in uint32_states)
+
+    # Encode floats
+    float_length = len(float_states)
+    float_payload = b''.join(struct.pack('<f', val) for val in float_states)
+
+    # Encode characters
+    char_length = len(char_states)
+    char_payload = b''.join(struct.pack('<c', val.encode('utf-8')) for val in char_states)
+
+    # Encode strings
+    string_payload = b''
+    for s in string_states:
+        string_payload += struct.pack('<H', len(s)) + s.encode('utf-8')
+    string_length = len(string_payload)
+
+    # Build the payload
+    payload = (
+        id_bytes +
+        struct.pack('<B', binary_length) + binary_payload +
+        struct.pack('<H', int16_length) + int16_payload +
+        struct.pack('<H', uint16_length) + uint16_payload +
+        struct.pack('<H', int32_length) + int32_payload +
+        struct.pack('<H', uint32_length) + uint32_payload +
+        struct.pack('<H', float_length) + float_payload +
+        struct.pack('<H', char_length) + char_payload +
+        struct.pack('<H', string_length) + string_payload
+    )
+
+    # Calculate checksum
+    checksum = calculate_checksum(payload)
+
+    # Build the final message
+    message = (
+        bytes([start_byte]) +
+        payload +
+        bytes([checksum]) +
+        bytes([end_byte])
+    )
+
+        
+    if debug:
+            print("packing Message:")
+            print(f"Start ID: {int(start_byte)}")
+            print(f"ID: {id_bytes} : {int.from_bytes(id_bytes, 'little')}")
+            print(f"Binary Length: {binary_length}")
+            binary_payload_str = ''.join(format(byte, '08b') for byte in binary_payload)
+            print(f"Binary Payload: {binary_payload_str}")
+            print(f"Int16 Length: {int16_length}")
+            print(f"Int16 Payload: {[int.from_bytes(int16_payload[i:i+2], 'little', signed=True) for i in range(0, len(int16_payload), 2)]}")
+            print(f"Uint16 Length: {uint16_length}")
+            print(f"Uint16 Payload: {[int.from_bytes(uint16_payload[i:i+2], 'little') for i in range(0, len(uint16_payload), 2)]}")
+            print(f"Int32 Length: {int32_length}")
+            print(f"Int32 Payload: {[int.from_bytes(int32_payload[i:i+4], 'little', signed=True) for i in range(0, len(int32_payload), 4)]}")
+            print(f"Uint32 Length: {uint32_length}")
+            print(f"Uint32 Payload: {[int.from_bytes(uint32_payload[i:i+4], 'little') for i in range(0, len(uint32_payload), 4)]}")
+            print(f"Float Length: {float_length}")
+            print(f"Float Payload: {[struct.unpack('<f', float_payload[i:i+4])[0] for i in range(0, len(float_payload), 4)]}")
+            print(f"Char Length: {char_length}")
+            print(f"Char Payload: {[char_payload[i:i+1].decode('utf-8') for i in range(len(char_payload))]}")
+            print(f"String Length: {string_length}")
+            
+            # Decode string payload correctly
+            decoded_strings = []
+            i = 0
+            while i < len(string_payload):
+                length = struct.unpack('<H', string_payload[i:i+2])[0]
+                i += 2
+                decoded_strings.append(string_payload[i:i+length].decode('utf-8'))
+                i += length
+            print(f"String Payload: {decoded_strings}")
+
+            print(f"Checksum: {checksum}")
+            print(f"End ID: {end_byte}")
+            print(f"complete Message: {message}")
 
     return message
 
-def read_message():
-    """
-    Read and parse a binary message from the Arduino.
-    """
-    message = ser.read_until(b'\xBB')  # Read until the end marker (0xBB)
-    if not message or message[0] != 0xAA:  # Validate start marker
-        print("Invalid message start")
-        print(message)
-        return None
-
-    payload = message[1:-2]  # Exclude start marker and checksum/end marker
-    checksum = message[-2]  # Second-to-last byte is the checksum
-    if calculate_checksum(payload) != checksum:
-        print("Checksum error")
-        return None
-
-    pos = 0
-    pins = {"binary": [], "integer": {}, "float": {}}  # Organize pins by type
-
-    while pos < len(payload):
-        pin_type = payload[pos]
-        pos += 1
-        count = payload[pos]
-        pos += 1
-
-        if pin_type == 0:  # Binary pins
-            bit_data = payload[pos:pos + ((count + 7) // 8)]
-            pos += (count + 7) // 8
-            for i in range(count):
-                pins["binary"].append((bit_data[i // 8] >> (i % 8)) & 1)
-
-        elif pin_type == 1:  # Integer pins
-            for _ in range(count):
-                pin_id = payload[pos]
-                pos += 1
-                value = struct.unpack('<h', payload[pos:pos + 2])[0]
-                pos += 2
-                pins["integer"][pin_id] = value
-
-        elif pin_type == 2:  # Float pins
-            for _ in range(count):
-                pin_id = payload[pos]
-                pos += 1
-                value = struct.unpack('<f', payload[pos:pos + 4])[0]
-                pos += 4
-                pins["float"][pin_id] = value
-
-    return pins
-
-def compare_firmware_version(expected_version):
-    arduino_version = get_firmware_version()
-    if arduino_version == expected_version:
-        print("Firmware version matches:", arduino_version)
-        return True
-    else:
-        print("Firmware version mismatch. Expected:", expected_version, "Got:", arduino_version)
-        return False
+def unpack_message(message, id_value):
+    start_byte = 0xAA
+    end_byte = 0xFF
+    stringsread = 0
 
 
-# Funktion zur Kommunikation mit einem Arduino
+    # Convert the ID into 4 bytes (little-endian)
+    id_bytes = struct.pack('<L', id_value)
 
-def communicate_with_arduinos(port, baudrate, timeout, firmware_ID, incoming_queue, outgoing_queue, stop_event):
+    # Search for the pattern end_byte + start_byte + id_bytes
+    pattern = bytes([start_byte]) + id_bytes
+    try:
+        for i in range(len(message) - len(pattern)):
+            if message[i:i + len(pattern)] == pattern:
+                # Extract the payload start position
+                payload_start = i + len(pattern)
+                # print(f"payload_start: {payload_start}")
+                # print(f"start is : {pattern}")
+                # print(f"message is : {i}")
+
+                    # [start_byte]
+                    #     [id_bytes]
+                    #     [binary_length][binary_payload]
+                    #     [int16_length][int16_payload]
+                    #     [uint16_length][uint16_payload]
+                    #     [int32_length][int32_payload]
+                    #     [uint32_length][uint32_payload]
+                    #     [float_length][float_payload]
+                    #     [char_length][char_payload]
+                    #     [string_length][string_payload]
+                    #     [checksum]
+                    # [end_byte]
+                #print(message)
+
+                index = payload_start
+                # Extract binary states
+                binary_length = message[index]
+                index += 1
+                binary_payload_length = (binary_length + 7) // 8  # Calculate the number of bytes needed
+                binary_payload = message[index:index + binary_payload_length]
+                index += binary_payload_length
+
+                # Convert binary_payload to a list of bits
+                bits = []
+                for byte in binary_payload:
+                    for bit_index in range(8):
+                        bits.append((byte >> bit_index) & 1)
+                        if len(bits) == binary_length:
+                            break
+                    if len(bits) == binary_length:
+                        break
+                binary_payload = bits
+
+
+
+
+                # Extract 16-bit integers
+                int16_length = int.from_bytes(message[index:index + 2], 'little')
+                index += 2
+                int16_payload = [int.from_bytes(message[i:i + 2], 'little', signed=True) for i in range(index, index + int16_length * 2, 2)]
+                index += int16_length * 2
+
+                # Extract 16-bit unsigned integers
+                uint16_length = int.from_bytes(message[index:index + 2], 'little')
+                index += 2
+                uint16_payload = [int.from_bytes(message[i:i + 2], 'little') for i in range(index, index + uint16_length * 2, 2)]
+                index += uint16_length * 2
+
+                # Extract 32-bit integers
+                int32_length = int.from_bytes(message[index:index + 2], 'little')
+                index += 2
+                int32_payload = [int.from_bytes(message[i:i + 4], 'little', signed=True) for i in range(index, index + int32_length * 4, 4)]
+                index += int32_length * 4
+
+                # Extract 32-bit unsigned integers
+                uint32_length = int.from_bytes(message[index:index + 2], 'little')
+                index += 2
+                uint32_payload = [int.from_bytes(message[i:i + 4], 'little') for i in range(index, index + uint32_length * 4, 4)]
+                index += uint32_length * 4
+
+                # Extract floats
+                float_length = int.from_bytes(message[index:index + 2], 'little')
+                index += 2
+                float_payload = [struct.unpack('<f', message[i:i + 4])[0] for i in range(index, index + float_length * 4, 4)]
+                float_payload = [f"{val:.4f}" for val in float_payload]
+
+                index += float_length * 4
+
+                # Extract characters
+                char_length = int.from_bytes(message[index:index + 2], 'little')
+                index += 2
+                char_payload = [message[i:i + 1].decode('utf-8') for i in range(index, index + char_length)]
+                index += char_length
+
+                # Extract strings
+                string_length = int.from_bytes(message[index:index + 2], 'little')
+                index += 2
+                string_payload = message[index:index + string_length]
+                index += string_length
+                stringsread = 1
+
+                # Decode string payload correctly
+                decoded_strings = []
+                i = 0
+                while i < len(string_payload):
+                    if len(string_payload[i:i + 2]) < 2:
+                        return None  # Not enough data
+                    length = struct.unpack('<H', string_payload[i:i + 2])[0]
+                    i += 2
+                    if len(string_payload[i:i + length]) < length:
+                        return None  # Not enough data
+                    decoded_strings.append(string_payload[i:i + length].decode('utf-8'))
+                    i += length
+
+                # Extract checksum
+                # message_checksum = message[index]
+                index += 1
+
+                unpacked_message = {
+                    'id': id_value,
+                    'binary_payload': binary_payload,
+                    'int16_payload': int16_payload,
+                    'uint16_payload': uint16_payload,
+                    'int32_payload': int32_payload,
+                    'uint32_payload': uint32_payload,
+                    'float_payload': float_payload,
+                    'char_payload': char_payload,
+                    'string_payload': decoded_strings,
+                    'connection_state': 1
+                }
+                #print(unpacked_message)
+                return unpacked_message
+    except Exception as e:
+        print(f"Error unpacking message: {e}")
+        
+    #print("Valid message not found")
+    return None
+
+
+
+def communicate_with_arduinos(port, baudrate, timeout, firmware_ID, incoming_queue, outgoing_queue, stop_event, com_status):
     connection_state = 0  # 0 = not connected, 1 = connected, 2 = connection lost
+    buffer = bytearray()
     while not stop_event.is_set():
         try:
             with serial.Serial(port, baudrate, timeout=timeout) as ser:
-                if connection_state == 0:
-                    # Establish first connection with MCU
-                    ser.write("E1:0\n".encode('utf-8'))   # Send connection request
-                    if debug: print("Ask for Firmware ID by sending E1:0")
-                    print(baudrate)
-                    time.sleep(1)                        # Wait to receive firmware version
-                    if ser.in_waiting > 0:
-                        received_data = ser.readline().decode('utf-8', errors='ignore').strip()
-                        print(received_data)
-                        try:
-                            received_firmware_ID = int(received_data)
-                        except ValueError:
-                            if debug :print(f"Received invalid firmware ID: {received_data}")
-                            continue
-                        if received_firmware_ID == firmware_ID:
-                            if debug: print(f"Connected MCU with [{port}] Firmware Version: {firmware_ID} - OPERATIONAL")
-                            ser.write("E1:1\n".encode('utf-8'))   # Send connection confirmation
-                            connection_state = 1  # Connected
+                if outgoing_queue.not_empty:
+                    outgoing_data = outgoing_queue.get()
+                    print(f"Outgoing data: {outgoing_data}")
+                    message = pack_message(outgoing_data['id'], outgoing_data['binary_payload'], outgoing_data['int16_payload'], outgoing_data['uint16_payload'], outgoing_data['int32_payload'], outgoing_data['uint32_payload'], outgoing_data['float_payload'], outgoing_data['char_payload'], outgoing_data['string_payload'])
+
+                    ser.write(message)
+                    time.sleep(0.001)
+                
+                
+                if ser.in_waiting > 0:
+                    # Read data from serial port
+                    data = ser.read(ser.in_waiting)
+                    buffer.extend(data)
+                    
+
+
+                try:
+                    # Attempt to unpack a message
+                    unpacked = unpack_message(buffer, firmware_ID)
+                    if unpacked is not None:
+                        unpacked.setdefault('connection_state', connection_state)
+                        #print(f"Unpacked message: {unpacked}")
+                        incoming_queue.put(unpacked)
+                        # Clear the buffer up to the end of the unpacked message
+                        end_index = buffer.find(bytes([0xFF]), buffer.find(bytes([0xAA])) + 1)
+                        buffer = buffer[end_index + 1:]
+                        if connection_state == 0 or connection_state == 2:
+                            connection_state = 1
+                            print(f"Connected to MCU at Port: {port}")
+                        
+                    else:
+                        print("No valid message unpacked yet, continuing to read data...")
+                        #read buffer and delete everything until next xAA byte
+                        print(f"Buffer before trimming: {buffer}")
+                        start_index = buffer.find(bytes([0xAA]))
+                        if start_index != -1:
+                            buffer = buffer[start_index:]
+                            print(f"Buffer after trimming: {buffer}")
                         else:
-                            print(f"Connected MCU with [{port}] Firmware Version: {received_data} - NOT COMPATIBLE Should be: {firmware_ID}")
-                            # create ERROR
+                            # If no 0xAA byte is found, clear the buffer to avoid indefinite growth
+                            buffer.clear()
+                            print("No start byte found, clearing buffer.")
 
-                    connection_state = 1  # overwrite Connected
-                    time.sleep(0.5)
 
-                elif connection_state == 1:
-                    # Send data
-                    if not outgoing_queue.empty():
-                        data_to_send = outgoing_queue.get()
-                        ser.write(data_to_send.encode('utf-8'))
-                        print(f"[{port}] Sent: {data_to_send}")
-
-                    # Receive data
-                    if ser.in_waiting > 0:
-                        received_data = ser.readline().decode('utf-8', errors='ignore').strip()
-                        incoming_queue.put(received_data)
-                        print(f"[{port}] Received: {received_data}")
-
-                    #connection_state = 0  # Reset to try reconnecting
-                time.sleep(0.001)  # Reduce CPU load
+                except ValueError as e:
+                    # If message is incomplete or invalid, wait for more data
+                    print(f"Error unpacking message: {e}")
+                    pass
 
         except serial.SerialException as e:
-            if connection_state == 1:
+            if connection_state == 0:
+                print(f"Trying to connect to MCU at Port: {port}")
+            
+            elif connection_state == 1:
                 connection_state = 2  # Connection lost
                 print(f"Connection lost to MCU at Port: {port}. Trying to reconnect...")
-            elif connection_state == 0:
-                print(f"Trying to connect to MCU at Port: {port}")
+            
+            elif connection_state == 2:
+                print(f"reconnecting to MCU at Port: {port}.")
             time.sleep(0.5)  # Wait before trying to reconnect
+        except Exception as e:
+            print(f"Error communicating with MCU: {e}")
+            pass
 
 config_path = "config.yaml"
 configs = load_config(config_path)
-process_config(configs,1)
+process_config(configs,0)
 
-print(configs)
+#print(configs)
 arduino_threads = []
 arduino_ports = []
 baudrates = []
@@ -920,6 +1128,7 @@ component_names = []
 firmware_id = []
 incoming_data = []
 outgoing_data = []
+com_states = []
 
 # Thread-Stop-Event
 stop_event = threading.Event()
@@ -928,17 +1137,19 @@ stop_event = threading.Event()
 for i in range(len(configs)):
     incoming_data.append(Queue())
     outgoing_data.append(Queue())
+    com_states.append(Queue())
 
     arduino_ports.append(configs[i]['mcu']['dev'])
     component_names.append(configs[i]['mcu'].get('component_name', f'arducon.{i}'))
-    baudrates.append(configs[i]['mcu']['connection'].get('baudrate', 115200))
-    timeouts.append(configs[i]['mcu']['connection'].get('timeout', 5000))
+    print(configs[i])
+    baudrates.append(configs[i]['mcu']['connection_baudrate'])
+    timeouts.append(configs[i]['mcu']['connection_baudrate'])
     firmware_id.append(configs[i]['mcu']['firmware_ID'])
 
 
     thread = threading.Thread(
         target = communicate_with_arduinos,
-        args = (arduino_ports[i], baudrates[i], timeouts[i], firmware_id[i], incoming_data[i], outgoing_data[i], stop_event),
+        args = (arduino_ports[i], baudrates[i], timeouts[i], firmware_id[i], incoming_data[i], outgoing_data[i], stop_event, com_states[i]),
         daemon = True
     )
     arduino_threads.append(thread)
@@ -951,17 +1162,24 @@ print(threading.active_count())
 try:
     print("Drücke STRG+C zum Beenden...")
     while True:
-        #for i in range(len(configs)):
-            #all
-            #outgoing_data[i].put(f"Master sendet an Arduino {i}")
+        for i in range(len(configs)):
+            data_to_send = {'id':firmware_id[i], 
+                'binary_payload':[1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1], 
+                'int16_payload':[-32768, 32767], 
+                'uint16_payload':[0, 65535], 
+                'int32_payload':[-2147483648, 2147483647], 
+                'uint32_payload':[0, 4294967295], 
+                'float_payload':[3.14, 2.81312], 
+                'char_payload':['A', 'Z'], 
+                'string_payload':["Hello", "World"]}
+            
+            if outgoing_data[i].empty():
+                outgoing_data[i].put(data_to_send)
 
-        # Auslesen der empfangenen Daten
-        #for i in range(1, 4):
-#            if not incoming_data[f"mcu_{i}"].empty():
-#                received = incoming_data[f"mcu_{i}"].get()
-                #print(f"Master empfängt von Arduino {i}: {i}")
+            print(f"received {incoming_data[i].get()}")
+            print("reading")
 
-        time.sleep(1)
+        time.sleep(0.001)
 
 except KeyboardInterrupt:
     print("\nBeenden des Programms...")
