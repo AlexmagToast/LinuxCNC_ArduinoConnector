@@ -1,4 +1,4 @@
-import yaml, time, threading, os, serial, struct, ino
+import yaml, time, threading, os, serial, struct
 
 from queue import Queue
 
@@ -76,14 +76,25 @@ def process_config(configs, writeFirmwareConfig=False):
             rcServo = io_map.get('rcServo', [])
             Stepper = io_map.get('Stepper', [])
 
-            #create an arrays with all Pins for communication
-            allBitInPins = []
-            allIntInPins = []
-            allFloatInPins = []
+            #create an arrays with all Pin Types for communication and state storage
+            InBinaryPins = []
+            InInt16Pins = []
+            InUint16Pins = []
+            InInt32Pins = []
+            InUint32Pins = []
+            InFloatPins = []
+            InCharPins = []
+            InStringPins = []
 
-            allBitOutPins = []
-            allIntOutPins = []
-            allFloatOutPins = []
+            OutBinaryPins = []
+            OutInt16Pins = []
+            OutUint16Pins = []
+            OutInt32Pins = []
+            OutUint32Pins = []
+            OutFloatPins = []
+            OutCharPins = []
+            OutStringPins = []
+            
 
 
 
@@ -114,25 +125,25 @@ def process_config(configs, writeFirmwareConfig=False):
 
                             AInPinmap.append(pin.get('pin_id', pin))
                             AInPinSmoothings.append(pin.get('pin_smoothing', 200))
-                            address = allIntInPins[-1]['allIntInPinsAdresses'] + 1 if allIntInPins else 0
+                            address = InInt16Pins[-1]['InInt16Pins'] + 1 if InInt16Pins else 0
                             AInPins[pin_id] = {
                                 'pin_name': pin.get('pin_name', f"ain-{i}"),
                                 'pin_smoothing': pin.get('pin_smoothing', 200),
                                 'pin_min_val': pin.get('pin_min_val', 0),
                                 'pin_max_val': pin.get('pin_max_val', 255),
-                                'allIntInPinsAdresses': address
+                                'InInt16Pins': address
                             }
                             AInAdresses.append(address)
-                            allIntInPins.append(AInPins[pin_id])
+                            InInt16Pins.append(AInPins[pin_id])
 
                         
                     if debug == True:
-                        print(allIntInPins[-1])
+                        print(InInt16Pins[-1])
                     
                     if writeFirmwareConfig == True:
                         file_handle.write(f'    const int AInPinmap[] = {{{",".join(map(str, AInPinmap))}}};\n')
                         file_handle.write(f'    const int AInPinSmoothing[] = {{{",".join(map(str, AInPinSmoothings))}}};\n')
-                        file_handle.write(f'    const int allIntInPinsAdresses[] = {{{",".join(map(str, AInAdresses))}}};\n')
+                        file_handle.write(f'    const int InInt16Pins[] = {{{",".join(map(str, AInAdresses))}}};\n')
 
 
             ### PWM Outputs
@@ -695,26 +706,105 @@ def process_config(configs, writeFirmwareConfig=False):
 
             ## communication Setup
             if writeFirmwareConfig == True:
-                file_handle.write("// Communication Setup\n")
-                file_handle.write(f'#define allBitInPins {len(allBitInPins)}\n')
-                file_handle.write(f'#define allIntInPins {len(allIntInPins)}\n')
-                file_handle.write(f'#define allFloatInPins {len(allFloatInPins)}\n')
+                # [start_byte]
+                #     [id_bytes]
+                #     [binary_length][binary_payload]
+                #     [int16_length][int16_payload]
+                #     [uint16_length][uint16_payload]
+                #     [int32_length][int32_payload]
+                #     [uint32_length][uint32_payload]
+                #     [float_length][float_payload]
+                #     [char_length][char_payload]
+                #     [string_length][string_payload]
+                #     [checksum]
+                # [end_byte]                file_handle.write('\n')
+                file_handle.write('\n')
+                file_handle.write("// Communication Variables\n //These variables are used to store the data that is sent and received over the serial interface.\n")
+                file_handle.write(f'#define InBinaryLength {len(InBinaryPins)}\n')
+                file_handle.write(f'bool InBinaryValues [{len(InBinaryPins) if len(InBinaryPins) > 0 else 1}] = {{0}};\n')
 
-                file_handle.write(f'#define allBitOutPins {len(allBitOutPins)}\n')
-                file_handle.write(f'#define allIntOutPins {len(allIntOutPins)}\n')
-                file_handle.write(f'#define allFloatOutPins {len(allFloatOutPins)}\n')
+                file_handle.write(f'#define InInt16Length {len(InInt16Pins)}\n')
+                file_handle.write(f' int InInt16Values [{len(InInt16Pins) if len(InInt16Pins) > 0 else 1}] = {{0}};\n')
+                
+                file_handle.write(f'#define InUint16Length {len(InUint16Pins)}\n')
+                file_handle.write(f' unsigned int InUint16Values [{len(InUint16Pins) if len(InUint16Pins) > 0 else 1}] = {{0}};\n')
 
-                file_handle.write(f'#define numInPins {len(allBitInPins) + len(allIntInPins) + len(allFloatInPins)}\n')
-                file_handle.write(f'#define numOutPins {len(allBitOutPins) + len(allIntOutPins) + len(allFloatOutPins)}\n')
+                file_handle.write(f'#define InInt32Length {len(InInt32Pins)}\n')
+                file_handle.write(f' long InInt32Values [{len(InInt32Pins) if len(InInt32Pins) > 0 else 1}] = {{0}};\n')
+
+                file_handle.write(f'#define InUint32Length {len(InUint32Pins)}\n')
+                file_handle.write(f' unsigned long InUint32Values [{len(InUint32Pins) if len(InUint32Pins) > 0 else 1}] = {{0}};\n')
+
+                file_handle.write(f'#define InFloatLength {len(InFloatPins)}\n')
+                file_handle.write(f' float InFloatValues [{len(InFloatPins) if len(InFloatPins) > 0 else 1}] = {{0.0}};\n')
+
+                file_handle.write(f'#define InCharLength {len(InCharPins)}\n')
+                file_handle.write(f' char InCharValues [{len(InCharPins) if len(InCharPins) > 0 else 1}] = {{""}};\n')
+
+                file_handle.write(f'#define InStringLength {len(InStringPins)}\n')
+                file_handle.write(f' char InStringValues [{len(InStringPins) if len(InStringPins) > 0 else 1}] = {{""}};\n')
+                file_handle.write('\n')
+
+                file_handle.write(f'#define OutBinaryLength {len(OutBinaryPins)}\n')
+                file_handle.write(f'bool OutBinaryValues [{len(OutBinaryPins) if len(OutBinaryPins) > 0 else 1}] = {{0}};\n')
+
+                file_handle.write(f'#define OutInt16Length {len(OutInt16Pins)}\n')
+                file_handle.write(f' int OutInt16Values [{len(OutInt16Pins) if len(OutInt16Pins) > 0 else 1}] = {{0}};\n')
+
+                file_handle.write(f'#define OutUint16Length {len(OutUint16Pins)}\n')
+                file_handle.write(f' unsigned int OutUint16Values [{len(OutUint16Pins) if len(OutUint16Pins) > 0 else 1}] = {{0}};\n')
+
+                file_handle.write(f'#define OutInt32Length {len(OutInt32Pins)}\n')
+                file_handle.write(f' long OutInt32Values [{len(OutInt32Pins) if len(OutInt32Pins) > 0 else 1}] = {{0}};\n')
+
+                file_handle.write(f'#define OutUint32Length {len(OutUint32Pins)}\n')
+                file_handle.write(f' unsigned long OutUint32Values [{len(OutUint32Pins) if len(OutUint32Pins) > 0 else 1}] = {{0}};\n')
+
+                file_handle.write(f'#define OutFloatLength {len(OutFloatPins)}\n')
+                file_handle.write(f' float OutFloatValues [{len(OutFloatPins) if len(OutFloatPins) > 0 else 1}] = {{0.0}};\n')
+
+                file_handle.write(f'#define OutCharLength {len(OutCharPins)}\n')
+                file_handle.write(f' char OutCharValues [{len(OutCharPins) if len(OutCharPins) > 0 else 1}] = {{""}};\n')
+
+                file_handle.write(f'#define OutStringLength {len(OutStringPins)}\n')
+                file_handle.write(f' char OutStringValues [{len(OutStringPins) if len(OutStringPins) > 0 else 1}] = {{""}};\n')
+                file_handle.write('\n')
+
+            config['mcu']['firmware_ID'] = firmwareID
             
-            config['mcu']['firmware_ID'] = compute_hash(config)
-            
-            config['mcu']['allBitInPins'] = allBitInPins
-            config['mcu']['allIntInPins'] = allIntInPins
-            config['mcu']['allFloatInPins'] = allFloatInPins
-            config['mcu']['allBitOutPins'] = allBitOutPins
-            config['mcu']['allIntOutPins'] = allIntOutPins
-            config['mcu']['allFloatOutPins'] = allFloatOutPins
+            config['mcu']['InBinaryLength'] = len(InBinaryPins)
+            config['mcu']['InBinaryPins'] = InBinaryPins
+            config['mcu']['InInt16Length'] = len(InInt16Pins)
+            config['mcu']['InInt16Pins'] = InInt16Pins
+            config['mcu']['InUint16Length'] = len(InUint16Pins)
+            config['mcu']['InUint16Pins'] = InUint16Pins
+            config['mcu']['InInt32Length'] = len(InInt32Pins)
+            config['mcu']['InInt32Pins'] = InInt32Pins
+            config['mcu']['InUint32Length'] = len(InUint32Pins)
+            config['mcu']['InUint32Pins'] = InUint32Pins
+            config['mcu']['InFloatLength'] = len(InFloatPins)
+            config['mcu']['InFloatPins'] = InFloatPins
+            config['mcu']['InCharLength'] = len(InCharPins)
+            config['mcu']['InCharPins'] = InCharPins
+            config['mcu']['InStringLength'] = len(InStringPins)
+            config['mcu']['InStringPins'] = InStringPins
+
+            config['mcu']['OutBinaryLength'] = len(OutBinaryPins)
+            config['mcu']['OutBinaryPins'] = OutBinaryPins
+            config['mcu']['OutInt16Length'] = len(OutInt16Pins)
+            config['mcu']['OutInt16Pins'] = OutInt16Pins
+            config['mcu']['OutUint16Length'] = len(OutUint16Pins)
+            config['mcu']['OutUint16Pins'] = OutUint16Pins
+            config['mcu']['OutInt32Length'] = len(OutInt32Pins)
+            config['mcu']['OutInt32Pins'] = OutInt32Pins
+            config['mcu']['OutUint32Length'] = len(OutUint32Pins)
+            config['mcu']['OutUint32Pins'] = OutUint32Pins
+            config['mcu']['OutFloatLength'] = len(OutFloatPins)
+            config['mcu']['OutFloatPins'] = OutFloatPins
+            config['mcu']['OutCharLength'] = len(OutCharPins)
+            config['mcu']['OutCharPins'] = OutCharPins
+            config['mcu']['OutStringLength'] = len(OutStringPins)
+            config['mcu']['OutStringPins'] = OutStringPins
 
         
 
@@ -745,7 +835,10 @@ def calculate_checksum(data):
 
 ########## Section for Serial Communication ##########
 
-
+def print_hex(byte_sequence):
+    #this function prints the message in hex format for debugging
+    hex_string = ' '.join(f'{byte:02X}' for byte in byte_sequence)
+    print(f"Message: {hex_string}")
 
 
 def pack_message(id_value, binary_states , int16_states , uint16_states, int32_states, uint32_states, float_states, char_states, string_states, debug = False):
@@ -779,8 +872,8 @@ def pack_message(id_value, binary_states , int16_states , uint16_states, int32_s
     """
 
     if debug: #insert default values for testing
-        if id_value is None: id_value = 123456789  # Unsigned long
-        if binary_states is None: binary_states = [1, 0, 1, 1]
+        if id_value is None: id_value = 123456789  # Unsigned Int32
+        if binary_states is None: binary_states = [1, 0, 1, 1] # stored in bytes
         if int16_states is None: int16_states = [-32768, 32767]
         if uint16_states is None: uint16_states = [0, 65535]
         if int32_states is None: int32_states = [-2147483648, 2147483647]
@@ -908,7 +1001,6 @@ def pack_message(id_value, binary_states , int16_states , uint16_states, int32_s
 def unpack_message(message, id_value):
     start_byte = 0xAA
     end_byte = 0xFF
-    stringsread = 0
 
 
     # Convert the ID into 4 bytes (little-endian)
@@ -917,13 +1009,10 @@ def unpack_message(message, id_value):
     # Search for the pattern end_byte + start_byte + id_bytes
     pattern = bytes([start_byte]) + id_bytes
     try:
-        for i in range(len(message) - len(pattern)):
-            if message[i:i + len(pattern)] == pattern:
-                # Extract the payload start position
-                payload_start = i + len(pattern)
-                # print(f"payload_start: {payload_start}")
-                # print(f"start is : {pattern}")
-                # print(f"message is : {i}")
+        for q in range(len(message) - len(pattern)):
+            if message[q:q + len(pattern)] == pattern:
+                # Extract the payload start posqtqon
+                payload_start = q + len(pattern)
 
                     # [start_byte]
                     #     [id_bytes]
@@ -937,7 +1026,6 @@ def unpack_message(message, id_value):
                     #     [string_length][string_payload]
                     #     [checksum]
                     # [end_byte]
-                #print(message)
 
                 index = payload_start
                 # Extract binary states
@@ -1004,120 +1092,137 @@ def unpack_message(message, id_value):
                 index += 2
                 string_payload = message[index:index + string_length]
                 index += string_length
-                stringsread = 1
 
                 # Decode string payload correctly
                 decoded_strings = []
                 i = 0
                 while i < len(string_payload):
                     if len(string_payload[i:i + 2]) < 2:
-                        return None  # Not enough data
+                        return None, 0  # Not enough data
                     length = struct.unpack('<H', string_payload[i:i + 2])[0]
                     i += 2
                     if len(string_payload[i:i + length]) < length:
-                        return None  # Not enough data
+                        return None, 0  # Not enough data
                     decoded_strings.append(string_payload[i:i + length].decode('utf-8'))
                     i += length
-
-                # Extract checksum
-                # message_checksum = message[index]
                 index += 1
 
-                unpacked_message = {
-                    'id': id_value,
-                    'binary_payload': binary_payload,
-                    'int16_payload': int16_payload,
-                    'uint16_payload': uint16_payload,
-                    'int32_payload': int32_payload,
-                    'uint32_payload': uint32_payload,
-                    'float_payload': float_payload,
-                    'char_payload': char_payload,
-                    'string_payload': decoded_strings,
-                    'connection_state': 1
-                }
-                #print(unpacked_message)
-                return unpacked_message
+                
+                # Extract checksum from Byte before end_byte
+                if message[index] == end_byte:
+                    checksum = message[index - 1]
+                else:
+                    checksum = message[index]
+                # calculate checksum of the payload
+                calculatedPayload = message[q+1:index - 1]               
+                #print(f"Calculated Payload: {calculatedPayload}") 
+                if calculate_checksum(calculatedPayload) == checksum:
+                    unpacked_message = {
+                        'id': id_value,
+                        'binary_payload': binary_payload,
+                        'int16_payload': int16_payload,
+                        'uint16_payload': uint16_payload,
+                        'int32_payload': int32_payload,
+                        'uint32_payload': uint32_payload,
+                        'float_payload': float_payload,
+                        'char_payload': char_payload,
+                        'string_payload': decoded_strings,
+                        'connection_state': 1
+                    }
+                    #print(unpacked_message)
+                    return unpacked_message, index
+                else:
+                    if debug: print(f"Checksum Error: {calculatedPayload}, {checksum}")
+                    return None, index
     except Exception as e:
-        print(f"Error unpacking message: {e}")
+        if debug: print(f"Error unpacking message: {e}")
         
     #print("Valid message not found")
-    return None
+    return None, 0
 
 
 
-def communicate_with_arduinos(port, baudrate, timeout, firmware_ID, incoming_queue, outgoing_queue, stop_event, com_status):
+def communicate_with_arduinos(port, baudrate, timeout, firmware_ID, incoming_queue, outgoing_queue, stop_event):
     connection_state = 0  # 0 = not connected, 1 = connected, 2 = connection lost
     buffer = bytearray()
-    while not stop_event.is_set():
+    bits_per_byte = 10  # 1 start bit, 8 data bits, 1 stop bit
+    time_per_byte = bits_per_byte / baudrate
+    sleep_time = time_per_byte * 20  # Sleep for 20 bytes worth of time
+
+
+    while not stop_event.is_set():  #keep reconnecting if connection is lost
         try:
+            if outgoing_queue.qsize() > 0:
+                outgoing_data = outgoing_queue.get()
+                message = pack_message(outgoing_data['id'], outgoing_data['binary_payload'], outgoing_data['int16_payload'], outgoing_data['uint16_payload'], outgoing_data['int32_payload'], outgoing_data['uint32_payload'], outgoing_data['float_payload'], outgoing_data['char_payload'], outgoing_data['string_payload'])
+                print(f"Message: {message}")
             with serial.Serial(port, baudrate, timeout=timeout) as ser:
-                if outgoing_queue.not_empty:
-                    outgoing_data = outgoing_queue.get()
-                    print(f"Outgoing data: {outgoing_data}")
-                    message = pack_message(outgoing_data['id'], outgoing_data['binary_payload'], outgoing_data['int16_payload'], outgoing_data['uint16_payload'], outgoing_data['int32_payload'], outgoing_data['uint32_payload'], outgoing_data['float_payload'], outgoing_data['char_payload'], outgoing_data['string_payload'])
-
-                    ser.write(message)
-                    time.sleep(0.001)
-                
-                
-                if ser.in_waiting > 0:
-                    # Read data from serial port
-                    data = ser.read(ser.in_waiting)
-                    buffer.extend(data)
-                    
-
-
-                try:
-                    # Attempt to unpack a message
-                    unpacked = unpack_message(buffer, firmware_ID)
-                    if unpacked is not None:
-                        unpacked.setdefault('connection_state', connection_state)
-                        #print(f"Unpacked message: {unpacked}")
-                        incoming_queue.put(unpacked)
-                        # Clear the buffer up to the end of the unpacked message
-                        end_index = buffer.find(bytes([0xFF]), buffer.find(bytes([0xAA])) + 1)
-                        buffer = buffer[end_index + 1:]
-                        if connection_state == 0 or connection_state == 2:
-                            connection_state = 1
-                            print(f"Connected to MCU at Port: {port}")
+                while not stop_event.is_set():  #keep connection
+                    if outgoing_queue.qsize() > 0:
+                        outgoing_data = outgoing_queue.get()
+                        message = pack_message(outgoing_data['id'], outgoing_data['binary_payload'], outgoing_data['int16_payload'], outgoing_data['uint16_payload'], outgoing_data['int32_payload'], outgoing_data['uint32_payload'], outgoing_data['float_payload'], outgoing_data['char_payload'], outgoing_data['string_payload'])
+                        ser.write(message)
+                        time.sleep(sleep_time)
+                    if ser.in_waiting > 0:
+                        print(ser.read(ser.in_waiting).decode('utf-8'))                    
+                    '''
+                    if ser.in_waiting > 0:
+                        # Read data from serial port
+                        data = ser.read(ser.in_waiting)
+                        buffer.extend(data)
                         
-                    else:
-                        print("No valid message unpacked yet, continuing to read data...")
-                        #read buffer and delete everything until next xAA byte
-                        print(f"Buffer before trimming: {buffer}")
-                        start_index = buffer.find(bytes([0xAA]))
-                        if start_index != -1:
-                            buffer = buffer[start_index:]
-                            print(f"Buffer after trimming: {buffer}")
+                    try:
+                        # Attempt to unpack a message
+                        unpacked, index = unpack_message(buffer, firmware_ID)
+                        ##print(f"Unpacked message: {unpacked}, buffer: {buffer}, index: {index}")
+
+                        if unpacked is not None:
+                            unpacked.setdefault('connection_state', connection_state)
+                            ##print(f"Unpacked message: {unpacked}")
+                            incoming_queue.put(unpacked)
+                            #delete the unpacked message from the buffer
+                            #print(f"Buffer before trimming: \n{buffer}")
+                            buffer = buffer[index:]
+                            #print(f"Buffer after trimming: \n{buffer}")
+                            
+                            if connection_state == 0 or connection_state == 2:
+                                connection_state = 1
+                                if debug: print(f"[{port}] Connected\n")
+                            
                         else:
-                            # If no 0xAA byte is found, clear the buffer to avoid indefinite growth
-                            buffer.clear()
-                            print("No start byte found, clearing buffer.")
+                            #print("No valid message unpacked yet, continuing to read data...")
+                            # If no valid message is unpacked, remove everything up to the next start byte (0xAA)
+                            start_index = buffer.find(bytes([0xAA]))
+                            if start_index != -1:
+                                buffer = buffer[start_index:]
+                            else:
+                                buffer.clear()
 
-
-                except ValueError as e:
-                    # If message is incomplete or invalid, wait for more data
-                    print(f"Error unpacking message: {e}")
-                    pass
+                    except Exception as e:
+                        # If message is incomplete or invalid, wait for more data
+                        #print(f"Error unpacking message: {e}")
+                        pass
+                        
+                '''
 
         except serial.SerialException as e:
             if connection_state == 0:
-                print(f"Trying to connect to MCU at Port: {port}")
+                if debug: print(f"[{port}] Trying to connect to MCU")
             
             elif connection_state == 1:
                 connection_state = 2  # Connection lost
-                print(f"Connection lost to MCU at Port: {port}. Trying to reconnect...")
+                if debug: print(f"[{port}] Connection lost. Trying to reconnect...")
             
             elif connection_state == 2:
-                print(f"reconnecting to MCU at Port: {port}.")
+                if debug: print(f"[{port}] reconnecting to MCU.")
             time.sleep(0.5)  # Wait before trying to reconnect
         except Exception as e:
-            print(f"Error communicating with MCU: {e}")
+            if debug: print(f"[{port}] Error communicating with MCU: {e}")
             pass
 
 config_path = "config.yaml"
 configs = load_config(config_path)
-process_config(configs,0)
+process_config(configs,1)
 
 #print(configs)
 arduino_threads = []
@@ -1128,7 +1233,6 @@ component_names = []
 firmware_id = []
 incoming_data = []
 outgoing_data = []
-com_states = []
 
 # Thread-Stop-Event
 stop_event = threading.Event()
@@ -1137,7 +1241,6 @@ stop_event = threading.Event()
 for i in range(len(configs)):
     incoming_data.append(Queue())
     outgoing_data.append(Queue())
-    com_states.append(Queue())
 
     arduino_ports.append(configs[i]['mcu']['dev'])
     component_names.append(configs[i]['mcu'].get('component_name', f'arducon.{i}'))
@@ -1149,7 +1252,7 @@ for i in range(len(configs)):
 
     thread = threading.Thread(
         target = communicate_with_arduinos,
-        args = (arduino_ports[i], baudrates[i], timeouts[i], firmware_id[i], incoming_data[i], outgoing_data[i], stop_event, com_states[i]),
+        args = (arduino_ports[i], baudrates[i], timeouts[i], firmware_id[i], incoming_data[i], outgoing_data[i], stop_event),
         daemon = True
     )
     arduino_threads.append(thread)
@@ -1164,7 +1267,7 @@ try:
     while True:
         for i in range(len(configs)):
             data_to_send = {'id':firmware_id[i], 
-                'binary_payload':[1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1], 
+                'binary_payload':[1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1],
                 'int16_payload':[-32768, 32767], 
                 'uint16_payload':[0, 65535], 
                 'int32_payload':[-2147483648, 2147483647], 
@@ -1172,12 +1275,11 @@ try:
                 'float_payload':[3.14, 2.81312], 
                 'char_payload':['A', 'Z'], 
                 'string_payload':["Hello", "World"]}
-            
             if outgoing_data[i].empty():
                 outgoing_data[i].put(data_to_send)
 
-            print(f"received {incoming_data[i].get()}")
-            print("reading")
+            #print(f"received {incoming_data[i].get()}")
+            #print("reading")
 
         time.sleep(0.001)
 

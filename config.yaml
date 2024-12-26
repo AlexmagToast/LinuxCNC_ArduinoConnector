@@ -1,7 +1,7 @@
 mcu: #micro controller unit
   alias: Arduino 2560 Mega
   component_name: arduino # Name of component to use in HAL
-  dev: COM5 # Used for initial programming
+  dev: COM8 # Used for initial programming
   debug: true #optional
   enabled: True
   connection:
@@ -25,6 +25,7 @@ mcu: #micro controller unit
         pin_min_val: 10 #minimum value         #optional     these could be used to convert the value to 0-10 for example
         pin_max_val: 4096 #maximum value      #optional
       - pin_id: 1
+        pin_name: test #hal pin name           #optional
       - pin_id: 3
         pin_name: anain #hal pin name           #optional
       - pin_id: 4
