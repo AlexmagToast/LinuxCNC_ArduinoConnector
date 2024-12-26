@@ -837,7 +837,10 @@ def calculate_checksum(data):
 
 def print_hex(byte_sequence):
     #this function prints the message in hex format for debugging
-    hex_string = ' '.join(f'{byte:02X}' for byte in byte_sequence)
+    hex_values = [f'0x{byte:02X}' for byte in byte_sequence]
+
+    # Join the hex values into a string
+    hex_string = ', '.join(hex_values)
     print(f"Message: {hex_string}")
 
 
@@ -934,12 +937,12 @@ def pack_message(id_value, binary_states , int16_states , uint16_states, int32_s
     string_payload = b''
     for s in string_states:
         string_payload += struct.pack('<H', len(s)) + s.encode('utf-8')
-    string_length = len(string_payload)
+    string_length = len(string_states)
 
     # Build the payload
     payload = (
         id_bytes +
-        struct.pack('<B', binary_length) + binary_payload +
+        struct.pack('<H', binary_length) + binary_payload +
         struct.pack('<H', int16_length) + int16_payload +
         struct.pack('<H', uint16_length) + uint16_payload +
         struct.pack('<H', int32_length) + int32_payload +
@@ -1087,25 +1090,40 @@ def unpack_message(message, id_value):
                 char_payload = [message[i:i + 1].decode('utf-8') for i in range(index, index + char_length)]
                 index += char_length
 
-                # Extract strings
-                string_length = int.from_bytes(message[index:index + 2], 'little')
+                # Extract the number of strings
+                number_of_strings = int.from_bytes(message[index:index + 2], 'little')
                 index += 2
-                string_payload = message[index:index + string_length]
-                index += string_length
 
                 # Decode string payload correctly
                 decoded_strings = []
-                i = 0
-                while i < len(string_payload):
-                    if len(string_payload[i:i + 2]) < 2:
+                for _ in range(number_of_strings):
+                    if len(message[index:index + 2]) < 2:
                         return None, 0  # Not enough data
-                    length = struct.unpack('<H', string_payload[i:i + 2])[0]
-                    i += 2
-                    if len(string_payload[i:i + length]) < length:
+                    length = struct.unpack('<H', message[index:index + 2])[0]
+                    index += 2
+                    if len(message[index:index + length]) < length:
                         return None, 0  # Not enough data
-                    decoded_strings.append(string_payload[i:i + length].decode('utf-8'))
-                    i += length
-                index += 1
+                    decoded_strings.append(message[index:index + length].decode('utf-8'))
+                    index += length
+                # # Extract strings
+                # string_length = int.from_bytes(message[index:index + 2], 'little')
+                # index += 2
+                # string_payload = message[index:index + string_length]
+                # index += string_length
+
+                # # Decode string payload correctly
+                # decoded_strings = []
+                # i = 0
+                # while i < len(string_payload):
+                #     if len(string_payload[i:i + 2]) < 2:
+                #         return None, 0  # Not enough data
+                #     length = struct.unpack('<H', string_payload[i:i + 2])[0]
+                #     i += 2
+                #     if len(string_payload[i:i + length]) < length:
+                #         return None, 0  # Not enough data
+                #     decoded_strings.append(string_payload[i:i + length].decode('utf-8'))
+                #     i += length
+                # index += 1
 
                 
                 # Extract checksum from Byte before end_byte
@@ -1155,7 +1173,8 @@ def communicate_with_arduinos(port, baudrate, timeout, firmware_ID, incoming_que
             if outgoing_queue.qsize() > 0:
                 outgoing_data = outgoing_queue.get()
                 message = pack_message(outgoing_data['id'], outgoing_data['binary_payload'], outgoing_data['int16_payload'], outgoing_data['uint16_payload'], outgoing_data['int32_payload'], outgoing_data['uint32_payload'], outgoing_data['float_payload'], outgoing_data['char_payload'], outgoing_data['string_payload'])
-                print(f"Message: {message}")
+                #print(f"Message: {message}")
+                print_hex(message)
             with serial.Serial(port, baudrate, timeout=timeout) as ser:
                 while not stop_event.is_set():  #keep connection
                     if outgoing_queue.qsize() > 0:
