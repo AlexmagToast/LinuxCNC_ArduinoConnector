@@ -770,6 +770,11 @@ def process_config(configs, writeFirmwareConfig=False):
                 file_handle.write(f' char OutStringValues [{len(OutStringPins) if len(OutStringPins) > 0 else 1}] = {{""}};\n')
                 file_handle.write('\n')
 
+                #calculate buffer size InMessage
+                InBufferSize = (len(InBinaryPins)*4) + (len(InBinaryPins)%8) + (len(InInt16Pins)*4) + (len(InUint16Pins)*2) + (len(InInt32Pins)*4) + (len(InUint32Pins)*4) + (len(InFloatPins)*4) + (len(InCharPins)*1) + (len(InStringPins)*1) + 1 
+ 
+                file_handle.write(f'#define BufferInSize {} ;\n')
+
             config['mcu']['firmware_ID'] = firmwareID
             
             config['mcu']['InBinaryLength'] = len(InBinaryPins)

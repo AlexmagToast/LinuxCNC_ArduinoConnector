@@ -23,18 +23,18 @@
 
 // Communication Variables
  //These variables are used to store the data that is sent and received over the serial interface.
-#define InBinaryLength 87
-bool InBinaryValues [87] = {0};
+#define InBinaryLength 19
+bool InBinaryValues [19] = {0,1,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1};
 #define InInt16Length 2
- int InInt16Values [2] = {0};
+ int InInt16Values [2] = {255,15};
 #define InUint16Length 2
- unsigned int InUint16Values [2] = {0};
+ unsigned int InUint16Values [2] = {0,242};
 #define InInt32Length 2
- long InInt32Values [2] = {0};
-#define InUint32Length 0
- unsigned long InUint32Values [2] = {0};
+ long InInt32Values [2] = {123123,432432};
+#define InUint32Length 2
+ unsigned long InUint32Values [2] = {0,1231231231};
 #define InFloatLength 2
- float InFloatValues [2] = {0.0};
+ float InFloatValues [2] = {10.02,0.123};
 #define InCharLength 2
  char InCharValues [2] = {""};
 #define InStringLength 0

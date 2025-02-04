@@ -43,10 +43,12 @@ byte testBitstream[] = {
 void setup() {
   Serial.begin(115200);
   pinMode(LED_BUILTIN, OUTPUT);
+  packMessage();
 
   // For debugging: process the test bitstream
-  Serial.println(" New Stuff: ");
-  processMessage(testBitstream, sizeof(testBitstream));
+  //Serial.println(" New Stuff: ");
+  //processMessage(testBitstream, sizeof(testBitstream));
+  
 }
 
 void loop() {
@@ -82,6 +84,102 @@ void loop() {
     }
   }
 }
+
+void packMessage() {
+
+  // Start byte
+  Serial.write(startByte);
+
+  // Pack binary values
+  Serial.write(InBinaryLength & 0xFF);
+  Serial.write((InBinaryLength >> 8) & 0xFF);
+  for (int i = 0; i < InBinaryLength; i += 8) {
+    byte currentByte = 0;
+    for (int j = 0; j < 8 && (i + j) < InBinaryLength; j++) {
+      currentByte |= (InBinaryValues[i + j] << j);
+    }
+    Serial.write(currentByte);
+  }
+
+  // Pack int16 values
+  Serial.write(InInt16Length & 0xFF);
+  Serial.write((InInt16Length >> 8) & 0xFF);
+  for (int i = 0; i < InInt16Length; i++) {
+    Serial.write(InInt16Values[i] & 0xFF);
+    Serial.write((InInt16Values[i] >> 8) & 0xFF);
+  }
+
+  // Pack uint16 values
+  Serial.write(InUint16Length & 0xFF);
+  Serial.write((InUint16Length >> 8) & 0xFF);
+  for (int i = 0; i < InUint16Length; i++) {
+    Serial.write(InUint16Values[i] & 0xFF);
+    Serial.write((InUint16Values[i] >> 8) & 0xFF);
+  }
+
+  // Pack int32 values
+  Serial.write(InInt32Length & 0xFF);
+  Serial.write((InInt32Length >> 8) & 0xFF);
+  for (int i = 0; i < InInt32Length; i++) {
+    Serial.write(InInt32Values[i] & 0xFF);
+    Serial.write((InInt32Values[i] >> 8) & 0xFF);
+    Serial.write((InInt32Values[i] >> 16) & 0xFF);
+    Serial.write((InInt32Values[i] >> 24) & 0xFF);
+  }
+
+  // Pack uint32 values
+  Serial.write(InUint32Length & 0xFF);
+  Serial.write((InUint32Length >> 8) & 0xFF);
+  for (int i = 0; i < InUint32Length; i++) {
+    Serial.write(InUint32Values[i] & 0xFF);
+    Serial.write((InUint32Values[i] >> 8) & 0xFF);
+    Serial.write((InUint32Values[i] >> 16) & 0xFF);
+    Serial.write((InUint32Values[i] >> 24) & 0xFF);
+  }
+
+  // Pack float values
+  Serial.write(InFloatLength & 0xFF);
+  Serial.write((InFloatLength >> 8) & 0xFF);
+  for (int i = 0; i < InFloatLength; i++) {
+    uint32_t temp = *((uint32_t*)&InFloatValues[i]);
+    Serial.write(temp & 0xFF);
+    Serial.write((temp >> 8) & 0xFF);
+    Serial.write((temp >> 16) & 0xFF);
+    Serial.write((temp >> 24) & 0xFF);
+  }
+
+  // Pack char values
+  Serial.write(InCharLength & 0xFF);
+  Serial.write((InCharLength >> 8) & 0xFF);
+  for (int i = 0; i < InCharLength; i++) {
+    Serial.write(InCharValues[i]);
+  }
+
+  // Pack string values
+  Serial.write(InStringLength & 0xFF);
+  Serial.write((InStringLength >> 8) & 0xFF);
+  for (int i = 0; i < InStringLength; i++) {
+    uint16_t stringLength = strlen(InStringValues[i]);
+    Serial.write(stringLength & 0xFF);
+    Serial.write((stringLength >> 8) & 0xFF);
+    for (int j = 0; j < stringLength; j++) {
+      Serial.write(InStringValues[i][j]);
+    }
+  }
+
+  // Calculate checksum
+  byte checksum = 0;
+  for (int i = 1; i < index; i++) { // Exclude start byte
+    checksum += buffer[i];
+  }
+  checksum %= 256;
+
+  // Add checksum and end byte
+  Serial.write(checksum);
+  Serial.write(endByte);
+}
+
+
 
 void processMessage(byte buffer[], int length) {
   int index = 0;
@@ -207,8 +305,7 @@ void processMessage(byte buffer[], int length) {
   calculatedChecksum %= 256;
 
   if (calculatedChecksum != checksum) {
-    Invalid checksum
-  
+    Serial.println("Invalid checksum");
     return;
   }
 
