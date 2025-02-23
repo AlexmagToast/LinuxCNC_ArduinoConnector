@@ -386,9 +386,9 @@ class ArduinoConnection(HalInterface):
     def __str__(self) -> str:
         return f'Arduino Alias = {self.settings.alias}, Component Name = {self.settings.component_name}, Enabled = {self.settings.enabled}'
     
-    def register_pins(self, feature):
+    def register_pins(self, feature): 
         for pin in feature.pinList:
-            self.register_pin(component=self.component, pin_name=pin.pinName, pin_type=pin.halPinType, pin_direction=pin.halPinDirection)
+            pin.halPinConnection = self.register_pin(component=self.component, pin_name=pin.pinName, pin_type=pin.halPinType, pin_direction=pin.halPinDirection)
             
     def sendMessage(self, pm:ProtocolMessage):
         self.serialConn.sendMessage(pm)

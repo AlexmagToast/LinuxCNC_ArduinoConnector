@@ -3,14 +3,96 @@
 import logging
 import os
 from linuxcnc_arduinoconnector.Config import *
+from linuxcnc_arduinoconnector.Utils import get_parent_process_name, launch_connector, try_load_linuxcnc
+import logging
+# Since Linuxcnc launches this script using systemd, we can store the path to the script for later use
+base_directory = os.path.dirname(os.path.abspath(os.path.abspath(__file__)))
 
 # Pre stage, look to see if the local config is set to enable logging by default. This can be helpful 
-# First stage, figure out if LinuxCNC launched this script. If Linuxcnc is the host, then the user's profile will provide the settings to use.
 file_logger = None
 if DEFAULT_LOGGING_ENABLED:
     from linuxcnc_arduinoconnector.LoggingUtils import setup_logger
-    file_logger = setup_logger('file_logger', log_file_path=os.path.join(log_file_path, log_file_name), log_format=logging_fmt)
-    file_logger.debug('Starting up!')
+    file_logger = setup_logger('file_logger', log_file_path=os.path.join(DEFAULT_LOG_FILE_PATH, DEFAULT_LOG_FILE_NAME), log_format=DEFAULT_LOGGING_FORMAT)
+    file_logger.debug('Logging enabled based on override from Config.py, see DEFAULT_LOGGING_ENABLED')
+
+def launch_remote_debugger_listen(bind_addres:str, wait_on_connect=False, port=5678):
+    import debugpy
+    try:
+        debugpy.listen((bind_addres,port))
+        #rint(f'Remote Debug Enabled based on override from Config.py, listening on port {port}')
+        if file_logger is not None:
+            file_logger.debug(f'Remote Debug Enabled based on override from Config.py or linuxcnc profile, bound to {bind_addres} and listening on port {port}')
+        if wait_on_connect:
+            if file_logger is not None:
+                file_logger.debug('Waiting for remote debugger to connect...')
+            debugpy.wait_for_client()
+            pass
+    except Exception as e:
+        if file_logger is not None:
+            file_logger.error(f'Error launching remote debugger: {e}')
+        print(f'Error launching remote debugger: {e}')
+
+if DEFAULT_REMOTE_DEBUG_ENABLED:
+    launch_remote_debugger_listen(DEFAULT_REMOTE_DEBUG_BIND_ADDRESS, DEFAULT_REMOTE_DEBUG_WAIT_ON_CONNECT, DEFAULT_REMOTE_DEBUG_PORT)
+
+# First stage, figure out if LinuxCNC launched this script. If Linuxcnc is the host, then the user's profile will provide the settings to use.
+launchedByLinuxCNC = False
+# get_parent_process_name() returns 'systemd' if Linuxcnc launches it, otherwise its something else like 'bash' 
+#test = get_parent_process_cmdline()
+maybe_linuxcnc = get_parent_process_name()
+if maybe_linuxcnc== 'systemd' and try_load_linuxcnc(): # try_load_linux will throw an exception if it fails
+    launchedByLinuxCNC = True
+    if file_logger is not None:
+        file_logger.debug('Detected execution by LinuxCNC')
+else:
+    if file_logger is not None:
+        file_logger.debug(f'Detected execution outside of LinuxCNC, parent process name {maybe_linuxcnc}')        
+
+if launchedByLinuxCNC:
+ 
+    import linuxcnc
+    import logging
+    import time
+    logging.basicConfig(level=logging.DEBUG, format='%(message)s\r\n')
+
+    
+    inifile = None
+    retries = 3
+    while retries > 0:
+        try:
+            stat = linuxcnc.stat()
+            stat.poll()
+            #print(f'INI FILE NAME = {stat.ini_filename}')
+            if stat.ini_filename is not None and stat.ini_filename != '':
+                break
+            else:
+                raise Exception('No ini file found')
+        except Exception as e:
+            retries -= 1
+            time.sleep(2)
+            print(f'Error loading ini file: {e}')
+    print(f'INI FILE NAME = {stat.ini_filename}')
+    inifile = linuxcnc.ini(stat.ini_filename)
+    
+    yaml_path = inifile.find(DEFAULT_LINUXCNC_PROFILE_INI_HEADER, DEFAULT_LINUXCNC_PROFILE_INI_YAML_PATH_KEY) or DEFAULT_PROFILE_NAME
+    maybe_remote_debug = inifile.find(DEFAULT_LINUXCNC_PROFILE_INI_HEADER, DEFAULT_LINUXCNC_PROFILE_INI_REMOTE_DEBUG_KEY) or False
+    if maybe_remote_debug == '1':
+        maybe_remote_debug = True
+    else:
+        maybe_remote_debug = False
+    maybe_wait_on_remote_debug = inifile.find(DEFAULT_LINUXCNC_PROFILE_INI_HEADER, DEFAULT_LINUXCNC_PROFILE_INI_WAIT_ON_REMOTE_DEBUG_CONNECT_KEY) or False
+    if maybe_wait_on_remote_debug == '1':
+        maybe_wait_on_remote_debug = True
+    else:
+        maybe_wait_on_remote_debug = False
+    if maybe_remote_debug:
+        launch_remote_debugger_listen(DEFAULT_REMOTE_DEBUG_BIND_ADDRESS, maybe_wait_on_remote_debug, DEFAULT_REMOTE_DEBUG_PORT)
+    #from linuxcnc_arduinoconnector.Utils import launch_ui_in_new_console
+    #launch_ui_in_new_console(additional_args=['-p', yaml_path])
+    launch_connector(yaml_path)
+    #machine_name = inifile.find("EMC", "MACHINE") or "unknown"
+    pass
+
 
 '''
 Since Linuxcnc launches the python script using a systemd daemon, environment variables are not accessible! Dang it.
@@ -97,16 +179,7 @@ if file_logger is not None:
 if enable_remote_debugger:
     launch_debugger(wait_on_connect=enable_wait_on_remote_debug, port=remote_debug_listen_port)
 # Stage 2, determine what launched this script. If its linuxcnc, then we need to handle errors in an appropriate way
-from linuxcnc_arduinoconnector.Utils import get_parent_process_name, try_load_linuxcnc
-launchedByLinuxCNC = False
-# get_parent_process_name() returns 'systemd' if Linuxcnc launches it, otherwise its something else like 'bash' 
-if get_parent_process_name() == 'systemd' and try_load_linuxcnc(): # try_load_linux will throw an exception if it fails
-    launchedByLinuxCNC = True
-    if file_logger is not None:
-        file_logger.debug('Detected execution by LinuxCNC')
-else:
-    if file_logger is not None:
-        file_logger.debug(f'Detected execution outside of LinuxCNC, parent process name {get_parent_process_name()}')
+
 '''
 
 
@@ -126,6 +199,7 @@ def exit_program():
         raise DebuggerExit("Exiting program due to missing packages.")
     else:
         sys.exit(1)
+        
 def check_requirements(requirements_file='requirements.txt'):
     with open(requirements_file, 'r') as file:
         requirements = file.readlines()
@@ -149,7 +223,7 @@ def check_requirements(requirements_file='requirements.txt'):
             sys.exit(1)
 
 # Check requirements before running any logic
-check_requirements()
+#check_requirements()
 
 # Your main program logic here
 import asyncio
@@ -167,8 +241,6 @@ from linuxcnc_arduinoconnector.ArduinoComms import ArduinoConnection
 from linuxcnc_arduinoconnector.Console import display_arduino_statuses, display_connection_details
 from linuxcnc_arduinoconnector.Utils import listDevices, locateProfile
 from linuxcnc_arduinoconnector.YamlParser import ArduinoYamlParser
-
-
 
 arduino_map = []
 
@@ -238,51 +310,7 @@ async def main_async(stdscr, arduino_connections):
             just_the_string = traceback.format_exc()
             logging.critical(f'PYDEBUG: error: {str(just_the_string)}')
             pass
-
-def launch_ui_in_new_console(additional_args=[]):
-    python_executable = sys.executable
-    script_path = os.path.abspath(__file__)
-    args_str = " ".join(additional_args)
-    
-    if sys.platform.startswith('win'):
-        cmd = f'start cmd /c "{python_executable} {script_path} -o console {args_str}"'
-        subprocess.Popen(cmd, shell=True)
-    elif sys.platform.startswith('linux') or sys.platform == 'darwin':
-        if sys.platform.startswith('linux'):
-            terminals = [
-                ('x-terminal-emulator', '-e'),
-                ('gnome-terminal', '--'),
-                ('konsole', '-e'),
-                ('xfce4-terminal', '-e'),
-                ('mate-terminal', '-e'),
-                ('terminator', '-e'),
-                ('urxvt', '-e'),
-                ('xterm', '-e'),
-            ]
-            
-            for term, arg in terminals:
-                if subprocess.call(['which', term], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) == 0:
-                    cmd = f'{term} {arg} {python_executable} {script_path} -o console {args_str}'
-                    break
-            else:
-                print("No suitable terminal found. Running in current console.")
-                return False
-        elif sys.platform == 'darwin':
-            cmd = f"open -a Terminal.app {python_executable} {script_path} -o console {args_str}"
         
-        try:
-            subprocess.Popen(shlex.split(cmd))
-        except Exception as e:
-            print(f"Error launching UI: {e}")
-            print("Running in current console.")
-            return False
-    else:
-        print("Unsupported platform for launching separate console.")
-        print("Running in current console.")
-        return False
-    
-    return True
-
 def main(stdscr=None):
     argumentList = sys.argv[1:]
     options = "hdo:p:"
@@ -291,6 +319,9 @@ def main(stdscr=None):
     devs = []
     launch_separate_console = False
     additional_args = []
+    
+    if stdscr is None:
+        logging.basicConfig(level=logging.DEBUG, format='%(message)s\r\n')
 
     if stdscr == None:
         # Check for output=console first
@@ -316,6 +347,7 @@ def main(stdscr=None):
             sys.exit()
 
         if launch_separate_console:
+            from linuxcnc_arduinoconnector.Utils import launch_ui_in_new_console
             launch_ui_in_new_console(additional_args)
             return
 
@@ -336,7 +368,7 @@ def main(stdscr=None):
         just_the_string = traceback.format_exc()
         logging.debug(f'PYDEBUG: error: {str(just_the_string)}')
         sys.exit()
-
+        
     if target_profile is not None:
         try:
             devs = ArduinoYamlParser.parseYaml(path=target_profile)

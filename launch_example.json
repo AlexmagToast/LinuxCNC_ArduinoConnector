@@ -12,7 +12,7 @@
             "request": "launch",
             "program": "launch.py",
             "console": "integratedTerminal",
-            "args":"-p dev_profile_ken.yaml"
+            "args":"-p profiles/dev_linuxcnc.yaml"
         },
         {
             //"preLaunchTask": "linuxcncenv",

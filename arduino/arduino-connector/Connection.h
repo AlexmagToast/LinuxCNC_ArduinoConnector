@@ -453,12 +453,12 @@ protected:
   virtual void onMessage(uint8_t* d, const size_t& size)
   {
     JsonDocument doc;
-    #ifdef DEBUG_VERBOSE
+    #ifdef DEBUG_VERBOSE_DISABLED // TODO: Determine why these verbose outputs were causing the 8266 to output garbage on debug. Disabled for now.
       this->println(F("ENCODED RX="));
       printBuffer(d, size);
     #endif
     size_t sz = cobs::decode(d, size-1);
-    #ifdef DEBUG_VERBOSE
+    #ifdef DEBUG_VERBOSE_DISABLED
       this->println(F("DECODED RX="));
       printBuffer(d, sz);
     #endif

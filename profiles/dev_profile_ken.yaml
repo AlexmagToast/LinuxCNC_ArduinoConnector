@@ -1,9 +1,9 @@
 mcu:
   alias: NodeMCU
   component_name: nodemcu # Name of component to use in HAL
-  dev: /dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_0001-if00-port0
-  #dev: /dev/cu.usbserial-0001
-  enabled: false
+  #dev: /dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_0001-if00-port0
+  dev: /dev/cu.usbserial-0001
+  enabled: true
   hal_emulation: false
   connection: 
     baudrate: 115200
@@ -11,14 +11,21 @@ mcu:
 
   io_map:     
     digitalInputs:
-      - pin_id: 14
+
+      - pin_id: D4
+        pin_name: din.4 #hal pin name
+        input_pullup: true
+      - pin_id: D5
         pin_name: din.5 #hal pin name
         input_pullup: true
         pin_debounce: 50
-      - pin_id: 12
+      - pin_id: D6
         pin_name: din.6 #hal pin name
         input_pullup: true
         pin_debounce: 50
+        pin_enabled: false
+
+
 
 
 ---
@@ -362,7 +369,7 @@ mcu:
   #dev: /dev/cu.usbmodemF412FA68D6802 
   #dev: /dev/serial/by-id/usb-Arduino_RaspberryPi_Pico_410461DE2A511323-if00
   dev: /dev/cu.usbmodem11101
-  enabled: true
+  enabled: false
   hal_emulation: true
   #connection: 
   #  baudrate: 9600
@@ -423,7 +430,7 @@ mcu:
   #/dev/tty.usbmodemF412FA68D6802
   #dev: /dev/cu.usbmodemF412FA68D6802 
   #dev: /dev/serial/by-id/usb-Arduino_UNO_WiFi_R4_CMSIS-DAP_F412FA68D680-if01
-  enabled: true
+  enabled: false
   hal_emulation: false
   #connection: 
   #  baudrate: 9600

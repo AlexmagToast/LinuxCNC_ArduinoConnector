@@ -231,7 +231,7 @@ namespace Features
                 DEBUG_DEV.println(F("mid: "));
                 DEBUG_DEV.println(dp->mid);
                 #ifdef DEBUG_VERBOSE
-                    DEBUG_DEV.print(F(", is: ");
+                    DEBUG_DEV.print(F(", is: "));
                     DEBUG_DEV.print(dp->pinInitialState);
                     DEBUG_DEV.print(F(", cs: "));
                     DEBUG_DEV.print(dp->pinConnectedState);
