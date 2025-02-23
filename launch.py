@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # Stage 1, check for debug environment variables
+import logging
 import os
 from linuxcnc_arduinoconnector.Config import *
 
