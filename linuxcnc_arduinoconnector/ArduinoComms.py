@@ -11,6 +11,14 @@ from linuxcnc_arduinoconnector.ConfigModels import ArduinoSettings
 from linuxcnc_arduinoconnector.ProtocolModels import ConnectionState, ConnectionType, InviteSyncMessage, MessageDecoder, MessageEncoder, MessageType, ProtocolMessage
 import serial.tools.list_ports
 
+# Add console logging handler
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.DEBUG)
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+console_handler.setFormatter(formatter)
+logging.getLogger().addHandler(console_handler)
+logging.getLogger().setLevel(logging.DEBUG)
+
 RX_MAX_QUEUE_SIZE = 10
 
 class Connection(MessageDecoder):
@@ -292,6 +300,7 @@ class SerialConnection(Connection):
                         if readDebug:
                             chunk, self.rxBuffer = self.rxBuffer.split(b'\r\n', maxsplit=1)
                             logging.debug(f'[{self.alias}]: {bytes(chunk).decode("utf8", errors="ignore")}')
+                            print(f'[{self.alias}]: {bytes(chunk).decode("utf8", errors="ignore")}')
                         elif readMessage:
                             chunk, self.rxBuffer = self.rxBuffer.split(b'\x00', maxsplit=1)
                             logging.debug(f'PYDEBUG: SerialConnection::rxTask, dev={self.dev}, chunk bytes: {chunk}')

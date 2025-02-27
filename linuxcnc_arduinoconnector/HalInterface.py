@@ -3,7 +3,13 @@ import sys
 import logging
 
 from linuxcnc_arduinoconnector.ConfigModels import HalPinDirection, HalPinTypes
-
+# Add console logging handler
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.DEBUG)
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+console_handler.setFormatter(formatter)
+logging.getLogger().addHandler(console_handler)
+logging.getLogger().setLevel(logging.DEBUG)
 class HalInterface:
     def __init__(self, hal_emulation=True):
         self.hal_emulation = hal_emulation

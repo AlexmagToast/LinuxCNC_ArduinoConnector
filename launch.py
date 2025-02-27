@@ -10,6 +10,7 @@ base_directory = os.path.dirname(os.path.abspath(os.path.abspath(__file__)))
 
 # Pre stage, look to see if the local config is set to enable logging by default. This can be helpful 
 file_logger = None
+#DEFAULT_LOGGING_ENABLED = True
 if DEFAULT_LOGGING_ENABLED:
     from linuxcnc_arduinoconnector.LoggingUtils import setup_logger
     file_logger = setup_logger('file_logger', log_file_path=os.path.join(DEFAULT_LOG_FILE_PATH, DEFAULT_LOG_FILE_NAME), log_format=DEFAULT_LOGGING_FORMAT)
@@ -320,8 +321,8 @@ def main(stdscr=None):
     launch_separate_console = False
     additional_args = []
     
-    if stdscr is None:
-        logging.basicConfig(level=logging.DEBUG, format='%(message)s\r\n')
+    #if stdscr is None:
+    #    logging.basicConfig(level=logging.DEBUG, format='%(message)s\r\n')
 
     if stdscr == None:
         # Check for output=console first
@@ -330,8 +331,9 @@ def main(stdscr=None):
             for currentArgument, currentValue in arguments:
                 if currentArgument in ("-o", "--Output"):
                     if currentValue == "console":
+                        print('Launching console')
                         # prevent logging to console while showing the curses ui
-                        logging.getLogger().setLevel(logging.CRITICAL)
+                        #logging.getLogger().setLevel(logging.DEBUG)
                         curses.wrapper(main)
                         return
                     elif currentValue == "terminal":
@@ -343,7 +345,8 @@ def main(stdscr=None):
             additional_args.extend(values)
         except getopt.error as err:
             just_the_string = traceback.format_exc()
-            logging.debug(f'PYDEBUG: error: {str(just_the_string)}')
+            file_logger.debug(f'PYDEBUG: error: {str(just_the_string)}')
+            print(f'PYDEBUG: error: {str(just_the_string)}')
             sys.exit()
 
         if launch_separate_console:
@@ -361,12 +364,13 @@ def main(stdscr=None):
                 listDevices()
                 sys.exit()
             elif currentArgument in ("-p", "--profile"):
-                logging.debug(f'PYDEBUG: Profile: {currentValue}')
+                file_logger.debug(f'PYDEBUG: Profile: {currentValue}')
                 target_profile = currentValue
             
     except getopt.error as err:
         just_the_string = traceback.format_exc()
-        logging.debug(f'PYDEBUG: error: {str(just_the_string)}')
+        file_logger.debug(f'PYDEBUG: error: {str(just_the_string)}')
+        print(f'PYDEBUG: error: {str(just_the_string)}')
         sys.exit()
         
     if target_profile is not None:
@@ -374,8 +378,10 @@ def main(stdscr=None):
             devs = ArduinoYamlParser.parseYaml(path=target_profile)
         except Exception as err:
             just_the_string = traceback.format_exc()
-            logging.debug(f'PYDEBUG: error: {str(just_the_string)}')
-            sys.exit()
+            file_logger.debug(f'PYDEBUG: error: {str(just_the_string)}')
+            print(f'PYDEBUG: error: {str(just_the_string)}\r\n')
+            
+            sys.exit(1)
     else:
         devs = locateProfile()
         for a in devs:
@@ -390,10 +396,11 @@ def main(stdscr=None):
         for a in devs:
             c = ArduinoConnection(a)
             arduino_connections.append(c)
-            logging.info(f'PYDEBUG: Loaded Arduino profile: {str(c)}')
+            file_logger.info(f'PYDEBUG: Loaded Arduino profile: {str(c)}')
     except Exception as err:
         just_the_string = traceback.format_exc()
-        logging.debug(f'PYDEBUG: error: {str(just_the_string)}')
+        file_logger.debug(f'PYDEBUG: error: {str(just_the_string)}')
+        print(f'PYDEBUG: error: {str(just_the_string)}')
         sys.exit()
 
     asyncio.run(main_async(stdscr, arduino_connections))

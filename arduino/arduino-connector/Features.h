@@ -448,18 +448,18 @@ namespace Features
                 {
                     dp->inputPullup = 0;
                     if (dp->mid == -1)
-                        pinMode(atoi(dp->pid.c_str()), INPUT);
+                        pinMode(atoi(dp->pid.c_str()), INPUT_PULLUP);
                     else
-                        pinMode(dp->mid, INPUT);    
+                        pinMode(dp->mid, INPUT_PULLUP);    
                 }
             }
             else
             {
                 dp->inputPullup = 0;
                 if (dp->mid == -1)
-                    pinMode(atoi(dp->pid.c_str()), INPUT);
+                    pinMode(atoi(dp->pid.c_str()), INPUT_PULLUP);
                 else
-                    pinMode(dp->mid, INPUT);
+                    pinMode(dp->mid, INPUT_PULLUP);
             }
             #ifdef DEBUG
                 DEBUG_DEV.print(F("DigitalInputs::InitFeaturePin: "));
