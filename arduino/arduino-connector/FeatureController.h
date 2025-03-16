@@ -391,7 +391,7 @@ protected:
             return code;
         }
         AddPin(p, config->seq);
-        // Set feautre ready if all pins are initialized
+        // Set feature ready if all pins are initialized
         if (config->seq == config->total - 1)
         {
             // output debug indicating feature ID was set ready

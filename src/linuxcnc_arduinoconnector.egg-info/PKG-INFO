@@ -1,3 +1,31 @@
+Metadata-Version: 2.2
+Name: linuxcnc_arduinoconnector
+Version: 0.0.1
+Summary: ArduinoConnector Alpha
+Author-email: Alexander Richter <info@theartoftinkering.com>, Ken Thompson <kenthompson1@gmail.com>
+Project-URL: Homepage, https://github.com/AlexmagToast/LinuxCNC_ArduinoConnector
+Project-URL: Issues, https://github.com/AlexmagToast/LinuxCNC_ArduinoConnector/issues
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+Requires-Dist: pyserial
+Requires-Dist: strenum
+Requires-Dist: crc8
+Requires-Dist: numpy
+Requires-Dist: msgpack
+Requires-Dist: cobs
+Requires-Dist: pyyaml
+Requires-Dist: psutil
+Requires-Dist: fastapi
+Requires-Dist: uvicorn
+Requires-Dist: requests
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0; extra == "dev"
+Requires-Dist: httpx; extra == "dev"
+Requires-Dist: pytest-cov; extra == "dev"
+
 # You are in the Alpha Branch of V2 of Arduino-connector, it is still in early development and not working! 
 
 ## LinuxCNC_ArduinoConnector V2

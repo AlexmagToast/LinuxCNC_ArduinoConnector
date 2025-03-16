@@ -1,8 +1,10 @@
 # HalInterface.py
 import sys
 import logging
-
-from linuxcnc_arduinoconnector.ConfigModels import HalPinDirection, HalPinTypes
+from datetime import datetime
+import threading
+import time
+from linuxcnc_arduinoconnector.models.ConfigModels import HalPinDirection, HalPinTypes
 # Add console logging handler
 console_handler = logging.StreamHandler()
 console_handler.setLevel(logging.DEBUG)
@@ -19,7 +21,7 @@ class HalInterface:
             self.load_linuxcnc()
 
     def load_linuxcnc(self):
-        from linuxcnc_arduinoconnector.Utils import try_load_linuxcnc
+        from linuxcnc_arduinoconnector.utils.Utils import try_load_linuxcnc
         try:
             try_load_linuxcnc()
             self.linuxcnc = sys.modules['linuxcnc']

@@ -1,4 +1,3 @@
-
 import logging
 import os
 from pathlib import Path
@@ -11,8 +10,8 @@ import psutil
 
 import serial
 
-from linuxcnc_arduinoconnector.ArduinoComms import ArduinoConnection
-from linuxcnc_arduinoconnector.ConfigModels import DEFAULT_PROFILE
+from linuxcnc_arduinoconnector.interfaces.ArduinoComms import ArduinoConnection
+from linuxcnc_arduinoconnector.models.ConfigModels import DEFAULT_PROFILE
 
 
 
@@ -45,7 +44,7 @@ def listDevices():
         print(f'Device: {port}')
 
 def locateProfile() -> list[ArduinoConnection]:
-    from linuxcnc_arduinoconnector.YamlParser import ArduinoYamlParser
+    from linuxcnc_arduinoconnector.utils.YamlParser import ArduinoYamlParser
     #logging.debug(f'Starting up!')
     home_profile_loc = Path.home() / ".arduino" / DEFAULT_PROFILE #"profile.yaml"
     arduino_profiles = []
@@ -185,7 +184,7 @@ async def main_async(arduino_connections):
 def launch_connector(target_profile:str):
     
     try:
-        from linuxcnc_arduinoconnector.YamlParser import ArduinoYamlParser
+        from linuxcnc_arduinoconnector.utils.YamlParser import ArduinoYamlParser
         devs = ArduinoYamlParser.parseYaml(path=target_profile)
     except Exception as err:
         just_the_string = traceback.format_exc()

@@ -6,3 +6,11 @@ msgpack
 cobs
 pyyaml
 psutil
+fastapi
+uvicorn
+requests  # For API client example
+
+# For testing
+httpx  # Required for TestClient
+pytest>=7.0.0
+pytest-cov  # For test coverage reports

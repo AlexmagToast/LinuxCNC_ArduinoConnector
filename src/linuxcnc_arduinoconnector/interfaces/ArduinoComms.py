@@ -6,18 +6,10 @@ import time
 import traceback
 import serial
 from strenum import StrEnum
-from linuxcnc_arduinoconnector.HalInterface import HalInterface
-from linuxcnc_arduinoconnector.ConfigModels import ArduinoSettings
-from linuxcnc_arduinoconnector.ProtocolModels import ConnectionState, ConnectionType, InviteSyncMessage, MessageDecoder, MessageEncoder, MessageType, ProtocolMessage
+from linuxcnc_arduinoconnector.interfaces.HalInterface import HalInterface
+from linuxcnc_arduinoconnector.models.ConfigModels import ArduinoSettings
+from linuxcnc_arduinoconnector.models.ProtocolModels import ConnectionState, ConnectionType, InviteSyncMessage, MessageDecoder, MessageEncoder, MessageType, ProtocolMessage
 import serial.tools.list_ports
-
-# Add console logging handler
-console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.DEBUG)
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-console_handler.setFormatter(formatter)
-logging.getLogger().addHandler(console_handler)
-logging.getLogger().setLevel(logging.DEBUG)
 
 RX_MAX_QUEUE_SIZE = 10
 

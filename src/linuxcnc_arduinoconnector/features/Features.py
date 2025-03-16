@@ -1,4 +1,3 @@
-
 from abc import ABCMeta, abstractmethod
 from enum import Enum
 import logging
@@ -6,8 +5,8 @@ import time
 
 import numpy
 
-from linuxcnc_arduinoconnector.ConfigModels import AnalogPin, ArduinoPin, DigitalPin, HalPinDirection
-from linuxcnc_arduinoconnector.ProtocolModels import ConfigMessage, MessageType, ProtocolMessage
+from linuxcnc_arduinoconnector.models.ConfigModels import AnalogPin, ArduinoPin, DigitalPin, HalPinDirection
+from linuxcnc_arduinoconnector.models.ProtocolModels import ConfigMessage, MessageType, ProtocolMessage
 
 # The Features enum is used by the Feature objects to set the Feature properties such as the corresponding constant name, config string name, and feature ID
 class Features(Enum):
@@ -187,8 +186,12 @@ class DigitalInputs(IOFeature):
             for pi in pm.pinInfo:
                 # find the pin in the pinList
                 for p in self.pinList:
+                    # check if the pinID is an integer, and if it is, convert it to a string
+                    if isinstance(p.pinID, int):
+                        p.pinID = str(p.pinID)
                     if p.pinID == pi.pinID:
                         p.halPinCurrentValue = pi.pinValue
+                        p.currentValue = pi.pinValue  # Store the value in our permanent property
                         if p.halPinConnection != None:
                             p.halPinConnection.set(p.halPinCurrentValue)
                         logging.debug(f'PININFO: {pi}')

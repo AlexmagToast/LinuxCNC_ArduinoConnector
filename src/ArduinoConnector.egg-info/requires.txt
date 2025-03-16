@@ -1,0 +1,16 @@
+pyserial
+strenum
+crc8
+numpy
+msgpack
+cobs
+pyyaml
+psutil
+fastapi
+uvicorn
+requests
+
+[dev]
+pytest>=7.0
+httpx
+pytest-cov

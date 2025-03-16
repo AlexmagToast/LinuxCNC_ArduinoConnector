@@ -356,7 +356,13 @@ namespace Features
             #endif
 
             // Perform any setup here.
-
+            auto pins = GetPins();
+            for( int x = 0; x < GetPinCount(); x++ )
+            {
+                DigitalPin & pin = *static_cast<DigitalPin*>(pins[x]);
+                // Set pin current state to -1 to trigger initial state update
+                pin.pinCurrentState = -1;
+            }
             // Then set the feature to ready, otherwise it will not be available to process incoming messages or perform local
             // tasks such as pin reads.
             SetFeatureReady(true);
