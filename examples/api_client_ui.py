@@ -12,10 +12,55 @@ import locale
 # Setup debugging
 DEBUG_LOG = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui_debug.log")
 
+# Add an argument to force test the API
+FORCE_TEST_API = "--test-api" in sys.argv
+
 def debug_log(message):
     """Write debug message to log file"""
     with open(DEBUG_LOG, "a") as f:
         f.write(f"{datetime.datetime.now()}: {message}\n")
+
+# Test API directly if requested
+def test_api_directly():
+    debug_log("=== Testing API directly ===")
+    try:
+        # Get list of Arduinos
+        arduino_list_url = f"{API_BASE_URL}/arduinos"
+        debug_log(f"Requesting: {arduino_list_url}")
+        response = requests.get(arduino_list_url)
+        debug_log(f"Status code: {response.status_code}")
+        
+        if response.status_code != 200:
+            debug_log(f"Error: {response.text}")
+            return
+        
+        arduinos = response.json()
+        debug_log(f"Found {len(arduinos)} Arduinos")
+        
+        # Get details for each Arduino
+        for arduino in arduinos:
+            alias = arduino['alias']
+            detail_url = f"{API_BASE_URL}/arduinos/{alias}"
+            debug_log(f"Requesting: {detail_url}")
+            detail_response = requests.get(detail_url)
+            debug_log(f"Status code: {detail_response.status_code}")
+            
+            if detail_response.status_code != 200:
+                debug_log(f"Error for {alias}: {detail_response.text}")
+                continue
+            
+            details = detail_response.json()
+            pins = details.get('pins', [])
+            enabled = details.get('enabled', True)
+            debug_log(f"Arduino: {alias}, Status: {details.get('arduino_status')}, Enabled: {enabled}, Pins: {len(pins)}")
+            
+            # Log pin data
+            for pin in pins:
+                debug_log(f"  Pin: {pin.get('pin_name')}, ID: {pin.get('pin_id')}, Value: {pin.get('current_value')}")
+    
+    except Exception as e:
+        debug_log(f"API test error: {str(e)}")
+        debug_log(traceback.format_exc())
 
 # Log environment information
 debug_log("=== Starting UI with debug logging ===")
@@ -36,10 +81,30 @@ except Exception as e:
 # Configuration
 API_BASE_URL = "http://localhost:8765"
 
+# Run API test if requested
+if FORCE_TEST_API:
+    test_api_directly()
+    debug_log("API test complete")
+
 def format_duration(seconds):
     """Convert seconds to days, hours, minutes, seconds format"""
-    if seconds is None or seconds == "N/A":
+    if seconds is None or seconds == "N/A" or seconds == "None":
         return "N/A"
+    
+    # Handle strings with 's' suffix like '0s'
+    if isinstance(seconds, str):
+        if seconds.endswith('s'):
+            try:
+                seconds = int(seconds[:-1])  # Remove the 's' and convert to int
+            except ValueError:
+                debug_log(f"Could not convert duration: {seconds}")
+                return seconds  # Return original value if conversion fails
+        else:
+            try:
+                seconds = int(seconds)  # Try direct conversion
+            except ValueError:
+                debug_log(f"Could not convert duration: {seconds}")
+                return seconds  # Return original value if conversion fails
     
     seconds = int(seconds)
     days, remainder = divmod(seconds, 86400)
@@ -72,8 +137,11 @@ def get_arduino_details(alias):
     """Get detailed information about a specific Arduino"""
     try:
         response = requests.get(f"{API_BASE_URL}/arduinos/{alias}")
+        debug_log(f"API response for {alias} details: status={response.status_code}")
         response.raise_for_status()
-        return response.json()
+        details = response.json()
+        debug_log(f"Got details for {alias}, pins count: {len(details.get('pins', []))}")
+        return details
     except requests.exceptions.RequestException as e:
         debug_log(f"API error in get_arduino_details: {str(e)}")
         return None
@@ -125,8 +193,30 @@ def draw_status_list(stdscr, start_y, width, arduinos):
             stdscr.addstr(row, col, "| " + device.ljust(23))
             col += 25
             
-            # Status
+            # Status - Override to DISABLED if enabled is False
             status = arduino.get('arduino_status', 'UNKNOWN')
+            
+            # More robust check for disabled status
+            enabled = arduino.get('enabled')
+            component_name = arduino.get('component_name', '')
+            
+            # Check multiple conditions that indicate disabled status
+            is_disabled = (
+                enabled is False or 
+                enabled == 'False' or 
+                enabled == 'false' or 
+                enabled == 0 or 
+                enabled == '0' or 
+                str(enabled).lower() == 'false' or
+                enabled is None or  # Added to catch None values
+                str(enabled).lower() == 'none' or  # Added to catch "None" string
+                "_DISABLED" in component_name or  # Look for _DISABLED in component name
+                component_name.endswith("_DISABLED")
+            )
+            
+            if is_disabled:
+                status = "DISABLED"
+                
             stdscr.addstr(row, col, "| ")
             col += 2
             try:
@@ -195,6 +285,10 @@ def draw_arduino_details(stdscr, start_y, alias):
             debug_log(f"Curses error in draw_arduino_details (error message): {str(e)}")
         return start_y + 2
     
+    # Debug info for pins
+    debug_log(f"Drawing details for {alias}")
+    debug_log(f"Pins data: {details.get('pins', [])}")
+    
     # Title
     try:
         stdscr.addstr(start_y, 0, f"Details for {alias}")
@@ -211,12 +305,42 @@ def draw_arduino_details(stdscr, start_y, alias):
         y += 1
         stdscr.addstr(y, 0, f"Serial Port Available: {details.get('serial_port_available', False)}")
         y += 1
+        enabled_status = "Yes" if details.get('enabled', False) else "No"
+        stdscr.addstr(y, 0, f"Enabled: {enabled_status}")
+        y += 1
     except curses.error as e:
         debug_log(f"Curses error in draw_arduino_details (basic info): {str(e)}")
-        y += 3  # Skip these lines
+        y += 4  # Skip these lines
+    
+    # Override status to DISABLED if not enabled
+    status = details.get('arduino_status', 'UNKNOWN')
+    debug_log(f"Raw enabled value: {details.get('enabled')} (type: {type(details.get('enabled'))})")
+    debug_log(f"Raw status value: {status}")
+    debug_log(f"Component name: {details.get('component_name')}")
+    
+    # More robust check for disabled status - any of these conditions should mark it as DISABLED
+    enabled = details.get('enabled')
+    component_name = details.get('component_name', '')
+    
+    # Check multiple conditions that indicate disabled status
+    is_disabled = (
+        enabled is False or 
+        enabled == 'False' or 
+        enabled == 'false' or 
+        enabled == 0 or 
+        enabled == '0' or 
+        str(enabled).lower() == 'false' or
+        enabled is None or  # Added to catch None values
+        str(enabled).lower() == 'none' or  # Added to catch "None" string
+        "_DISABLED" in component_name or  # Look for _DISABLED in component name
+        component_name.endswith("_DISABLED")
+    )
+    
+    if is_disabled:
+        status = "DISABLED"
+        debug_log(f"Setting status to DISABLED because one of the disabled conditions matched")
     
     # Arduino Status with color
-    status = details.get('arduino_status', 'UNKNOWN')
     try:
         stdscr.addstr(y, 0, "Arduino Status: ")
         if status == "CONNECTED":
@@ -322,9 +446,32 @@ def draw_arduino_details(stdscr, start_y, alias):
                 pin_id = pin.get('pin_id', 'N/A')
                 stdscr.addstr(y, 55, f"| {pin_id}".ljust(8))
                 
-                # Current value
+                # Current value with color for digital pins
                 value = pin.get('current_value', 'N/A')
-                stdscr.addstr(y, 63, f"| {value}")
+                debug_log(f"Drawing pin {pin_name} with value: {value} (type: {type(value)})")
+                
+                # Add special formatting for digital values
+                if hal_pin_type == "HAL_BIT" and value not in ('N/A', None):
+                    try:
+                        # Convert value to integer if it's a string
+                        if isinstance(value, str) and value.isdigit():
+                            value = int(value)
+                        
+                        if value == 1 or value == "1" or value is True:
+                            stdscr.addstr(y, 63, f"| ")
+                            stdscr.attron(curses.color_pair(2))  # Green
+                            stdscr.addstr(y, 65, f"HIGH")
+                            stdscr.attroff(curses.color_pair(2))
+                        else:
+                            stdscr.addstr(y, 63, f"| ")
+                            stdscr.attron(curses.color_pair(3))  # Red
+                            stdscr.addstr(y, 65, f"LOW")
+                            stdscr.attroff(curses.color_pair(3))
+                    except curses.error as e:
+                        debug_log(f"Color error for pin value: {str(e)}")
+                        stdscr.addstr(y, 63, f"| {value}")
+                else:
+                    stdscr.addstr(y, 63, f"| {value}")
                 
                 y += 1
             except curses.error as e:
@@ -336,10 +483,16 @@ def draw_arduino_details(stdscr, start_y, alias):
 def draw_help(stdscr, start_y, width):
     """Draw help information at the bottom of the screen"""
     try:
-        help_text = "X Exit  1 Select  2 Select  S Show Details"
-        stdscr.attron(curses.color_pair(4))
-        stdscr.addstr(start_y, 0, help_text + " " * (width - len(help_text)))
-        stdscr.attroff(curses.color_pair(4))
+        help_text = "X Exit  1 Select  2 Select  S/Enter Show Details"
+        if width > len(help_text) + 2:
+            stdscr.attron(curses.color_pair(4))
+            stdscr.addstr(start_y, 0, help_text + " " * (width - len(help_text)))
+            stdscr.attroff(curses.color_pair(4))
+        else:
+            # Screen too narrow, just show what fits
+            stdscr.attron(curses.color_pair(4))
+            stdscr.addstr(start_y, 0, help_text[:width-1])
+            stdscr.attroff(curses.color_pair(4))
     except curses.error as e:
         debug_log(f"Curses error in draw_help: {str(e)}")
 
@@ -448,6 +601,28 @@ def main(stdscr):
                             
                             # Status
                             status = arduino.get('arduino_status', 'UNKNOWN')
+                            
+                            # More robust check for disabled status
+                            enabled = arduino.get('enabled')
+                            component_name = arduino.get('component_name', '')
+                            
+                            # Check multiple conditions that indicate disabled status
+                            is_disabled = (
+                                enabled is False or 
+                                enabled == 'False' or 
+                                enabled == 'false' or 
+                                enabled == 0 or 
+                                enabled == '0' or 
+                                str(enabled).lower() == 'false' or
+                                enabled is None or  # Added to catch None values
+                                str(enabled).lower() == 'none' or  # Added to catch "None" string
+                                "_DISABLED" in component_name or  # Look for _DISABLED in component name
+                                component_name.endswith("_DISABLED")
+                            )
+                            
+                            if is_disabled:
+                                status = "DISABLED"
+                                
                             stdscr.addstr(selected_row, col, "| ")
                             col += 2
                             # Can't use color within reverse, so just use plain text
@@ -511,9 +686,15 @@ def main(stdscr):
             elif key == ord('2') and current_view == "list" and arduinos:
                 # Move selection down
                 selected_index = (selected_index + 1) % len(arduinos)
-            elif (key == ord('s') or key == ord('S')) and selected_arduino:
+            elif (key == ord('s') or key == ord('S') or key == curses.KEY_ENTER or key == 10 or key == 13) and selected_arduino:
                 # Toggle between list and details view
+                # Note: 10 is ASCII for '\n' (ENTER key) and 13 is ASCII for '\r' (Carriage Return)
                 current_view = "details" if current_view == "list" else "list"
+                debug_log(f"Switching view to {current_view} for {selected_arduino}")
+                if current_view == "details":
+                    # Pre-load details to check for any issues
+                    details = get_arduino_details(selected_arduino)
+                    debug_log(f"Preloaded details has pins: {details.get('pins', []) if details else 'No details'}")
             elif key == curses.KEY_RESIZE:
                 # Terminal was resized
                 try:

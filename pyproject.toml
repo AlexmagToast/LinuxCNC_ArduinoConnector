@@ -24,6 +24,7 @@ dependencies = [
     "fastapi",
     "uvicorn",
     "requests",
+    "textual"
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
