@@ -21,6 +21,7 @@ Requires-Dist: psutil
 Requires-Dist: fastapi
 Requires-Dist: uvicorn
 Requires-Dist: requests
+Requires-Dist: textual
 Provides-Extra: dev
 Requires-Dist: pytest>=7.0; extra == "dev"
 Requires-Dist: httpx; extra == "dev"

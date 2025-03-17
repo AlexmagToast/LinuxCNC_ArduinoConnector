@@ -46,17 +46,11 @@ HEALTH_CHECK_TIMEOUT = 2.0   # Seconds to wait for a health check response
 class ApiStatusOverlay(Container):
     """An overlay that shows when the API is down"""
     
-    class RetryCountChanged(Message):
-        """Message sent when the retry countdown changes"""
-        def __init__(self, countdown: int) -> None:
-            self.countdown = countdown
-            super().__init__()
-    
     def __init__(self, app_instance):
         super().__init__(id="api_status_overlay")
         self._app = app_instance
         self._countdown = HEALTH_CHECK_INTERVAL
-        self._timer: Optional[int] = None  # Change to int, as we store timer ID, not Timer object
+        self._timer_id = None
         
     def compose(self) -> ComposeResult:
         """Compose the overlay"""
@@ -75,41 +69,47 @@ class ApiStatusOverlay(Container):
         retry_button = self.query_one("#retry_now")
         retry_button.on_click = self.retry_now
         
+        # Initialize UI elements
+        self.query_one("#retry_loading").styles.display = "none"
+        
         # Start countdown
         self.start_countdown()
     
     def start_countdown(self) -> None:
         """Start the countdown timer for automatic retry"""
-        self._countdown = HEALTH_CHECK_INTERVAL
+        self._countdown = int(HEALTH_CHECK_INTERVAL)
         self.update_countdown_display()
         
         # Cancel existing timer if any
-        if self._timer is not None:
-            self._app.set_timer(self._timer, None)
-            self._timer = None
+        if self._timer_id is not None:
+            try:
+                self._app.set_timer(self._timer_id, None)
+            except Exception as e:
+                print(f"Error cancelling timer: {e}")
+            self._timer_id = None
         
-        # Set a timer to countdown each second
-        self._timer = self._app.set_interval(1.0, self.update_countdown)
-    
-    def update_countdown(self) -> None:
-        """Update the countdown timer"""
-        self._countdown -= 1
-        
-        # Check if countdown reached zero
-        if self._countdown <= 0:
-            # Cancel the countdown timer
-            if self._timer is not None:
-                self._app.set_timer(self._timer, None)
-                self._timer = None
-            
-            # Trigger a health check
-            self._app.check_api_health()
-        else:
-            # Update the countdown display
+        # Use a simple callback for countdown
+        def countdown_callback():
+            self._countdown -= 1
             self.update_countdown_display()
             
-            # Send message about countdown change
-            self.post_message(self.RetryCountChanged(self._countdown))
+            if self._countdown <= 0:
+                # Time to retry
+                if self._timer_id is not None:
+                    try:
+                        self._app.set_timer(self._timer_id, None)
+                    except Exception:
+                        pass
+                    self._timer_id = None
+                
+                # Execute health check
+                self._app.check_api_health()
+            else:
+                # Schedule next countdown tick
+                self._timer_id = self._app.set_timer(1.0, countdown_callback)
+        
+        # Start the countdown
+        self._timer_id = self._app.set_timer(1.0, countdown_callback)
     
     def update_countdown_display(self) -> None:
         """Update the countdown label"""
@@ -119,28 +119,31 @@ class ApiStatusOverlay(Container):
     def retry_now(self) -> None:
         """Handle manual retry button click"""
         # Cancel the countdown timer
-        if self._timer is not None:
-            self._app.set_timer(self._timer, None)
-            self._timer = None
+        if self._timer_id is not None:
+            try:
+                self._app.set_timer(self._timer_id, None)
+            except Exception:
+                pass
+            self._timer_id = None
         
         # Show loading indicator
         self.query_one("#retry_loading").styles.display = "block"
         self.query_one("#retry_countdown").styles.display = "none"
         self.query_one("#retry_now").disabled = True
         
-        # Define a callback function that runs the health check
-        def delayed_health_check():
+        # Execute health check after a small delay
+        def execute_health_check():
             try:
                 self._app.check_api_health()
             except Exception as e:
                 print(f"Error during health check: {e}")
-                # If health check fails, re-enable the button
                 self.query_one("#retry_now").disabled = False
                 self.query_one("#retry_loading").styles.display = "none"
                 self.query_one("#retry_countdown").styles.display = "block"
-        
-        # Schedule the health check with a slight delay
-        self._app.set_timer(0.5, delayed_health_check)
+                # Restart countdown
+                self.start_countdown()
+                
+        self._app.set_timer(0.5, execute_health_check)
 
 # Handle key events at the list view level
 class ListViewBase(Widget):
@@ -159,6 +162,15 @@ class ListViewBase(Widget):
                 self.on_refresh()
             else:
                 self._app.refresh_data()
+        elif event.key == "b" or event.key == "escape":
+            # Add 'b' and escape as shortcuts to go back from details view
+            if self._app.current_view == "detail" and hasattr(self, 'on_back'):
+                print("DEBUG - Back key pressed")
+                self.on_back()
+            # Also handle escape to go back from about view
+            elif self._app.current_view == "about" and hasattr(self, 'on_back'):
+                print("DEBUG - Back key pressed from about")
+                self.on_back()
         elif event.key == "enter":
             # Skip enter handling if API is unavailable
             if not getattr(self._app, 'api_available', True):
@@ -238,19 +250,6 @@ class ArduinoListView(ListViewBase):
         # Set cursor_type to row for whole row selection
         self.arduino_table.cursor_type = "row"
         
-        # Set up button event handlers
-        refresh_button = self.query_one("#refresh")
-        refresh_button.on_click = self.on_refresh
-        
-        details_button = self.query_one("#show_details")
-        details_button.on_click = self.on_show_details
-        
-        about_button = self.query_one("#about")
-        about_button.on_click = self.on_about
-        
-        quit_button = self.query_one("#quit")
-        quit_button.on_click = self._app.exit
-        
         # Set up table event handler
         self.arduino_table.on_row_highlighted = self.on_row_selected
         
@@ -262,6 +261,30 @@ class ArduinoListView(ListViewBase):
             # Fallback for older versions
             pass
     
+    @on(Button.Pressed, "#refresh")
+    def on_refresh_button_pressed(self, event: Button.Pressed) -> None:
+        """Handle refresh button press"""
+        print("DEBUG - Refresh button pressed")
+        self.on_refresh()
+        
+    @on(Button.Pressed, "#show_details")
+    def on_details_button_pressed(self, event: Button.Pressed) -> None:
+        """Handle details button press"""
+        print("DEBUG - Details button pressed")
+        self.on_show_details()
+        
+    @on(Button.Pressed, "#about")
+    def on_about_button_pressed(self, event: Button.Pressed) -> None:
+        """Handle about button press"""
+        print("DEBUG - About button pressed")
+        self.on_about()
+        
+    @on(Button.Pressed, "#quit")
+    def on_quit_button_pressed(self, event: Button.Pressed) -> None:
+        """Handle quit button press"""
+        print("DEBUG - Quit button pressed")
+        self._app.exit()
+    
     def on_refresh(self) -> None:
         """Handle refresh button click"""
         self._app.refresh_data()
@@ -270,39 +293,60 @@ class ArduinoListView(ListViewBase):
         """Handle show details button click"""
         # Check if table exists and has rows before trying to access data
         if not hasattr(self, 'arduino_table') or self.arduino_table is None:
+            print("DEBUG - Cannot show details: arduino_table doesn't exist")
             return
             
         if self.arduino_table.cursor_row is None:
+            print("DEBUG - Cannot show details: No row selected")
             return
             
         # Check if table has any rows
         if self.arduino_table.row_count == 0:
+            print("DEBUG - Cannot show details: Table has no rows")
             return
             
         try:
+            # Get the selected Arduino's alias
             alias = self.arduino_table.get_cell_at((self.arduino_table.cursor_row, 0))
+            if not alias or alias == "Unknown":
+                print(f"DEBUG - Cannot show details: Invalid alias '{alias}'")
+                return
+                
+            print(f"DEBUG - Showing details for Arduino: {alias}")
             self._app.switch_view("detail", alias)
         except Exception as e:
-            print(f"Error showing details: {e}")
+            print(f"DEBUG - Error showing details: {e}")
+            import traceback
+            traceback.print_exc()
             # Don't try to switch views if we can't get the alias
-    
+            
     def on_about(self) -> None:
         """Handle about button click"""
         self._app.switch_view("about")
     
     def on_row_selected(self, cursor_row) -> None:
         """Enable/disable show details button based on row selection"""
-        self.query_one("#show_details").disabled = (cursor_row is None)
+        # Enable details button only when a row is selected AND table has rows
+        should_enable = cursor_row is not None and self.arduino_table.row_count > 0
+        details_button = self.query_one("#show_details")
+        
+        if details_button.disabled == should_enable:  # Only update if needed
+            print(f"DEBUG - Setting details button enabled: {should_enable}")
+            details_button.disabled = not should_enable
     
     def update_data(self, arduinos: List[Dict[str, Any]]) -> None:
         """Update the Arduino data table"""
+        print(f"DEBUG - ArduinoListView.update_data called with {len(arduinos)} arduinos")
+        
         # Clear the table
         self.arduino_table.clear()
+        print(f"DEBUG - Cleared table, now has {self.arduino_table.row_count} rows")
         
         # Add the data rows with styled status cells
         for arduino in arduinos:
             # Alias
             alias = arduino.get("alias", "Unknown")
+            print(f"DEBUG - Processing Arduino: {alias}")
             
             # Component Name
             component_name = arduino.get("component_name", "")
@@ -316,16 +360,18 @@ class ArduinoListView(ListViewBase):
             for field in status_fields:
                 if field in arduino:
                     status = arduino[field]
+                    print(f"DEBUG - Found status in field '{field}': {status}")
                     break
             
             if status is None:
                 status = "UNKNOWN"
+                print(f"DEBUG - No status field found, using default: {status}")
                 
             # Check enabled state
             enabled = arduino.get("enabled")
             
             # Debug print for enabled status
-            print(f"DEBUG - List view: Arduino {alias} enabled={enabled} (type: {type(enabled).__name__})")
+            print(f"DEBUG - Arduino {alias} enabled={enabled} (type: {type(enabled).__name__})")
             
             # Check multiple conditions that indicate disabled status (from api_client_ui.py)
             is_disabled = (
@@ -340,7 +386,7 @@ class ArduinoListView(ListViewBase):
             
             if is_disabled:
                 status = "DISABLED"
-                print(f"DEBUG - List view: Setting {alias} to DISABLED because enabled={enabled}")
+                print(f"DEBUG - Setting {alias} to DISABLED because enabled={enabled}")
             
             # Format status with color
             if status == "CONNECTED":
@@ -367,12 +413,20 @@ class ArduinoListView(ListViewBase):
                 features_str = str(features)
             
             # Add row to table
-            self.arduino_table.add_row(
-                alias, component_name, device, status_str, linuxcnc_str, features_str
-            )
+            try:
+                self.arduino_table.add_row(
+                    alias, component_name, device, status_str, linuxcnc_str, features_str
+                )
+                print(f"DEBUG - Added row for {alias}, table now has {self.arduino_table.row_count} rows")
+            except Exception as e:
+                print(f"DEBUG - Error adding row for {alias}: {e}")
+                import traceback
+                traceback.print_exc()
             
         # Enable details button only if rows exist
-        self.query_one("#show_details").disabled = self.arduino_table.row_count == 0
+        has_rows = self.arduino_table.row_count > 0
+        print(f"DEBUG - Table has {self.arduino_table.row_count} rows, setting details button to {'enabled' if has_rows else 'disabled'}")
+        self.query_one("#show_details").disabled = not has_rows
 
 class ArduinoDetailView(ListViewBase):
     """Shows detailed information for a single Arduino"""
@@ -381,7 +435,7 @@ class ArduinoDetailView(ListViewBase):
         super().__init__(app_instance)
         self._app = app_instance
         self.current_alias = None
-        self._update_timer = None  # Store timer ID, not Timer object
+        self._update_timer_id = None
         
     @property
     def app(self) -> "APIClientApp":
@@ -393,6 +447,10 @@ class ArduinoDetailView(ListViewBase):
         yield Header(show_clock=True)
         yield Label("Arduino LinuxCNC Connector V2.0", id="title", classes="heading")
         
+        # Add a prominent back button at the top
+        with Horizontal(id="back_button_container", classes="back-button-container"):
+            yield Button("« Back to List", id="back", variant="default")
+        
         # Container for Arduino details
         yield Container(id="details_container", classes="details-box")
         
@@ -401,7 +459,7 @@ class ArduinoDetailView(ListViewBase):
         
         # Add styled buttons (removed refresh button)
         with Horizontal(id="buttons_container", classes="button-container"):
-            yield Button("Back", id="back", variant="default")
+            yield Button("Back to List", id="back_bottom", variant="default")
             yield Button("About", id="about", variant="primary")
             yield Button("Quit", id="quit", variant="error")
         
@@ -409,16 +467,6 @@ class ArduinoDetailView(ListViewBase):
     
     def on_mount(self) -> None:
         """Set up event handlers"""
-        # Set up button event handlers
-        back_button = self.query_one("#back")
-        back_button.on_click = self.on_back
-        
-        about_button = self.query_one("#about")
-        about_button.on_click = self.on_about
-        
-        quit_button = self.query_one("#quit")
-        quit_button.on_click = self._app.exit
-        
         # Set up pin table columns
         pin_table = self.query_one("#pin_table")
         pin_table.add_column("Pin", width=15)
@@ -427,6 +475,33 @@ class ArduinoDetailView(ListViewBase):
         pin_table.add_column("HAL Pin Dir", width=15)
         pin_table.add_column("Pin ID", width=8)
         pin_table.add_column("Value", width=10)
+        
+        # Set cursor_type to row for whole row selection
+        pin_table.cursor_type = "row"
+    
+    @on(Button.Pressed, "#back")
+    def on_back_button_pressed(self, event: Button.Pressed) -> None:
+        """Handle back button press"""
+        print("DEBUG - Back button pressed")
+        self.on_back()
+        
+    @on(Button.Pressed, "#back_bottom")
+    def on_back_bottom_button_pressed(self, event: Button.Pressed) -> None:
+        """Handle back bottom button press"""
+        print("DEBUG - Back bottom button pressed")
+        self.on_back()
+    
+    @on(Button.Pressed, "#about")
+    def on_about_button_pressed(self, event: Button.Pressed) -> None:
+        """Handle about button press"""
+        print("DEBUG - About button pressed")
+        self.on_about()
+    
+    @on(Button.Pressed, "#quit")
+    def on_quit_button_pressed(self, event: Button.Pressed) -> None:
+        """Handle quit button press"""
+        print("DEBUG - Quit button pressed")
+        self._app.exit()
     
     def on_show(self) -> None:
         """Called when the view becomes visible"""
@@ -441,17 +516,33 @@ class ArduinoDetailView(ListViewBase):
     def start_auto_updates(self) -> None:
         """Start automatic pin updates"""
         # Setup a timer to refresh pin data every 1 second
-        if self._update_timer is None:
-            self._update_timer = self.app.set_interval(1.0, self.update_all_data)
+        if self._update_timer_id is None:
+            self._update_timer_id = self.app.set_timer(1.0, self.perform_update)
+    
+    def perform_update(self) -> None:
+        """Execute a single update and schedule the next one"""
+        try:
+            # Update the data
+            self.update_all_data()
+            
+            # Schedule the next update
+            self._update_timer_id = self.app.set_timer(1.0, self.perform_update)
+        except Exception as e:
+            print(f"Error in perform_update: {e}")
+            # Try to schedule another update anyway
+            try:
+                self._update_timer_id = self.app.set_timer(1.0, self.perform_update)
+            except Exception:
+                pass
     
     def stop_auto_updates(self) -> None:
         """Stop automatic pin updates"""
-        if self._update_timer is not None:
+        if self._update_timer_id is not None:
             try:
-                self.app.set_timer(self._update_timer, None)  # Cancel the timer by setting callback to None
+                self.app.set_timer(self._update_timer_id, None)
             except Exception as e:
                 print(f"Error cancelling timer: {e}")
-            self._update_timer = None
+            self._update_timer_id = None
     
     def update_all_data(self) -> None:
         """Update all Arduino data automatically"""
@@ -480,6 +571,12 @@ class ArduinoDetailView(ListViewBase):
         """Update the details container with fresh data"""
         details_container = self.query_one("#details_container")
         details_container.remove_children()
+        
+        # Debug print the full arduino_details for diagnosis
+        print("\nDEBUG - Full arduino_details:")
+        for key, value in arduino_details.items():
+            if key != "pins":  # Don't print the pins array
+                print(f"  {key}: {value} (type: {type(value).__name__})")
         
         # Get status and format appropriately
         status = arduino_details.get("arduino_status", "Unknown")
@@ -528,24 +625,73 @@ class ArduinoDetailView(ListViewBase):
         features = arduino_details.get("features", [])
         features_str = ", ".join(features) if features and isinstance(features, list) else "None"
         
-        # Format uptimes (matching api_client_ui.py)
-        arduino_uptime = arduino_details.get('arduino_reported_uptime', 'N/A')
-        if arduino_uptime != 'N/A' and arduino_uptime is not None:
+        # Get Arduino uptime - first check for ut value (directly from Arduino heartbeat)
+        ut_minutes = arduino_details.get('ut')
+        print(f"DEBUG - Looking for 'ut' value in API response: {ut_minutes}")
+        
+        if ut_minutes is not None:
+            print(f"DEBUG - Using direct 'ut' value: {ut_minutes} minutes (type: {type(ut_minutes).__name__})")
             try:
-                if isinstance(arduino_uptime, str) and arduino_uptime.endswith('s'):
-                    arduino_uptime = int(arduino_uptime[:-1])
-                arduino_uptime = self._format_duration(arduino_uptime)
-            except (ValueError, TypeError):
-                pass
-                
+                # "ut" is already in minutes, so use it directly
+                arduino_uptime = self._format_duration_from_minutes(ut_minutes)
+                print(f"DEBUG - Formatted 'ut' to: {arduino_uptime}")
+            except (ValueError, TypeError) as e:
+                print(f"DEBUG - Error formatting 'ut' value: {e}")
+                arduino_uptime = f"{ut_minutes}m"
+        else:
+            # Fall back to the formatted arduino_reported_uptime from the API
+            raw_uptime = arduino_details.get('arduino_reported_uptime', 'N/A')
+            print(f"DEBUG - Raw arduino_reported_uptime: {raw_uptime}")
+            
+            # Process the uptime to remove seconds if it's in the format "Xd Yh Zm Ws"
+            if raw_uptime != 'N/A' and raw_uptime is not None:
+                try:
+                    # Check if it's already in a time format with "s" at the end
+                    if isinstance(raw_uptime, str) and any(unit in raw_uptime for unit in ['d', 'h', 'm', 's']):
+                        print(f"DEBUG - Reformatting time string: {raw_uptime}")
+                        # Parse out just the days, hours, and minutes - ignore seconds
+                        parts = raw_uptime.split()
+                        days = hours = minutes = 0
+                        
+                        for part in parts:
+                            if part.endswith('d'):
+                                days = int(part[:-1])
+                            elif part.endswith('h'):
+                                hours = int(part[:-1])
+                            elif part.endswith('m'):
+                                minutes = int(part[:-1])
+                        
+                        # Create a new format without seconds
+                        arduino_uptime = f"{days}d {hours}h {minutes}m"
+                        print(f"DEBUG - Reformatted to: {arduino_uptime}")
+                    elif raw_uptime.endswith('s'):
+                        # If it's just seconds, convert to minutes
+                        secs = int(raw_uptime[:-1])
+                        minutes = secs // 60
+                        arduino_uptime = f"0d 0h {minutes}m"
+                        print(f"DEBUG - Converted seconds to minutes: {arduino_uptime}")
+                    else:
+                        # If it's not a recognized format, pass it through
+                        arduino_uptime = raw_uptime
+                except Exception as e:
+                    print(f"DEBUG - Error reformatting uptime: {e}")
+                    arduino_uptime = raw_uptime
+            else:
+                arduino_uptime = raw_uptime
+        
+        print(f"DEBUG - Final uptime to display: {arduino_uptime}")
+            
+        # Get connection uptime with seconds included
         connection_uptime = arduino_details.get('connection_uptime', 'N/A')
-        if connection_uptime != 'N/A' and connection_uptime is not None:
-            try:
-                if isinstance(connection_uptime, str) and connection_uptime.endswith('s'):
-                    connection_uptime = int(connection_uptime[:-1])
-                connection_uptime = self._format_duration(connection_uptime)
-            except (ValueError, TypeError):
-                pass
+        print(f"DEBUG - Connection uptime received from API: {connection_uptime}")
+        
+        # Make sure seconds are preserved in connection uptime
+        if connection_uptime != 'N/A':
+            # Check if uptime only shows minutes without seconds
+            if connection_uptime.endswith('m') and not any(unit in connection_uptime for unit in ['s']):
+                # Add "0s" to ensure seconds are displayed
+                connection_uptime = f"{connection_uptime} 0s"
+                print(f"DEBUG - Added seconds to connection uptime: {connection_uptime}")
         
         # LinuxCNC Status
         linuxcnc_status = arduino_details.get('linuxcnc_status', 'N/A')
@@ -658,12 +804,20 @@ class ArduinoDetailView(ListViewBase):
         )
         
     def _format_duration(self, seconds: int) -> str:
-        """Format seconds into days, hours, minutes, seconds (matching api_client_ui.py)"""
+        """Format seconds into days, hours, minutes (no seconds)"""
         days, remainder = divmod(int(seconds), 86400)
         hours, remainder = divmod(remainder, 3600)
-        minutes, seconds = divmod(remainder, 60)
+        minutes, _ = divmod(remainder, 60)  # Ignore seconds
         
-        return f"{days}d {hours}h {minutes}m {seconds}s"
+        return f"{days}d {hours}h {minutes}m"
+
+    def _format_duration_from_minutes(self, minutes: float) -> str:
+        """Format minutes into days, hours, minutes"""
+        total_minutes = int(minutes)
+        days, remainder = divmod(total_minutes, 1440)  # 1440 = minutes in a day
+        hours, minutes = divmod(remainder, 60)
+        
+        return f"{days}d {hours}h {minutes}m"
 
 class AboutView(ListViewBase):
     """Shows information about the application"""
@@ -701,10 +855,11 @@ class AboutView(ListViewBase):
             yield Label("- REST API for monitoring and controlling Arduino connections")
             yield Label("")
             yield Label("[bold]Support the project:[/]")
-            yield Label("Patreon: [link=https://www.patreon.com/theartoftinkering]https://www.patreon.com/theartoftinkering[/link]")
-            yield Label("Website: [link=https://theartoftinkering.com]https://theartoftinkering.com[/link]")
-            yield Label("YouTube: [link=https://youtube.com/@theartoftinkering]https://youtube.com/@theartoftinkering[/link]")
-            yield Label("GitHub: [link=https://github.com/KennethThompson]https://github.com/KennethThompson[/link]")
+            # Use simple format for links - no markup
+            yield Label("Patreon: https://www.patreon.com/theartoftinkering")
+            yield Label("Website: https://theartoftinkering.com")
+            yield Label("YouTube: https://youtube.com/@theartoftinkering")
+            yield Label("GitHub: https://github.com/KennethThompson")
             
         # Add styled buttons
         with Horizontal(id="buttons_container", classes="button-container"):
@@ -715,12 +870,19 @@ class AboutView(ListViewBase):
     
     def on_mount(self) -> None:
         """Set up event handlers"""
-        # Set up button event handlers
-        back_button = self.query_one("#back")
-        back_button.on_click = self.on_back
+        pass
         
-        quit_button = self.query_one("#quit")
-        quit_button.on_click = self._app.exit
+    @on(Button.Pressed, "#back")
+    def on_back_button_pressed(self, event: Button.Pressed) -> None:
+        """Handle back button press"""
+        print("DEBUG - About: Back button pressed")
+        self.on_back()
+    
+    @on(Button.Pressed, "#quit")
+    def on_quit_button_pressed(self, event: Button.Pressed) -> None:
+        """Handle quit button press"""
+        print("DEBUG - About: Quit button pressed")
+        self._app.exit()
     
     def on_back(self) -> None:
         """Handle the back button click"""
@@ -734,6 +896,8 @@ class APIClientApp(App):
         ("q", "quit", "Quit"),
         ("r", "refresh", "Refresh"),
         ("enter", "enter", "Select/Details"),
+        ("escape", "back", "Back"),
+        ("b", "back", "Back"),
     ]
     
     # Define CSS for styling
@@ -759,12 +923,26 @@ class APIClientApp(App):
         height: auto;
     }
     
-    Button {
-        margin: 1 2;
+    .back-button-container {
+        margin: 1 0;
+        align: left middle;
+        height: auto;
+        background: #252235;
+        padding: 1;
+        border-bottom: wide #59546a;
     }
     
     #back {
         background: #58546c;
+        margin-left: 2;
+    }
+    
+    #back_bottom {
+        background: #58546c;
+    }
+    
+    Button {
+        margin: 1 2;
     }
     
     #refresh {
@@ -868,7 +1046,7 @@ class APIClientApp(App):
         self.arduino_data = []
         self.current_view = "list"
         self.api_available = True
-        self._health_check_timer = None  # Store timer ID, not Timer object
+        self._health_check_timer_id = None
         
         # Create views
         self.list_view = ArduinoListView(app_instance=self)
@@ -893,23 +1071,41 @@ class APIClientApp(App):
     
     def on_mount(self) -> None:
         """Set up the application on mount"""
-        # Set up timer for health checks
-        self._health_check_timer = self.set_interval(HEALTH_CHECK_INTERVAL, self.check_api_health)
+        print("DEBUG - Application mounting")
         
         # Do initial health check
         self.check_api_health()
+        
+        # Add explicit initial data refresh with delay
+        def initial_refresh():
+            print("DEBUG - Performing initial data refresh")
+            self.refresh_data()
+            
+        # Schedule the refresh with a short delay to ensure UI is ready
+        self.set_timer(0.5, initial_refresh)
     
     def check_api_health(self) -> None:
         """Check if the API is available"""
+        print("DEBUG - Starting API health check")
+        # Cancel any existing health check timer
+        if self._health_check_timer_id is not None:
+            try:
+                self.set_timer(self._health_check_timer_id, None)
+            except Exception:
+                pass
+            self._health_check_timer_id = None
+            
         try:
             # Try to reach the health endpoint
+            print("DEBUG - Sending request to /health endpoint")
             response = requests.get(f"{API_BASE_URL}/health", timeout=HEALTH_CHECK_TIMEOUT)
+            print(f"DEBUG - Health check response: status={response.status_code}")
             
             # Check if response is successful (status code 200)
             if response.status_code == 200:
                 # API is available
                 if not self.api_available:
-                    print("API is now available")
+                    print("DEBUG - API state changed: unavailable -> available")
                     # Update state
                     self.api_available = True
                     
@@ -918,27 +1114,36 @@ class APIClientApp(App):
                     
                     # Refresh data based on current view
                     if self.current_view == "list":
+                        print("DEBUG - Health check triggering data refresh for list view")
                         self.refresh_data()
                     elif self.current_view == "detail":
                         # If we are in detail view, refresh the details
                         if self.detail_view.current_alias:
+                            print(f"DEBUG - Health check triggering detail refresh for {self.detail_view.current_alias}")
                             self.detail_view.load_details(self.detail_view.current_alias)
-                    
-                elif not self._health_check_timer:
-                    # If no health check timer is running, start one
-                    self._health_check_timer = self.set_interval(HEALTH_CHECK_INTERVAL, self.check_api_health)
+                else:
+                    print("DEBUG - API remains available") 
+                
+                # Schedule next health check
+                def schedule_next_check():
+                    self.check_api_health()
+                
+                print(f"DEBUG - Scheduling next health check in {HEALTH_CHECK_INTERVAL} seconds")    
+                self._health_check_timer_id = self.set_timer(HEALTH_CHECK_INTERVAL, schedule_next_check)
             else:
                 # API responded but with an error status
-                print(f"API health check failed with status code: {response.status_code}")
+                print(f"DEBUG - API health check failed with status code: {response.status_code}")
                 self.handle_api_unavailable()
                 
         except requests.exceptions.RequestException as e:
             # API is unavailable or not responding
-            print(f"API health check failed: {str(e)}")
+            print(f"DEBUG - API health check failed with request error: {str(e)}")
             self.handle_api_unavailable()
         except Exception as e:
             # Catch any other errors that might occur
-            print(f"Unexpected error in health check: {str(e)}")
+            print(f"DEBUG - Unexpected error in health check: {str(e)}")
+            import traceback
+            traceback.print_exc()
             self.handle_api_unavailable()
     
     def handle_api_unavailable(self) -> None:
@@ -980,9 +1185,12 @@ class APIClientApp(App):
     def hide_api_status_overlay(self) -> None:
         """Hide the API status overlay"""
         # Cancel any running countdown timer in the overlay
-        if hasattr(self.api_status_overlay, "_timer") and self.api_status_overlay._timer is not None:
-            self.set_timer(self.api_status_overlay._timer, None)
-            self.api_status_overlay._timer = None
+        if hasattr(self.api_status_overlay, "_timer_id") and self.api_status_overlay._timer_id is not None:
+            try:
+                self.set_timer(self.api_status_overlay._timer_id, None)
+            except Exception as e:
+                print(f"Error cancelling timer: {e}")
+            self.api_status_overlay._timer_id = None
             
         # Hide the overlay
         self.api_status_overlay.display = False
@@ -1044,13 +1252,43 @@ class APIClientApp(App):
         """Refresh the data from the API"""
         # Skip refresh if API is unavailable
         if not self.api_available:
+            print("DEBUG - Skipping refresh because API marked as unavailable")
             return
             
+        print(f"DEBUG - Starting data refresh, current_view={self.current_view}")
         try:
             # Get Arduino list
+            print("DEBUG - Sending request to /arduinos endpoint")
             response = requests.get(f"{API_BASE_URL}/arduinos", timeout=2)
+            print(f"DEBUG - Got response: status={response.status_code}")
             response.raise_for_status()
-            arduinos = response.json()
+            
+            # Check response content
+            raw_content = response.text
+            print(f"DEBUG - Response content length: {len(raw_content)} chars")
+            print(f"DEBUG - Response starts with: {raw_content[:100]}")
+            
+            # Parse JSON
+            try:
+                arduinos = response.json()
+                
+                # Handle case where API returns null or non-list
+                if arduinos is None:
+                    print("DEBUG - API returned None instead of a list")
+                    arduinos = []
+                elif not isinstance(arduinos, list):
+                    print(f"DEBUG - API returned {type(arduinos).__name__} instead of a list")
+                    if isinstance(arduinos, dict):
+                        # If it's a single Arduino as a dict, convert to a list
+                        arduinos = [arduinos]
+                    else:
+                        arduinos = []
+                
+                print(f"DEBUG - Parsed JSON successfully, got {len(arduinos)} Arduino(s)")
+            except Exception as e:
+                print(f"DEBUG - JSON parse error: {e}")
+                print(f"DEBUG - Raw content: {raw_content}")
+                raise
             
             # Debug - print the first Arduino data to understand structure
             if arduinos and len(arduinos) > 0:
@@ -1064,18 +1302,35 @@ class APIClientApp(App):
                 for field in enabled_fields:
                     if field in arduinos[0]:
                         print(f"  Found '{field}': {arduinos[0][field]} (type: {type(arduinos[0][field]).__name__})")
+            else:
+                print("DEBUG - No Arduino data returned from API")
                 
             self.arduino_data = arduinos
             
             # Update the current view
             if self.current_view == "list":
-                self.list_view.update_data(arduinos)
+                print("DEBUG - Updating list view with data")
+                try:
+                    self.list_view.update_data(arduinos)
+                    print(f"DEBUG - List view updated, rows count: {self.list_view.arduino_table.row_count}")
+                except Exception as e:
+                    print(f"DEBUG - Error updating list view: {e}")
+                    import traceback
+                    traceback.print_exc()
             elif self.current_view == "detail" and self.detail_view.current_alias:
+                print("DEBUG - Updating detail view for alias:", self.detail_view.current_alias)
                 self.detail_view.load_details(self.detail_view.current_alias)
+            else:
+                print(f"DEBUG - No view update needed, current_view={self.current_view}")
                 
         except requests.exceptions.RequestException as e:
+            print(f"DEBUG - API request error: {e}")
             # Treat any API error as potential unavailability
             self.check_api_health()
+        except Exception as e:
+            print(f"DEBUG - Unexpected error during refresh: {e}")
+            import traceback
+            traceback.print_exc()
     
     def get_arduino_details(self, alias: str) -> Optional[Dict[str, Any]]:
         """Get detailed information about a specific Arduino"""
@@ -1086,7 +1341,18 @@ class APIClientApp(App):
         try:
             response = requests.get(f"{API_BASE_URL}/arduinos/{alias}", timeout=2)
             response.raise_for_status()
-            return response.json()
+            
+            # Log raw response for debugging
+            raw_text = response.text
+            print(f"DEBUG - Raw API response for arduino details: {raw_text[:500]}...")
+            
+            # Check if response contains 'ut' field
+            if '"ut":' in raw_text:
+                print("DEBUG - Found 'ut' field in raw response")
+                
+            resp_data = response.json()
+            print(f"DEBUG - Parsed response keys: {list(resp_data.keys())}")
+            return resp_data
         except requests.exceptions.RequestException as e:
             # Treat any API error as potential unavailability
             self.check_api_health()
@@ -1098,22 +1364,21 @@ class APIClientApp(App):
         try:
             # Turn off all automatic processing
             if self.current_view == "detail":
-                if hasattr(self.detail_view, "stop_auto_updates"):
-                    self.detail_view.stop_auto_updates()
+                self.detail_view.stop_auto_updates()
                 
             # Cancel API status overlay timer
-            if hasattr(self, 'api_status_overlay') and hasattr(self.api_status_overlay, '_timer'):
+            if hasattr(self, 'api_status_overlay') and hasattr(self.api_status_overlay, '_timer_id') and self.api_status_overlay._timer_id is not None:
                 try:
-                    self.set_timer(self.api_status_overlay._timer, None)
-                    self.api_status_overlay._timer = None
+                    self.set_timer(self.api_status_overlay._timer_id, None)
+                    self.api_status_overlay._timer_id = None
                 except Exception as e:
                     print(f"Error cancelling overlay timer: {e}")
                     
             # Cancel health check timer
-            if self._health_check_timer is not None:
+            if self._health_check_timer_id is not None:
                 try:
-                    self.set_timer(self._health_check_timer, None)
-                    self._health_check_timer = None
+                    self.set_timer(self._health_check_timer_id, None)
+                    self._health_check_timer_id = None
                 except Exception as e:
                     print(f"Error cancelling health check timer: {e}")
         except Exception as e:
@@ -1153,6 +1418,12 @@ class APIClientApp(App):
                 self.switch_view("list")
         except Exception as e:
             print(f"Error in action_enter: {e}")
+
+    def action_back(self) -> None:
+        """Action handler for back key bindings"""
+        if self.current_view == "detail" or self.current_view == "about":
+            print("DEBUG - Back action triggered")
+            self.switch_view("list")
 
 def force_exit():
     """Force exit the application when all else fails"""

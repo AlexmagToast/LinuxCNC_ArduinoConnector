@@ -24,6 +24,11 @@ class DaemonStatus(str, Enum):
     STOPPED = "STOPPED"
     ERROR = "ERROR"
 
+class ApiHealth(BaseModel):
+    """Schema for health check response"""
+    status: str
+    timestamp: str
+
 class PinInfo(BaseModel):
     pin_name: str
     pin_type: str
@@ -60,19 +65,41 @@ class DaemonStatusResponse(BaseModel):
 start_time = time.time()
 
 def format_uptime(seconds):
-    """Format seconds into days, hours, minutes, seconds."""
+    """Format seconds into days, hours, minutes (no seconds)."""
     days, remainder = divmod(seconds, 86400)
     hours, remainder = divmod(remainder, 3600)
-    minutes, seconds = divmod(remainder, 60)
+    minutes, _ = divmod(remainder, 60)  # Ignore seconds
     
     if days > 0:
-        return f"{int(days)}d {int(hours)}h {int(minutes)}m {int(seconds)}s"
+        return f"{int(days)}d {int(hours)}h {int(minutes)}m"
     elif hours > 0:
-        return f"{int(hours)}h {int(minutes)}m {int(seconds)}s"
-    elif minutes > 0:
-        return f"{int(minutes)}m {int(seconds)}s"
+        return f"{int(hours)}h {int(minutes)}m"
     else:
-        return f"{int(seconds)}s"
+        return f"{int(minutes)}m"
+
+def format_connection_uptime(seconds):
+    """Format seconds into days, hours, minutes, seconds for connection uptime."""
+    days, remainder = divmod(seconds, 86400)
+    hours, remainder = divmod(remainder, 3600)
+    minutes, secs = divmod(remainder, 60)
+    
+    # Always include seconds
+    if days > 0:
+        return f"{int(days)}d {int(hours)}h {int(minutes)}m {int(secs)}s"
+    elif hours > 0:
+        return f"{int(hours)}h {int(minutes)}m {int(secs)}s"
+    elif minutes > 0:
+        return f"{int(minutes)}m {int(secs)}s"
+    else:
+        return f"{int(secs)}s"
+
+@app.get("/health", response_model=ApiHealth)
+async def health_check():
+    """Simple health check endpoint to verify API is running"""
+    return {
+        "status": "UP",
+        "timestamp": datetime.now().isoformat()
+    }
 
 @app.get("/status", response_model=DaemonStatusResponse)
 async def get_daemon_status():
@@ -167,9 +194,42 @@ async def get_arduino_details(alias: str):
         
         # Calculate uptime with careful error handling
         arduino_uptime = "N/A"
+        ut_minutes = None  # Initialize ut_minutes
         try:
             if hasattr(arduino.serialConn, 'arduinoReportedUptime') and arduino.serialConn.arduinoReportedUptime > 0:
-                arduino_uptime = format_uptime(arduino.serialConn.arduinoReportedUptime / 1000)  # Convert from ms to seconds
+                # Log the raw uptime value for debugging
+                logging.info(f"Raw arduinoReportedUptime: {arduino.serialConn.arduinoReportedUptime}")
+                
+                # Check if we can extract the "ut" value from the lastDataJSON if available
+                if hasattr(arduino.serialConn, 'lastDataJSON') and arduino.serialConn.lastDataJSON:
+                    try:
+                        import json
+                        logging.info(f"Checking lastDataJSON: {arduino.serialConn.lastDataJSON}")
+                        data_json = json.loads(arduino.serialConn.lastDataJSON)
+                        if 'ut' in data_json:
+                            ut_minutes = int(data_json['ut'])
+                            logging.info(f"Found 'ut' in lastDataJSON: {ut_minutes} minutes")
+                            # Don't return early, just store the value for the final return
+                            # Format the uptime for display
+                            arduino_uptime = format_uptime(ut_minutes * 60)  # Convert minutes to seconds for format_uptime
+                            logging.info(f"Formatted ut_minutes: {arduino_uptime}")
+                    except Exception as e:
+                        logging.error(f"Error extracting 'ut' from lastDataJSON: {e}")
+                
+                # If ut_minutes wasn't found, fall back to the existing uptime value
+                if ut_minutes is None:
+                    # Check whether the value is likely to be milliseconds or minutes
+                    # If the value is very small (less than 1000), it's likely in minutes already
+                    if arduino.serialConn.arduinoReportedUptime < 1000:
+                        # Assume this is minutes already
+                        ut_minutes = int(arduino.serialConn.arduinoReportedUptime)
+                        arduino_uptime = format_uptime(ut_minutes * 60)  # Convert to seconds
+                        logging.info(f"Treating small value as minutes directly: {ut_minutes} -> {arduino_uptime}")
+                    else:
+                        # For backward compatibility, convert the existing uptime value
+                        # Note: arduinoReportedUptime is in milliseconds, convert to seconds
+                        arduino_uptime = format_uptime(arduino.serialConn.arduinoReportedUptime / 1000)
+                        logging.info(f"Using default uptime calculation: {arduino_uptime}")
         except Exception as e:
             logging.error(f"Error calculating arduino uptime: {str(e)}")
         
@@ -177,7 +237,9 @@ async def get_arduino_details(alias: str):
         try:
             if hasattr(arduino.serialConn, 'connLastFormed') and arduino.serialConn.connLastFormed is not None:
                 connection_seconds = (time.time() - arduino.serialConn.connLastFormed.timestamp())
-                connection_uptime = format_uptime(connection_seconds)
+                logging.info(f"Raw connection seconds: {connection_seconds}")
+                connection_uptime = format_connection_uptime(connection_seconds)
+                logging.info(f"Formatted connection uptime: {connection_uptime}")
         except Exception as e:
             logging.error(f"Error calculating connection uptime: {str(e)}")
         
@@ -186,7 +248,7 @@ async def get_arduino_details(alias: str):
         
         # Build the response with safe access to all properties
         try:
-            return {
+            response_data = {
                 "component_name": arduino.settings.component_name if hasattr(arduino.settings, 'component_name') else "Unknown",
                 "device": arduino.settings.dev if hasattr(arduino.settings, 'dev') else "Unknown",
                 "serial_port_available": getattr(arduino, 'serialDeviceAvailable', False),
@@ -196,6 +258,13 @@ async def get_arduino_details(alias: str):
                 "connection_uptime": connection_uptime,
                 "pins": pins
             }
+            
+            # Add ut value if it was found (either from lastDataJSON or calculated from arduinoReportedUptime)
+            if ut_minutes is not None:
+                response_data["ut"] = ut_minutes
+                logging.info(f"Adding ut={ut_minutes} to response")
+            
+            return response_data
         except Exception as e:
             logging.error(f"Error building response object: {str(e)}")
             import traceback

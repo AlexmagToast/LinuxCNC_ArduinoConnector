@@ -9,6 +9,7 @@ psutil
 fastapi
 uvicorn
 requests
+textual
 
 [dev]
 pytest>=7.0
