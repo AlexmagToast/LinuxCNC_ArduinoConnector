@@ -619,7 +619,7 @@ class ArduinoDetailView(ListViewBase):
             status_style = "red"
         
         # Format enabled status
-        enabled_str = "No" if is_disabled else "Yes"
+        enabled_str = "NO" if is_disabled else "YES"
         enabled_color = "red" if is_disabled else "green"
         
         # Format features
@@ -707,7 +707,7 @@ class ArduinoDetailView(ListViewBase):
         details_container.mount(
             Label(f"[bold]Component Name:[/] {component_name}"),
             Label(f"[bold]Device:[/] {arduino_details.get('device', 'N/A')}"),
-            Label(f"[bold]Serial Port Available:[/] {'Yes' if arduino_details.get('serial_port_available', False) else 'No'}"),
+            Label(f"[bold]Serial Port Available:[/] {'[green]YES[/]' if arduino_details.get('serial_port_available', False) else '[red]NO[/]'}"),
             Label(f"[bold]Enabled:[/] [{enabled_color}]{enabled_str}[/]"),
             Label(f"[bold]Arduino Status:[/] [{status_style}]{status}[/]"),
             Label(f"[bold]LinuxCNC Status:[/] {linuxcnc_str}"),
