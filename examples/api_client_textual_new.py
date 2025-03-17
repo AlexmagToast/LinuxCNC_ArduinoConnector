@@ -60,6 +60,7 @@ class ApiStatusOverlay(Container):
             Label("", id="retry_countdown"),
             LoadingIndicator(id="retry_loading"),
             Button("Try Again Now", id="retry_now", variant="primary"),
+            Label("Press 'q' to quit the application", id="quit_hint", classes="quit-hint"),
             id="api_error_container",
             classes="error-container"
         )
@@ -1038,6 +1039,13 @@ class APIClientApp(App):
     #retry_now {
         margin-top: 1;
         background: #3a78ab;
+    }
+    
+    .quit-hint {
+        margin-top: 1;
+        text-align: center;
+        color: #a3a2a6;
+        text-style: italic;
     }
     """
     
