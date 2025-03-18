@@ -10,6 +10,7 @@ import signal
 from datetime import datetime
 from typing import Dict, List, Any, Optional
 import asyncio
+import time
 
 from textual import on
 from textual.app import App, ComposeResult
@@ -146,7 +147,6 @@ class ApiStatusOverlay(Container):
                 
         self._app.set_timer(0.5, execute_health_check)
 
-# Handle key events at the list view level
 class ListViewBase(Widget):
     """Base class for list views"""
     
@@ -437,6 +437,8 @@ class ArduinoDetailView(ListViewBase):
         self._app = app_instance
         self.current_alias = None
         self._update_timer_id = None
+        self._selection_cooldown = 1.0  # Seconds to delay updates after selection changes
+        self._last_user_interaction = 0  # Track when user last interacted with UI
         
     @property
     def app(self) -> "APIClientApp":
@@ -479,7 +481,15 @@ class ArduinoDetailView(ListViewBase):
         
         # Set cursor_type to row for whole row selection
         pin_table.cursor_type = "row"
-    
+        
+    def on_key(self, event: events.Key) -> None:
+        """Handle key events with active period extension"""
+        # Update the interaction timestamp to prevent updates while user is active
+        self._last_user_interaction = time.time()
+        
+        # Call parent handler for normal key processing
+        super().on_key(event)
+
     @on(Button.Pressed, "#back")
     def on_back_button_pressed(self, event: Button.Pressed) -> None:
         """Handle back button press"""
@@ -523,6 +533,14 @@ class ArduinoDetailView(ListViewBase):
     def perform_update(self) -> None:
         """Execute a single update and schedule the next one"""
         try:
+            # Check if we should skip update due to recent user interaction
+            current_time = time.time()
+            if (current_time - self._last_user_interaction) < self._selection_cooldown:
+                print(f"DEBUG - User interaction cooldown active, skipping update")
+                # Schedule next update
+                self._update_timer_id = self.app.set_timer(1.0, self.perform_update)
+                return
+                
             # Update the data
             self.update_all_data()
             
@@ -563,11 +581,233 @@ class ArduinoDetailView(ListViewBase):
             # Update details container
             self.update_details_container(arduino_details)
             
-            # Update pin table
+            # Update pin table with in-place cell updates to preserve selection
             self.update_pin_table(arduino_details.get("pins", []))
         except Exception as e:
             print(f"Error updating Arduino data: {e}")
     
+    def on_back(self) -> None:
+        """Handle the back button click"""
+        self.stop_auto_updates()
+        self._app.switch_view("list")
+    
+    def on_about(self) -> None:
+        """Handle about button click"""
+        # Stop auto-updates first
+        self.stop_auto_updates()
+        self._app.switch_view("about")
+    
+    def load_details(self, alias: str) -> None:
+        """Load the details for the given Arduino"""
+        self.current_alias = alias
+        
+        # Get the Arduino details
+        arduino_details = self._app.get_arduino_details(alias)
+        if not arduino_details:
+            return
+        
+        # Initial update of all data
+        self.update_details_container(arduino_details)
+        self.update_pin_table(arduino_details.get("pins", []))
+        
+        # Start automatic updates - timer will keep everything refreshed
+        self.start_auto_updates()
+        
+    def update_pin_table(self, pins) -> None:
+        """Update the pin table with in-place updates to preserve selection"""
+        pin_table = self.query_one("#pin_table")
+        if not pin_table:
+            return
+            
+        # Process the pins data into a name-indexed dict for easier lookup
+        pin_data_by_name = {}
+        if isinstance(pins, dict):
+            # Convert dict to name-indexed format
+            for pin_name, pin_data in pins.items():
+                pin_data_by_name[pin_name] = pin_data.copy() if isinstance(pin_data, dict) else {"value": pin_data}
+                pin_data_by_name[pin_name]["pin_name"] = pin_name
+        elif isinstance(pins, list):
+            # Convert list to name-indexed format
+            for pin_item in pins:
+                pin_name = pin_item.get("pin_name", "Unknown")
+                pin_data_by_name[pin_name] = pin_item
+        
+        # Check if this is the first update (empty table)
+        if pin_table.row_count == 0:
+            # First time - build the table from scratch
+            self._build_initial_pin_table(pin_table, pin_data_by_name)
+            return
+            
+        # Store all current displayed pin names
+        current_pins = []
+        for i in range(pin_table.row_count):
+            try:
+                current_pins.append(pin_table.get_cell_at((i, 0)))
+            except Exception:
+                pass
+                
+        # Find pins to remove, update, or add
+        pins_to_remove = [pin for pin in current_pins if pin not in pin_data_by_name]
+        pins_to_update = [pin for pin in current_pins if pin in pin_data_by_name]
+        pins_to_add = [pin for pin in pin_data_by_name if pin not in current_pins]
+        
+        # Remember cursor position
+        cursor_row = pin_table.cursor_row
+        cursor_col = pin_table.cursor_column
+        
+        # Update existing pins in-place - this preserves selection
+        for pin_name in pins_to_update:
+            try:
+                # Find the row for this pin
+                row_idx = current_pins.index(pin_name)
+                
+                # Get pin data
+                pin_data = pin_data_by_name[pin_name]
+                
+                # Only update the value column (column 5)
+                # Get current and new values
+                current_value = pin_table.get_cell_at((row_idx, 5))
+                
+                # Format the new value
+                value = pin_data.get("current_value", pin_data.get("value", "N/A"))
+                hal_pin_type = pin_data.get("hal_pin_type", "N/A")
+                
+                # Format digital pin values with color
+                if hal_pin_type == "HAL_BIT" and value not in ('N/A', None):
+                    if value == 1 or value == "1" or value is True:
+                        value_str = f"[green]HIGH[/]"
+                    else:
+                        value_str = f"[red]LOW[/]"
+                else:
+                    value_str = str(value)
+                
+                # Highlight changed values
+                if current_value != value_str:
+                    value_str = f"[bold][reverse]{value_str}[/reverse][/bold]"
+                    
+                # Update just this cell
+                pin_table.update_cell_at((row_idx, 5), value_str)
+            except Exception as e:
+                print(f"DEBUG - Error updating pin {pin_name}: {e}")
+        
+        # There are table changes (adds/removes) - do a full rebuild if needed
+        if pins_to_add or pins_to_remove:
+            print(f"DEBUG - Table structure changed! {len(pins_to_add)} pins added, {len(pins_to_remove)} removed")
+            self._rebuild_pin_table(pin_table, pin_data_by_name, cursor_row, cursor_col)
+    
+    def _build_initial_pin_table(self, pin_table, pin_data_by_name):
+        """Build the initial pin table from scratch"""
+        print("DEBUG - Building initial pin table")
+        # Add all pins to the table
+        for pin_name, pin_data in pin_data_by_name.items():
+            # Format fields
+            pin_type = pin_data.get("pin_type", "N/A")
+            hal_pin_type = pin_data.get("hal_pin_type", "N/A")
+            hal_pin_dir = pin_data.get("hal_pin_direction", "N/A")
+            pin_id = pin_data.get("pin_id", "N/A")
+            
+            # Format value
+            value = pin_data.get("current_value", pin_data.get("value", "N/A"))
+            
+            # Format digital pin values with color
+            if hal_pin_type == "HAL_BIT" and value not in ('N/A', None):
+                if value == 1 or value == "1" or value is True:
+                    value_str = f"[green]HIGH[/]"
+                else:
+                    value_str = f"[red]LOW[/]"
+            else:
+                value_str = str(value)
+            
+            # Add the row
+            pin_table.add_row(
+                pin_name,
+                pin_type,
+                hal_pin_type,
+                hal_pin_dir,
+                str(pin_id),
+                value_str
+            )
+    
+    def _rebuild_pin_table(self, pin_table, pin_data_by_name, old_cursor_row=None, old_cursor_col=None):
+        """Rebuild the entire pin table when structure changes"""
+        # Remember which pin was selected
+        selected_pin_name = None
+        if old_cursor_row is not None and old_cursor_row < pin_table.row_count:
+            try:
+                selected_pin_name = pin_table.get_cell_at((old_cursor_row, 0))
+                print(f"DEBUG - Remembering selected pin: {selected_pin_name}")
+            except Exception:
+                pass
+        
+        # Remember old values for highlighting
+        old_values = {}
+        for i in range(pin_table.row_count):
+            try:
+                pin_name = pin_table.get_cell_at((i, 0))
+                current_value = pin_table.get_cell_at((i, 5))
+                old_values[pin_name] = current_value
+            except Exception:
+                pass
+        
+        # Clear the table
+        pin_table.clear()
+        
+        # Add all pins in order
+        for pin_name, pin_data in pin_data_by_name.items():
+            self._add_pin_to_table(pin_table, pin_name, pin_data, old_values.get(pin_name))
+            
+        # Restore selection if possible
+        if selected_pin_name in pin_data_by_name:
+            # Find the row index of the selected pin
+            new_pin_names = list(pin_data_by_name.keys())
+            try:
+                new_row = new_pin_names.index(selected_pin_name)
+                pin_table.cursor_row = new_row
+                pin_table.cursor_column = old_cursor_col if old_cursor_col is not None else 0
+                print(f"DEBUG - Restored selection to {selected_pin_name} at row {new_row}")
+            except ValueError:
+                print(f"DEBUG - Could not find {selected_pin_name} in new data")
+        elif pin_table.row_count > 0 and old_cursor_row is not None:
+            # Try to select a row at approximately the same position
+            new_row = min(old_cursor_row, pin_table.row_count - 1)
+            pin_table.cursor_row = new_row
+            pin_table.cursor_column = old_cursor_col if old_cursor_col is not None else 0
+            print(f"DEBUG - Selected row {new_row} based on previous position")
+
+    def _add_pin_to_table(self, pin_table, pin_name, pin_data, old_value=None):
+        """Helper method to add a pin to the table with consistent formatting"""
+        # Format pin fields based on api_client_ui.py
+        pin_type = pin_data.get("pin_type", "N/A")
+        hal_pin_type = pin_data.get("hal_pin_type", "N/A")
+        hal_pin_dir = pin_data.get("hal_pin_direction", "N/A")
+        pin_id = pin_data.get("pin_id", "N/A")
+        
+        # Format value
+        value = pin_data.get("current_value", pin_data.get("value", "N/A"))
+        
+        # Format digital pin values with color (matching api_client_ui.py)
+        if hal_pin_type == "HAL_BIT" and value not in ('N/A', None):
+            if value == 1 or value == "1" or value is True:
+                value_str = f"[green]HIGH[/]"
+            else:
+                value_str = f"[red]LOW[/]"
+        else:
+            value_str = str(value)
+            
+        # Highlight the value if it has changed
+        if old_value is not None and value_str != old_value:
+            value_str = f"[bold][reverse]{value_str}[/reverse][/bold]"
+        
+        # Add the row
+        pin_table.add_row(
+            pin_name,
+            pin_type,
+            hal_pin_type,
+            hal_pin_dir,
+            str(pin_id),
+            value_str
+        )
+
     def update_details_container(self, arduino_details: Dict[str, Any]) -> None:
         """Update the details container with fresh data"""
         details_container = self.query_one("#details_container")
@@ -714,111 +954,6 @@ class ArduinoDetailView(ListViewBase):
             Label(f"[bold]Arduino Reported Uptime:[/] {arduino_uptime}"),
             Label(f"[bold]Connection to Arduino Uptime:[/] {connection_uptime}"),
         )
-    
-    def on_back(self) -> None:
-        """Handle the back button click"""
-        self.stop_auto_updates()
-        self._app.switch_view("list")
-    
-    def on_about(self) -> None:
-        """Handle about button click"""
-        # Stop auto-updates first
-        self.stop_auto_updates()
-        self._app.switch_view("about")
-    
-    def load_details(self, alias: str) -> None:
-        """Load the details for the given Arduino"""
-        self.current_alias = alias
-        
-        # Get the Arduino details
-        arduino_details = self._app.get_arduino_details(alias)
-        if not arduino_details:
-            return
-        
-        # Initial update of all data
-        self.update_details_container(arduino_details)
-        self.update_pin_table(arduino_details.get("pins", []))
-        
-        # Start automatic updates - timer will keep everything refreshed
-        self.start_auto_updates()
-    
-    def update_pin_table(self, pins) -> None:
-        """Update just the pin table with new data"""
-        pin_table = self.query_one("#pin_table")
-        if not pin_table:
-            return
-            
-        # Store the current data to check for changes
-        old_values = {}
-        for i in range(pin_table.row_count):
-            pin_name = pin_table.get_cell_at((i, 0))
-            current_value = pin_table.get_cell_at((i, 5))
-            old_values[pin_name] = current_value
-        
-        # Clear the table
-        pin_table.clear()
-        
-        # Handle pins data which can be either a list or dictionary
-        if isinstance(pins, dict):
-            # If pins is a dictionary, process as key-value pairs
-            for pin_name, pin_data in pins.items():
-                self._add_pin_to_table(pin_table, pin_name, pin_data, old_values.get(pin_name))
-        elif isinstance(pins, list):
-            # If pins is a list, process each dictionary item
-            for pin_item in pins:
-                # Extract pin name from the dictionary
-                pin_name = pin_item.get("pin_name", "Unknown")
-                self._add_pin_to_table(pin_table, pin_name, pin_item, old_values.get(pin_name))
-    
-    def _add_pin_to_table(self, pin_table, pin_name, pin_data, old_value=None):
-        """Helper method to add a pin to the table with consistent formatting"""
-        # Format pin fields based on api_client_ui.py
-        pin_type = pin_data.get("pin_type", "N/A")
-        hal_pin_type = pin_data.get("hal_pin_type", "N/A")
-        hal_pin_dir = pin_data.get("hal_pin_direction", "N/A")
-        pin_id = pin_data.get("pin_id", "N/A")
-        
-        # Format value
-        value = pin_data.get("current_value", pin_data.get("value", "N/A"))
-        
-        # Format digital pin values with color (matching api_client_ui.py)
-        if hal_pin_type == "HAL_BIT" and value not in ('N/A', None):
-            if value == 1 or value == "1" or value is True:
-                value_str = f"[green]HIGH[/]"
-            else:
-                value_str = f"[red]LOW[/]"
-        else:
-            value_str = str(value)
-            
-        # Highlight the value if it has changed
-        if old_value is not None and value_str != old_value:
-            value_str = f"[bold][reverse]{value_str}[/reverse][/bold]"
-        
-        # Add the row
-        pin_table.add_row(
-            pin_name,
-            pin_type,
-            hal_pin_type,
-            hal_pin_dir,
-            str(pin_id),
-            value_str
-        )
-        
-    def _format_duration(self, seconds: int) -> str:
-        """Format seconds into days, hours, minutes (no seconds)"""
-        days, remainder = divmod(int(seconds), 86400)
-        hours, remainder = divmod(remainder, 3600)
-        minutes, _ = divmod(remainder, 60)  # Ignore seconds
-        
-        return f"{days}d {hours}h {minutes}m"
-
-    def _format_duration_from_minutes(self, minutes: float) -> str:
-        """Format minutes into days, hours, minutes"""
-        total_minutes = int(minutes)
-        days, remainder = divmod(total_minutes, 1440)  # 1440 = minutes in a day
-        hours, minutes = divmod(remainder, 60)
-        
-        return f"{days}d {hours}h {minutes}m"
 
 class AboutView(ListViewBase):
     """Shows information about the application"""
@@ -1432,6 +1567,22 @@ class APIClientApp(App):
         if self.current_view == "detail" or self.current_view == "about":
             print("DEBUG - Back action triggered")
             self.switch_view("list")
+
+    def _format_duration(self, seconds: int) -> str:
+        """Format seconds into days, hours, minutes (no seconds)"""
+        days, remainder = divmod(int(seconds), 86400)
+        hours, remainder = divmod(remainder, 3600)
+        minutes, _ = divmod(remainder, 60)  # Ignore seconds
+        
+        return f"{days}d {hours}h {minutes}m"
+
+    def _format_duration_from_minutes(self, minutes: float) -> str:
+        """Format minutes into days, hours, minutes"""
+        total_minutes = int(minutes)
+        days, remainder = divmod(total_minutes, 1440)  # 1440 = minutes in a day
+        hours, minutes = divmod(remainder, 60)
+        
+        return f"{days}d {hours}h {minutes}m"
 
 def force_exit():
     """Force exit the application when all else fails"""
