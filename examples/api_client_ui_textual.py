@@ -398,13 +398,28 @@ class ArduinoListView(ListViewBase):
                 status_str = f"[red]{status}[/]"
             
             # LinuxCNC Status
-            linuxcnc_status = arduino.get("linuxcnc_status", "N/A")
-            if linuxcnc_status == "CONNECTED":
+            linuxcnc_status = arduino.get("linuxcnc_status", "DISCONNECTED")
+            hal_emulation = arduino.get("hal_emulation", False)
+            
+            # Print additional debug information about LinuxCNC status
+            print(f"DEBUG - LinuxCNC status: {linuxcnc_status}, HAL emulation: {hal_emulation}")
+            
+            # Format LinuxCNC status based on HAL emulation and linuxcnc_status from API
+            if hal_emulation:
+                linuxcnc_str = f"[black on yellow]EMULATION_ENABLED[/]"
+                print(f"DEBUG - Using EMULATION_ENABLED display for LinuxCNC status")
+            elif linuxcnc_status == "CONNECTED":
+                # LinuxCNC successfully loaded
                 linuxcnc_str = f"[green]{linuxcnc_status}[/]"
+                print(f"DEBUG - Using CONNECTED display for LinuxCNC status")
             elif linuxcnc_status == "ERROR":
+                # LinuxCNC failed to load
                 linuxcnc_str = f"[red]{linuxcnc_status}[/]"
+                print(f"DEBUG - Using ERROR display for LinuxCNC status")
             else:
+                # Other status (disconnected, etc.)
                 linuxcnc_str = f"{linuxcnc_status}"
+                print(f"DEBUG - Using default display for LinuxCNC status: {linuxcnc_status}")
             
             # Features
             features = arduino.get("features", [])
@@ -1013,15 +1028,25 @@ class ArduinoDetailView(ListViewBase):
             linuxcnc_status = arduino_details.get("linuxcnc_status", "DISCONNECTED")
             hal_emulation = arduino_details.get("hal_emulation", False)
             
-            # Format LinuxCNC status based on HAL emulation
+            # Print additional debug information about LinuxCNC status
+            print(f"DEBUG - LinuxCNC status: {linuxcnc_status}, HAL emulation: {hal_emulation}")
+            
+            # Format LinuxCNC status based on HAL emulation and linuxcnc_status from API
             if hal_emulation:
                 linuxcnc_str = f"[black on yellow]EMULATION_ENABLED[/]"
+                print(f"DEBUG - Using EMULATION_ENABLED display for LinuxCNC status")
             elif linuxcnc_status == "CONNECTED":
+                # LinuxCNC successfully loaded
                 linuxcnc_str = f"[green]{linuxcnc_status}[/]"
+                print(f"DEBUG - Using CONNECTED display for LinuxCNC status")
             elif linuxcnc_status == "ERROR":
+                # LinuxCNC failed to load
                 linuxcnc_str = f"[red]{linuxcnc_status}[/]"
+                print(f"DEBUG - Using ERROR display for LinuxCNC status")
             else:
+                # Other status (disconnected, etc.)
                 linuxcnc_str = f"{linuxcnc_status}"
+                print(f"DEBUG - Using default display for LinuxCNC status: {linuxcnc_status}")
                 
             # Build the detail labels with rich text formatting
             details_container.mount(

@@ -62,6 +62,8 @@ class ArduinoBasicInfo(BaseModel):
     component_name: str
     device: str
     arduino_status: str
+    linuxcnc_status: str = "DISCONNECTED"  # Add linuxcnc_status field
+    hal_emulation: bool = False            # Add hal_emulation field
     enabled: bool
     features: List[str]
 
@@ -137,12 +139,49 @@ async def get_arduinos():
         features = []
         for feature in arduino.settings.io_map.keys():
             features.append(feature.featureName)
+        
+        # Get HAL emulation flag
+        hal_emulation = getattr(arduino.settings, 'hal_emulation', False)
+        
+        # Determine LinuxCNC status
+        linuxcnc_status = "DISCONNECTED"  # Default status
+        try:
+            if hasattr(arduino, 'hal'):
+                logging.info(f"HalInterface found for {arduino.settings.alias}")
+                # Check properties of halInterface for debugging
+                #has_linuxcnc_error = getattr(arduino.hal, 'linuxcnc_error', None)
+                #has_linuxcnc_attr = hasattr(arduino.hal, 'linuxcnc')
+                #linuxcnc_value = getattr(arduino.hal, 'linuxcnc', None)
+                
+                #logging.info(f"halInterface properties: linuxcnc_error={has_linuxcnc_error}, " +
+                #            f"has_linuxcnc_attr={has_linuxcnc_attr}, " +
+                #            f"linuxcnc_value={linuxcnc_value is not None}")
+                
+                # Check for linuxcnc_error flag which indicates failed loading
+                if arduino.linuxcnc_error:
+                    linuxcnc_status = "ERROR"
+                    logging.info(f"LinuxCNC error detected for {arduino.settings.alias}")
+                # Check if linuxcnc module is loaded (it's a direct attribute on halInterface)
+                elif not hal_emulation and hasattr(arduino, 'hal') and arduino.linuxcnc is not None:
+                    linuxcnc_status = "CONNECTED"
+                    logging.info(f"LinuxCNC connected for {arduino.settings.alias}")
+                else:
+                    logging.info(f"LinuxCNC not connected: hal_emulation={hal_emulation}")
+            else:
+                logging.info(f"No halInterface found for {arduino.settings.alias}")
+        except Exception as e:
+            logging.error(f"Error determining LinuxCNC status: {str(e)}")
+            import traceback
+            logging.error(traceback.format_exc())
+            linuxcnc_status = "ERROR"
             
         info = {
             "alias": arduino.settings.alias,
             "component_name": arduino.settings.component_name,
             "device": arduino.settings.dev,
             "arduino_status": str(arduino.serialConn.connectionState),
+            "linuxcnc_status": linuxcnc_status,
+            "hal_emulation": hal_emulation,
             "enabled": arduino.settings.enabled,
             "features": features
         }
@@ -216,7 +255,7 @@ async def get_arduino_details(alias: str):
                                 current_value = None
                                 if hasattr(pin, "halPinConnection") and pin.halPinConnection:
                                     try:
-                                        current_value = pin.halPinConnection.Get()
+                                        current_value = pin.halPinConnection.get()
                                     except Exception as e:
                                         logging.error(f"Error getting pin value: {str(e)}")
                                         # Fall back to stored value if HAL pin access fails
@@ -281,12 +320,42 @@ async def get_arduino_details(alias: str):
         except Exception as e:
             logging.error(f"Error calculating connection uptime: {str(e)}")
         
-        # Determine LinuxCNC status
-        linuxcnc_status = "DISCONNECTED"  # Default status
-        
-        # Get the HAL emulation flag from settings
+        # Determine LinuxCNC status - fix this to properly check LinuxCNC load status
         hal_emulation = getattr(arduino.settings, 'hal_emulation', False)
-        logging.info(f"HAL emulation for {alias}: {hal_emulation}")
+        
+        # Check if HAL interface exists and its status
+        linuxcnc_status = "DISCONNECTED"  # Default status
+        try:
+            if hasattr(arduino, 'hal'):
+                logging.info(f"HalInterface found for {alias}")
+                # Check properties of halInterface for debugging
+                #has_linuxcnc_error = getattr(arduino.hal, 'linuxcnc_error', None)
+                #has_linuxcnc_attr = hasattr(arduino.hal, 'linuxcnc')
+                #linuxcnc_value = getattr(arduino.hal, 'linuxcnc', None)
+                
+                #logging.info(f"halInterface properties: linuxcnc_error={has_linuxcnc_error}, " +
+                #            f"has_linuxcnc_attr={has_linuxcnc_attr}, " +
+                #            f"linuxcnc_value={linuxcnc_value is not None}")
+                
+                # Check for linuxcnc_error flag which indicates failed loading
+                if arduino.linuxcnc_error:
+                    linuxcnc_status = "ERROR"
+                    logging.info(f"LinuxCNC error detected for {alias}")
+                # Check if linuxcnc module is loaded (it's a direct attribute on halInterface)
+                elif not hal_emulation and hasattr(arduino, 'hal') and arduino.hal is not None:
+                    linuxcnc_status = "CONNECTED"
+                    logging.info(f"LinuxCNC connected for {alias}")
+                else:
+                    logging.info(f"LinuxCNC not connected: hal_emulation={hal_emulation}")
+            else:
+                logging.info(f"No halInterface found for {alias}")
+        except Exception as e:
+            logging.error(f"Error determining LinuxCNC status: {str(e)}")
+            import traceback
+            logging.error(traceback.format_exc())
+            linuxcnc_status = "ERROR"
+        
+        logging.info(f"HAL emulation for {alias}: {hal_emulation}, LinuxCNC status: {linuxcnc_status}")
         
         # Get enabled state (needed by UI)
         enabled = getattr(arduino.settings, 'enabled', False)
