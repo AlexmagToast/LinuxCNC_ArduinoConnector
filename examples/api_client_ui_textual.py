@@ -555,6 +555,16 @@ class ArduinoDetailView(ListViewBase):
                         except Exception as e:
                             print(f"DEBUG - Failed to send pin update to API: {e}")
                         
+                        # Schedule a refresh 100ms after changing the pin value
+                        def delayed_refresh():
+                            try:
+                                print(f"DEBUG - Performing delayed refresh after changing pin {pin_name}")
+                                self.update_all_data()
+                            except Exception as e:
+                                print(f"DEBUG - Error in delayed refresh: {e}")
+                                
+                        self.app.set_timer(0.2, delayed_refresh)  # 0.1 seconds = 100ms
+                        
                         # Don't call parent handler to avoid default Enter behavior
                         return
                         
