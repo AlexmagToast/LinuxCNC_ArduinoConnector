@@ -45,6 +45,7 @@ class ArduinoDetailedInfo(BaseModel):
     linuxcnc_status: str
     arduino_reported_uptime: str
     connection_uptime: str
+    hal_emulation: bool = False  # Add hal_emulation flag with default value of False
     pins: List[PinInfo]
 
 class ArduinoBasicInfo(BaseModel):
@@ -60,6 +61,10 @@ class DaemonStatusResponse(BaseModel):
     message: str
     uptime: str
     arduino_count: int
+
+class PinValueUpdate(BaseModel):
+    """Schema for pin value update request"""
+    value: Any
 
 # Track API server start time
 start_time = time.time()
@@ -168,10 +173,10 @@ async def get_arduino_details(alias: str):
                                 except Exception as e:
                                     logging.error(f"Error getting pin value: {str(e)}")
                                     # Fall back to stored value if HAL pin access fails
-                                    current_value = pin.currentValue if hasattr(pin, 'currentValue') else "N/A"
+                                    current_value = pin.arduinoPinCurrentValue if hasattr(pin, 'arduinoPinCurrentValue') else "N/A"
                             else:
                                 # Use stored value if no HAL connection
-                                current_value = pin.currentValue if hasattr(pin, 'currentValue') else "N/A"
+                                current_value = pin.arduinoPinCurrentValue if hasattr(pin, 'arduinoPinCurrentValue') else "N/A"
                             
                             pin_info = {
                                 "pin_name": pin.pinName if hasattr(pin, 'pinName') else "Unknown",
@@ -246,6 +251,10 @@ async def get_arduino_details(alias: str):
         # Determine LinuxCNC status - this is a stub
         linuxcnc_status = "DISCONNECTED"  # More appropriate default
         
+        # Get the HAL emulation flag from settings
+        hal_emulation = getattr(arduino.settings, 'hal_emulation', False)
+        logging.info(f"HAL emulation for {alias}: {hal_emulation}")
+        
         # Build the response with safe access to all properties
         try:
             response_data = {
@@ -256,6 +265,7 @@ async def get_arduino_details(alias: str):
                 "linuxcnc_status": linuxcnc_status,
                 "arduino_reported_uptime": arduino_uptime,
                 "connection_uptime": connection_uptime,
+                "hal_emulation": hal_emulation,  # Add the HAL emulation flag to the response
                 "pins": pins
             }
             
@@ -273,6 +283,68 @@ async def get_arduino_details(alias: str):
     except Exception as e:
         # Log the error for debugging
         logging.error(f"Error in get_arduino_details for {alias}: {str(e)}")
+        import traceback
+        logging.error(traceback.format_exc())
+        # Return a 500 error to the client
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+@app.post("/arduinos/{alias}/pins/{pin_name}/value")
+async def update_pin_value(alias: str, pin_name: str, update: PinValueUpdate):
+    """Update the value of a pin in HAL emulation mode"""
+    try:
+        logging.info(f"Updating pin value for {alias}/{pin_name} to {update.value}")
+        # Find the Arduino with the given alias
+        arduino = next((a for a in arduino_connections if a.settings.alias == alias), None)
+        
+        if not arduino:
+            raise HTTPException(status_code=404, detail=f"Arduino with alias '{alias}' not found")
+        
+        # Check if HAL emulation is enabled
+        hal_emulation = getattr(arduino.settings, 'hal_emulation', False)
+        if not hal_emulation:
+            raise HTTPException(status_code=400, detail="HAL emulation is not enabled for this Arduino")
+        
+        # Find the pin with the given name
+        pin_found = False
+        for feature in arduino.settings.io_map.keys():
+            if hasattr(feature, 'pinList'):
+                for pin in feature.pinList:
+                    if getattr(pin, 'pinName', '') == pin_name:
+                        if feature.FeatureReady() == False:
+                            raise HTTPException(status_code=400, detail="Feature is not ready for updating")
+                        # Update the pin value
+                        logging.info(f"Updating pin {pin_name} value to {update.value} in HAL emulation mode")
+                        
+                        # Update both HAL pin value and Arduino pin value
+                        pin.halPinCurrentValue = update.value
+                        pin.arduinoPinCurrentValue = update.value
+                        
+                        # If there's a HAL pin connection, update it too
+                        if hasattr(pin, "halPinConnection") and pin.halPinConnection:
+                            try:
+                                pin.halPinConnection.Set(update.value)
+                                logging.info(f"Updated HAL pin connection value for {pin_name}")
+                            except Exception as e:
+                                logging.error(f"Error updating HAL pin connection: {str(e)}")
+                                # Continue anyway since we're in emulation mode
+                        
+                        pin_found = True
+                        break
+            
+            if pin_found:
+                break
+        
+        if not pin_found:
+            raise HTTPException(status_code=404, detail=f"Pin '{pin_name}' not found on Arduino '{alias}'")
+        
+        return {"status": "success", "message": f"Pin {pin_name} value updated to {update.value}"}
+    
+    except HTTPException:
+        # Re-raise HTTP exceptions
+        raise
+    except Exception as e:
+        # Log the error for debugging
+        logging.error(f"Error updating pin value for {alias}/{pin_name}: {str(e)}")
         import traceback
         logging.error(traceback.format_exc())
         # Return a 500 error to the client

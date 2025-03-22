@@ -6,7 +6,7 @@ import time
 import numpy
 
 from linuxcnc_arduinoconnector.models.ConfigModels import AnalogPin, ArduinoPin, DigitalPin, HalPinDirection
-from linuxcnc_arduinoconnector.models.ProtocolModels import ConfigMessage, MessageType, ProtocolMessage
+from linuxcnc_arduinoconnector.models.ProtocolModels import ConfigMessage, MessageType, PinChangeMessage, ProtocolMessage
 
 # The Features enum is used by the Feature objects to set the Feature properties such as the corresponding constant name, config string name, and feature ID
 class Features(Enum):
@@ -191,7 +191,7 @@ class DigitalInputs(IOFeature):
                         p.pinID = str(p.pinID)
                     if p.pinID == pi.pinID:
                         p.halPinCurrentValue = pi.pinValue
-                        p.currentValue = pi.pinValue  # Store the value in our permanent property
+                        p.arduinoPinCurrentValue = pi.pinValue  # Store the value in our permanent property
                         if p.halPinConnection != None:
                             p.halPinConnection.set(p.halPinCurrentValue)
                         logging.debug(f'PININFO: {pi}')
@@ -228,13 +228,6 @@ class DigitalOutputs(IOFeature):
     
     def OnMessageRecv(self, pm:ProtocolMessage):
         super().OnMessageRecv(pm)
-        #if (pm.mt == MessageType.MT_PINCHANGE):
-           # maybe_message = #PinChangeMessage#MessageDecoder.parseBytes(pm.payload)
-        #    print(f'PINCHANGE: {pm.payload}')
-        #    for p in pm.pinInfo:
-        #        print(f'PININFO: {p}')
-
-        #    pass    
     
     def OnConnected(self):
         super().OnConnected()
@@ -249,6 +242,17 @@ class DigitalOutputs(IOFeature):
         super().Loop()
         if (self.FeatureReady() == True and self.ConfigComplete() == True):
             #self.Debug('Feature is ready for processing.')
+            for p in self.pinList:
+                if p.arduinoPinCurrentValue != p.halPinCurrentValue:
+                    self.Debug(f'PINCHANGE: logicalID = {p.pinLogicalID}, pinID = {p.pinID}, halPinCurrentValue = {p.halPinCurrentValue}, arduinoPinCurrentValue = {p.arduinoPinCurrentValue}')
+                    for c in self._sendMessageCallbacks:
+                        #message_json = { 'l': p.pinLogicalID, 'p': p.pinID, 'v': p.halPinCurrentValue }
+                        json_str = f'{{"l": {p.pinLogicalID}, "p": {p.pinID}, "v": {p.halPinCurrentValue}}}'
+                        pc = PinChangeMessage(featureID=p.featureID, seqID=p.pinLogicalID, responseReq=0, message=json_str)
+                        for c in self._sendMessageCallbacks:
+                            c(pc.packetize())
+                        self.Debug(f'PINCHANGE: {pc.packetize()}')
+                    p.halPinCurrentValue = p.arduinoPinCurrentValue
             pass
 '''
     AnalogInputs

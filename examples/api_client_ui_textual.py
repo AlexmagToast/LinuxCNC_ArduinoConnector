@@ -164,7 +164,7 @@ class ListViewBase(Widget):
             else:
                 self._app.refresh_data()
         elif event.key == "b" or event.key == "escape":
-            # Add 'b' and escape as shortcuts to go back from details view
+            # Use 'b' and escape as shortcuts to go back from details view
             if self._app.current_view == "detail" and hasattr(self, 'on_back'):
                 print("DEBUG - Back key pressed")
                 self.on_back()
@@ -180,9 +180,8 @@ class ListViewBase(Widget):
             # When Enter key is pressed in list view, show details of selected Arduino
             if self._app.current_view == "list" and hasattr(self, 'on_show_details'):
                 self.on_show_details()
-            # When Enter key is pressed in detail view, go back to list
-            elif self._app.current_view == "detail" and hasattr(self, 'on_back'):
-                self.on_back()
+            # Remove the enter key handling for going back to list view
+            # This allows the enter key to be used exclusively for pin toggling in detail view
 
 class StatusBadge(Static):
     """A colored badge for showing status"""
@@ -439,6 +438,8 @@ class ArduinoDetailView(ListViewBase):
         self._update_timer_id = None
         self._selection_cooldown = 1.0  # Seconds to delay updates after selection changes
         self._last_user_interaction = 0  # Track when user last interacted with UI
+        self.hal_emulation = False  # Track if HAL emulation is enabled
+        self.pin_data = {}  # Store pin data for access in key handlers
         
     @property
     def app(self) -> "APIClientApp":
@@ -486,6 +487,61 @@ class ArduinoDetailView(ListViewBase):
         """Handle key events with active period extension"""
         # Update the interaction timestamp to prevent updates while user is active
         self._last_user_interaction = time.time()
+        
+        # Handle pin value toggling in HAL emulation mode
+        if event.key == "enter" and self.hal_emulation:
+            pin_table = self.query_one("#pin_table")
+            if pin_table and pin_table.cursor_row is not None:
+                try:
+                    # Get pin name and type from selected row
+                    pin_name = pin_table.get_cell_at((pin_table.cursor_row, 0))
+                    pin_type = pin_table.get_cell_at((pin_table.cursor_row, 1))
+                    
+                    # Only toggle digital input pins (din)
+                    if pin_type == "din" and pin_name in self.pin_data:
+                        # Get current value
+                        pin_data = self.pin_data[pin_name]
+                        current_value = pin_data.get("current_value", pin_data.get("value", 0))
+                        
+                        # Convert to boolean/int if needed
+                        if isinstance(current_value, str):
+                            if current_value.lower() in ("true", "1", "high"):
+                                current_value = 1
+                            else:
+                                current_value = 0
+                        elif isinstance(current_value, bool):
+                            current_value = 1 if current_value else 0
+                        
+                        # Toggle value (0->1, 1->0)
+                        new_value = 0 if current_value else 1
+                        print(f"DEBUG - Toggling pin {pin_name} from {current_value} to {new_value}")
+                        
+                        # Update pin data
+                        pin_data["current_value"] = new_value
+                        pin_data["value"] = new_value
+                        
+                        # Update table display
+                        value_str = "[green]HIGH[/]" if new_value else "[red]LOW[/]"
+                        value_str = f"[bold][reverse]{value_str}[/reverse][/bold]"
+                        pin_table.update_cell_at((pin_table.cursor_row, 5), value_str)
+                        
+                        # Make API call to update the pin value if available
+                        try:
+                            if self.app.api_available and self.current_alias:
+                                requests.post(
+                                    f"{API_BASE_URL}/arduinos/{self.current_alias}/pins/{pin_name}/value",
+                                    json={"value": new_value},
+                                    timeout=1.0
+                                )
+                                print(f"DEBUG - Sent pin value update to API: {pin_name}={new_value}")
+                        except Exception as e:
+                            print(f"DEBUG - Failed to send pin update to API: {e}")
+                        
+                        # Don't call parent handler to avoid default Enter behavior
+                        return
+                        
+                except Exception as e:
+                    print(f"DEBUG - Error toggling pin value: {e}")
         
         # Call parent handler for normal key processing
         super().on_key(event)
@@ -606,6 +662,10 @@ class ArduinoDetailView(ListViewBase):
         if not arduino_details:
             return
         
+        # Store HAL emulation state
+        self.hal_emulation = arduino_details.get("hal_emulation", False)
+        print(f"DEBUG - HAL emulation mode: {self.hal_emulation}")
+        
         # Initial update of all data
         self.update_details_container(arduino_details)
         self.update_pin_table(arduino_details.get("pins", []))
@@ -631,6 +691,9 @@ class ArduinoDetailView(ListViewBase):
             for pin_item in pins:
                 pin_name = pin_item.get("pin_name", "Unknown")
                 pin_data_by_name[pin_name] = pin_item
+        
+        # Store pin data for access in key handlers
+        self.pin_data = pin_data_by_name
         
         # Check if this is the first update (empty table)
         if pin_table.row_count == 0:
@@ -936,7 +999,14 @@ class ArduinoDetailView(ListViewBase):
         
         # LinuxCNC Status
         linuxcnc_status = arduino_details.get('linuxcnc_status', 'N/A')
-        if linuxcnc_status == "CONNECTED":
+        
+        # Check if HAL emulation is enabled
+        hal_emulation = arduino_details.get('hal_emulation', False)
+        
+        if hal_emulation:
+            # Show special emulation status with yellow background and black text
+            linuxcnc_str = f"[black on yellow]EMULATION_ENABLED[/]"
+        elif linuxcnc_status == "CONNECTED":
             linuxcnc_str = f"[green]{linuxcnc_status}[/]"
         elif linuxcnc_status == "ERROR":
             linuxcnc_str = f"[red]{linuxcnc_status}[/]"

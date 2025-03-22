@@ -129,9 +129,9 @@ class ArduinoPin:
         self.pinEnabled = PinConfigElement.PIN_ENABLED.defaultValue()
         self.halPinConnection = None
         self.halPinCurrentValue = 0
+        self.arduinoPinCurrentValue = 0
         self.pinLogicalID = 0
         self.pinConfigSynced = False
-        self.currentValue = None  # Store the most recent value from the Arduino
         
         if yaml is not None:
             self.parseYAML(yaml)

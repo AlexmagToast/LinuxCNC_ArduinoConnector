@@ -176,7 +176,6 @@ class PinChangeMessage(ProtocolMessage):
                 'ms': message
             }
         else:
-            #self.payload = payload
             required_fields = ['fi', 'si', 'rr', 'ms']
             for field in required_fields:
                 if field not in payload:
@@ -186,16 +185,7 @@ class PinChangeMessage(ProtocolMessage):
             self.seqID = payload['si']
             self.responseReq = payload['rr']
             required_fields = ['l', 'p', 'v']
-            #self.message = payload['ms']
-            #self.pinInfo = parse_pin_info_elements(payload['ms'])
-                    # Parse the JSON string
-            # Create a list of PinInfoElement objects
             self.pinInfo = [PinInfoElement(item) for item in json.loads(payload['ms'])]
-            #pass
-        #self.payload = payload
-        #self.featureID = payload['fi']
-        #self.sequenceID = payload['se']
-        #self.featureArrayIndex = payload['fa']
         
 class HeartbeatMessage(ProtocolMessage):
     def __init__(self, payload):

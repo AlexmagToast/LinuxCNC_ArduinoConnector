@@ -26,3 +26,6 @@ mcu:
         pin_name: din.3 #hal pin name
         input_pullup: true
         pin_debounce: 5
+    digitalOutputs:
+      - pin_id: 4
+        pin_name: dout.4 #hal pin name
