@@ -11,6 +11,7 @@ from datetime import datetime
 from typing import Dict, List, Any, Optional
 import asyncio
 import time
+import json
 
 from textual import on
 from textual.app import App, ComposeResult
@@ -440,6 +441,7 @@ class ArduinoDetailView(ListViewBase):
         self._last_user_interaction = 0  # Track when user last interacted with UI
         self.hal_emulation = False  # Track if HAL emulation is enabled
         self.pin_data = {}  # Store pin data for access in key handlers
+        self.feature_status = {}  # Store feature status information but don't use it yet
         
     @property
     def app(self) -> "APIClientApp":
@@ -499,8 +501,21 @@ class ArduinoDetailView(ListViewBase):
                     
                     # Only toggle digital input pins (din)
                     if pin_type == "din" and pin_name in self.pin_data:
-                        # Get current value
+                        # Check if pin's feature is ready
                         pin_data = self.pin_data[pin_name]
+                        feature_name = pin_data.get("feature_name", "")
+                        feature_ready = pin_data.get("feature_ready", True)  # Default to True for backward compatibility
+                        
+                        # We can also check feature status map for more details
+                        if feature_name in self.feature_status:
+                            feature_ready = self.feature_status[feature_name].get("ready", feature_ready)
+                        
+                        # Only continue if feature is ready
+                        if not feature_ready:
+                            print(f"DEBUG - Cannot toggle pin {pin_name}: feature {feature_name} is not ready")
+                            return
+                            
+                        # Get current value
                         current_value = pin_data.get("current_value", pin_data.get("value", 0))
                         
                         # Convert to boolean/int if needed
@@ -632,15 +647,41 @@ class ArduinoDetailView(ListViewBase):
             # Get fresh Arduino details
             arduino_details = self._app.get_arduino_details(self.current_alias)
             if not arduino_details:
+                print("DEBUG - update_all_data: No Arduino details received from API")
                 return
                 
-            # Update details container
-            self.update_details_container(arduino_details)
+            # Debug log the keys to see what's in the response
+            print(f"DEBUG - update_all_data: Received keys: {list(arduino_details.keys())}")
+                
+            # Update hal_emulation flag on each refresh to ensure it's current
+            self.hal_emulation = arduino_details.get("hal_emulation", False)
+            
+            # Store feature status information for logic use (but not display yet)
+            if "features" in arduino_details:
+                self.store_feature_status(arduino_details["features"])
+            else:
+                print("DEBUG - update_all_data: No features data in Arduino details")
+                
+            # Update details container with careful error handling
+            try:
+                self.update_details_container(arduino_details)
+            except Exception as e:
+                print(f"ERROR - update_all_data: Failed to update details container: {e}")
+                import traceback
+                traceback.print_exc()
             
             # Update pin table with in-place cell updates to preserve selection
-            self.update_pin_table(arduino_details.get("pins", []))
+            try:
+                self.update_pin_table(arduino_details.get("pins", []))
+            except Exception as e:
+                print(f"ERROR - update_all_data: Failed to update pin table: {e}")
+                import traceback
+                traceback.print_exc()
+                
         except Exception as e:
-            print(f"Error updating Arduino data: {e}")
+            print(f"ERROR - update_all_data: {e}")
+            import traceback
+            traceback.print_exc()
     
     def on_back(self) -> None:
         """Handle the back button click"""
@@ -660,19 +701,40 @@ class ArduinoDetailView(ListViewBase):
         # Get the Arduino details
         arduino_details = self._app.get_arduino_details(alias)
         if not arduino_details:
+            print("DEBUG - No Arduino details received from API")
             return
+        
+        # Debug print to see the actual response structure
+        print(f"DEBUG - Received Arduino details keys: {list(arduino_details.keys())}")
         
         # Store HAL emulation state
         self.hal_emulation = arduino_details.get("hal_emulation", False)
         print(f"DEBUG - HAL emulation mode: {self.hal_emulation}")
         
-        # Initial update of all data
-        self.update_details_container(arduino_details)
-        self.update_pin_table(arduino_details.get("pins", []))
+        # Store feature status data but don't use it yet
+        if "features" in arduino_details:
+            self.store_feature_status(arduino_details["features"])
+        else:
+            print("DEBUG - No features data in Arduino details")
+            
+        # Initial update of all data - wrap in try/except for detailed error logging
+        try:
+            self.update_details_container(arduino_details)
+        except Exception as e:
+            print(f"ERROR - Failed to update details container: {e}")
+            import traceback
+            traceback.print_exc()
+            
+        try:
+            self.update_pin_table(arduino_details.get("pins", []))
+        except Exception as e:
+            print(f"ERROR - Failed to update pin table: {e}")
+            import traceback
+            traceback.print_exc()
         
         # Start automatic updates - timer will keep everything refreshed
         self.start_auto_updates()
-        
+
     def update_pin_table(self, pins) -> None:
         """Update the pin table with in-place updates to preserve selection"""
         pin_table = self.query_one("#pin_table")
@@ -873,157 +935,93 @@ class ArduinoDetailView(ListViewBase):
 
     def update_details_container(self, arduino_details: Dict[str, Any]) -> None:
         """Update the details container with fresh data"""
+        # Debug print the raw arduino_details to see what we're working with
+        print("\nDEBUG - update_details_container: Starting with data:")
+        for key in arduino_details.keys():
+            if key != "pins" and key != "features":  # Don't print large data structures
+                print(f"  {key}: {arduino_details.get(key)}")
+        
+        # Get the container and clear previous content
         details_container = self.query_one("#details_container")
         details_container.remove_children()
         
-        # Debug print the full arduino_details for diagnosis
-        print("\nDEBUG - Full arduino_details:")
-        for key, value in arduino_details.items():
-            if key != "pins":  # Don't print the pins array
-                print(f"  {key}: {value} (type: {type(value).__name__})")
-        
-        # Get status and format appropriately
-        status = arduino_details.get("arduino_status", "Unknown")
-        if status == "Unknown":  # Try alternate field names
-            status = arduino_details.get("state", "Unknown")
-        
-        # Check enabled state and component_name (matching api_client_ui.py logic)
-        enabled = arduino_details.get("enabled")
-        component_name = arduino_details.get('component_name', '')
-        
-        # Print raw enabled value for debugging
-        print(f"DEBUG - Raw enabled value: {enabled} (type: {type(enabled).__name__})")
-        
-        # Check multiple conditions that indicate disabled status (from api_client_ui.py)
-        is_disabled = (
-            enabled is False or 
-            enabled == 'False' or 
-            enabled == 'false' or 
-            enabled == 0 or 
-            enabled == '0' or 
-            str(enabled).lower() == 'false' or
-            "_DISABLED" in component_name
-        )
-        
-        # Only override status if we're sure it's disabled
-        if is_disabled:
-            status = "DISABLED"
-            print(f"DEBUG - Setting status to DISABLED because: enabled={enabled}")
-        
-        # Color status appropriately
-        if status == "CONNECTED":
-            status_str = f"[green]{status}[/]"
-            status_style = "green"
-        elif status == "DISABLED":
-            status_str = f"[yellow]{status}[/]"
-            status_style = "yellow"
-        else:
-            status_str = f"[red]{status}[/]"
-            status_style = "red"
-        
-        # Format enabled status
-        enabled_str = "NO" if is_disabled else "YES"
-        enabled_color = "red" if is_disabled else "green"
-        
-        # Format features
-        features = arduino_details.get("features", [])
-        features_str = ", ".join(features) if features and isinstance(features, list) else "None"
-        
-        # Get Arduino uptime - first check for ut value (directly from Arduino heartbeat)
-        ut_minutes = arduino_details.get('ut')
-        print(f"DEBUG - Looking for 'ut' value in API response: {ut_minutes}")
-        
-        if ut_minutes is not None:
-            print(f"DEBUG - Using direct 'ut' value: {ut_minutes} minutes (type: {type(ut_minutes).__name__})")
-            try:
-                # "ut" is already in minutes, so use it directly
-                arduino_uptime = self._format_duration_from_minutes(ut_minutes)
-                print(f"DEBUG - Formatted 'ut' to: {arduino_uptime}")
-            except (ValueError, TypeError) as e:
-                print(f"DEBUG - Error formatting 'ut' value: {e}")
-                arduino_uptime = f"{ut_minutes}m"
-        else:
-            # Fall back to the formatted arduino_reported_uptime from the API
-            raw_uptime = arduino_details.get('arduino_reported_uptime', 'N/A')
-            print(f"DEBUG - Raw arduino_reported_uptime: {raw_uptime}")
+        try:
+            # Extract required fields with safe fallbacks
+            component_name = arduino_details.get("component_name", "Unknown")
+            device = arduino_details.get("device", "Unknown")
+            serial_port_available = arduino_details.get("serial_port_available", False)
             
-            # Process the uptime to remove seconds if it's in the format "Xd Yh Zm Ws"
-            if raw_uptime != 'N/A' and raw_uptime is not None:
-                try:
-                    # Check if it's already in a time format with "s" at the end
-                    if isinstance(raw_uptime, str) and any(unit in raw_uptime for unit in ['d', 'h', 'm', 's']):
-                        print(f"DEBUG - Reformatting time string: {raw_uptime}")
-                        # Parse out just the days, hours, and minutes - ignore seconds
-                        parts = raw_uptime.split()
-                        days = hours = minutes = 0
-                        
-                        for part in parts:
-                            if part.endswith('d'):
-                                days = int(part[:-1])
-                            elif part.endswith('h'):
-                                hours = int(part[:-1])
-                            elif part.endswith('m'):
-                                minutes = int(part[:-1])
-                        
-                        # Create a new format without seconds
-                        arduino_uptime = f"{days}d {hours}h {minutes}m"
-                        print(f"DEBUG - Reformatted to: {arduino_uptime}")
-                    elif raw_uptime.endswith('s'):
-                        # If it's just seconds, convert to minutes
-                        secs = int(raw_uptime[:-1])
-                        minutes = secs // 60
-                        arduino_uptime = f"0d 0h {minutes}m"
-                        print(f"DEBUG - Converted seconds to minutes: {arduino_uptime}")
-                    else:
-                        # If it's not a recognized format, pass it through
-                        arduino_uptime = raw_uptime
-                except Exception as e:
-                    print(f"DEBUG - Error reformatting uptime: {e}")
-                    arduino_uptime = raw_uptime
+            # Get Arduino status
+            status = arduino_details.get("arduino_status", "Unknown")
+            status_style = "green" if status == "CONNECTED" else "red"
+            if status == "DISABLED":
+                status_style = "yellow"
+                
+            # Get enabled status - check if it exists to avoid errors
+            enabled = False
+            if "enabled" in arduino_details:
+                enabled = arduino_details["enabled"]
+            enabled_str = "YES" if enabled else "NO"
+            enabled_color = "green" if enabled else "red"
+            
+            # Get uptime information
+            arduino_uptime = arduino_details.get("arduino_reported_uptime", "N/A")
+            connection_uptime = arduino_details.get("connection_uptime", "N/A")
+            
+            # Linux CNC Status
+            linuxcnc_status = arduino_details.get("linuxcnc_status", "DISCONNECTED")
+            hal_emulation = arduino_details.get("hal_emulation", False)
+            
+            # Format LinuxCNC status based on HAL emulation
+            if hal_emulation:
+                linuxcnc_str = f"[black on yellow]EMULATION_ENABLED[/]"
+            elif linuxcnc_status == "CONNECTED":
+                linuxcnc_str = f"[green]{linuxcnc_status}[/]"
+            elif linuxcnc_status == "ERROR":
+                linuxcnc_str = f"[red]{linuxcnc_status}[/]"
             else:
-                arduino_uptime = raw_uptime
-        
-        print(f"DEBUG - Final uptime to display: {arduino_uptime}")
+                linuxcnc_str = f"{linuxcnc_status}"
+                
+            # Build the detail labels with rich text formatting
+            details_container.mount(
+                Label(f"[bold]Component Name:[/] {component_name}"),
+                Label(f"[bold]Device:[/] {device}"),
+                Label(f"[bold]Serial Port Available:[/] {'[green]YES[/]' if serial_port_available else '[red]NO[/]'}"),
+                Label(f"[bold]Enabled:[/] [{enabled_color}]{enabled_str}[/]"),
+                Label(f"[bold]Arduino Status:[/] [{status_style}]{status}[/]"),
+                Label(f"[bold]LinuxCNC Status:[/] {linuxcnc_str}"),
+                Label(f"[bold]Arduino Reported Uptime:[/] {arduino_uptime}"),
+                Label(f"[bold]Connection to Arduino Uptime:[/] {connection_uptime}"),
+            )
             
-        # Get connection uptime with seconds included
-        connection_uptime = arduino_details.get('connection_uptime', 'N/A')
-        print(f"DEBUG - Connection uptime received from API: {connection_uptime}")
-        
-        # Make sure seconds are preserved in connection uptime
-        if connection_uptime != 'N/A':
-            # Check if uptime only shows minutes without seconds
-            if connection_uptime.endswith('m') and not any(unit in connection_uptime for unit in ['s']):
-                # Add "0s" to ensure seconds are displayed
-                connection_uptime = f"{connection_uptime} 0s"
-                print(f"DEBUG - Added seconds to connection uptime: {connection_uptime}")
-        
-        # LinuxCNC Status
-        linuxcnc_status = arduino_details.get('linuxcnc_status', 'N/A')
-        
-        # Check if HAL emulation is enabled
-        hal_emulation = arduino_details.get('hal_emulation', False)
-        
-        if hal_emulation:
-            # Show special emulation status with yellow background and black text
-            linuxcnc_str = f"[black on yellow]EMULATION_ENABLED[/]"
-        elif linuxcnc_status == "CONNECTED":
-            linuxcnc_str = f"[green]{linuxcnc_status}[/]"
-        elif linuxcnc_status == "ERROR":
-            linuxcnc_str = f"[red]{linuxcnc_status}[/]"
-        else:
-            linuxcnc_str = f"{linuxcnc_status}"
-        
-        # Add detailed information (matching api_client_ui.py layout)
-        details_container.mount(
-            Label(f"[bold]Component Name:[/] {component_name}"),
-            Label(f"[bold]Device:[/] {arduino_details.get('device', 'N/A')}"),
-            Label(f"[bold]Serial Port Available:[/] {'[green]YES[/]' if arduino_details.get('serial_port_available', False) else '[red]NO[/]'}"),
-            Label(f"[bold]Enabled:[/] [{enabled_color}]{enabled_str}[/]"),
-            Label(f"[bold]Arduino Status:[/] [{status_style}]{status}[/]"),
-            Label(f"[bold]LinuxCNC Status:[/] {linuxcnc_str}"),
-            Label(f"[bold]Arduino Reported Uptime:[/] {arduino_uptime}"),
-            Label(f"[bold]Connection to Arduino Uptime:[/] {connection_uptime}"),
-        )
+            print("DEBUG - Details container successfully updated with fields:")
+            print(f"  Component Name: {component_name}")
+            print(f"  Device: {device}")
+            print(f"  Serial Port Available: {serial_port_available}")
+            print(f"  Enabled: {enabled}")
+            print(f"  Arduino Status: {status}")
+            print(f"  LinuxCNC Status: {linuxcnc_status}")
+            print(f"  HAL Emulation: {hal_emulation}")
+            
+        except Exception as e:
+            print(f"ERROR - Failed to populate details container: {e}")
+            import traceback
+            traceback.print_exc()
+            
+            # Add a fallback message to the container
+            details_container.mount(
+                Label("[bold red]Error loading Arduino details[/]"),
+                Label(f"Error: {str(e)}")
+            )
+
+    def store_feature_status(self, features):
+        """Store feature status information but don't do anything with it yet"""
+        # Create a map of feature name to status for easy lookup
+        self.feature_status = {}
+        for feature in features:
+            if isinstance(feature, dict) and "name" in feature:
+                self.feature_status[feature["name"]] = feature
+                print(f"DEBUG - Feature {feature['name']}: ready={feature.get('ready', False)}")
 
 class AboutView(ListViewBase):
     """Shows information about the application"""
@@ -1552,23 +1550,48 @@ class APIClientApp(App):
             return None
             
         try:
+            print(f"DEBUG - Requesting details for Arduino: {alias}")
             response = requests.get(f"{API_BASE_URL}/arduinos/{alias}", timeout=2)
+            print(f"DEBUG - Got response with status: {response.status_code}")
+            
+            # Check if response is successful
+            if response.status_code != 200:
+                print(f"ERROR - API returned error status: {response.status_code}")
+                print(f"ERROR - Response text: {response.text[:500]}...")
+                return None
+                
             response.raise_for_status()
             
-            # Log raw response for debugging
+            # Log raw response for debugging (truncated to avoid excessive output)
             raw_text = response.text
-            print(f"DEBUG - Raw API response for arduino details: {raw_text[:500]}...")
+            print(f"DEBUG - Raw API response for arduino details: {raw_text[:200]}...")
             
-            # Check if response contains 'ut' field
-            if '"ut":' in raw_text:
-                print("DEBUG - Found 'ut' field in raw response")
+            # Parse response as JSON
+            try:
+                resp_data = response.json()
+                print(f"DEBUG - Successfully parsed JSON response with keys: {list(resp_data.keys())}")
                 
-            resp_data = response.json()
-            print(f"DEBUG - Parsed response keys: {list(resp_data.keys())}")
-            return resp_data
+                # Check for missing critical fields
+                required_fields = ["component_name", "device", "arduino_status", "pins"]
+                missing_fields = [field for field in required_fields if field not in resp_data]
+                if missing_fields:
+                    print(f"WARNING - Missing required fields in API response: {missing_fields}")
+                
+                return resp_data
+            except json.JSONDecodeError as e:
+                print(f"ERROR - Failed to parse JSON response: {e}")
+                print(f"ERROR - Raw response: {raw_text[:500]}")
+                return None
+                
         except requests.exceptions.RequestException as e:
+            print(f"ERROR - Request error in get_arduino_details: {e}")
             # Treat any API error as potential unavailability
             self.check_api_health()
+            return None
+        except Exception as e:
+            print(f"ERROR - Unexpected error in get_arduino_details: {e}")
+            import traceback
+            traceback.print_exc()
             return None
     
     def exit(self) -> None:

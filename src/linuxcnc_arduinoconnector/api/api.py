@@ -37,6 +37,13 @@ class PinInfo(BaseModel):
     pin_id: str
     current_value: Any
 
+class FeatureStatus(BaseModel):
+    """Schema for feature status information"""
+    name: str
+    ready: bool
+    config_complete: bool = False
+    config_sync_error: bool = False
+
 class ArduinoDetailedInfo(BaseModel):
     component_name: str
     device: str
@@ -45,7 +52,9 @@ class ArduinoDetailedInfo(BaseModel):
     linuxcnc_status: str
     arduino_reported_uptime: str
     connection_uptime: str
-    hal_emulation: bool = False  # Add hal_emulation flag with default value of False
+    hal_emulation: bool = False
+    enabled: bool = False  # Add enabled flag for UI
+    features: List[FeatureStatus] = []  # Add feature status information
     pins: List[PinInfo]
 
 class ArduinoBasicInfo(BaseModel):
@@ -153,8 +162,30 @@ async def get_arduino_details(alias: str):
         
         # Log detailed information for debugging
         logging.info(f"Processing details for Arduino: {alias}")
-        logging.info(f"Arduino object: {arduino}")
-        logging.info(f"SerialConn state: {getattr(arduino.serialConn, 'connectionState', 'Unknown')}")
+        
+        # Collect feature status information
+        features_status = []
+        try:
+            if hasattr(arduino.settings, 'io_map'):
+                for feature in arduino.settings.io_map.keys():
+                    if hasattr(feature, 'featureName'):
+                        # Get feature readiness state
+                        is_ready = feature.FeatureReady() if hasattr(feature, 'FeatureReady') else False
+                        config_complete = feature.ConfigComplete() if hasattr(feature, 'ConfigComplete') else False
+                        config_sync_error = feature.ConfigSyncError() if hasattr(feature, 'ConfigSyncError') else False
+                        
+                        # Add feature status to the list
+                        features_status.append({
+                            "name": feature.featureName,
+                            "ready": is_ready,
+                            "config_complete": config_complete,
+                            "config_sync_error": config_sync_error
+                        })
+                        logging.info(f"Feature {feature.featureName}: ready={is_ready}, config_complete={config_complete}, config_sync_error={config_sync_error}")
+        except Exception as e:
+            logging.error(f"Error processing features for Arduino {alias}: {str(e)}")
+            import traceback
+            logging.error(traceback.format_exc())
         
         # Get all pins
         pins = []
@@ -163,6 +194,10 @@ async def get_arduino_details(alias: str):
                 logging.info(f"IO Map keys: {list(arduino.settings.io_map.keys())}")
                 for feature in arduino.settings.io_map.keys():
                     logging.info(f"Processing feature: {feature.featureName if hasattr(feature, 'featureName') else 'Unknown'}")
+                    # Get feature name for associating with pins
+                    feature_name = feature.featureName if hasattr(feature, 'featureName') else "Unknown"
+                    feature_ready = feature.FeatureReady() if hasattr(feature, 'FeatureReady') else False
+                    
                     if hasattr(feature, 'pinList'):
                         for pin in feature.pinList:
                             # Get current value if available
@@ -184,7 +219,9 @@ async def get_arduino_details(alias: str):
                                 "hal_pin_type": str(pin.halPinType) if hasattr(pin, 'halPinType') else "Unknown",
                                 "hal_pin_direction": str(pin.halPinDirection) if hasattr(pin, 'halPinDirection') else "Unknown",
                                 "pin_id": str(pin.pinID) if hasattr(pin, 'pinID') else "Unknown",
-                                "current_value": current_value if current_value is not None else "N/A"
+                                "current_value": current_value if current_value is not None else "N/A",
+                                "feature_name": feature_name,  # Include feature name with each pin
+                                "feature_ready": feature_ready  # Include feature readiness state
                             }
                             pins.append(pin_info)
                     else:
@@ -205,23 +242,7 @@ async def get_arduino_details(alias: str):
                 # Log the raw uptime value for debugging
                 logging.info(f"Raw arduinoReportedUptime: {arduino.serialConn.arduinoReportedUptime}")
                 
-                # Check if we can extract the "ut" value from the lastDataJSON if available
-                if hasattr(arduino.serialConn, 'lastDataJSON') and arduino.serialConn.lastDataJSON:
-                    try:
-                        import json
-                        logging.info(f"Checking lastDataJSON: {arduino.serialConn.lastDataJSON}")
-                        data_json = json.loads(arduino.serialConn.lastDataJSON)
-                        if 'ut' in data_json:
-                            ut_minutes = int(data_json['ut'])
-                            logging.info(f"Found 'ut' in lastDataJSON: {ut_minutes} minutes")
-                            # Don't return early, just store the value for the final return
-                            # Format the uptime for display
-                            arduino_uptime = format_uptime(ut_minutes * 60)  # Convert minutes to seconds for format_uptime
-                            logging.info(f"Formatted ut_minutes: {arduino_uptime}")
-                    except Exception as e:
-                        logging.error(f"Error extracting 'ut' from lastDataJSON: {e}")
-                
-                # If ut_minutes wasn't found, fall back to the existing uptime value
+                # If ut_minutes wasn't found, use the existing uptime value
                 if ut_minutes is None:
                     # Check whether the value is likely to be milliseconds or minutes
                     # If the value is very small (less than 1000), it's likely in minutes already
@@ -248,12 +269,15 @@ async def get_arduino_details(alias: str):
         except Exception as e:
             logging.error(f"Error calculating connection uptime: {str(e)}")
         
-        # Determine LinuxCNC status - this is a stub
-        linuxcnc_status = "DISCONNECTED"  # More appropriate default
+        # Determine LinuxCNC status
+        linuxcnc_status = "DISCONNECTED"  # Default status
         
         # Get the HAL emulation flag from settings
         hal_emulation = getattr(arduino.settings, 'hal_emulation', False)
         logging.info(f"HAL emulation for {alias}: {hal_emulation}")
+        
+        # Get enabled state (needed by UI)
+        enabled = getattr(arduino.settings, 'enabled', False)
         
         # Build the response with safe access to all properties
         try:
@@ -265,11 +289,13 @@ async def get_arduino_details(alias: str):
                 "linuxcnc_status": linuxcnc_status,
                 "arduino_reported_uptime": arduino_uptime,
                 "connection_uptime": connection_uptime,
-                "hal_emulation": hal_emulation,  # Add the HAL emulation flag to the response
+                "hal_emulation": hal_emulation,
+                "enabled": enabled,
+                "features": features_status,
                 "pins": pins
             }
             
-            # Add ut value if it was found (either from lastDataJSON or calculated from arduinoReportedUptime)
+            # Add ut value if it was found
             if ut_minutes is not None:
                 response_data["ut"] = ut_minutes
                 logging.info(f"Adding ut={ut_minutes} to response")
