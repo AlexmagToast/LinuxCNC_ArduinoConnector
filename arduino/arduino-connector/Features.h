@@ -59,83 +59,14 @@ namespace Features
 
         virtual void loop()
         {
-            /*
-            unsigned long currentMills = millis();
-            String output; // Used below to output Io update messages
-            JsonDocument doc;
-            JsonArray pa = doc.to<JsonArray>();
-           // loop through pins and perform reads
-            auto pins = GetPins();
-            for( int x = 0; x < GetPinCount(); x++ )
-            {
-                DigitalPin & pin = *static_cast<DigitalPin*>(pins[x]);
-                int pin_id = atoi(pin.pid.c_str());
-                int v = digitalRead(atoi(pin.pid.c_str()));
-
-                if(pin.pinCurrentState != v && (currentMills - pin.t) >= pin.debounce)
-                {
-                    #ifdef DEBUG_VERBOSE
-                        DEBUG_DEV.print(F("DINPUTS PIN CHANGE!"));
-                        DEBUG_DEV.print(F("PIN:"));
-                        DEBUG_DEV.println(pin.pid);
-                        DEBUG_DEV.print(F("Current value: "));
-                        DEBUG_DEV.println(pin.pinCurrentState);
-                        DEBUG_DEV.print(F("New value: "));
-                        DEBUG_DEV.println(v);
-                    #endif
-
-                    pin.pinCurrentState = v;
-                    pin.t = currentMills;
-
-                    // send update out
-                    //serialClient
-
-                    //doc.clear();
-
-                    JsonObject pa_0 = pa.add<JsonObject>();
-                    pa_0["l"] = x;
-                    pa_0["p"] = atoi(pin.pid.c_str());
-                    pa_0["v"] = v;
-                    //doc[F("l")] = x;
-                    //doc[F("p")] = atoi(pin.pid.c_str());
-                    //doc[F("v")] = v;
-
-                    //doc.shrinkToFit();  // optional
-                    //if(pa.size() > 0)
-                    //{
  
-                    //  pa.clear();
-                    //}
-                }
-            }
-            if (pa.size() > 0)
-            {
-
-                output = "";
-                serializeJson(doc, output);
-                #ifdef DEBUG_VERBOSE
-                    DEBUG_DEV.print(F("JSON = "));
-                    DEBUG_DEV.println(output);
-                #endif
-                uint8_t seqID = 0;
-                uint8_t resp = 0; // Future TODO: Consider requiring ACK/NAK, maybe.
-                uint8_t f = DINPUTS;
-                //String o = String(output.c_str());
-                serialClient.SendPinChangeMessage(f, seqID, resp, output);
-            }
-            */
         }
 
         virtual void setup()
         {
-            #ifdef DEBUG
+            #ifdef DEBUG_VERBOSE
                 DEBUG_DEV.println("DigitalOutputs::setup");
             #endif
-
-            // Perform any setup here.
-
-            // Then set the feature to ready, otherwise it will not be available to process incoming messages or perform local
-            // tasks such as pin reads.
             SetFeatureReady(true);
         }
 
@@ -144,7 +75,7 @@ namespace Features
         // onConnected gets called when the python host has connected and completed handshaking
         virtual void onConnected()
         {
-            #ifdef DEBUG
+            #ifdef DEBUG_VERBOSE
                 DEBUG_DEV.println("DigitalOutputs::onConnected");
             #endif
         }
@@ -152,7 +83,7 @@ namespace Features
         // onDisconnected gets called when the python host has disconnected
         virtual void onDisconnected()
         {
-            #ifdef DEBUG
+            #ifdef DEBUG_VERBOSE
                 DEBUG_DEV.println("DigitalOutputs::onDisconnected");
             #endif
         }
@@ -160,7 +91,91 @@ namespace Features
         virtual void onPinChange(const protocol::PinChangeMessage& pcm) {
             #ifdef DEBUG_VERBOSE
                 DEBUG_DEV.println("DigitalOutputs::onPinChange");
+                DEBUG_DEV.print("Feature ID: ");
+                DEBUG_DEV.println(pcm.featureID);
+                DEBUG_DEV.print("Seq ID: ");
+                DEBUG_DEV.println(pcm.seqID);
+                DEBUG_DEV.print("Response Required: ");
+                DEBUG_DEV.println(pcm.responseReq);
+                DEBUG_DEV.print("Message: ");
+                DEBUG_DEV.println(pcm.message);
             #endif
+             JsonDocument doc; 
+             DeserializationError error = deserializeJson(doc, pcm.message);
+             if (error) {
+                #ifdef DEBUG_VERBOSE
+                    DEBUG_DEV.print("Error: ");
+                    DEBUG_DEV.println(error.f_str());
+                #endif
+             }
+             else
+             {
+                if (!doc.containsKey("p") || !doc.containsKey("l") || !doc.containsKey("v"))
+                {
+                    #ifdef DEBUG
+                        DEBUG_DEV.println("ERROR. Missing required keys in JSON");
+                    #endif
+                    return;
+                }
+
+
+                #ifdef DEBUG_VERBOSE
+                    //DEBUG_DEV.println("Message parsed successfully");
+                    DEBUG_DEV.print("PID: ");
+                    String pid = doc["p"];
+                    DEBUG_DEV.println(pid);
+                    String lid = doc["l"];
+                    DEBUG_DEV.print("LID: ");
+                    DEBUG_DEV.println(lid);
+                    String value = doc["v"];
+                    DEBUG_DEV.print("Value: ");
+                    DEBUG_DEV.println(value);
+                #endif
+                String pin_id = doc["p"];
+                unsigned long pin_lid = doc["l"];
+                if (pin_lid > GetPinCount())
+                {
+                    #ifdef DEBUG
+                        DEBUG_DEV.print("LID out of range: ");
+                        DEBUG_DEV.println(pin_lid);
+                    #endif
+                }
+                else
+                {
+
+                    DigitalPin * pin = static_cast<DigitalPin*>(GetPin(pin_lid));
+                    #ifdef DEBUG_VERBOSE
+                        DEBUG_DEV.print("Pin MID: ");
+                        DEBUG_DEV.println(pin->mid);
+                        DEBUG_DEV.print("Pin PID: ");
+                        DEBUG_DEV.println(pin->pid);
+                        DEBUG_DEV.print("Pin LID: ");
+                        DEBUG_DEV.println(pin->lid);
+                        DEBUG_DEV.print("Pin FID: ");
+                        DEBUG_DEV.println(pin->fid);
+        
+                    #endif
+                    if (pin != nullptr)
+                    {
+                        #ifdef DEBUG_VERBOSE
+                            DEBUG_DEV.print("Writing to pin: ");
+                            DEBUG_DEV.println(pin->mid);
+                            DEBUG_DEV.print("Value: ");
+                            DEBUG_DEV.println(value);
+                        #endif
+                        int value_converted = value.toInt();
+                        digitalWrite(pin->mid, value_converted);
+                    }
+                    else
+                    {
+                        #ifdef DEBUG
+                            DEBUG_DEV.print("Pin not found: ");
+                            DEBUG_DEV.println(pin_lid);
+                        #endif
+                    }
+                }
+             }
+             
         }
 
         virtual uint8_t InitFeaturePin(uint8_t fid, uint8_t lid, String& pid, JsonDocument& json, String& fail_reason, Pin ** p)

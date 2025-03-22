@@ -772,17 +772,15 @@ namespace Callbacks
      * Called when a configuration message is received.
      */
     void onConfig(protocol::ConfigMessage& cm) {
-        #ifdef DEBUG
-        DEBUG_DEV.print(F("::onConfig called, featureID = "));
-        DEBUG_DEV.print((int)cm.featureID);
-        DEBUG_DEV.print(F(" Seq = "));
-        DEBUG_DEV.print(cm.seq);
-        DEBUG_DEV.print(F(" Total = "));
-        DEBUG_DEV.println(cm.total);
         #ifdef DEBUG_VERBOSE
+            DEBUG_DEV.print(F("::onConfig called, featureID = "));
+            DEBUG_DEV.print((int)cm.featureID);
+            DEBUG_DEV.print(F(" Seq = "));
+            DEBUG_DEV.print(cm.seq);
+            DEBUG_DEV.print(F(" Total = "));
+            DEBUG_DEV.println(cm.total);
             DEBUG_DEV.print("Config: ");
             DEBUG_DEV.println(cm.configString);
-        #endif
         #endif
         featureController.OnConfig(cm);
     }
@@ -794,7 +792,7 @@ namespace Callbacks
      * Called when a pin change message is received.
      */
     void onPinChange(const protocol::PinChangeMessage& pcm) {
-        #ifdef DEBUG
+        #ifdef DEBUG_VERBOSE
             DEBUG_DEV.print(F("::onPinChange called, featureID = "));
             DEBUG_DEV.println((int)pcm.featureID);
         #endif
