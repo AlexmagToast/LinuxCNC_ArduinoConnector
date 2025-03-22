@@ -379,7 +379,7 @@ async def update_pin_value(alias: str, pin_name: str, update: PinValueUpdate):
                     # If there's a HAL pin connection, update it too
                     if hasattr(pin, "halPinConnection") and pin.halPinConnection:
                         try:
-                            pin.halPinConnection.Set(update.value)
+                            pin.halPinConnection.Set(update.value) 
                             logging.info(f"Updated HAL pin connection value for {pin_name}")
                         except Exception as e:
                             logging.error(f"Error updating HAL pin connection: {str(e)}")

@@ -45,6 +45,7 @@ void setup() {
  // #endif
   
   serialClient.RegisterConfigCallback(Callbacks::onConfig);
+  serialClient.RegisterPinChangeCallback(Callbacks::onPinChange);
   featureController.ExcecuteFeatureSetups();
   #ifdef DINPUTS
     Features::DigitalInputs * din = new Features::DigitalInputs();

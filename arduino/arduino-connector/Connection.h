@@ -624,11 +624,21 @@ protected:
       }
       case protocol::MessageTypes::MT_PINCHANGE:
       {
-        #ifdef DEBUG
-          this->println(F("RX MT_PINCHANGE"));
-        #endif
+
         protocol::PinChangeMessage p;
         p.fromJSON(doc);
+        /*
+        #ifdef DEBUG_VERBOSE
+          this->println(F("RX MT_PINCHANGE"));
+          this->print(F("FEATURE ID:"));
+          this->println(p.featureID);
+          this->print(F("RESPONSE REQ:"));
+          this->println(p.responseReq);
+          this->print(F("MESSAGE:"));
+          this->println(p.message);
+        #endif
+        */
+       
         _onPinChangeMessage(p);
         break;
       }

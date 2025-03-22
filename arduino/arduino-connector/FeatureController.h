@@ -148,7 +148,11 @@ class IFeature
         * @return Error code, 0 for success
         */
        virtual uint32_t onConfig(protocol::ConfigMessage* config, String& fail_reason) = 0;
-       
+        /**
+         * @brief Handle pin change message
+         * @param pcm Pin change message
+         */
+        virtual void onPinChange(const protocol::PinChangeMessage& pcm) = 0;
        /**
         * @brief Get the loop event option
         * @return Loop event option
@@ -178,6 +182,8 @@ class IFeature
          * @brief Called when connection is established
          */
         virtual void onConnected() = 0;
+        
+
         
         /**
          * @brief Called when connection is lost
@@ -369,6 +375,20 @@ public:
         #endif
     }
 
+    /**
+     * @brief Handle pin change message
+     * @param pcm Pin change message
+     */
+    void OnPinChange(const protocol::PinChangeMessage& pcm) {
+        for(int x = 0; x < _currentFeatureCount; x++)
+        {
+            if(_features[x]->GetFeatureID() == pcm.featureID)
+            {
+                _features[x]->onPinChange(pcm);
+            }
+        }
+    }
+
 private:
     FeaturePtr* _features = NULL;              ///< Array of feature pointers
     size_t _allocatedFeatureCount = 0;         ///< Number of allocated feature slots
@@ -544,6 +564,14 @@ public:
     {
         return _featureReady;
     }
+    
+    /**
+     * @brief Handle pin change message
+     * @param pcm Pin change message
+     */
+
+    virtual void onPinChange(const protocol::PinChangeMessage& pcm) {
+    }
 
 protected:
     /**
@@ -631,7 +659,7 @@ protected:
         
         return ERR_NONE;
     }
-    
+
     /**
      * @brief Called when connection is established
      */
@@ -757,6 +785,20 @@ namespace Callbacks
         #endif
         #endif
         featureController.OnConfig(cm);
+    }
+
+    /**
+     * @brief Pin change message callback
+     * @param pcm Pin change message
+     * 
+     * Called when a pin change message is received.
+     */
+    void onPinChange(const protocol::PinChangeMessage& pcm) {
+        #ifdef DEBUG
+            DEBUG_DEV.print(F("::onPinChange called, featureID = "));
+            DEBUG_DEV.println((int)pcm.featureID);
+        #endif
+        featureController.OnPinChange(pcm);
     }
 }
 #endif

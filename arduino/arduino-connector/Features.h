@@ -157,6 +157,12 @@ namespace Features
             #endif
         }
 
+        virtual void onPinChange(const protocol::PinChangeMessage& pcm) {
+            #ifdef DEBUG_VERBOSE
+                DEBUG_DEV.println("DigitalOutputs::onPinChange");
+            #endif
+        }
+
         virtual uint8_t InitFeaturePin(uint8_t fid, uint8_t lid, String& pid, JsonDocument& json, String& fail_reason, Pin ** p)
         {
             DigitalPin * dp = new DigitalPin();
