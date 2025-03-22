@@ -4,7 +4,7 @@
   Ken Thompson (not THAT Ken Thompson), https://github.com/KennethThompson
   
   MIT License
-  Copyright (c) 2023 Alexander Richter & Ken Thompson
+  Copyright (c) 2023-2025 Alexander Richter & Ken Thompson
 
   Permission is hereby granted, free of charge, to any person obtaining a copy
   of this software and associated documentation files (the "Software"), to deal
@@ -13,7 +13,7 @@
   copies of the Software, and to permit persons to whom the Software is
   furnished to do so, subject to the following conditions:
 
-  The above copyright notice and this permission notice shall be included in all
+  The above copyright notice and this permission notice shall be included in all  
   copies or substantial portions of the Software.
 
   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
@@ -36,15 +36,14 @@ namespace Features
     #if defined(DINPUTS) || defined(DOUTPUTS)
     struct DigitalPin: public Pin
     {
-        uint32_t ts;
-
-        int8_t pinInitialState;
-        int8_t pinConnectedState;
-        int8_t pinDisconnectedState;
-        uint16_t debounce;
-        uint8_t inputPullup;
-        int8_t pinCurrentState;
-        unsigned long t;
+        uint32_t ts; 
+        int8_t pinInitialState; // initial state value
+        int8_t pinConnectedState; // state when connected
+        int8_t pinDisconnectedState; // state when disconnected
+        uint16_t debounce; // debounce time in milliseconds
+        uint8_t inputPullup; // 1 if input pullup is enabled, 0 otherwise
+        int8_t pinCurrentState; // current state of the pin
+        unsigned long t; // timestamp of the last state change
     };
     #endif
     #ifdef DOUTPUTS
@@ -55,7 +54,6 @@ namespace Features
         {
             #ifdef DEBUG
                 DEBUG_DEV.println("DigitalOutputs::DigitalOutputs");
-                //Serial.flush();
             #endif
         }
 
