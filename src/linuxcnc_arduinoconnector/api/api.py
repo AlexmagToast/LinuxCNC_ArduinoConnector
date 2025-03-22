@@ -168,20 +168,26 @@ async def get_arduino_details(alias: str):
         try:
             if hasattr(arduino.settings, 'io_map'):
                 for feature in arduino.settings.io_map.keys():
-                    if hasattr(feature, 'featureName'):
-                        # Get feature readiness state
-                        is_ready = feature.FeatureReady() if hasattr(feature, 'FeatureReady') else False
-                        config_complete = feature.ConfigComplete() if hasattr(feature, 'ConfigComplete') else False
-                        config_sync_error = feature.ConfigSyncError() if hasattr(feature, 'ConfigSyncError') else False
-                        
-                        # Add feature status to the list
-                        features_status.append({
-                            "name": feature.featureName,
-                            "ready": is_ready,
-                            "config_complete": config_complete,
-                            "config_sync_error": config_sync_error
-                        })
-                        logging.info(f"Feature {feature.featureName}: ready={is_ready}, config_complete={config_complete}, config_sync_error={config_sync_error}")
+                    # Use feature lock when accessing feature properties
+                    with feature.with_lock(timeout=2) as acquired:
+                        if not acquired:
+                            logging.warning(f"Could not acquire lock for feature {feature.featureName if hasattr(feature, 'featureName') else 'Unknown'}")
+                            continue  # Skip this feature if we can't get the lock
+                            
+                        if hasattr(feature, 'featureName'):
+                            # Access feature properties under lock protection
+                            is_ready = feature.FeatureReady() if hasattr(feature, 'FeatureReady') else False
+                            config_complete = feature.ConfigComplete() if hasattr(feature, 'ConfigComplete') else False
+                            config_sync_error = feature.ConfigSyncError() if hasattr(feature, 'ConfigSyncError') else False
+                            
+                            # Add feature status to the list
+                            features_status.append({
+                                "name": feature.featureName,
+                                "ready": is_ready,
+                                "config_complete": config_complete,
+                                "config_sync_error": config_sync_error
+                            })
+                            logging.info(f"Feature {feature.featureName}: ready={is_ready}, config_complete={config_complete}, config_sync_error={config_sync_error}")
         except Exception as e:
             logging.error(f"Error processing features for Arduino {alias}: {str(e)}")
             import traceback
@@ -193,39 +199,45 @@ async def get_arduino_details(alias: str):
             if hasattr(arduino.settings, 'io_map'):
                 logging.info(f"IO Map keys: {list(arduino.settings.io_map.keys())}")
                 for feature in arduino.settings.io_map.keys():
-                    logging.info(f"Processing feature: {feature.featureName if hasattr(feature, 'featureName') else 'Unknown'}")
-                    # Get feature name for associating with pins
-                    feature_name = feature.featureName if hasattr(feature, 'featureName') else "Unknown"
-                    feature_ready = feature.FeatureReady() if hasattr(feature, 'FeatureReady') else False
-                    
-                    if hasattr(feature, 'pinList'):
-                        for pin in feature.pinList:
-                            # Get current value if available
-                            current_value = None
-                            if hasattr(pin, "halPinConnection") and pin.halPinConnection:
-                                try:
-                                    current_value = pin.halPinConnection.Get()
-                                except Exception as e:
-                                    logging.error(f"Error getting pin value: {str(e)}")
-                                    # Fall back to stored value if HAL pin access fails
-                                    current_value = pin.arduinoPinCurrentValue if hasattr(pin, 'arduinoPinCurrentValue') else "N/A"
-                            else:
-                                # Use stored value if no HAL connection
-                                current_value = pin.arduinoPinCurrentValue if hasattr(pin, 'arduinoPinCurrentValue') else "N/A"
+                    # Use feature lock when accessing pins
+                    with feature.with_lock(timeout=2) as acquired:
+                        if not acquired:
+                            logging.warning(f"Could not acquire lock for feature {feature.featureName if hasattr(feature, 'featureName') else 'Unknown'} pins")
+                            continue  # Skip this feature's pins if we can't get the lock
                             
-                            pin_info = {
-                                "pin_name": pin.pinName if hasattr(pin, 'pinName') else "Unknown",
-                                "pin_type": pin.pinType if hasattr(pin, 'pinType') else "Unknown",
-                                "hal_pin_type": str(pin.halPinType) if hasattr(pin, 'halPinType') else "Unknown",
-                                "hal_pin_direction": str(pin.halPinDirection) if hasattr(pin, 'halPinDirection') else "Unknown",
-                                "pin_id": str(pin.pinID) if hasattr(pin, 'pinID') else "Unknown",
-                                "current_value": current_value if current_value is not None else "N/A",
-                                "feature_name": feature_name,  # Include feature name with each pin
-                                "feature_ready": feature_ready  # Include feature readiness state
-                            }
-                            pins.append(pin_info)
-                    else:
-                        logging.warning(f"Feature has no pinList attribute: {feature}")
+                        logging.info(f"Processing feature: {feature.featureName if hasattr(feature, 'featureName') else 'Unknown'}")
+                        # Get feature name for associating with pins
+                        feature_name = feature.featureName if hasattr(feature, 'featureName') else "Unknown"
+                        feature_ready = feature.FeatureReady() if hasattr(feature, 'FeatureReady') else False
+                        
+                        if hasattr(feature, 'pinList'):
+                            for pin in feature.pinList:
+                                # Get current value if available
+                                current_value = None
+                                if hasattr(pin, "halPinConnection") and pin.halPinConnection:
+                                    try:
+                                        current_value = pin.halPinConnection.Get()
+                                    except Exception as e:
+                                        logging.error(f"Error getting pin value: {str(e)}")
+                                        # Fall back to stored value if HAL pin access fails
+                                        current_value = pin.arduinoPinCurrentValue if hasattr(pin, 'arduinoPinCurrentValue') else "N/A"
+                                else:
+                                    # Use stored value if no HAL connection
+                                    current_value = pin.arduinoPinCurrentValue if hasattr(pin, 'arduinoPinCurrentValue') else "N/A"
+                                
+                                pin_info = {
+                                    "pin_name": pin.pinName if hasattr(pin, 'pinName') else "Unknown",
+                                    "pin_type": pin.pinType if hasattr(pin, 'pinType') else "Unknown",
+                                    "hal_pin_type": str(pin.halPinType) if hasattr(pin, 'halPinType') else "Unknown",
+                                    "hal_pin_direction": str(pin.halPinDirection) if hasattr(pin, 'halPinDirection') else "Unknown",
+                                    "pin_id": str(pin.pinID) if hasattr(pin, 'pinID') else "Unknown",
+                                    "current_value": current_value if current_value is not None else "N/A",
+                                    "feature_name": feature_name,  # Include feature name with each pin
+                                    "feature_ready": feature_ready  # Include feature readiness state
+                                }
+                                pins.append(pin_info)
+                        else:
+                            logging.warning(f"Feature has no pinList attribute: {feature}")
             else:
                 logging.warning(f"Arduino has no io_map attribute: {arduino.settings}")
         except Exception as e:
@@ -330,38 +342,55 @@ async def update_pin_value(alias: str, pin_name: str, update: PinValueUpdate):
         if not hal_emulation:
             raise HTTPException(status_code=400, detail="HAL emulation is not enabled for this Arduino")
         
-        # Find the pin with the given name
-        pin_found = False
+        # First, find which feature has the pin (without locking)
+        target_feature = None
         for feature in arduino.settings.io_map.keys():
             if hasattr(feature, 'pinList'):
                 for pin in feature.pinList:
                     if getattr(pin, 'pinName', '') == pin_name:
-                        if feature.FeatureReady() == False:
-                            raise HTTPException(status_code=400, detail="Feature is not ready for updating")
-                        # Update the pin value
-                        logging.info(f"Updating pin {pin_name} value to {update.value} in HAL emulation mode")
-                        
-                        # Update both HAL pin value and Arduino pin value
-                        pin.halPinCurrentValue = update.value
-                        pin.arduinoPinCurrentValue = update.value
-                        
-                        # If there's a HAL pin connection, update it too
-                        if hasattr(pin, "halPinConnection") and pin.halPinConnection:
-                            try:
-                                pin.halPinConnection.Set(update.value)
-                                logging.info(f"Updated HAL pin connection value for {pin_name}")
-                            except Exception as e:
-                                logging.error(f"Error updating HAL pin connection: {str(e)}")
-                                # Continue anyway since we're in emulation mode
-                        
-                        pin_found = True
+                        target_feature = feature
                         break
-            
-            if pin_found:
-                break
-        
-        if not pin_found:
+                if target_feature:
+                    break
+                    
+        if not target_feature:
             raise HTTPException(status_code=404, detail=f"Pin '{pin_name}' not found on Arduino '{alias}'")
+            
+        # Now we have the feature, acquire its lock and update the pin
+        with target_feature.with_lock(timeout=5) as acquired:
+            if not acquired:
+                logging.error(f"Could not acquire lock for feature {target_feature.featureName} to update pin {pin_name}")
+                raise HTTPException(status_code=503, detail="Could not acquire lock to update pin, try again later")
+                
+            # Check feature readiness
+            if not target_feature.FeatureReady():
+                raise HTTPException(status_code=400, detail="Feature is not ready for updating")
+                
+            # Find the pin now that we have the lock
+            pin_found = False
+            for pin in target_feature.pinList:
+                if getattr(pin, 'pinName', '') == pin_name:
+                    # Update the pin value under lock protection
+                    logging.info(f"Updating pin {pin_name} value to {update.value} in HAL emulation mode")
+                    
+                    # Update both HAL pin value and Arduino pin value
+                    pin.halPinCurrentValue = update.value
+                    target_feature.SetPinChangePending(True)
+                    # If there's a HAL pin connection, update it too
+                    if hasattr(pin, "halPinConnection") and pin.halPinConnection:
+                        try:
+                            pin.halPinConnection.Set(update.value)
+                            logging.info(f"Updated HAL pin connection value for {pin_name}")
+                        except Exception as e:
+                            logging.error(f"Error updating HAL pin connection: {str(e)}")
+                            # Continue anyway since we're in emulation mode
+                    
+                    pin_found = True
+                    break
+                    
+            if not pin_found:
+                # Unlikely to happen since we already found the pin before, but good to check
+                raise HTTPException(status_code=404, detail=f"Pin '{pin_name}' not found on Arduino '{alias}'")
         
         return {"status": "success", "message": f"Pin {pin_name} value updated to {update.value}"}
     

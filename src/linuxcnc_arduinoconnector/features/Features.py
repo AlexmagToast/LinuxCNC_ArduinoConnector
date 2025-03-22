@@ -2,6 +2,7 @@ from abc import ABCMeta, abstractmethod
 from enum import Enum
 import logging
 import time
+import threading
 
 import numpy
 
@@ -67,6 +68,53 @@ class IOFeature(metaclass=ABCMeta):
         self.pinConfigSyncMap = {}
         self._sendMessageCallbacks = []
         self._debugCallbacks = []
+        self._lock = None  # Initialize as None, will be created on first use
+        self.pinChangePending = False
+        
+    def _get_lock(self):
+        """Get the lock, creating it if needed"""
+        if self._lock is None:
+            self._lock = threading.RLock()
+        return self._lock
+        
+    def acquire_lock(self, timeout=None):
+        """Acquire the feature lock with optional timeout"""
+        return self._get_lock().acquire(timeout=timeout)
+        
+    def release_lock(self):
+        """Release the feature lock"""
+        if self._lock is not None:
+            self._lock.release()
+        
+    def with_lock(self, timeout=None):
+        """Context manager for using the feature lock"""
+        class FeatureLockContext:
+            def __init__(self, feature, timeout):
+                self.feature = feature
+                self.timeout = timeout
+                self.acquired = False
+                
+            def __enter__(self):
+                self.acquired = self.feature.acquire_lock(self.timeout)
+                return self.acquired
+                
+            def __exit__(self, exc_type, exc_val, exc_tb):
+                if self.acquired:
+                    self.feature.release_lock()
+                    
+        return FeatureLockContext(self, timeout)
+        
+    def __getstate__(self):
+        """Support for pickling - exclude the lock"""
+        state = self.__dict__.copy()
+        # Don't pickle the lock
+        state['_lock'] = None
+        return state
+    
+    def __setstate__(self, state):
+        """Support for unpickling - recreate state but without active lock"""
+        self.__dict__.update(state)
+        # Lock will be created on first use via _get_lock
 
     def FeatureName(self):
         return self.featureName
@@ -89,7 +137,13 @@ class IOFeature(metaclass=ABCMeta):
     def Debug(self, s:str):
         for dc in self._debugCallbacks:
             dc(f'[{self.featureName}] {s}')
-            
+    
+    def SetPinChangePending(self, pending:bool):
+        self.pinChangePending = pending
+        
+    def GetPinChangePending(self) -> bool:
+        return self.pinChangePending
+    
     @abstractmethod
     def OnConnected(self):
         self.configSyncError = False # Clear the error flag on reconnect
@@ -222,6 +276,7 @@ class DigitalInputs(IOFeature):
 class DigitalOutputs(IOFeature):
     def __init__(self) -> None:
         IOFeature.__init__(self, featureName=str(Features.DIGITAL_OUTPUTS), featureConfigName=Features.DIGITAL_OUTPUTS.configName(), featureID=int(Features.DIGITAL_OUTPUTS))
+        self.featureReady = True
     
     def YamlParser(self):
         return lambda yaml, featureID : DigitalPin(yaml=yaml, featureID=featureID, halPinDirection=HalPinDirection.HAL_IN)
@@ -240,7 +295,7 @@ class DigitalOutputs(IOFeature):
     
     def Loop(self):
         super().Loop()
-        if (self.FeatureReady() == True and self.ConfigComplete() == True):
+        if (self.FeatureReady() == True and self.ConfigComplete() == True and self.GetPinChangePending() == True):
             #self.Debug('Feature is ready for processing.')
             for p in self.pinList:
                 if p.arduinoPinCurrentValue != p.halPinCurrentValue:
@@ -252,7 +307,8 @@ class DigitalOutputs(IOFeature):
                         for c in self._sendMessageCallbacks:
                             c(pc.packetize())
                         self.Debug(f'PINCHANGE: {pc.packetize()}')
-                    p.halPinCurrentValue = p.arduinoPinCurrentValue
+                    p.arduinoPinCurrentValue = p.halPinCurrentValue
+            self.SetPinChangePending(False)
             pass
 '''
     AnalogInputs

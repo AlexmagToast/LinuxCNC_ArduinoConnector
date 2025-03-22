@@ -219,17 +219,17 @@ class HandshakeMessage(ProtocolMessage):
 class MessageDecoder:
     @staticmethod
     def parseBytes(b: bytearray) -> ProtocolMessage:
-        logging.debug(f"PYDEBUG: cobs encoded: {b}")
+        #logging.debug(f"PYDEBUG: cobs encoded: {b}")
         
         try:
             decoded = cobs.decode(b)
-            logging.debug(f"PYDEBUG: cobs decoded: {decoded}")
+            #logging.debug(f"PYDEBUG: cobs decoded: {decoded}")
         except cobs.DecodeError as e:
             raise ValueError(f"Failed to decode COBS data: {e}")
 
         try:
             payload = msgpack.loads(decoded)
-            logging.debug(f"PYDEBUG: msgpack json decoded: {payload}")
+            #logging.debug(f"PYDEBUG: msgpack json decoded: {payload}")
         except msgpack.ExtraData as e:
             raise ValueError(f"Failed to unpack msgpack data: {e}")
         except msgpack.FormatError as e:

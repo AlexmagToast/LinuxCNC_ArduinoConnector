@@ -59,7 +59,8 @@ class Connection(MessageDecoder):
                 #logging.debug(just_the_string)
                 logging.debug(f'PYDEBUG: error: {str(ex)}')
         elif m.mt == MessageType.MT_DEBUG:
-            logging.debug(f'PYDEBUG onMessageRecv() - Received MT_DEBUG, Values = {m.payload}')
+            #logging.debug(f'PYDEBUG onMessageRecv() - Received MT_DEBUG, Values = {m.payload}')
+            logging.debug(f'ARDEBUG: [{self.alias}], Message: {m.payload}')
         if self.connectionState != ConnectionState.CONNECTED:
                 name = 'UNKNOWN_TYPE'
                 try:
@@ -537,7 +538,13 @@ class ArduinoConnection(HalInterface):
                 self.serialConn.setState(newState=ConnectionState.ERROR)
                 return
             else:
-                f.Loop()
+                with f.with_lock(timeout=5) as acquired:
+                    if acquired:
+                       f.Loop()
+                    else:
+                        # Handle lock acquisition failure
+                        logging.warning("Could not acquire lock for feature")
+                
         '''
                 if self.serialConn.getConnectionState() == ConnectionState.CONNECTED and self.settings.profileSignature is not self.serialConn.arduinoProfileSignature:
             

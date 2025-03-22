@@ -29,3 +29,5 @@ mcu:
     digitalOutputs:
       - pin_id: 4
         pin_name: dout.4 #hal pin name
+      - pin_id: 5
+        pin_name: dout.5 #hal pin name
