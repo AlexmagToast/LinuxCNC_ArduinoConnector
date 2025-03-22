@@ -460,6 +460,9 @@ class ArduinoDetailView(ListViewBase):
         # Container for Arduino details
         yield Container(id="details_container", classes="details-box")
         
+        # Container for feature status - added between details and pin table
+        yield Container(id="feature_status_container", classes="details-box")
+        
         # Create styled table with border
         yield DataTable(id="pin_table", zebra_stripes=True, classes="table-border")
         
@@ -656,23 +659,32 @@ class ArduinoDetailView(ListViewBase):
             # Update hal_emulation flag on each refresh to ensure it's current
             self.hal_emulation = arduino_details.get("hal_emulation", False)
             
-            # Store feature status information for logic use (but not display yet)
-            if "features" in arduino_details:
-                self.store_feature_status(arduino_details["features"])
-            else:
-                print("DEBUG - update_all_data: No features data in Arduino details")
-                
-            # Update details container with careful error handling
+            # First update details container - this should be stable
             try:
                 self.update_details_container(arduino_details)
+                print("DEBUG - Updated details container successfully")
             except Exception as e:
                 print(f"ERROR - update_all_data: Failed to update details container: {e}")
                 import traceback
                 traceback.print_exc()
+                
+            # Then update feature status - lower priority
+            try:
+                if "features" in arduino_details:
+                    self.store_feature_status(arduino_details["features"])
+                    self.update_feature_status_display()
+                    print("DEBUG - Updated feature status display successfully")
+                else:
+                    print("DEBUG - update_all_data: No features data in Arduino details")
+            except Exception as e:
+                print(f"ERROR - update_all_data: Failed to update feature status: {e}")
+                import traceback
+                traceback.print_exc()
             
-            # Update pin table with in-place cell updates to preserve selection
+            # Finally update pin table - this is often the most complex part
             try:
                 self.update_pin_table(arduino_details.get("pins", []))
+                print("DEBUG - Updated pin table successfully")
             except Exception as e:
                 print(f"ERROR - update_all_data: Failed to update pin table: {e}")
                 import traceback
@@ -697,6 +709,7 @@ class ArduinoDetailView(ListViewBase):
     def load_details(self, alias: str) -> None:
         """Load the details for the given Arduino"""
         self.current_alias = alias
+        print(f"DEBUG - Loading details for {alias}")
         
         # Get the Arduino details
         arduino_details = self._app.get_arduino_details(alias)
@@ -711,29 +724,31 @@ class ArduinoDetailView(ListViewBase):
         self.hal_emulation = arduino_details.get("hal_emulation", False)
         print(f"DEBUG - HAL emulation mode: {self.hal_emulation}")
         
-        # Store feature status data but don't use it yet
-        if "features" in arduino_details:
-            self.store_feature_status(arduino_details["features"])
-        else:
-            print("DEBUG - No features data in Arduino details")
-            
-        # Initial update of all data - wrap in try/except for detailed error logging
+        # Initial update of all data - in specific order
         try:
+            # First update basic details (most important)
             self.update_details_container(arduino_details)
-        except Exception as e:
-            print(f"ERROR - Failed to update details container: {e}")
-            import traceback
-            traceback.print_exc()
+            print("DEBUG - Details container updated successfully")
             
-        try:
+            # Then try to update feature status
+            if "features" in arduino_details:
+                self.store_feature_status(arduino_details["features"])
+                self.update_feature_status_display()
+                print("DEBUG - Feature status display updated successfully")
+            else:
+                print("DEBUG - No features data in Arduino details")
+                
+            # Finally update pin table (most complex)
             self.update_pin_table(arduino_details.get("pins", []))
+            print("DEBUG - Pin table updated successfully")
         except Exception as e:
-            print(f"ERROR - Failed to update pin table: {e}")
+            print(f"ERROR - Failed to update UI: {e}")
             import traceback
             traceback.print_exc()
         
         # Start automatic updates - timer will keep everything refreshed
         self.start_auto_updates()
+        print("DEBUG - Started automatic updates")
 
     def update_pin_table(self, pins) -> None:
         """Update the pin table with in-place updates to preserve selection"""
@@ -822,36 +837,47 @@ class ArduinoDetailView(ListViewBase):
     
     def _build_initial_pin_table(self, pin_table, pin_data_by_name):
         """Build the initial pin table from scratch"""
-        print("DEBUG - Building initial pin table")
+        print("DEBUG - Building initial pin table with pins count:", len(pin_data_by_name))
+        
+        # Make sure we have pins to add
+        if not pin_data_by_name:
+            print("DEBUG - No pins to add to table")
+            return
+            
         # Add all pins to the table
         for pin_name, pin_data in pin_data_by_name.items():
-            # Format fields
-            pin_type = pin_data.get("pin_type", "N/A")
-            hal_pin_type = pin_data.get("hal_pin_type", "N/A")
-            hal_pin_dir = pin_data.get("hal_pin_direction", "N/A")
-            pin_id = pin_data.get("pin_id", "N/A")
-            
-            # Format value
-            value = pin_data.get("current_value", pin_data.get("value", "N/A"))
-            
-            # Format digital pin values with color
-            if hal_pin_type == "HAL_BIT" and value not in ('N/A', None):
-                if value == 1 or value == "1" or value is True:
-                    value_str = f"[green]HIGH[/]"
+            try:
+                # Format fields
+                pin_type = pin_data.get("pin_type", "N/A")
+                hal_pin_type = pin_data.get("hal_pin_type", "N/A")
+                hal_pin_dir = pin_data.get("hal_pin_direction", "N/A")
+                pin_id = pin_data.get("pin_id", "N/A")
+                
+                # Format value
+                value = pin_data.get("current_value", pin_data.get("value", "N/A"))
+                
+                # Format digital pin values with color
+                if hal_pin_type == "HAL_BIT" and value not in ('N/A', None):
+                    if value == 1 or value == "1" or value is True:
+                        value_str = f"[green]HIGH[/]"
+                    else:
+                        value_str = f"[red]LOW[/]"
                 else:
-                    value_str = f"[red]LOW[/]"
-            else:
-                value_str = str(value)
-            
-            # Add the row
-            pin_table.add_row(
-                pin_name,
-                pin_type,
-                hal_pin_type,
-                hal_pin_dir,
-                str(pin_id),
-                value_str
-            )
+                    value_str = str(value)
+                
+                # Add the row (using only the original columns)
+                pin_table.add_row(
+                    pin_name,
+                    pin_type,
+                    hal_pin_type,
+                    hal_pin_dir,
+                    str(pin_id),
+                    value_str
+                )
+            except Exception as e:
+                print(f"ERROR - Failed to add pin {pin_name} to table: {e}")
+        
+        print(f"DEBUG - Added {pin_table.row_count} pins to table")
     
     def _rebuild_pin_table(self, pin_table, pin_data_by_name, old_cursor_row=None, old_cursor_col=None):
         """Rebuild the entire pin table when structure changes"""
@@ -901,37 +927,42 @@ class ArduinoDetailView(ListViewBase):
 
     def _add_pin_to_table(self, pin_table, pin_name, pin_data, old_value=None):
         """Helper method to add a pin to the table with consistent formatting"""
-        # Format pin fields based on api_client_ui.py
-        pin_type = pin_data.get("pin_type", "N/A")
-        hal_pin_type = pin_data.get("hal_pin_type", "N/A")
-        hal_pin_dir = pin_data.get("hal_pin_direction", "N/A")
-        pin_id = pin_data.get("pin_id", "N/A")
-        
-        # Format value
-        value = pin_data.get("current_value", pin_data.get("value", "N/A"))
-        
-        # Format digital pin values with color (matching api_client_ui.py)
-        if hal_pin_type == "HAL_BIT" and value not in ('N/A', None):
-            if value == 1 or value == "1" or value is True:
-                value_str = f"[green]HIGH[/]"
-            else:
-                value_str = f"[red]LOW[/]"
-        else:
-            value_str = str(value)
+        try:
+            # Format pin fields based on api_client_ui.py
+            pin_type = pin_data.get("pin_type", "N/A")
+            hal_pin_type = pin_data.get("hal_pin_type", "N/A")
+            hal_pin_dir = pin_data.get("hal_pin_direction", "N/A")
+            pin_id = pin_data.get("pin_id", "N/A")
             
-        # Highlight the value if it has changed
-        if old_value is not None and value_str != old_value:
-            value_str = f"[bold][reverse]{value_str}[/reverse][/bold]"
-        
-        # Add the row
-        pin_table.add_row(
-            pin_name,
-            pin_type,
-            hal_pin_type,
-            hal_pin_dir,
-            str(pin_id),
-            value_str
-        )
+            # Format value
+            value = pin_data.get("current_value", pin_data.get("value", "N/A"))
+            
+            # Format digital pin values with color (matching api_client_ui.py)
+            if hal_pin_type == "HAL_BIT" and value not in ('N/A', None):
+                if value == 1 or value == "1" or value is True:
+                    value_str = f"[green]HIGH[/]"
+                else:
+                    value_str = f"[red]LOW[/]"
+            else:
+                value_str = str(value)
+                
+            # Highlight the value if it has changed
+            if old_value is not None and value_str != old_value:
+                value_str = f"[bold][reverse]{value_str}[/reverse][/bold]"
+            
+            # Add the row (using only the original columns)
+            pin_table.add_row(
+                pin_name,
+                pin_type,
+                hal_pin_type,
+                hal_pin_dir,
+                str(pin_id),
+                value_str
+            )
+        except Exception as e:
+            print(f"ERROR - Failed to add pin {pin_name} to table: {e}")
+            import traceback
+            traceback.print_exc()
 
     def update_details_container(self, arduino_details: Dict[str, Any]) -> None:
         """Update the details container with fresh data"""
@@ -1013,6 +1044,38 @@ class ArduinoDetailView(ListViewBase):
                 Label("[bold red]Error loading Arduino details[/]"),
                 Label(f"Error: {str(e)}")
             )
+
+    def update_feature_status_display(self):
+        """Update the feature status container with current feature status information"""
+        # Get the container and clear its contents
+        status_container = self.query_one("#feature_status_container")
+        
+        # We'll rebuild the entire content
+        status_container.remove_children()
+        
+        # If no features, show a message and return
+        if not self.feature_status:
+            status_container.mount(Label("No feature information available"))
+            return
+        
+        # Add a header
+        status_container.mount(Label("[bold]Feature Status:[/]"))
+        
+        # Use a simple vertical layout - more stable than horizontal grid
+        for name, status in self.feature_status.items():
+            # Get status values
+            ready = status.get("ready", False)
+            
+            # Create status indicator
+            status_text = "[green]READY[/]" if ready else "[red]NOT READY[/]"
+            
+            # Add feature as a simple row
+            status_container.mount(
+                Label(f"• [bold]{name}:[/] {status_text}")
+            )
+            
+        # Debug
+        print(f"DEBUG - Feature status display updated with {len(self.feature_status)} features")
 
     def store_feature_status(self, features):
         """Store feature status information but don't do anything with it yet"""
@@ -1175,12 +1238,49 @@ class APIClientApp(App):
         padding: 0 1;
     }
     
-    #details_container, #about_container {
+    #details_container, #about_container, #feature_status_container {
         width: 100%;
         height: auto;
         border: wide #59546a;
         padding: 1;
         margin-bottom: 1;
+    }
+    
+    #features_container {
+        width: 100%;
+        height: auto;
+        border: wide #59546a;
+        padding: 1;
+        margin-bottom: 1;
+        background: #292537;
+    }
+    
+    #feature_status_grid {
+        margin-top: 1;
+        height: auto;
+        width: 100%;
+    }
+    
+    .feature-card {
+        padding: 1;
+        margin-right: 2;
+        margin-bottom: 1;
+        min-width: 20;
+        max-width: 25;
+        height: auto;
+        background: #312d43;
+        border: tall #413b58;
+    }
+    
+    .feature-name {
+        color: #e4c9ff;
+        text-align: center;
+        margin-bottom: 1;
+    }
+    
+    .feature-detail {
+        text-align: center;
+        margin-top: 1;
     }
     
     .details-box {
