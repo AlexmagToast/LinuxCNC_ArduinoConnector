@@ -217,6 +217,7 @@ class ArduinoListView(ListViewBase):
     def __init__(self, app_instance, **kwargs):
         super().__init__(app_instance, **kwargs)
         self._app = app_instance
+        self._update_timer_id = None
         
         # Create the Arduino table without columns (will add in on_mount)
         self.arduino_table = DataTable(id="arduino_table", zebra_stripes=True)
@@ -261,6 +262,51 @@ class ArduinoListView(ListViewBase):
         except AttributeError:
             # Fallback for older versions
             pass
+            
+        # Start automatic updates
+        self.start_auto_updates()
+    
+    def on_show(self) -> None:
+        """Called when the view becomes visible"""
+        # Start automatic updates
+        self.start_auto_updates()
+    
+    def on_hide(self) -> None:
+        """Called when the view is hidden"""
+        # Stop automatic updates
+        self.stop_auto_updates()
+        
+    def start_auto_updates(self) -> None:
+        """Start automatic data updates"""
+        # Setup a timer to refresh data every 3 seconds for more responsive updates
+        if self._update_timer_id is None:
+            self._update_timer_id = self._app.set_timer(3.0, self.perform_update)
+    
+    def perform_update(self) -> None:
+        """Execute a single update and schedule the next one"""
+        try:
+            # Update the data - make sure this happens without interruption
+            print("DEBUG - List view auto-refresh: Updating data")
+            self._app.refresh_data()
+            
+            # Schedule the next update - use a shorter interval for more responsive status updates
+            self._update_timer_id = self._app.set_timer(3.0, self.perform_update)
+        except Exception as e:
+            print(f"Error in list view perform_update: {e}")
+            # Try to schedule another update anyway
+            try:
+                self._update_timer_id = self._app.set_timer(3.0, self.perform_update)
+            except Exception:
+                pass
+    
+    def stop_auto_updates(self) -> None:
+        """Stop automatic data updates"""
+        if self._update_timer_id is not None:
+            try:
+                self._app.set_timer(self._update_timer_id, None)
+            except Exception as e:
+                print(f"Error cancelling list view timer: {e}")
+            self._update_timer_id = None
     
     @on(Button.Pressed, "#refresh")
     def on_refresh_button_pressed(self, event: Button.Pressed) -> None:
@@ -389,12 +435,19 @@ class ArduinoListView(ListViewBase):
                 status = "DISABLED"
                 print(f"DEBUG - Setting {alias} to DISABLED because enabled={enabled}")
             
-            # Format status with color
+            # Format status with color based on possible ConnectionState values
             if status == "CONNECTED":
                 status_str = f"[green]{status}[/]"
             elif status == "DISABLED":
                 status_str = f"[yellow]{status}[/]"
+            elif status == "DISCONNECTED" or status == "DISCONNECTED_RETRY_PENDING":
+                status_str = f"[red]{status}[/]"
+            elif status == "CONNECTING" or status == "HANDSHAKING" or status == "WAITING_FOR_DEVICE":
+                status_str = f"[blue]{status}[/]"
+            elif status == "RECONNECTING":
+                status_str = f"[magenta]{status}[/]"
             else:
+                # Handle any other possible states
                 status_str = f"[red]{status}[/]"
             
             # LinuxCNC Status
@@ -481,9 +534,10 @@ class ArduinoDetailView(ListViewBase):
         # Create styled table with border
         yield DataTable(id="pin_table", zebra_stripes=True, classes="table-border")
         
-        # Add styled buttons (removed refresh button)
+        # Add styled buttons
         with Horizontal(id="buttons_container", classes="button-container"):
             yield Button("Back to List", id="back_bottom", variant="default")
+            yield Button("Refresh", id="refresh", variant="primary")
             yield Button("About", id="about", variant="primary")
             yield Button("Quit", id="quit", variant="error")
         
@@ -612,6 +666,12 @@ class ArduinoDetailView(ListViewBase):
         """Handle quit button press"""
         print("DEBUG - Quit button pressed")
         self._app.exit()
+        
+    @on(Button.Pressed, "#refresh")
+    def on_refresh_button_pressed(self, event: Button.Pressed) -> None:
+        """Handle refresh button press"""
+        print("DEBUG - Detail view: Refresh button pressed") 
+        self.update_all_data()
     
     def on_show(self) -> None:
         """Called when the view becomes visible"""
@@ -632,16 +692,15 @@ class ArduinoDetailView(ListViewBase):
     def perform_update(self) -> None:
         """Execute a single update and schedule the next one"""
         try:
-            # Check if we should skip update due to recent user interaction
+            # Check if we should skip full update due to recent user interaction
             current_time = time.time()
             if (current_time - self._last_user_interaction) < self._selection_cooldown:
-                print(f"DEBUG - User interaction cooldown active, skipping update")
-                # Schedule next update
-                self._update_timer_id = self.app.set_timer(1.0, self.perform_update)
-                return
-                
-            # Update the data
-            self.update_all_data()
+                print(f"DEBUG - User interaction cooldown active, only updating connection status")
+                # Update only the connection status during cooldown
+                self.update_connection_status()
+            else:
+                # Update all data when cooldown is not active
+                self.update_all_data()
             
             # Schedule the next update
             self._update_timer_id = self.app.set_timer(1.0, self.perform_update)
@@ -652,7 +711,56 @@ class ArduinoDetailView(ListViewBase):
                 self._update_timer_id = self.app.set_timer(1.0, self.perform_update)
             except Exception:
                 pass
-    
+                
+    def update_connection_status(self) -> None:
+        """Update only the connection status to always keep it current"""
+        if not self.current_alias or not self.app.api_available:
+            return
+            
+        try:
+            # Get fresh Arduino details
+            arduino_details = self._app.get_arduino_details(self.current_alias)
+            if not arduino_details:
+                print("DEBUG - update_connection_status: No Arduino details received from API")
+                return
+                
+            # Update only the connection status in the details container
+            details_container = self.query_one("#details_container")
+            if details_container:
+                # Find the status label and update it
+                for child in details_container.children:
+                    try:
+                        label_text = child.render()
+                        if "[bold]Arduino Status:[/]" in label_text:
+                            # Get fresh status
+                            status = arduino_details.get("arduino_status", "Unknown")
+                            # Format status with proper styling
+                            if status == "CONNECTED":
+                                status_style = "green"
+                            elif status == "DISABLED":
+                                status_style = "yellow"
+                            elif status == "DISCONNECTED" or status == "DISCONNECTED_RETRY_PENDING":
+                                status_style = "red"
+                            elif status == "CONNECTING" or status == "HANDSHAKING" or status == "WAITING_FOR_DEVICE":
+                                status_style = "blue"
+                            elif status == "RECONNECTING":
+                                status_style = "magenta"
+                            else:
+                                # Default to red for unknown states
+                                status_style = "red"
+                            
+                            # Update just the status label
+                            child.update(f"[bold]Arduino Status:[/] [{status_style}]{status}[/]")
+                            print(f"DEBUG - Updated connection status to [{status_style}]{status}[/]")
+                            break
+                    except Exception as e:
+                        print(f"DEBUG - Error checking label: {e}")
+                        
+        except Exception as e:
+            print(f"ERROR - update_connection_status: {e}")
+            import traceback
+            traceback.print_exc()
+            
     def stop_auto_updates(self) -> None:
         """Stop automatic pin updates"""
         if self._update_timer_id is not None:
@@ -1009,10 +1117,21 @@ class ArduinoDetailView(ListViewBase):
             
             # Get Arduino status
             status = arduino_details.get("arduino_status", "Unknown")
-            status_style = "green" if status == "CONNECTED" else "red"
-            if status == "DISABLED":
+            # Format status with proper styling for all possible states
+            if status == "CONNECTED":
+                status_style = "green"
+            elif status == "DISABLED":
                 status_style = "yellow"
-                
+            elif status == "DISCONNECTED" or status == "DISCONNECTED_RETRY_PENDING":
+                status_style = "red"
+            elif status == "CONNECTING" or status == "HANDSHAKING" or status == "WAITING_FOR_DEVICE":
+                status_style = "blue"
+            elif status == "RECONNECTING":
+                status_style = "magenta"
+            else:
+                # Default to red for unknown states
+                status_style = "red"
+            
             # Get enabled status - check if it exists to avoid errors
             enabled = False
             if "enabled" in arduino_details:
