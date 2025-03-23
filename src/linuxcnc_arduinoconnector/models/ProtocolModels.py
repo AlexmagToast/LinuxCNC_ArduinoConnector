@@ -197,7 +197,7 @@ class HandshakeMessage(ProtocolMessage):
     def __init__(self, payload):
         super().__init__(messageType=MessageType.MT_HANDSHAKE)
         
-        required_fields = ['pv', 'fm', 'to', 'ps']
+        required_fields = ['pv', 'fm', 'fx', 'to', 'ps']
         for field in required_fields:
             if field not in payload:
                 raise ValueError(f"{field} is undefined in payload")
@@ -207,6 +207,7 @@ class HandshakeMessage(ProtocolMessage):
             raise ValueError(f"Expected protocol version {MCU_PROTOCOL_VERSION}, got {self.protocolVersion}")
 
         self.enabledFeatures = payload['fm']
+        self.enabledFeaturesExtended = payload['fx']
         self.timeout = payload['to']
         self.profileSignature = payload['ps']
         self.UID = payload.get('ui', 'UNDEFINED')

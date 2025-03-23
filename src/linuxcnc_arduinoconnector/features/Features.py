@@ -327,6 +327,21 @@ class AnalogInputs(IOFeature):
     
     def OnMessageRecv(self, pm:ProtocolMessage):
         super().OnMessageRecv(pm)
+        if (pm.mt == MessageType.MT_PINCHANGE):
+            logging.debug(f'PINCHANGE: {pm.payload}')
+            for pi in pm.pinInfo:
+                # find the pin in the pinList
+                for p in self.pinList:
+                    # check if the pinID is an integer, and if it is, convert it to a string
+                    if isinstance(p.pinID, int):
+                        p.pinID = str(p.pinID)
+                    if p.pinID == pi.pinID:
+                        p.halPinCurrentValue = pi.pinValue
+                        p.arduinoPinCurrentValue = pi.pinValue  # Store the value in our permanent property
+                        if p.halPinConnection != None:
+                            p.halPinConnection.set(p.halPinCurrentValue)
+                        logging.debug(f'PININFO: {pi}')
+                        break
     
     def OnConnected(self):
         super().OnConnected()

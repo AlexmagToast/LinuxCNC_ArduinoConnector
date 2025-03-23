@@ -55,7 +55,14 @@ void setup() {
     Features::DigitalOutputs * dout = new Features::DigitalOutputs();
     featureController.RegisterFeature(dout);
   #endif
-
+  #ifdef AOUTPUTS
+    Features::AnalogOutputs * aout = new Features::AnalogOutputs();
+    featureController.RegisterFeature(aout);
+  #endif
+  #ifdef AINPUTS
+    Features::AnalogInputs * ain = new Features::AnalogInputs();
+    featureController.RegisterFeature(ain);
+  #endif
   serialClient.DoWork(); 
 }
 

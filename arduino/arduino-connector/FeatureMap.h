@@ -27,7 +27,7 @@
 #pragma once
 #ifndef FEATUREMAP_H_
 #define FEATUREMAP_H_
-
+#include "Config.h"
 #ifdef ENABLE_FEATUREMAP
 /**
  * Sets featureMap with currently enabled and disabled features.
@@ -48,62 +48,17 @@ struct featureMap
     #ifdef DEBUG
       bitSet(this->features, DEBUG);
     #endif
-    #ifdef INPUTS
-      bitSet(this->features, INPUTS);
+    #ifdef DINPUTS
+      bitSet(this->features, DINPUTS);
     #endif
-    #ifdef SINPUTS
-      bitSet(this->features, SINPUTS);
-    #endif
-    #ifdef OUTPUTS
-      bitSet(this->features, OUTPUTS);
-    #endif
-    #ifdef PWMOUTPUTS
-      bitSet(this->features, PWMOUTPUTS);
+    #ifdef DOUTPUTS
+      bitSet(this->features, DOUTPUTS);
     #endif
     #ifdef AINPUTS
       bitSet(this->features, AINPUTS);
     #endif
-    #ifdef DALLAS_TEMP_SENSOR
-      bitSet(this->features, DALLAS_TEMP_SENSOR);
-    #endif
-    #ifdef LPOTIS
-      bitSet(this->features, LPOTIS);
-    #endif
-    #ifdef BINSEL
-      bitSet(this->features, BINSEL);
-    #endif
-    #ifdef QUADENC
-      bitSet(this->features, QUADENC);
-    #endif
-    #ifdef JOYSTICK
-      bitSet(this->features, JOYSTICK);
-    #endif
-    #ifdef STATUSLED
-      bitSet(this->features, STATUSLED);
-    #endif
-    #ifdef DLED
-      bitSet(this->features, DLED);
-    #endif
-    #ifdef KEYPAD
-      bitSet(this->features, KEYPAD);
-    #endif
-    #ifdef SERIAL_TO_LINUXCNC
-      bitSet(this->features, SERIAL_TO_LINUXCNC);
-    #endif
-    #ifdef ETHERNET_UDP_TO_LINUXCNC
-      bitSet(this->features, ETHERNET_UDP_TO_LINUXCNC);
-    #endif
-    #ifdef ETHERNET_TCP_TO_LINUXCNC
-      bitSet(this->features, ETHERNET_TCP_TO_LINUXCNC);
-    #endif
-    #ifdef WIFI_UDP_TO_LINUXCNC
-      bitSet(this->features, WIFI_UDP_TO_LINUXCNC);
-    #endif
-    #ifdef WIFI_TCP_TO_LINUXCNC
-      bitSet(this->features, WIFI_TCP_TO_LINUXCNC);
-    #endif
-    #ifdef MEMORY_MONITOR
-      bitSet(this->features, MEMORY_MONITOR);
+    #ifdef AOUTPUTS
+      bitSet(this->features, AOUTPUTS);
     #endif
   }
 

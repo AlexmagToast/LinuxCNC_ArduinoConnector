@@ -40,6 +40,8 @@ class AnalogConfigElement(Enum):
     PIN_SMOOTHING = ['pin_smoothing', 200]
     PIN_MIN_VALUE = ['pin_min_val', 0]
     PIN_MAX_VALUE = ['pin_max_val', 1023]
+    PIN_SMOOTHING_ALGORITHM = ['pin_smoothing_algorithm', 'SIMPLE']
+    PIN_RESOLUTION = ['pin_resolution', 10]
     def __str__(self) -> str:
         return self.value[0]
     
@@ -196,6 +198,9 @@ class AnalogPin(ArduinoPin):
         self.pinSmoothing = AnalogConfigElement.PIN_SMOOTHING.defaultValue()
         self.pinMinVal = AnalogConfigElement.PIN_MIN_VALUE.defaultValue()
         self.pinMaxVal = AnalogConfigElement.PIN_MAX_VALUE.defaultValue()
+        self.pinSmoothingAlgorithm = AnalogConfigElement.PIN_SMOOTHING_ALGORITHM.defaultValue()
+        self.pinResolution = AnalogConfigElement.PIN_RESOLUTION.defaultValue()
+
 
         if yaml is not None: 
             self.parseYAML(yaml)
@@ -207,21 +212,36 @@ class AnalogPin(ArduinoPin):
             self.pinMinVal = int(doc[AnalogConfigElement.PIN_MIN_VALUE.value[0]])
         if AnalogConfigElement.PIN_MAX_VALUE.value[0] in doc:
             self.pinMaxVal = int(doc[AnalogConfigElement.PIN_MAX_VALUE.value[0]])
-
+        if AnalogConfigElement.PIN_SMOOTHING_ALGORITHM.value[0] in doc:
+            self.pinSmoothingAlgorithm = str(doc[AnalogConfigElement.PIN_SMOOTHING_ALGORITHM.value[0]])
+        if AnalogConfigElement.PIN_RESOLUTION.value[0] in doc:
+            self.pinResolution = int(doc[AnalogConfigElement.PIN_RESOLUTION.value[0]])
         # Also parse the parent class YAML settings
         super().parseYAML(doc)
 
     def __str__(self) -> str:
         return (f'\npinID={self.pinID}, pinName={self.pinName}, pinType={self.pinType.name}, '
                 f'halPinDirection={self.halPinDirection}, halPinType={self.halPinType}, '
-                f'pinSmoothing={self.pinSmoothing}, pinMinVal={self.pinMinVal}, pinMaxVal={self.pinMaxVal}')
+                f'pinSmoothing={self.pinSmoothing}, pinMinVal={self.pinMinVal}, pinMaxVal={self.pinMaxVal}, '
+                f'pinSmoothingAlgorithm={self.pinSmoothingAlgorithm}, pinResolution={self.pinResolution}')
 
+    def convertSmoothingType(self, smoothingType:str):
+        if smoothingType == 'SIMPLE':
+            return 0
+        elif smoothingType == 'EXPONENTIAL':
+            return 1
+        elif smoothingType == 'MOVING':
+            return 2
+        else:
+            return 0
     def toJson(self):
         s = super().toJson()
         s.update({
             'ps': self.pinSmoothing,
-            'pm': self.pinMaxVal,
-            'pn': self.pinMinVal
+            'px': self.convertSmoothingType(self.pinSmoothingAlgorithm),
+            'ph': self.pinMaxVal,
+            'pl': self.pinMinVal,
+            'pr': self.pinResolution
         })
         return s
 

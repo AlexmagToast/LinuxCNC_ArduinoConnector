@@ -669,6 +669,7 @@ protected:
   size_t _getHandshakeMessage(uint8_t * buffer, size_t size)
   {
     protocol::hm.featureMap = fm.features;//this->_featureMap;
+    protocol::hm.featureMapExtended = 0; // For future use
     protocol::hm.timeout = _retryPeriod * 2;
     #ifndef INTEGRATED_CALLBACKS_LOWMEMORY
     protocol::hm.uid = _uid;

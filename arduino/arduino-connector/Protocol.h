@@ -61,6 +61,7 @@ namespace protocol
 struct HandshakeMessage : public IMessage {
     uint8_t protocolVersion = PROTOCOL_VERSION;
     uint32_t featureMap;
+    uint32_t featureMapExtended;
     uint32_t timeout;
     uint32_t profileSignature = 0; // 0 indicates no config, >0 indicates an existing config
 
@@ -87,6 +88,7 @@ struct HandshakeMessage : public IMessage {
         doc["mt"] = MessageTypes::MT_HANDSHAKE;
         doc["pv"] = protocolVersion;
         doc["fm"] = featureMap;
+        doc["fx"] = featureMapExtended;
         doc["to"] = timeout;
         doc["ps"] = profileSignature;
 
@@ -104,6 +106,9 @@ struct HandshakeMessage : public IMessage {
         }
         if (doc.containsKey("fm")) {
             featureMap = doc["fm"].as<uint32_t>();
+        }
+        if (doc.containsKey("fx")) {
+            featureMapExtended = doc["fx"].as<uint32_t>();
         }
         if (doc.containsKey("to")) {
             timeout = doc["to"].as<uint32_t>();

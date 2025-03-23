@@ -43,7 +43,6 @@ namespace Features
         uint16_t debounce; // debounce time in milliseconds
         uint8_t inputPullup; // 1 if input pullup is enabled, 0 otherwise
         int8_t pinCurrentState; // current state of the pin
-        unsigned long t; // timestamp of the last state change
     };
     #endif
     #ifdef DOUTPUTS
@@ -310,7 +309,7 @@ namespace Features
                 }
 
 
-                if(pin.pinCurrentState != v && (currentMills - pin.t) >= pin.debounce)
+                if(pin.pinCurrentState != v && (currentMills - pin.ts) >= pin.debounce)
                 {
                     #ifdef DEBUG_VERBOSE
                         DEBUG_DEV.print(F("DINPUTS PIN CHANGE!"));
@@ -326,7 +325,7 @@ namespace Features
                     #endif
                     //serialClient.println(F("DINPUTS PIN CHANGE!"));
                     pin.pinCurrentState = v;
-                    pin.t = currentMills;
+                    pin.ts = currentMills;
 
                     // send update out
                     //serialClient
@@ -516,6 +515,235 @@ namespace Features
             //dp->pinCurrentState = 0;
             //dp->t = 0;
             *p = dp;
+            fail_reason = "";
+            return 0;
+        }
+
+    };
+    #endif
+    #if defined(AINPUTS) || defined(AOUTPUTS)
+    struct AnalogPin: public Pin
+    {
+        uint32_t ts; 
+        uint32_t pinInitialState; // initial state value
+        uint32_t pinConnectedState; // state when connected
+        uint32_t pinDisconnectedState; // state when disconnected
+        uint32_t pinSmoothing; // smoothing factor
+        uint8_t pinSmoothingAlgo; // smoothing algorithm 0: Simple, 1: Exponential, 2: Moving Average
+        uint32_t pinMaxValue; // maximum value of the pin
+        uint32_t pinMinValue; // minimum value of the pin
+        uint32_t pinCurrentState; // current state of the pin
+        uint32_t pinValueArray[SMOOTHING_ARRAY_SIZE]; // array of values for smoothing
+    };
+    #endif
+    #ifdef AINPUTS
+    class AnalogInputs: public Feature
+    {
+        public:
+        AnalogInputs() : Feature(AINPUTS, String("ANALOG_INPUTS"), DEFAULT_LOOP_FREQUENCY)
+        {
+            #ifdef DEBUG
+                DEBUG_DEV.println("AnalogInputs::AnalogInputs");
+            #endif
+        }
+
+        virtual void loop()
+        {
+            unsigned long currentMills = millis();
+            String output; // Used below to output Io update messages
+            JsonDocument doc;
+            JsonArray pa = doc.to<JsonArray>();
+           // loop through pins and perform reads
+            auto pins = GetPins();
+            for( int x = 0; x < GetPinCount(); x++ )
+            {
+                AnalogPin & pin = *static_cast<AnalogPin*>(pins[x]);
+
+            }
+            if (pa.size() > 0)
+            {
+
+                output = "";
+                serializeJson(doc, output);
+                #ifdef DEBUG_VERBOSE
+                    DEBUG_DEV.print(F("JSON = "));
+                    DEBUG_DEV.println(output);
+                #endif
+                uint8_t seqID = 0;
+                uint8_t resp = 0; // Future TODO: Consider requiring ACK/NAK, maybe.
+                uint8_t f = DINPUTS;
+                //String o = String(output.c_str());
+                serialClient.SendPinChangeMessage(f, seqID, resp, output);
+            }
+
+
+        }
+
+        virtual void setup()
+        {
+            #ifdef DEBUG
+                DEBUG_DEV.println("AnalogInputs::setup");
+            #endif
+
+            auto pins = GetPins();
+            for( int x = 0; x < GetPinCount(); x++ )
+            {
+                AnalogPin & pin = *static_cast<AnalogPin*>(pins[x]);
+                // Set pin current state to -1 to trigger initial state update
+                pin.pinCurrentState = -1;
+            }
+            // Then set the feature to ready, otherwise it will not be available to process incoming messages or perform local
+            // tasks such as pin reads.
+            SetFeatureReady(true);
+        }
+
+        protected:
+
+        // onConnected gets called when the python host has connected and completed handshaking
+        virtual void onConnected()
+        {
+            #ifdef DEBUG
+                DEBUG_DEV.println("AnalogInputs::onConnected");
+            #endif
+        }
+
+        // onDisconnected gets called when the python host has disconnected
+        virtual void onDisconnected()
+        {
+            #ifdef DEBUG
+                DEBUG_DEV.println("AnalogInputs::onDisconnected");
+            #endif
+        }
+
+        virtual uint8_t InitFeaturePin(uint8_t fid, uint8_t lid, String& pid, JsonDocument& json, String& fail_reason, Pin ** p)
+        {
+            AnalogPin * ap = new AnalogPin();
+            ap->fid = fid;
+            ap->lid = lid;
+            ap->mid = -1;
+
+            if(json.containsKey("id"))
+            {
+                String idstring = json[F("id")];
+                ap->pid = idstring;
+                ap->mid = convertPinString(idstring.c_str());
+            }
+            else
+            {
+               // dp->pinInitialState = -1;
+               fail_reason = "Missing pin 'id' key in JSON";
+               return ERR_INVALID_JSON;
+            }
+            if(json.containsKey("is"))
+            {
+                ap->pinInitialState = json["is"];
+            }
+            else
+            {
+                ap->pinInitialState = -1;
+            }
+            if(json.containsKey("cs"))
+            {
+                ap->pinConnectedState = json["cs"];
+            }
+            else
+            {
+                ap->pinConnectedState = -1;
+            }
+            if(json.containsKey("ds"))
+            {
+                ap->pinDisconnectedState = json["ds"];
+            }
+            else
+            {
+                ap->pinDisconnectedState = -1;
+            }
+            if(json.containsKey("ps"))
+            {
+                ap->pinSmoothing = json["ps"];
+            }
+            else
+            {
+                ap->pinSmoothing = 0;
+            }
+            if(json.containsKey("px"))
+            {
+                ap->pinSmoothingAlgo = json["px"];
+            }
+            else
+            {
+                ap->pinSmoothingAlgo = SMOOTHING_ALGORITHM_SIMPLE;
+            }
+            
+            if(json.containsKey("ph"))
+            {
+                ap->pinMaxValue = json["ph"];
+            }
+            else
+            {
+                ap->pinMaxValue = 1024;
+            }
+
+            if(json.containsKey("pl"))
+            {
+                ap->pinMinValue = json["pl"];
+            }
+            else
+            {
+                ap->pinMinValue = 0;
+            }
+
+            if( json.containsKey("pr"))
+            {
+                if (json["pr"] > 0)
+                {
+#if defined(ARDUINO_ARCH_SAMD) || defined(ARDUINO_ARCH_SAM) || defined(ARDUINO_ARCH_RENESAS) || defined(ARDUINO_ARCH_MBED) || defined(ARDUINO_ARCH_ESP32) || defined(ARDUINO_ARCH_RP2040)
+                    analogReadResolution(json["pr"]);
+#else
+                    DEBUG_DEV.println(F("ERROR: analogReadResolution not supported on this platform"));
+#endif
+                }
+                else
+                {
+                    DEBUG_DEV.println(F("INFO: pin resolution not set, using default number of bits"));
+                }
+
+            }
+            
+            #ifdef DEBUG
+                DEBUG_DEV.print(F("AnalogInputs::InitFeaturePin: "));
+                DEBUG_DEV.print(F("fid: "));
+                DEBUG_DEV.print(fid);
+                DEBUG_DEV.print(F(", lid: "));
+                DEBUG_DEV.print(lid);
+                DEBUG_DEV.print(F(", pid: "));
+                DEBUG_DEV.print(pid);
+                DEBUG_DEV.print(F(", mid: "));
+                DEBUG_DEV.print(ap->mid);
+                #ifdef DEBUG_VERBOSE
+                    DEBUG_DEV.print(F(", is: "));
+                    DEBUG_DEV.print(ap->pinInitialState);
+                    DEBUG_DEV.print(F(", cs: "));
+                    DEBUG_DEV.print(ap->pinConnectedState);
+                    DEBUG_DEV.print(F(", ds: "));
+                    DEBUG_DEV.print(ap->pinDisconnectedState);
+                    DEBUG_DEV.print(F(", ps: "));
+                    DEBUG_DEV.print(ap->pinSmoothing);
+                    DEBUG_DEV.print(F(", px: "));
+                    DEBUG_DEV.println(ap->pinSmoothingAlgo);
+                    DEBUG_DEV.print(F(", ph: "));
+                    DEBUG_DEV.print(ap->pinMaxValue);
+                    DEBUG_DEV.print(F(", pl: "));
+                    DEBUG_DEV.println(ap->pinMinValue);
+                #endif
+            #endif
+            //dp->pinConnectedState = 1;
+            //dp->pinDisconnectedState = 0;
+            //dp->debounce = 0;
+            //dp->inputPullup = 0;
+            //dp->pinCurrentState = 0;
+            //dp->t = 0;
+            *p = ap;
             fail_reason = "";
             return 0;
         }

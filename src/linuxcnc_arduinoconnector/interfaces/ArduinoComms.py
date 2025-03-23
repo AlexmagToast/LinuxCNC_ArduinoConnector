@@ -6,6 +6,7 @@ import time
 import traceback
 import serial
 from strenum import StrEnum
+from linuxcnc_arduinoconnector.features.Features import FeatureMapDecoder
 from linuxcnc_arduinoconnector.interfaces.HalInterface import HalInterface
 from linuxcnc_arduinoconnector.models.ConfigModels import ArduinoSettings
 from linuxcnc_arduinoconnector.models.ProtocolModels import ConnectionState, ConnectionType, InviteSyncMessage, MessageDecoder, MessageEncoder, MessageType, ProtocolMessage
@@ -49,6 +50,7 @@ class Connection(MessageDecoder):
                 self.timeout = m.timeout / 1000
                 self.arduinoProfileSignature = m.profileSignature
                 self.enabledFeatures = m.enabledFeatures
+                self.featureMapDecoder = FeatureMapDecoder(m.enabledFeatures)
                 self.uid = m.UID
                 self.setState(ConnectionState.CONNECTED)
                 self.lastMessageReceived = time.time()
@@ -423,87 +425,12 @@ class ArduinoConnection(HalInterface):
         except Exception as ex:
             just_the_string = traceback.format_exc()
             logging.debug(f'PYDEBUG: Error [{self.settings.alias}: {str(just_the_string)}') 
-        pass
-        '''
-        if debug_comm:print(f'PYDEBUG onMessageRecv() - Message Type {m.messageType}, Values = {m.payload}')
-        if m.messageType == MessageType.MT_CONFIG_ACK:
-            pass
-        if m.messageType == MessageType.MT_CONFIG_NAK:
-            pass
-        if m.messageType == MessageType.MT_PINCHANGE:
-            if debug_comm:print(f'PYDEBUG onMessageRecv() - Received MT_PINCHANGE, Values = {m.payload}')
-
-            try:
-                #pc = PinChangeMessage()
-                #pc.parse(m)
-                fid = m.payload['fi']
-                sid = m.payload['si']
-                rr = m.payload['rr']
-                ms = m.payload['ms']
-
-
-                for k, v in self.settings.io_map.items():
-                    if fid == int(k):#k.value[FEATURE_INDEX_KEY]:
-                        j = json.loads(ms)
-                        for val in j['pa']:
-                            for pin in v:
-                                if pin.pinEnabled == False:
-                                    logging.debug(f'PYDEBUG: Error. Cannot update PIN that is disabled by the yaml profile.') 
-                                    return
-                                if pin.pinID == val['pid']:
-                                    self.component[pin.pinName] = val['v']
-                        break
-                
-            except Exception as ex:
-                just_the_string = traceback.format_exc()
-                print(just_the_string)
-                logging.debug(f'PYDEBUG: error: {str(ex)}') 
-         
-        '''
-    #def doFeaturePinUpdates(self):
-        '''
-        for k, v in self.settings.io_map.items():
-            if k.name == ConfigPinTypes.DIGITAL_OUTPUTS.name or k.name == ConfigPinTypes.ANALOG_OUTPUTS.name:
-                for v1 in v:
-                    
-                    #if v1.halPinDirection == HalPinDirection.HAL_OUT:
-                    r = v1.halPinConnection.Get()
-                    if r == v1.halPinCurrentValue:
-                        
-                        continue
-                    else:
-                        
-                        #print(f'VALUE CHANGED!!! Old Value {v1.halPinCurrentValue}, New Value {r}')
-                        ## Send with logical pin ID to avoid for loop of pins by arduino.
-                        j = {
-                        "pa": [
-                            {"lid": v1.pinLogicalID, "pid": int(v1.pinID), "v":int(r)}
-                        ]
-                        }
-                        #v1.halPinCurrentValue = r
-                        pcm = PinChangeMessage(featureID=v1.featureID, seqID=0, responseReq=0, message=json.dumps(j))
-                        try:
-                            self.serialConn.sendMessage(pcm.packetize())
-                        except Exception as error:
-                            just_the_string = traceback.format_exc()
-                            logging.debug(f'PYDEBUG: ArduinoConnection::doFeaturePinUpdates, dev={self.settings.dev}, alias={self.settings.alias}, Exception: {str(error)}, Traceback = {just_the_string}')
-                            # Future TODO: Consider doing something intelligent and not just reporting an error. Maybe increment a hal pin that reflects error counts?
-                            #return
-                        #time.sleep(.2)
-                        v1.halPinCurrentValue = r
-                    
-                         #= HalPinConnection(component=self.component, pinName=v1.pinName, pinType=v1.halPinType, pinDirection=v1.halPinDirection) 
-            
-        '''
+ 
         
 
     def doWork(self):
         if self.settings.enabled == False:
             return # do nothing. 
-        
-        #if self.serialConn.connectionState == ConnectionState.CONNECTED:
-
-        #self.doFeaturePinUpdates()
 
         if self.serialConn.status == ThreadStatus.STOPPED:
             self.serialConn.startRxTask()
@@ -533,6 +460,11 @@ class ArduinoConnection(HalInterface):
         if self.serialConn.connectionState == ConnectionState.CONNECTED:
             self.serialDeviceAvailable = True
         for f in self.settings.io_map.keys():
+            if self.serialConn.connectionState == ConnectionState.CONNECTED:
+                maybe_enabled = self.serialConn.featureMapDecoder.isFeatureEnabledByInt(f.featureID)
+                if maybe_enabled == False:
+                    logging.error(f'ERROR: ArduinoConnection::doWork, dev={self.settings.dev}, alias={self.settings.alias}, Feature {f.featureName} is not enabled by arduino config. See Config.h for Feature flags. Skipping..')
+                    continue
             if self.serialConn.connectionState == ConnectionState.CONNECTED and f.ConfigSyncError() == True:
                 logging.debug(f'PYDEBUG: ArduinoConnection::doWork, dev={self.settings.dev}, alias={self.settings.alias}, Feature {f.featureName} reported sync error. Terminating connection..')
                 self.serialConn.setState(newState=ConnectionState.ERROR)
