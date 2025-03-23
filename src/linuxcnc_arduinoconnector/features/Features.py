@@ -295,9 +295,14 @@ class DigitalOutputs(IOFeature):
     
     def Loop(self):
         super().Loop()
-        if (self.FeatureReady() == True and self.ConfigComplete() == True and self.GetPinChangePending() == True):
+        if (self.FeatureReady() == True and self.ConfigComplete() == True ):
             #self.Debug('Feature is ready for processing.')
+            #if self.GetPinChangePending() == True:
             for p in self.pinList:
+                if p.halPinConnection != None:
+                    currentValue = p.halPinConnection.get()
+                    p.halPinCurrentValue = 1 if currentValue else 0
+                    
                 if p.arduinoPinCurrentValue != p.halPinCurrentValue:
                     self.Debug(f'PINCHANGE: logicalID = {p.pinLogicalID}, pinID = {p.pinID}, halPinCurrentValue = {p.halPinCurrentValue}, arduinoPinCurrentValue = {p.arduinoPinCurrentValue}')
                     for c in self._sendMessageCallbacks:
@@ -308,7 +313,7 @@ class DigitalOutputs(IOFeature):
                             c(pc.packetize())
                         self.Debug(f'PINCHANGE: {pc.packetize()}')
                     p.arduinoPinCurrentValue = p.halPinCurrentValue
-            self.SetPinChangePending(False)
+                #self.SetPinChangePending(False)
             pass
 '''
     AnalogInputs
