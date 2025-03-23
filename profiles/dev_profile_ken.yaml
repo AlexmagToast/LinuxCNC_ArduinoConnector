@@ -35,7 +35,7 @@ mcu:
         pin_resolution: 12  #optional, some boards support analogReadResolution(X) to set a different resolution
         pin_connected_state: 32 #optional, value to set the pin to when the board is connected
         pin_disconnected_state: 64 #optional, value to set the pin to when the board is disconnected
-    analogOutputs:
+    analogOutputsDisabled:
       - pin_id: A2
         pin_name: aout.2 #hal pin name
         pin_type: HAL_FLOAT #hal pin type

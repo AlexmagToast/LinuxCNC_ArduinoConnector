@@ -321,7 +321,7 @@ class DigitalOutputs(IOFeature):
 class AnalogInputs(IOFeature):
     def __init__(self) -> None:
         IOFeature.__init__(self, featureName=str(Features.ANALOG_INPUTS), featureConfigName=Features.ANALOG_INPUTS.configName(), featureID=int(Features.ANALOG_INPUTS))
-    
+        self.featureReady = True
     def YamlParser(self):
         return lambda yaml, featureID : AnalogPin(yaml=yaml, featureID=featureID, halPinDirection=HalPinDirection.HAL_OUT)
     
