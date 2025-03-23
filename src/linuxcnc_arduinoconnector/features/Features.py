@@ -360,10 +360,43 @@ class AnalogInputs(IOFeature):
 class AnalogOutputs(IOFeature):
     def __init__(self) -> None:
         IOFeature.__init__(self, featureName=str(Features.ANALOG_OUTPUTS), featureConfigName=Features.ANALOG_OUTPUTS.configName(), featureID=int(Features.ANALOG_OUTPUTS))
-    
+        self.featureReady = True
     def YamlParser(self):
         return lambda yaml, featureID : AnalogPin(yaml=yaml, featureID=featureID, halPinDirection=HalPinDirection.HAL_IN)
-
+    def OnMessageRecv(self, pm:ProtocolMessage):
+        super().OnMessageRecv(pm)
+    
+    def OnConnected(self):
+        super().OnConnected()
+    
+    def OnDisconnected(self):
+        super().OnDisconnected()
+    
+    def Setup(self):
+        super().Setup()
+    
+    def Loop(self):
+        super().Loop()
+        if (self.FeatureReady() == True and self.ConfigComplete() == True ):
+            #self.Debug('Feature is ready for processing.')
+            #if self.GetPinChangePending() == True:
+            for p in self.pinList:
+                if p.halPinConnection != None:
+                    currentValue = p.halPinConnection.get()
+                    p.halPinCurrentValue = currentValue
+                    
+                if p.arduinoPinCurrentValue != p.halPinCurrentValue:
+                    self.Debug(f'PINCHANGE: logicalID = {p.pinLogicalID}, pinID = {p.pinID}, halPinCurrentValue = {p.halPinCurrentValue}, arduinoPinCurrentValue = {p.arduinoPinCurrentValue}')
+                    for c in self._sendMessageCallbacks:
+                        #message_json = { 'l': p.pinLogicalID, 'p': p.pinID, 'v': p.halPinCurrentValue }
+                        json_str = f'{{"l": {p.pinLogicalID}, "p": {p.pinID}, "v": {p.halPinCurrentValue}}}'
+                        pc = PinChangeMessage(featureID=p.featureID, seqID=p.pinLogicalID, responseReq=0, message=json_str)
+                        for c in self._sendMessageCallbacks:
+                            c(pc.packetize())
+                        self.Debug(f'PINCHANGE: {pc.packetize()}')
+                    p.arduinoPinCurrentValue = p.halPinCurrentValue
+                #self.SetPinChangePending(False)
+            pass
 # Create an instance of each feature for YAML processing purposes.
 # When the yaml config is parsed, the objects get copied/duplicated and assigned to a particular MCU.  Each MCU has its own copy of a feature object so
 # logic can be executed as needed for Config updates, pin updates, etc.
@@ -371,13 +404,13 @@ class AnalogOutputs(IOFeature):
 di = DigitalInputs()
 do = DigitalOutputs()
 ai = AnalogInputs()
-#ao = AnalogOutputs()
+ao = AnalogOutputs()
 
 # the featureList holds the IOFeature object copies for reference during yaml parsing.
 InstantiatedFeaturesList = [ di, 
                 do,
                 ai,
-                #ao
+                ao
               ]
 
 class FeatureMapDecoder:
