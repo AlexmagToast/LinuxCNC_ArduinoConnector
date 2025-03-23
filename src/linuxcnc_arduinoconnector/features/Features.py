@@ -324,6 +324,21 @@ class AnalogInputs(IOFeature):
     
     def YamlParser(self):
         return lambda yaml, featureID : AnalogPin(yaml=yaml, featureID=featureID, halPinDirection=HalPinDirection.HAL_OUT)
+    
+    def OnMessageRecv(self, pm:ProtocolMessage):
+        super().OnMessageRecv(pm)
+    
+    def OnConnected(self):
+        super().OnConnected()
+    
+    def OnDisconnected(self):
+        super().OnDisconnected()
+    
+    def Setup(self):
+        super().Setup()
+    
+    def Loop(self):
+        super().Loop()
 '''
     AnalogOutputs
 '''
@@ -340,13 +355,13 @@ class AnalogOutputs(IOFeature):
  
 di = DigitalInputs()
 do = DigitalOutputs()
-#ai = AnalogInputs()
+ai = AnalogInputs()
 #ao = AnalogOutputs()
 
 # the featureList holds the IOFeature object copies for reference during yaml parsing.
 InstantiatedFeaturesList = [ di, 
                 do,
-                #ai,
+                ai,
                 #ao
               ]
 

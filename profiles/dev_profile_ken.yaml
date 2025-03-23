@@ -4,7 +4,7 @@ mcu:
   #dev: /dev/tty.usbmodemF412FA68D6802
   dev: /dev/serial/by-id/usb-Arduino_UNO_WiFi_R4_CMSIS-DAP_F412FA68D680-if01
   enabled: true
-  hal_emulation: false
+  hal_emulation: true
   #connection: 
   #  baudrate: 9600
   io_map:
@@ -24,3 +24,10 @@ mcu:
         pin_name: dout.4 #hal pin name
       - pin_id: 5
         pin_name: dout.5 #hal pin name
+    analogInputs:
+      - pin_id: A0
+        pin_name: ain #hal pin name           #optional
+        pin_type: HAL_FLOAT #hal pin type     #optional    
+        pin_smoothing: 200 #smoothing const   #optional
+        pin_min_val: 10 #minimum value         #optional
+        pin_max_val: 4096 #maximum value      #optional
