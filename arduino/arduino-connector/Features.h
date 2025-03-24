@@ -132,6 +132,7 @@ namespace Features
                 #endif
                 String pin_id = doc["p"];
                 unsigned long pin_lid = doc["l"];
+                String p_value = doc["v"];
                 if (pin_lid > GetPinCount())
                 {
                     #ifdef DEBUG
@@ -162,8 +163,16 @@ namespace Features
                             DEBUG_DEV.print("Value: ");
                             DEBUG_DEV.println(value);
                         #endif
-                        int value_converted = value.toInt();
-                        digitalWrite(pin->mid, value_converted);
+                        int value_converted = p_value.toInt();
+                        if (pin->mid != -1)
+                        {
+                            digitalWrite(pin->mid, value_converted);
+                        }
+                        else    
+                        {
+                            digitalWrite(atoi(pin->pid.c_str()), value_converted);
+                        }
+
                     }
                     else
                     {
@@ -298,6 +307,8 @@ namespace Features
                 //DEBUG_DEV.print("ii = ");
                 //DEBUG_DEV.println(ii);
                 //int i = convertPinString(pin.pid.c_str());
+
+                
                 int v = 0;
                 if (pin.mid != -1)
                 {
@@ -545,6 +556,7 @@ namespace Features
             #ifdef DEBUG
                 DEBUG_DEV.println("AnalogInputs::AnalogInputs");
             #endif
+            this->SetLoopFreq(0);
         }
 
 #ifdef AINPUTS_SMOOTHING_SIMPLE
@@ -656,26 +668,31 @@ namespace Features
                 } else {
                     rawValue = analogRead(atoi(pin.pid.c_str()));
                 }
-                
+                DEBUG_DEV.print(F("Raw value: "));
+                DEBUG_DEV.println(rawValue);
                 // Apply smoothing based on algorithm and available implementations
                 // Check which algorithms are defined and match with pin.pinSmoothingAlgo
 #ifdef AINPUTS_SMOOTHING_EXPONENTIAL
                 if (pin.pinSmoothingAlgo == AINPUTS_SMOOTHING_EXPONENTIAL) {
+                    DEBUG_DEV.print(F("ExponentialSmoothing"));
                     newValue = ExponentialSmoothing(pin, rawValue);
                 } else
 #endif
 #ifdef AINPUTS_SMOOTHING_MOVING_AVERAGE
                 if (pin.pinSmoothingAlgo == AINPUTS_SMOOTHING_MOVING_AVERAGE) {
+                    DEBUG_DEV.print(F("MovingAverage"));
                     newValue = MovingAverage(pin, rawValue);
                 } else
 #endif
 #ifdef AINPUTS_SMOOTHING_SIMPLE
                 if (pin.pinSmoothingAlgo == AINPUTS_SMOOTHING_SIMPLE) {
+                    DEBUG_DEV.print(F("SimpleAverage"));
                     newValue = SimpleAverage(pin, rawValue);
                 } else
 #endif
                 {
                     // Default fallback if no matching algorithm is available
+                    DEBUG_DEV.print(F("No smoothing algorithm"));
                     newValue = rawValue;
                 }
                 
@@ -694,6 +711,8 @@ namespace Features
                         DEBUG_DEV.print(F("AINPUTS PIN CHANGE!"));
                         DEBUG_DEV.print(F("PIN:"));
                         DEBUG_DEV.println(pin.pid);
+                        DEBUG_DEV.print(F("MID:"));
+                        DEBUG_DEV.println(pin.mid);
                         DEBUG_DEV.print(F("Current value: "));
                         DEBUG_DEV.println(pin.pinCurrentState);
                         DEBUG_DEV.print(F("New value: "));
@@ -815,6 +834,8 @@ namespace Features
             if(json.containsKey("px"))
             {
                 ap->pinSmoothingAlgo = json["px"];
+                DEBUG_DEV.print(F("Smoothing algorithm: "));
+                DEBUG_DEV.println(ap->pinSmoothingAlgo);
             }
             else
             {
@@ -887,6 +908,12 @@ namespace Features
                     DEBUG_DEV.println(ap->pinMinValue);
                 #endif
             #endif
+
+            if (ap->mid == -1) {
+                pinMode(atoi(ap->pid.c_str()), INPUT);
+            } else {
+                pinMode(ap->mid, INPUT);
+            }
             //dp->pinConnectedState = 1;
             //dp->pinDisconnectedState = 0;
             //dp->debounce = 0;
@@ -900,5 +927,253 @@ namespace Features
 
     };
     #endif
+
+    #ifdef AOUTPUTS
+    class AnalogOutputs: public Feature
+    {
+        public:
+        AnalogOutputs() : Feature(AOUTPUTS, String("ANALOG_OUTPUTS"), DEFAULT_LOOP_FREQUENCY)
+        {
+            #ifdef DEBUG
+                DEBUG_DEV.println("AnalogOutputs::AnalogOutputs");
+            #endif
+        }
+
+        virtual void loop()
+        {
+ 
+        }
+
+        virtual void setup()
+        {
+            #ifdef DEBUG_VERBOSE
+                DEBUG_DEV.println("AnalogOutputs::setup");
+            #endif
+            SetFeatureReady(true);
+        }
+
+        protected:
+
+        // onConnected gets called when the python host has connected and completed handshaking
+        virtual void onConnected()
+        {
+            #ifdef DEBUG_VERBOSE
+                DEBUG_DEV.println("AnalogOutputs::onConnected");
+            #endif
+        }
+
+        // onDisconnected gets called when the python host has disconnected
+        virtual void onDisconnected()
+        {
+            #ifdef DEBUG_VERBOSE
+                DEBUG_DEV.println("AnalogOutputs::onDisconnected");
+            #endif
+        }
+
+        virtual void onPinChange(const protocol::PinChangeMessage& pcm) {
+            #ifdef DEBUG_VERBOSE
+                DEBUG_DEV.println("AnalogOutputs::onPinChange");
+                DEBUG_DEV.print("Feature ID: ");
+                DEBUG_DEV.println(pcm.featureID);
+                DEBUG_DEV.print("Seq ID: ");
+                DEBUG_DEV.println(pcm.seqID);
+                DEBUG_DEV.print("Response Required: ");
+                DEBUG_DEV.println(pcm.responseReq);
+                DEBUG_DEV.print("Message: ");
+                DEBUG_DEV.println(pcm.message);
+            #endif
+             JsonDocument doc; 
+             DeserializationError error = deserializeJson(doc, pcm.message);
+             if (error) {
+                #ifdef DEBUG_VERBOSE
+                    DEBUG_DEV.print("Error: ");
+                    DEBUG_DEV.println(error.f_str());
+                #endif
+             }
+             else
+             {
+                if (!doc.containsKey("p") || !doc.containsKey("l") || !doc.containsKey("v"))
+                {
+                    #ifdef DEBUG
+                        DEBUG_DEV.println("ERROR. Missing required keys in JSON");
+                    #endif
+                    return;
+                }
+
+                #ifdef DEBUG_VERBOSE
+                    String pid = doc["p"];
+                    DEBUG_DEV.print("PID: ");
+                    DEBUG_DEV.println(pid);
+                    String lid = doc["l"];
+                    DEBUG_DEV.print("LID: ");
+                    DEBUG_DEV.println(lid);
+                    String value = doc["v"];
+                    DEBUG_DEV.print("Value: ");
+                    DEBUG_DEV.println(value);
+                #endif
+                String pin_id = doc["p"];
+                unsigned long pin_lid = doc["l"];
+                if (pin_lid > GetPinCount())
+                {
+                    #ifdef DEBUG
+                        DEBUG_DEV.print("LID out of range: ");
+                        DEBUG_DEV.println(pin_lid);
+                    #endif
+                }
+                else
+                {
+
+                    AnalogPin * pin = static_cast<AnalogPin*>(GetPin(pin_lid));
+                    #ifdef DEBUG_VERBOSE
+                        DEBUG_DEV.print("Pin MID: ");
+                        DEBUG_DEV.println(pin->mid);
+                        DEBUG_DEV.print("Pin PID: ");
+                        DEBUG_DEV.println(pin->pid);
+                        DEBUG_DEV.print("Pin LID: ");
+                        DEBUG_DEV.println(pin->lid);
+                        DEBUG_DEV.print("Pin FID: ");
+                        DEBUG_DEV.println(pin->fid);
+                    #endif
+                    if (pin != nullptr)
+                    {
+                        #ifdef DEBUG_VERBOSE
+                            DEBUG_DEV.print("Writing to pin: ");
+                            DEBUG_DEV.println(pin->mid);
+                            DEBUG_DEV.print("Value: ");
+                            DEBUG_DEV.println(doc["v"].as<int>());
+                        #endif
+                        int value_converted = doc["v"];
+                        // Constrain to min/max values if configured
+                        //if (value_converted > pin->pinMaxValue) value_converted = pin->pinMaxValue;
+                        //if (value_converted < pin->pinMinValue) value_converted = pin->pinMinValue;
+                        
+                        if (pin->mid != -1) {
+                            analogWrite(pin->mid, value_converted);
+                        } else {
+                            analogWrite(atoi(pin->pid.c_str()), value_converted);
+                        }
+                    }
+                    else
+                    {
+                        #ifdef DEBUG
+                            DEBUG_DEV.print("Pin not found: ");
+                            DEBUG_DEV.println(pin_lid);
+                        #endif
+                    }
+                }
+             }
+        }
+
+        virtual uint8_t InitFeaturePin(uint8_t fid, uint8_t lid, String& pid, JsonDocument& json, String& fail_reason, Pin ** p)
+        {
+            AnalogPin * ap = new AnalogPin();
+            ap->fid = fid;
+            ap->lid = lid;
+
+            ap->mid = -1;
+            if(json.containsKey("id"))
+            {
+                String idstring = json[F("id")];
+                ap->pid = idstring;
+                ap->mid = convertPinString(idstring.c_str());
+            }
+            else
+            {
+               fail_reason = "Missing pin 'id' key in JSON";
+               return ERR_INVALID_JSON;
+            }
+            if(json.containsKey("is"))
+            {
+                ap->pinInitialState = json["is"];
+                if(ap->mid==-1)
+                    analogWrite(atoi(ap->pid.c_str()), ap->pinInitialState);
+                else
+                    analogWrite(ap->mid, ap->pinInitialState);
+            }
+            else
+            {
+                ap->pinInitialState = -1;
+            }
+            if(json.containsKey("cs"))
+            {
+                ap->pinConnectedState = json["cs"];
+            }
+            else
+            {
+                ap->pinConnectedState = -1;
+            }
+            if(json.containsKey("ds"))
+            {
+                ap->pinDisconnectedState = json["ds"];
+            }
+            else
+            {
+                ap->pinDisconnectedState = -1;
+            }
+            
+            if(json.containsKey("ph"))
+            {
+                ap->pinMaxValue = json["ph"];
+            }
+
+            if(json.containsKey("pl"))
+            {
+                ap->pinMinValue = json["pl"];
+            }
+
+
+            if(json.containsKey("pw"))
+            {
+                if (json["pw"] > 0)
+                {
+#if defined(ARDUINO_ARCH_SAMD) || defined(ARDUINO_ARCH_SAM) || defined(ARDUINO_ARCH_RENESAS) || defined(ARDUINO_ARCH_MBED) || defined(ARDUINO_ARCH_ESP32) || defined(ARDUINO_ARCH_RP2040)
+                    analogWriteResolution(json["pw"]);
+#else
+                    DEBUG_DEV.println(F("ERROR: analogWriteResolution not supported on this platform"));
+#endif
+                }
+                else
+                {
+                    DEBUG_DEV.println(F("INFO: pin write resolution not set, using default number of bits"));
+                }
+            }
+            
+            #ifdef DEBUG
+                DEBUG_DEV.print(F("AnalogOutputs::InitFeaturePin: "));
+                DEBUG_DEV.print(F("fid: "));
+                DEBUG_DEV.print(fid);
+                DEBUG_DEV.print(F(", lid: "));
+                DEBUG_DEV.print(lid);
+                DEBUG_DEV.print(F(", pid: "));
+                DEBUG_DEV.println(ap->pid);
+                DEBUG_DEV.print(F("mid: "));
+                DEBUG_DEV.println(ap->mid);
+                #ifdef DEBUG_VERBOSE
+                    DEBUG_DEV.print(F(", is: "));
+                    DEBUG_DEV.print(ap->pinInitialState);
+                    DEBUG_DEV.print(F(", cs: "));
+                    DEBUG_DEV.print(ap->pinConnectedState);
+                    DEBUG_DEV.print(F(", ds: "));
+                    DEBUG_DEV.print(ap->pinDisconnectedState);
+                    DEBUG_DEV.print(F(", ph: "));
+                    DEBUG_DEV.print(ap->pinMaxValue);
+                    DEBUG_DEV.print(F(", pl: "));
+                    DEBUG_DEV.println(ap->pinMinValue);
+                #endif
+            #endif
+            
+            if (ap->mid == -1) {
+                pinMode(atoi(ap->pid.c_str()), OUTPUT);
+            } else {
+                pinMode(ap->mid, OUTPUT);
+            }
+            
+            *p = ap;
+            fail_reason = "";
+            return 0;
+        }
+    };
+    #endif
+
 }
 #endif

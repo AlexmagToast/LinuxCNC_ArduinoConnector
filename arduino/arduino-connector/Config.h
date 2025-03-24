@@ -37,7 +37,7 @@
 #define DINPUTS                     4
 #define DOUTPUTS                    5 
 #define AINPUTS                     6
-//define AOUTPUTS                    7
+#define AOUTPUTS                    7
 //#define AOUTPUTS                    7                    
 //#define SINPUTS                   3                     
 
@@ -65,11 +65,11 @@
 const uint16_t SERIAL_STARTUP_DELAY = 5000; // In milliseconds
 const uint16_t SERIAL_RX_TIMEOUT = 5000; // In milliseconds. On handhshake, the python side is told to use this value, times two, to determine connection timeouts. 
 
-#define SMOOTHING_ARRAY_SIZE 10 // Size of the array for smoothing
+#define SMOOTHING_ARRAY_SIZE 200 // Size of the array for smoothing
 
-#define AINPUTS_SMOOTHING_SIMPLE 1
-#define AINPUTS_SMOOTHING_EXPONENTIAL 2
-#define AINPUTS_SMOOTHING_MOVING_AVERAGE 3
+#define AINPUTS_SMOOTHING_SIMPLE 0
+#define AINPUTS_SMOOTHING_EXPONENTIAL 1
+#define AINPUTS_SMOOTHING_MOVING_AVERAGE 2
 
 
 

@@ -388,8 +388,10 @@ class AnalogOutputs(IOFeature):
                 if p.arduinoPinCurrentValue != p.halPinCurrentValue:
                     self.Debug(f'PINCHANGE: logicalID = {p.pinLogicalID}, pinID = {p.pinID}, halPinCurrentValue = {p.halPinCurrentValue}, arduinoPinCurrentValue = {p.arduinoPinCurrentValue}')
                     for c in self._sendMessageCallbacks:
-                        #message_json = { 'l': p.pinLogicalID, 'p': p.pinID, 'v': p.halPinCurrentValue }
-                        json_str = f'{{"l": {p.pinLogicalID}, "p": {p.pinID}, "v": {p.halPinCurrentValue}}}'
+                        import json
+                        message_json = { 'l': p.pinLogicalID, 'p': p.pinID, 'v': p.halPinCurrentValue }
+                        json_str = json.dumps(message_json)
+                        #json_str = f'{{"l": {p.pinLogicalID}, "p": {p.pinID}, "v": {p.halPinCurrentValue}}}'
                         pc = PinChangeMessage(featureID=p.featureID, seqID=p.pinLogicalID, responseReq=0, message=json_str)
                         for c in self._sendMessageCallbacks:
                             c(pc.packetize())

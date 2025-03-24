@@ -40,7 +40,7 @@ class AnalogConfigElement(Enum):
     PIN_SMOOTHING = ['pin_smoothing', 200]
     PIN_MIN_VALUE = ['pin_min_val', 0]
     PIN_MAX_VALUE = ['pin_max_val', 1023]
-    PIN_SMOOTHING_ALGORITHM = ['pin_smoothing_algorithm', 'SIMPLE']
+    PIN_SMOOTHING_ALGO = ['pin_smoothing_algo', 'SIMPLE']
     PIN_RESOLUTION = ['pin_resolution', 10]
     def __str__(self) -> str:
         return self.value[0]
@@ -198,7 +198,7 @@ class AnalogPin(ArduinoPin):
         self.pinSmoothing = AnalogConfigElement.PIN_SMOOTHING.defaultValue()
         self.pinMinVal = AnalogConfigElement.PIN_MIN_VALUE.defaultValue()
         self.pinMaxVal = AnalogConfigElement.PIN_MAX_VALUE.defaultValue()
-        self.pinSmoothingAlgorithm = AnalogConfigElement.PIN_SMOOTHING_ALGORITHM.defaultValue()
+        self.pinSmoothingAlgorithm = AnalogConfigElement.PIN_SMOOTHING_ALGO.defaultValue()
         self.pinResolution = AnalogConfigElement.PIN_RESOLUTION.defaultValue()
 
 
@@ -212,8 +212,9 @@ class AnalogPin(ArduinoPin):
             self.pinMinVal = int(doc[AnalogConfigElement.PIN_MIN_VALUE.value[0]])
         if AnalogConfigElement.PIN_MAX_VALUE.value[0] in doc:
             self.pinMaxVal = int(doc[AnalogConfigElement.PIN_MAX_VALUE.value[0]])
-        if AnalogConfigElement.PIN_SMOOTHING_ALGORITHM.value[0] in doc:
-            self.pinSmoothingAlgorithm = str(doc[AnalogConfigElement.PIN_SMOOTHING_ALGORITHM.value[0]])
+        if AnalogConfigElement.PIN_SMOOTHING_ALGO.value[0] in doc:
+            self.pinSmoothingAlgorithm = str(doc[AnalogConfigElement.PIN_SMOOTHING_ALGO.value[0]])
+            pass
         if AnalogConfigElement.PIN_RESOLUTION.value[0] in doc:
             self.pinResolution = int(doc[AnalogConfigElement.PIN_RESOLUTION.value[0]])
         # Also parse the parent class YAML settings

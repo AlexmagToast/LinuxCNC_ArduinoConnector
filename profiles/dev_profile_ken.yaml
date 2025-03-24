@@ -10,7 +10,7 @@ mcu:
   io_map:
         
         
-    digitalInputs:
+    digitalInputsDisabled:
       - pin_id: 2
         pin_name: din.2 #hal pin name
         input_pullup: true
@@ -19,7 +19,7 @@ mcu:
         pin_name: din.3 #hal pin name
         input_pullup: true
         pin_debounce: 5
-    digitalOutputs:
+    digitalOutputsDisabled:
       - pin_id: 4
         pin_name: dout.4 #hal pin name
       - pin_id: 5
@@ -29,26 +29,20 @@ mcu:
         pin_name: ain.1 #hal pin name           #optional
         pin_type: HAL_FLOAT #hal pin type     #optional    
         pin_smoothing: 200 #smoothing const   #optional
-        pin_smoothing_algo: EXPONENTIAL #optional, SIMPLE, EXPONENTIAL, MOVING
-        pin_min_val: 10 #minimum value         #optional
+        pin_smoothing_algo: MOVING #optional, SIMPLE, EXPONENTIAL, MOVING
+        pin_min_val: 0 #minimum value         #optional
         pin_max_val: 1024 #maximum value      #optional
         pin_resolution: 12  #optional, some boards support analogReadResolution(X) to set a different resolution
-        pin_connected_state: 32 #optional, value to set the pin to when the board is connected
-        pin_disconnected_state: 64 #optional, value to set the pin to when the board is disconnected
-      - pin_id: A2
-        pin_name: ain.2 #hal pin name           #optional
-        pin_type: HAL_FLOAT #hal pin type     #optional    
-        pin_smoothing: 200 #smoothing const   #optional
-        pin_smoothing_algo: EXPONENTIAL #optional, SIMPLE, EXPONENTIAL, MOVING
-        pin_min_val: 10 #minimum value         #optional
-        pin_max_val: 1024 #maximum value      #optional
-        pin_resolution: 12  #optional, some boards support analogReadResolution(X) to set a different resolution
-        #pin_connected_state: 32 #optional, value to set the pin to when the board is connected
-        #pin_disconnected_state: 64 #optional, value to set the pin to when the board is disconnected
+
+
     analogOutputsDisabled:
-      - pin_id: A2
-        pin_name: aout.2 #hal pin name
+      - pin_id: A4
+        pin_name: aout.4 #hal pin name
         pin_type: HAL_FLOAT #hal pin type
         pin_smoothing: 200 #smoothing const   #optional
         pin_min_val: 0 #minimum value         #optional     these could be used to convert the value to 0-10 for example
-        pin_max_val: 1023 #maximum value      #optional 
+        pin_max_val: 1024 #maximum value      #optional 
+        pin_resolution: 12
+        pin_initial_state: 128
+        pin_connected_state: 128
+        pin_disconnected_state: 128
