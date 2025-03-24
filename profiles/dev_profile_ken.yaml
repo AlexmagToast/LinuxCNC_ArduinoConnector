@@ -3,6 +3,7 @@ mcu:
   component_name: arduinoR4wifi # Name of component to use in HAL
   dev: /dev/tty.usbmodemF412FA68D6802
   #dev: /dev/serial/by-id/usb-Arduino_UNO_WiFi_R4_CMSIS-DAP_F412FA68D680-if01
+  #dev: /dev/tty.usbmodemF412FA68D6802
   enabled: true
   hal_emulation: true
   #connection: 
@@ -29,20 +30,20 @@ mcu:
         pin_name: ain.1 #hal pin name           #optional
         pin_type: HAL_FLOAT #hal pin type     #optional    
         pin_smoothing: 200 #smoothing const   #optional
-        pin_smoothing_algo: MOVING #optional, SIMPLE, EXPONENTIAL, MOVING
+        pin_smoothing_algo: EXPONENTIAL #optional, SIMPLE, EXPONENTIAL, MOVING
         pin_min_val: 0 #minimum value         #optional
-        pin_max_val: 1024 #maximum value      #optional
-        pin_resolution: 12  #optional, some boards support analogReadResolution(X) to set a different resolution
+        pin_max_val: 4096 #maximum value      #optional
+        #pin_resolution: 12  #optional, some boards support analogReadResolution(X) to set a different resolution
 
 
-    analogOutputsDisabled:
+    analogOutputs:
       - pin_id: A4
         pin_name: aout.4 #hal pin name
         pin_type: HAL_FLOAT #hal pin type
         pin_smoothing: 200 #smoothing const   #optional
         pin_min_val: 0 #minimum value         #optional     these could be used to convert the value to 0-10 for example
-        pin_max_val: 1024 #maximum value      #optional 
-        pin_resolution: 12
-        pin_initial_state: 128
-        pin_connected_state: 128
-        pin_disconnected_state: 128
+        pin_max_val: 4096 #maximum value      #optional 
+        #pin_resolution: 12
+        pin_initial_state: 0
+        pin_connected_state: 0
+        pin_disconnected_state: 0

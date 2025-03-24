@@ -544,7 +544,8 @@ namespace Features
         uint32_t pinMaxValue; // maximum value of the pin
         uint32_t pinMinValue; // minimum value of the pin
         uint32_t pinCurrentState; // current state of the pin
-        uint32_t pinValueArray[SMOOTHING_ARRAY_SIZE]; // array of values for smoothing
+        uint32_t * pinValueArray; // array of values for smoothing
+        uint8_t pinArrayIndex; // current index in the circular buffer
     };
     #endif
     #ifdef AINPUTS
@@ -562,15 +563,26 @@ namespace Features
 #ifdef AINPUTS_SMOOTHING_SIMPLE
         // Simple averaging - applies basic averaging to a pre-read value
         uint32_t SimpleAverage(AnalogPin &pin, uint32_t rawValue) {
-            // Apply simple averaging (current + new)/2
-            uint32_t newValue = (pin.pinCurrentState + rawValue) / 2;
+            // Add new value to the circular buffer at current index
+            pin.pinArrayIndex = (pin.pinArrayIndex + 1) % pin.pinSmoothing;
+            pin.pinValueArray[pin.pinArrayIndex] = rawValue;
+            
+            uint32_t newValue;
+            
+            // For first reading or if current state is invalid, use raw value
+            if (pin.pinCurrentState == (uint32_t)-1) {
+                newValue = rawValue;
+            } else {
+                // Apply simple averaging (current + new)/2
+                newValue = (pin.pinCurrentState + rawValue) / 2;
+            }
             
             // Constrain to min/max values
             if (newValue > pin.pinMaxValue) newValue = pin.pinMaxValue;
             if (newValue < pin.pinMinValue) newValue = pin.pinMinValue;
             
             // Update current state
-            pin.pinCurrentState = newValue;
+            //pin.pinCurrentState = newValue;
             
             return newValue;
         }
@@ -579,27 +591,24 @@ namespace Features
 #ifdef AINPUTS_SMOOTHING_MOVING_AVERAGE
         // Moving average - maintains a window of readings and calculates average
         uint32_t MovingAverage(AnalogPin &pin, uint32_t rawValue) {
-            // Shift all values in the array
-            for (int i = SMOOTHING_ARRAY_SIZE - 1; i > 0; i--) {
-                pin.pinValueArray[i] = pin.pinValueArray[i-1];
-            }
-            
-            // Add new value to the beginning
-            pin.pinValueArray[0] = rawValue;
+            // Add new value to the circular buffer at current index
+            pin.pinArrayIndex = (pin.pinArrayIndex + 1) % pin.pinSmoothing;
+            pin.pinValueArray[pin.pinArrayIndex] = rawValue;
             
             // Calculate the average
             uint32_t sum = 0;
             uint8_t count = 0;
             
             // Use smoothing as window size (or default to full array if not specified)
-            uint8_t windowSize = (pin.pinSmoothing > 0 && pin.pinSmoothing <= SMOOTHING_ARRAY_SIZE) ? 
-                                  pin.pinSmoothing : SMOOTHING_ARRAY_SIZE;
+            uint8_t windowSize = (pin.pinSmoothing > 0 && pin.pinSmoothing <= pin.pinSmoothing) ? 
+                                  pin.pinSmoothing : pin.pinSmoothing;
             
+            // Read the last 'windowSize' values from the circular buffer
             for (int i = 0; i < windowSize; i++) {
-                if (pin.pinValueArray[i] > 0 || i == 0) { // Count zero values except the newest
-                    sum += pin.pinValueArray[i];
-                    count++;
-                }
+                // Calculate index working backwards from current position
+                int idx = (pin.pinArrayIndex - i + pin.pinSmoothing) % pin.pinSmoothing;
+                sum += pin.pinValueArray[idx];
+                count++;
             }
             
             uint32_t newValue = (count > 0) ? sum / count : rawValue;
@@ -609,8 +618,9 @@ namespace Features
             if (newValue < pin.pinMinValue) newValue = pin.pinMinValue;
             
             // Update current state
-            pin.pinCurrentState = newValue;
-            
+            //pin.pinCurrentState = newValue;
+            //DEBUG_DEV.print(F("MovingAverage: "));
+            //DEBUG_DEV.println(newValue);
             return newValue;
         }
 #endif // AINPUTS_SMOOTHING_MOVING_AVERAGE
@@ -618,6 +628,10 @@ namespace Features
 #ifdef AINPUTS_SMOOTHING_EXPONENTIAL
         // Exponential smoothing - weighted average giving more importance to recent readings
         uint32_t ExponentialSmoothing(AnalogPin &pin, uint32_t rawValue) {
+            // Add new value to the circular buffer at current index
+            pin.pinArrayIndex = (pin.pinArrayIndex + 1) % pin.pinSmoothing;
+            pin.pinValueArray[pin.pinArrayIndex] = rawValue;
+            
             // Calculate alpha (smoothing factor): 0 < alpha < 1
             // Higher pinSmoothing value = slower response (lower alpha)
             float alpha = 1.0;
@@ -626,13 +640,13 @@ namespace Features
                 if (alpha > 1.0) alpha = 1.0;
             }
             
-            // Apply exponential smoothing formula: newValue = alpha * rawValue + (1 - alpha) * oldValue
             uint32_t newValue;
             
-            // For first reading, just use the raw value
-            if (pin.pinCurrentState == -1) {
+            // For first reading or if pinCurrentState is invalid, use the raw value
+            if (pin.pinCurrentState == (uint32_t)-1) {
                 newValue = rawValue;
             } else {
+                // Apply exponential smoothing formula: newValue = alpha * rawValue + (1 - alpha) * oldValue
                 newValue = (uint32_t)(alpha * rawValue + (1.0 - alpha) * pin.pinCurrentState);
             }
             
@@ -641,7 +655,7 @@ namespace Features
             if (newValue < pin.pinMinValue) newValue = pin.pinMinValue;
             
             // Update current state
-            pin.pinCurrentState = newValue;
+            //pin.pinCurrentState = newValue;
             
             return newValue;
         }
@@ -668,8 +682,8 @@ namespace Features
                 } else {
                     rawValue = analogRead(atoi(pin.pid.c_str()));
                 }
-                DEBUG_DEV.print(F("Raw value: "));
-                DEBUG_DEV.println(rawValue);
+                //DEBUG_DEV.print(F("Raw value: "));
+                //DEBUG_DEV.println(rawValue);
                 // Apply smoothing based on algorithm and available implementations
                 // Check which algorithms are defined and match with pin.pinSmoothingAlgo
 #ifdef AINPUTS_SMOOTHING_EXPONENTIAL
@@ -680,19 +694,19 @@ namespace Features
 #endif
 #ifdef AINPUTS_SMOOTHING_MOVING_AVERAGE
                 if (pin.pinSmoothingAlgo == AINPUTS_SMOOTHING_MOVING_AVERAGE) {
-                    DEBUG_DEV.print(F("MovingAverage"));
+                    //DEBUG_DEV.print(F("MovingAverage"));
                     newValue = MovingAverage(pin, rawValue);
                 } else
 #endif
 #ifdef AINPUTS_SMOOTHING_SIMPLE
                 if (pin.pinSmoothingAlgo == AINPUTS_SMOOTHING_SIMPLE) {
-                    DEBUG_DEV.print(F("SimpleAverage"));
+                    //DEBUG_DEV.print(F("SimpleAverage"));
                     newValue = SimpleAverage(pin, rawValue);
                 } else
 #endif
                 {
                     // Default fallback if no matching algorithm is available
-                    DEBUG_DEV.print(F("No smoothing algorithm"));
+                    //DEBUG_DEV.print(F("No smoothing algorithm"));
                     newValue = rawValue;
                 }
                 
@@ -756,6 +770,24 @@ namespace Features
                 AnalogPin & pin = *static_cast<AnalogPin*>(pins[x]);
                 // Set pin current state to -1 to trigger initial state update
                 pin.pinCurrentState = -1;
+                
+                // Reset the circular buffer index
+                pin.pinArrayIndex = 0;
+                
+                // Do an initial read to populate the array with the first real value
+                uint32_t initialValue = 0;
+                if (pin.mid != -1) {
+                    initialValue = analogRead(pin.mid);
+                } else {
+                    initialValue = analogRead(atoi(pin.pid.c_str()));
+                }
+                
+                // Initialize all array elements with this first reading
+                // This provides a stable starting point for the smoothing algorithms
+                pin.pinValueArray = new uint32_t[pin.pinSmoothing];
+                for (int i = 0; i < pin.pinSmoothing; i++) {
+                    pin.pinValueArray[i] = initialValue;
+                }
             }
             // Then set the feature to ready, otherwise it will not be available to process incoming messages or perform local
             // tasks such as pin reads.
@@ -778,6 +810,22 @@ namespace Features
             #ifdef DEBUG
                 DEBUG_DEV.println("AnalogInputs::onDisconnected");
             #endif
+        }
+
+        virtual void InitPins(const size_t& size)
+        {
+            if(GetPinCount() > 0)
+            {
+                auto pins = GetPins();
+                for( int x = 0; x < GetPinCount(); x++ )
+                {
+                    AnalogPin & pin = *static_cast<AnalogPin*>(pins[x]);
+                    // clean up the pinValueArray
+                    delete[] pin.pinValueArray;
+                }
+            }
+            // call virtual function to delete pins
+            Feature::InitPins(size);
         }
 
         virtual uint8_t InitFeaturePin(uint8_t fid, uint8_t lid, String& pid, JsonDocument& json, String& fail_reason, Pin ** p)
@@ -880,6 +928,14 @@ namespace Features
                 }
 
             }
+            
+            // Initialize the pinValueArray with zeros
+            for (int i = 0; i < ap->pinSmoothing; i++) {
+                ap->pinValueArray[i] = 0;
+            }
+            
+            // Initialize the array index to 0
+            ap->pinArrayIndex = 0;
             
             #ifdef DEBUG
                 DEBUG_DEV.print(F("AnalogInputs::InitFeaturePin: "));

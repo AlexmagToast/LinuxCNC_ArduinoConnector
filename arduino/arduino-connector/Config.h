@@ -29,8 +29,8 @@
 #pragma once
 
 
-#define DEBUG                       0
-#define DEBUG_VERBOSE               1
+//#define DEBUG                       0
+//#define DEBUG_VERBOSE               1
 #define FEATUREMAP                  2
 #define LOWMEM                      3
 
@@ -64,8 +64,6 @@
 
 const uint16_t SERIAL_STARTUP_DELAY = 5000; // In milliseconds
 const uint16_t SERIAL_RX_TIMEOUT = 5000; // In milliseconds. On handhshake, the python side is told to use this value, times two, to determine connection timeouts. 
-
-#define SMOOTHING_ARRAY_SIZE 200 // Size of the array for smoothing
 
 #define AINPUTS_SMOOTHING_SIMPLE 0
 #define AINPUTS_SMOOTHING_EXPONENTIAL 1
