@@ -11,7 +11,7 @@ mcu:
   io_map:
         
         
-    digitalInputsDisabled:
+    digitalInputs:
       - pin_id: 2
         pin_name: din.2 #hal pin name
         input_pullup: true
@@ -20,7 +20,7 @@ mcu:
         pin_name: din.3 #hal pin name
         input_pullup: true
         pin_debounce: 5
-    digitalOutputsDisabled:
+    digitalOutputs:
       - pin_id: 4
         pin_name: dout.4 #hal pin name
       - pin_id: 5
