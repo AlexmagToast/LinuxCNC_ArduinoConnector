@@ -5,7 +5,7 @@ mcu:
   #dev: /dev/serial/by-id/usb-Arduino_UNO_WiFi_R4_CMSIS-DAP_F412FA68D680-if01
   #dev: /dev/tty.usbmodemF412FA68D6802
   enabled: true
-  hal_emulation: true
+  hal_emulation: false
   #connection: 
   #  baudrate: 9600
   io_map:

@@ -11,13 +11,14 @@ import getopt
 import concurrent.futures
 import pkg_resources
 
+from linuxcnc_arduinoconnector.interfaces.LinuxCNCInterface import LinuxCNCInterface
 from linuxcnc_arduinoconnector.utils.YamlParser import ArduinoYamlParser
 from linuxcnc_arduinoconnector.interfaces.ArduinoComms import ArduinoConnection
 from linuxcnc_arduinoconnector.api import set_arduino_connections, run_api_server_in_thread
 
-from linuxcnc_arduinoconnector.utils.Utils import get_parent_process_name, try_load_linuxcnc, launch_connector, listDevices, locateProfile
+from linuxcnc_arduinoconnector.utils.Utils import get_parent_process_name, try_load_linuxcnc, launch_connector, listDevices
 from linuxcnc_arduinoconnector.config.Config import (
-    DEFAULT_API_ENABLED, DEFAULT_LOGGING_ENABLED,
+    DEFAULT_API_ENABLED, DEFAULT_LINUXCNC_PROFILE_INI_REMOTE_DEBUG_BIND_ADDRESS_KEY, DEFAULT_LINUXCNC_PROFILE_INI_REMOTE_DEBUG_PORT_KEY, DEFAULT_LOGGING_ENABLED,
     DEFAULT_LOG_FILE_PATH, DEFAULT_LOG_FILE_NAME,
     DEFAULT_LOGGING_FORMAT, DEFAULT_REMOTE_DEBUG_ENABLED,
     DEFAULT_REMOTE_DEBUG_BIND_ADDRESS, DEFAULT_REMOTE_DEBUG_PORT,
@@ -29,27 +30,24 @@ from linuxcnc_arduinoconnector.config.Config import (
 # Since Linuxcnc launches this script using systemd, we can store the path to the script for later use
 base_directory = os.path.dirname(os.path.abspath(os.path.abspath(__file__)))
 
+
 # Set root logger to DEBUG level
 # logging.getLogger().setLevel(logging.DEBUG)  # Comment out this line to avoid duplicate logging
 
 # Pre stage, look to see if the local config is set to enable logging by default. This can be helpful 
 file_logger = None
-#DEFAULT_LOGGING_ENABLED = True
-if DEFAULT_LOGGING_ENABLED:
-    from linuxcnc_arduinoconnector.utils.LoggingUtils import setup_logger
-    file_logger = setup_logger('file_logger', log_file_path=os.path.join(DEFAULT_LOG_FILE_PATH, DEFAULT_LOG_FILE_NAME), log_format=DEFAULT_LOGGING_FORMAT)
-    file_logger.debug('Logging enabled based on override from Config.py, see DEFAULT_LOGGING_ENABLED')
 
-def launch_remote_debugger_listen(bind_addres:str, wait_on_connect=False, port=5678):
+
+def launch_remote_debugger_listen(bind_addres:str, wait_on_connect=True, port=5678):
     import debugpy
     try:
         debugpy.listen((bind_addres,port))
         #rint(f'Remote Debug Enabled based on override from Config.py, listening on port {port}')
-        if file_logger is not None:
-            file_logger.debug(f'Remote Debug Enabled based on override from Config.py or linuxcnc profile, bound to {bind_addres} and listening on port {port}')
+        #if file_logger is not None:
+        #    file_logger.debug(f'Remote Debug Enabled based on override from Config.py or linuxcnc profile, bound to {bind_addres} and listening on port {port}')
         if wait_on_connect:
-            if file_logger is not None:
-                file_logger.debug('Waiting for remote debugger to connect...')
+            #if file_logger is not None:
+            #    file_logger.debug('Waiting for remote debugger to connect...')
             debugpy.wait_for_client()
             pass
     except Exception as e:
@@ -57,66 +55,24 @@ def launch_remote_debugger_listen(bind_addres:str, wait_on_connect=False, port=5
             file_logger.error(f'Error launching remote debugger: {e}')
         print(f'Error launching remote debugger: {e}')
 
-if DEFAULT_REMOTE_DEBUG_ENABLED:
-    launch_remote_debugger_listen(DEFAULT_REMOTE_DEBUG_BIND_ADDRESS, DEFAULT_REMOTE_DEBUG_WAIT_ON_CONNECT, DEFAULT_REMOTE_DEBUG_PORT)
 
-# First stage, figure out if LinuxCNC launched this script. If Linuxcnc is the host, then the user's profile will provide the settings to use.
 launchedByLinuxCNC = False
 # get_parent_process_name() returns 'systemd' if Linuxcnc launches it, otherwise its something else like 'bash' 
 #test = get_parent_process_cmdline()
 maybe_linuxcnc = get_parent_process_name()
 if maybe_linuxcnc== 'systemd' and try_load_linuxcnc(): # try_load_linux will throw an exception if it fails
     launchedByLinuxCNC = True
-    if file_logger is not None:
-        file_logger.debug('Detected execution by LinuxCNC')
-else:
-    if file_logger is not None:
-        file_logger.debug(f'Detected execution outside of LinuxCNC, parent process name {maybe_linuxcnc}')        
-
+linuxcnc_instance = None
 if launchedByLinuxCNC:
- 
-    import linuxcnc
-    import logging
-    import time
-    logging.basicConfig(level=logging.DEBUG, format='%(message)s\r\n')
-
-    
-    inifile = None
-    retries = 3
-    while retries > 0:
-        try:
-            stat = linuxcnc.stat()
-            stat.poll()
-            #print(f'INI FILE NAME = {stat.ini_filename}')
-            if stat.ini_filename is not None and stat.ini_filename != '':
-                break
-            else:
-                raise Exception('No ini file found')
-        except Exception as e:
-            retries -= 1
-            time.sleep(2)
-            print(f'Error loading ini file: {e}')
-    print(f'INI FILE NAME = {stat.ini_filename}')
-    inifile = linuxcnc.ini(stat.ini_filename)
-    
-    yaml_path = inifile.find(DEFAULT_LINUXCNC_PROFILE_INI_HEADER, DEFAULT_LINUXCNC_PROFILE_INI_YAML_PATH_KEY) or DEFAULT_PROFILE_NAME
-    maybe_remote_debug = inifile.find(DEFAULT_LINUXCNC_PROFILE_INI_HEADER, DEFAULT_LINUXCNC_PROFILE_INI_REMOTE_DEBUG_KEY) or False
-    if maybe_remote_debug == '1':
-        maybe_remote_debug = True
+    linuxcnc_instance = LinuxCNCInterface()
+    if linuxcnc_instance.linuxcnc_error:
+        print(f'Error loading linuxcnc: {linuxcnc_instance.linuxcnc_error}')
+        sys.exit(1)
     else:
-        maybe_remote_debug = False
-    maybe_wait_on_remote_debug = inifile.find(DEFAULT_LINUXCNC_PROFILE_INI_HEADER, DEFAULT_LINUXCNC_PROFILE_INI_WAIT_ON_REMOTE_DEBUG_CONNECT_KEY) or False
-    if maybe_wait_on_remote_debug == '1':
-        maybe_wait_on_remote_debug = True
-    else:
-        maybe_wait_on_remote_debug = False
-    if maybe_remote_debug:
-        launch_remote_debugger_listen(DEFAULT_REMOTE_DEBUG_BIND_ADDRESS, maybe_wait_on_remote_debug, DEFAULT_REMOTE_DEBUG_PORT)
-    #from linuxcnc_arduinoconnector.Utils import launch_ui_in_new_console
-    #launch_ui_in_new_console(additional_args=['-p', yaml_path])
-    launch_connector(yaml_path)
-    #machine_name = inifile.find("EMC", "MACHINE") or "unknown"
-    pass
+        print(f'Arduino Connector: Successfully created linuxcnc interface instance!')
+    
+    if linuxcnc_instance.remote_debug_enabled:
+        launch_remote_debugger_listen(linuxcnc_instance.remote_debug_bind_address, linuxcnc_instance.wait_on_remote_debug_connect, int(linuxcnc_instance.remote_debug_port))
 
 
 
@@ -127,6 +83,12 @@ def do_work(ac):
     """Run Arduino connection worker function in a thread"""
     try:
         ac.doWork()
+
+    except KeyboardInterrupt:
+        # Handle graceful shutdown
+        ac.serialConn.stopRxTask()
+        print("Received keyboard interrupt, shutting down")
+        sys.exit(0)
     except Exception as e:
         if file_logger is not None:
             file_logger.error(f"Error in Arduino worker thread: {str(e)}")
@@ -204,6 +166,7 @@ def main(stdscr=None):
     launch_separate_console = False
     additional_args = []
     
+    
     try:
         arguments, values = getopt.getopt(argumentList, options, long_options)
         for currentArgument, currentValue in arguments:
@@ -232,11 +195,14 @@ def main(stdscr=None):
             print(f'PYDEBUG: error: {str(just_the_string)}\r\n')
             
             sys.exit(1)
-    else:
-        devs = locateProfile()
-        for a in devs:
-            arduino_map.append(ArduinoConnection(a))
-
+    elif launchedByLinuxCNC and linuxcnc_instance is not None:
+        if os.path.exists(linuxcnc_instance.yaml_profile_path):
+            devs = ArduinoYamlParser.parseYaml(path=linuxcnc_instance.yaml_profile_path)
+            for a in devs:
+                arduino_map.append(ArduinoConnection(a))
+        else:
+            print(f'Error. YAML_PROFILE_PATH not found in linuxcnc.ini: {linuxcnc_instance.yaml_profile_path}')
+            sys.exit(1)
     if len(devs) == 0:
         print('No Arduino profiles found in profile yaml!')
         sys.exit()
