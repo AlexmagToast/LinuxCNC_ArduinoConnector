@@ -208,6 +208,7 @@ def main(stdscr=None):
     elif launchedByLinuxCNC and linuxcnc_instance is not None:
         print(f'Arduino Connector: Successfully created linuxcnc interface instance!')
         file_logger = setup_logger(logger_name='linuxcnc_arduinoconnector', log_file_path=linuxcnc_instance.log_file_path, log_level=linuxcnc_instance.log_level, log_format=DEFAULT_LOGGING_FORMAT)
+        file_logger.info(f'PYDEBUG: Successfully created linuxcnc interface instance!')
         if os.path.exists(linuxcnc_instance.yaml_profile_path):
             devs = ArduinoYamlParser.parseYaml(path=linuxcnc_instance.yaml_profile_path)
             #for a in devs:

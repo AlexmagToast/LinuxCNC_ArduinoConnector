@@ -1,3 +1,4 @@
+import datetime
 import logging
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
@@ -25,6 +26,12 @@ def setup_logger(
     """
     # Create a logger
     logger = logging.getLogger(logger_name)
+    if 'debug' in logger_name.lower():
+        log_level = logging.DEBUG
+    elif 'info' in logger_name.lower():
+        log_level = logging.INFO
+    else:
+        log_level = logging.NOTSET
     logger.setLevel(log_level)
 
     # Create a formatting for the logs
@@ -40,8 +47,12 @@ def setup_logger(
         print(f'Arduino Connector: log_level: {log_level}')
         print(f'Arduino Connector: log_format: {log_format}')
         #create log file directory if it doesn't exist
-        log_file_path = Path(log_file_path)
-        log_file_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        filename = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S') + '.log'
+        log_file_path = Path(log_file_path).joinpath(filename)
+        os.makedirs(log_file_path.parent, exist_ok=True)
+        #create log file directory if it doesn't exist
+        #log_file_path.parent.mkdir(parents=True, exist_ok=True)
         # Create a rotating file handler
         handler = RotatingFileHandler(
             str(log_file_path),
