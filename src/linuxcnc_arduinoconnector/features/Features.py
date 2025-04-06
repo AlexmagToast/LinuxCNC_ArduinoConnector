@@ -8,6 +8,7 @@ import numpy
 
 from linuxcnc_arduinoconnector.models.ConfigModels import AnalogPin, ArduinoPin, DigitalPin, HalPinDirection
 from linuxcnc_arduinoconnector.models.ProtocolModels import ConfigMessage, MessageType, PinChangeMessage, ProtocolMessage
+from linuxcnc_arduinoconnector.utils.LoggingUtils import get_logger
 
 # The Features enum is used by the Feature objects to set the Feature properties such as the corresponding constant name, config string name, and feature ID
 class Features(Enum):
@@ -236,7 +237,7 @@ class DigitalInputs(IOFeature):
     def OnMessageRecv(self, pm:ProtocolMessage):
         super().OnMessageRecv(pm)
         if (pm.mt == MessageType.MT_PINCHANGE):
-            logging.debug(f'PINCHANGE: {pm.payload}')
+            self.Debug(f'PINCHANGE: {pm.payload}')
             for pi in pm.pinInfo:
                 # find the pin in the pinList
                 for p in self.pinList:
@@ -248,7 +249,7 @@ class DigitalInputs(IOFeature):
                         p.arduinoPinCurrentValue = pi.pinValue  # Store the value in our permanent property
                         if p.halPinConnection != None:
                             p.halPinConnection.set(p.halPinCurrentValue)
-                        logging.debug(f'PININFO: {pi}')
+                        self.Debug(f'PININFO: {pi}')
                         break
     
     def OnConnected(self):
@@ -328,7 +329,7 @@ class AnalogInputs(IOFeature):
     def OnMessageRecv(self, pm:ProtocolMessage):
         super().OnMessageRecv(pm)
         if (pm.mt == MessageType.MT_PINCHANGE):
-            logging.debug(f'PINCHANGE: {pm.payload}')
+            self.Debug(f'PINCHANGE: {pm.payload}')
             for pi in pm.pinInfo:
                 # find the pin in the pinList
                 for p in self.pinList:
@@ -340,7 +341,7 @@ class AnalogInputs(IOFeature):
                         p.arduinoPinCurrentValue = pi.pinValue  # Store the value in our permanent property
                         if p.halPinConnection != None:
                             p.halPinConnection.set(p.halPinCurrentValue)
-                        logging.debug(f'PININFO: {pi}')
+                        self.Debug(f'PININFO: {pi}')
                         break
     
     def OnConnected(self):

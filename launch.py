@@ -13,48 +13,36 @@ import pkg_resources
 import signal
 
 from linuxcnc_arduinoconnector.interfaces.LinuxCNCInterface import LinuxCNCInterface
-from linuxcnc_arduinoconnector.utils.LoggingUtils import setup_logger
+from linuxcnc_arduinoconnector.utils.LoggingUtils import setup_logger, init_logger, get_logger, reconfigure_logger
 from linuxcnc_arduinoconnector.utils.YamlParser import ArduinoYamlParser
 from linuxcnc_arduinoconnector.interfaces.ArduinoComms import ArduinoConnection
 from linuxcnc_arduinoconnector.api import set_arduino_connections, run_api_server_in_thread
 
 from linuxcnc_arduinoconnector.utils.Utils import get_parent_process_name, try_load_linuxcnc, launch_connector, listDevices
 from linuxcnc_arduinoconnector.config.Config import (
-    DEFAULT_API_ENABLED, DEFAULT_LINUXCNC_PROFILE_INI_REMOTE_DEBUG_BIND_ADDRESS_KEY, DEFAULT_LINUXCNC_PROFILE_INI_REMOTE_DEBUG_PORT_KEY, DEFAULT_LOGGING_ENABLED,
-    DEFAULT_LOG_FILE_PATH, DEFAULT_LOG_FILE_NAME,
-    DEFAULT_LOGGING_FORMAT, DEFAULT_REMOTE_DEBUG_ENABLED,
-    DEFAULT_REMOTE_DEBUG_BIND_ADDRESS, DEFAULT_REMOTE_DEBUG_PORT,
-    DEFAULT_REMOTE_DEBUG_WAIT_ON_CONNECT, DEFAULT_API_PORT,
-    DEFAULT_PROFILE_NAME, DEFAULT_LINUXCNC_PROFILE_INI_HEADER,
-    DEFAULT_LINUXCNC_PROFILE_INI_YAML_PATH_KEY, DEFAULT_LINUXCNC_PROFILE_INI_REMOTE_DEBUG_KEY,
-    DEFAULT_LINUXCNC_PROFILE_INI_WAIT_ON_REMOTE_DEBUG_CONNECT_KEY
+    DEFAULT_API_ENABLED, DEFAULT_LOG_LEVEL,
+    DEFAULT_LOG_FILE_PATH, DEFAULT_API_PORT, DEFAULT_LOGGING_FORMAT,
 )
 # Since Linuxcnc launches this script using systemd, we can store the path to the script for later use
-base_directory = os.path.dirname(os.path.abspath(os.path.abspath(__file__)))
+#base_directory = os.path.dirname(os.path.abspath(os.path.abspath(__file__)))
 
+# Initialize default logger
+logger = init_logger(log_file_path=DEFAULT_LOG_FILE_PATH, log_level=DEFAULT_LOG_LEVEL)
 
-# Set root logger to DEBUG level
-# logging.getLogger().setLevel(logging.DEBUG)  # Comment out this line to avoid duplicate logging
-
-# Pre stage, look to see if the local config is set to enable logging by default. This can be helpful 
-file_logger = None
+logger.info(f'Arduino Connector: Starting up...')
 
 
 def launch_remote_debugger_listen(bind_addres:str, wait_on_connect=True, port=5678):
     import debugpy
     try:
+        logger.info(f'Remote Debug Enabled based on override from Config.py, listening on port {port}')
         debugpy.listen((bind_addres,port))
-        #rint(f'Remote Debug Enabled based on override from Config.py, listening on port {port}')
-        #if file_logger is not None:
-        #    file_logger.debug(f'Remote Debug Enabled based on override from Config.py or linuxcnc profile, bound to {bind_addres} and listening on port {port}')
         if wait_on_connect == True:
-            #if file_logger is not None:
-            #    file_logger.debug('Waiting for remote debugger to connect...')
+            logger.info(f'Waiting for remote debugger to connect...')
             debugpy.wait_for_client()
             pass
     except Exception as e:
-        if file_logger is not None:
-            file_logger.error(f'Error launching remote debugger: {e}')
+        logger.error(f'Error launching remote debugger: {e}')
         print(f'Error launching remote debugger: {e}')
 
 
@@ -62,18 +50,29 @@ launchedByLinuxCNC = False
 # get_parent_process_name() returns 'systemd' if Linuxcnc launches it, otherwise its something else like 'bash' 
 #test = get_parent_process_cmdline()
 maybe_linuxcnc = get_parent_process_name()
-if maybe_linuxcnc== 'systemd' and try_load_linuxcnc(): # try_load_linux will throw an exception if it fails
+if maybe_linuxcnc== 'systemd':# try_load_linux will throw an exception if it fails
+    logger.info(f'Arduino Connector: Detected LinuxCNC launch, loading linuxcnc interface...')
     launchedByLinuxCNC = True
+    if try_load_linuxcnc():
+        logger.info(f'Arduino Connector: Successfully loaded linuxcnc interface!')
+    else:
+        logger.error(f'Error loading linuxcnc, unable to load modules!')
+        raise Exception(f'Error loading linuxcnc: unable to load modules!')
+else:
+    logger.info(f'Arduino Connector: Not launched by LinuxCNC, skipping module loading...')
+    
 linuxcnc_instance = None
 if launchedByLinuxCNC:
+    logger.info(f'Arduino Connector: Creating linuxcnc interface instance...')
     linuxcnc_instance = LinuxCNCInterface()
     if linuxcnc_instance.linuxcnc_error:
-        print(f'Error loading linuxcnc: {linuxcnc_instance.linuxcnc_error}')
-        raise Exception(f'Error loading linuxcnc: {linuxcnc_instance.linuxcnc_error}')
+        logger.error(f'Error loading linuxcnc interface: {linuxcnc_instance.linuxcnc_error}')
+        raise Exception(f'Error loading linuxcnc interface: {linuxcnc_instance.linuxcnc_error}')
     else:
-        print(f'Arduino Connector: Successfully created linuxcnc interface instance!')
+        logger.info(f'Arduino Connector: Successfully created linuxcnc interface instance!')
     
     if linuxcnc_instance.remote_debug_enabled:
+        logger.info(f'Arduino Connector: Remote Debug Enabled based on linuxcnc.ini, listening on port {linuxcnc_instance.remote_debug_port}')
         launch_remote_debugger_listen(linuxcnc_instance.remote_debug_bind_address, linuxcnc_instance.wait_on_remote_debug_connect, int(linuxcnc_instance.remote_debug_port))
 
 
@@ -81,7 +80,7 @@ if launchedByLinuxCNC:
 
 arduino_map = []
 
-def do_work(ac):
+def do_work(ac, logger):
     """Run Arduino connection worker function in a thread"""
     try:
         ac.doWork()
@@ -89,83 +88,82 @@ def do_work(ac):
     except KeyboardInterrupt:
         # Handle graceful shutdown
         ac.serialConn.stopRxTask()
-        print("Received keyboard interrupt, shutting down")
+        logger.info(f'Received keyboard interrupt during do_work, shutting down')
         sys.exit(0)
     except Exception as e:
-        if file_logger is not None:
-            file_logger.error(f"Error in Arduino worker thread: {str(e)}")
-        else:
-            print(f"Error in Arduino worker thread: {str(e)}")
+        logger.error(f"Error in Arduino worker thread: {str(e)}")
 
-def main_loop(arduino_connections):
+def main_loop(arduino_connections, logger):
     """Main non-async loop for Arduino connections"""
-    last_update = time.time()
+    #last_update = time.time()
     worker_threads = {}
-    api_thread = None
+    #api_thread = None
     running = True
 
     # Set up signal handler for graceful shutdown
     def signal_handler(sig, frame):
         nonlocal running
         running = False
-        print("Received keyboard interrupt, shutting down!!")
+        logger.info(f'Received keyboard interrupt via signal handler, shutting down!!')
         # Handle graceful shutdown
-        for ac in arduino_connections:
-            ac.serialConn.stopRxTask()
-        if file_logger is not None:
-            file_logger.info("Received keyboard interrupt, shutting down")
+        try:
+            logger.info(f'Stopping RxTask for all Arduino connections, Arduino connections: {len(arduino_connections)}')
+            for ac in arduino_connections:
+                ac.serialConn.stopRxTask()
+        except Exception as e:
+            logger.error(f'Error stopping RxTask: {str(e)}')
+
 
     # Register signal handler
+    logger.debug(f'Registering signal handler for SIGINT')
     original_sigint_handler = signal.getsignal(signal.SIGINT)
     signal.signal(signal.SIGINT, signal_handler)
 
     # Set up Arduino connections for the API
+    logger.info(f'Setting up Arduino connections for the API')
     set_arduino_connections(arduino_connections)
-    #DEFAULT_API_ENABLED = False
-    # Start API server if running as daemon (no stdscr)
     if DEFAULT_API_ENABLED:
+        logger.info(f'Starting API server')
         api_thread = run_api_server_in_thread()
-        if file_logger is not None:
-            file_logger.info(f"API server started on port {DEFAULT_API_PORT}")
-        else:
-            logging.info(f"API server started on port {DEFAULT_API_PORT}")
+        logger.info(f"API server started on port {DEFAULT_API_PORT}")
 
     try:
         # Start worker threads for each Arduino connection
+        logger.info(f'Starting worker threads for each Arduino connection')
         for ac in arduino_connections:
-            worker_thread = threading.Thread(target=do_work, args=(ac,), daemon=True)
+            worker_thread = threading.Thread(target=do_work, args=(ac, logger), daemon=True)
             worker_thread.start()
             worker_threads[ac] = worker_thread
         
         # Main loop
         while running:
             # Restart any threads that have stopped
+            #logger.debug(f'Checking for stopped worker threads..')
             for ac, thread in list(worker_threads.items()):
                 if not thread.is_alive():
+                    logger.debug(f'Restarting worker thread for Arduino connection: {ac}')
                     # Restart the thread
-                    worker_thread = threading.Thread(target=do_work, args=(ac,), daemon=True)
+                    worker_thread = threading.Thread(target=do_work, args=(ac, logger), daemon=True)
                     worker_thread.start()
                     worker_threads[ac] = worker_thread
             
-            time.sleep(0.05)
+            time.sleep(1)
     except KeyboardInterrupt:
         # Handle graceful shutdown
         for ac in arduino_connections:
             ac.serialConn.stopRxTask()
-        print("Arduino Connector: Received keyboard interrupt, shutting down!")
+        logger.info(f'Received keyboard interrupt in main loop, shutting down!')
         #sys.exit(0)
     except Exception as err:
         # Handle unexpected errors
         arduino_connections.clear()
         just_the_string = traceback.format_exc()
-        if file_logger is not None:
-            file_logger.critical(f'Error in main loop: {str(just_the_string)}')
-        logging.critical(f'PYDEBUG: error: {str(just_the_string)}')
+        logger.critical(f'Error in main loop: {str(just_the_string)}')
         sys.exit(1)
     finally:
         # Restore original signal handler
         signal.signal(signal.SIGINT, original_sigint_handler)
-        #print('IM DEAD!!!!!!!!!!!')
+        logger.info(f'Restored original signal handler for SIGINT')
         
 def main(stdscr=None):
     argumentList = sys.argv[1:]
@@ -176,8 +174,10 @@ def main(stdscr=None):
     launch_separate_console = False
     additional_args = []
     
+    logger.info(f'Starting main function')
     
     try:
+        logger.info(f'Parsing command line arguments')
         arguments, values = getopt.getopt(argumentList, options, long_options)
         for currentArgument, currentValue in arguments:
             if currentArgument in ("-h", "--Help"):
@@ -187,57 +187,63 @@ def main(stdscr=None):
                 listDevices()
                 sys.exit()
             elif currentArgument in ("-p", "--profile"):
-                file_logger.debug(f'PYDEBUG: Profile: {currentValue}')
+                logger.debug(f'PYDEBUG: Profile: {currentValue}')
                 target_profile = currentValue
             
     except getopt.error as err:
         just_the_string = traceback.format_exc()
-        file_logger.debug(f'PYDEBUG: error: {str(just_the_string)}')
+        logger.debug(f'PYDEBUG: error: {str(just_the_string)}')
         print(f'PYDEBUG: error: {str(just_the_string)}')
         sys.exit()
         
     if target_profile is not None:
         try:
+            logger.info(f'Parsing YAML profile: {target_profile}')
             devs = ArduinoYamlParser.parseYaml(path=target_profile)
         except Exception as err:
             just_the_string = traceback.format_exc()
-            file_logger.debug(f'PYDEBUG: error: {str(just_the_string)}')
+            logger.debug(f'PYDEBUG: error: {str(just_the_string)}')
             print(f'PYDEBUG: error: {str(just_the_string)}\r\n')
             
             sys.exit(1)
     elif launchedByLinuxCNC and linuxcnc_instance is not None:
-        print(f'Arduino Connector: Successfully created linuxcnc interface instance!')
-        file_logger = setup_logger(logger_name='linuxcnc_arduinoconnector', log_file_path=linuxcnc_instance.log_file_path, log_level=linuxcnc_instance.log_level, log_format=DEFAULT_LOGGING_FORMAT)
-        file_logger.info(f'PYDEBUG: Successfully created linuxcnc interface instance!')
+        logger.info(f'Successfully created linuxcnc interface instance!')
+        # Reconfigure the global logger with the LinuxCNC settings
+        if linuxcnc_instance.log_file_path:
+            reconfigure_logger(
+                log_file_path=linuxcnc_instance.log_file_path, 
+                log_level=linuxcnc_instance.log_level, 
+                log_format=DEFAULT_LOGGING_FORMAT
+            )
+        logger.info(f'Successfully reconfigured logger with LinuxCNC settings')
+        
         if os.path.exists(linuxcnc_instance.yaml_profile_path):
+            logger.info(f'Parsing YAML profile: {linuxcnc_instance.yaml_profile_path}')
             devs = ArduinoYamlParser.parseYaml(path=linuxcnc_instance.yaml_profile_path)
             #for a in devs:
             #    arduino_map.append(ArduinoConnection(a))
         else:
-            print(f'Error. YAML_PROFILE_PATH not found in linuxcnc.ini: {linuxcnc_instance.yaml_profile_path}')
-            if file_logger is not None:
-                file_logger.error(f'Error. YAML_PROFILE_PATH not found in linuxcnc.ini: {linuxcnc_instance.yaml_profile_path}')
+            logger.error(f'Error. YAML_PROFILE_PATH not found in linuxcnc.ini: {linuxcnc_instance.yaml_profile_path}')
             sys.exit(1)
     if len(devs) == 0:
-        print('No Arduino profiles found in profile yaml!')
-        if file_logger is not None:
-            file_logger.error('No Arduino profiles found in profile yaml!')
-        sys.exit()
+        logger.error('No Arduino profiles found in profile yaml!')
+        raise Exception('No Arduino profiles found in profile yaml!')
 
     arduino_connections = []
     try:
+        logger.info(f'Loading Arduino connections')
         for a in devs:
+            logger.info(f'Loading Arduino connection: {a}')
             c = ArduinoConnection(a)
             arduino_connections.append(c)
-            file_logger.info(f'PYDEBUG: Loaded Arduino profile: {str(c)}')
+            #file_logger.info(f'PYDEBUG: Loaded Arduino profile: {str(c)}')
     except Exception as err:
         just_the_string = traceback.format_exc()
-        if file_logger is not None:
-            file_logger.debug(f'PYDEBUG: error: {str(just_the_string)}')
-        print(f'PYDEBUG: error: {str(just_the_string)}')
-        sys.exit()
+        logger.error(f'Error loading Arduino connections: {str(just_the_string)}')
+        raise Exception(f'Error loading Arduino connections: {str(just_the_string)}')
 
-    main_loop(arduino_connections)
+    logger.info(f'Starting main loop')
+    main_loop(arduino_connections, logger)
     
 if __name__ == "__main__":
    main()

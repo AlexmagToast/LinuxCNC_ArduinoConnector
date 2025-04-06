@@ -1,11 +1,10 @@
 mcu: 
   alias: Arduino R4 Wifi
   component_name: arduinoR4wifi # Name of component to use in HAL
-  dev: /dev/tty.usbmodemF412FA68D6802
-  #dev: /dev/serial/by-id/usb-Arduino_UNO_WiFi_R4_CMSIS-DAP_F412FA68D680-if01
   #dev: /dev/tty.usbmodemF412FA68D6802
+  dev: /dev/serial/by-id/usb-Arduino_UNO_WiFi_R4_CMSIS-DAP_F412FA68D680-if01
   enabled: true
-  hal_emulation: false
+  hal_emulation: true
   #connection: 
   #  baudrate: 9600
   io_map:

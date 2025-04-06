@@ -10,6 +10,7 @@ from linuxcnc_arduinoconnector.features.Features import FeatureMapDecoder
 from linuxcnc_arduinoconnector.interfaces.HalInterface import HalInterface
 from linuxcnc_arduinoconnector.models.ConfigModels import ArduinoSettings
 from linuxcnc_arduinoconnector.models.ProtocolModels import ConnectionState, ConnectionType, InviteSyncMessage, MessageDecoder, MessageEncoder, MessageType, ProtocolMessage
+from linuxcnc_arduinoconnector.utils.LoggingUtils import get_logger
 import serial.tools.list_ports
 
 RX_MAX_QUEUE_SIZE = 10
@@ -30,7 +31,8 @@ class Connection(MessageDecoder):
         self._messageReceivedCallbacks = {}
         self._connectionStateCallbacks = []
         self.connLastFormed = None #datetime of when the connection was last formed   
-        self.arduinoReportedUptime = 0     
+        self.arduinoReportedUptime = 0
+        self.logger = get_logger()  # Get logger once during initialization
 
     def sendCommand(self, m:str):
         cm = MessageEncoder().encodeBytes(mt=MessageType.MT_COMMAND, payload=[m, 1])
@@ -38,14 +40,14 @@ class Connection(MessageDecoder):
 
     def setState(self, newState:ConnectionState):
         if newState != self.connectionState:
-            logging.debug(f'PYDEBUG: changing state from {self.connectionState} to {newState}')
+            self.logger.debug(f'PYDEBUG: changing state from {self.connectionState} to {newState}')
             self.connectionState = newState
             for o in self._connectionStateCallbacks:
                 o(newState) # Send callback to any listener who wants to react to connection state changes
 
     def onMessageRecv(self, m:ProtocolMessage):
         if m.mt == MessageType.MT_HANDSHAKE:
-            logging.debug(f'PYDEBUG: onMessageRecv() - Received MT_HANDSHAKE, Values = {m.payload}')
+            self.logger.debug(f'PYDEBUG: onMessageRecv() - Received MT_HANDSHAKE, Values = {m.payload}')
             try:
                 self.timeout = m.timeout / 1000
                 self.arduinoProfileSignature = m.profileSignature
@@ -59,24 +61,25 @@ class Connection(MessageDecoder):
             except Exception as ex:
                 just_the_string = traceback.format_exc()
                 #logging.debug(just_the_string)
-                logging.debug(f'PYDEBUG: error: {str(ex)}')
+                self.logger.debug(f'PYDEBUG: error: {str(ex)}')
         elif m.mt == MessageType.MT_DEBUG:
             #logging.debug(f'PYDEBUG onMessageRecv() - Received MT_DEBUG, Values = {m.payload}')
-            logging.debug(f'ARDEBUG: [{self.alias}], Message: {m.payload}')
+            self.logger.debug(f'ARDEBUG: [{self.alias}], Message: {m.payload}')
         if self.connectionState != ConnectionState.CONNECTED:
                 name = 'UNKNOWN_TYPE'
                 try:
                     name = MessageType(m.mt)
                 except Exception as ex:
+                    self.logger.debug(f'Error. Received unknown message of type {m.mt} from arduino. Ignoring.')
                     pass
                     #debugstr = f'PYDEBUG Error. Received unknown message of type {m.mt} from arduino. Ignoring.'
                     #logging.debug(debugstr)
                 debugstr = f'PYDEBUG Error. Received message of type {name} from arduino prior to completing handshake. Ignoring.'
-                logging.debug(debugstr)
+                self.logger.debug(debugstr)
                 return
 
         if m.mt == MessageType.MT_HEARTBEAT:
-            logging.debug(f'PYDEBUG onMessageRecv() - Received MT_HEARTBEAT, Values = {m.payload}')
+            self.logger.debug(f'PYDEBUG onMessageRecv() - Received MT_HEARTBEAT, Values = {m.payload}')
             #bi = m.payload[0]-1 # board index is always sent over incremeented by one
             self.arduinoReportedUptime = m.uptime
             self.lastMessageReceived = time.time()
@@ -88,7 +91,7 @@ class Connection(MessageDecoder):
                 self._messageReceivedCallbacks[m.mt](m)
             else:
                 debugstr = f'PYDEBUG Error. Received message of unknown type {m.mt} from arduino, ignoring.'
-                logging.debug(debugstr)
+                self.logger.debug(debugstr)
         
         '''
         if m.messageType == MessageType.MT_PINSTATUS:
@@ -230,7 +233,7 @@ di = DigitalInputFeauture()
 class SerialConnection(Connection):
     def __init__(self, dev: str, myType=ConnectionType.SERIAL, profileSignature: int = 0, baudRate: int = 115200, timeout: int = 1):
         super().__init__(myType)
-        logging.debug(f'PYDEBUG: SerialConnection __init__: dev={dev}, baudRate={baudRate}, timeout={timeout}')
+        self.logger.debug(f'PYDEBUG: SerialConnection __init__: dev={dev}, baudRate={baudRate}, timeout={timeout}')
         self.rxBuffer = bytearray()
         self.shutdown = False
         self.dev = dev
@@ -243,7 +246,7 @@ class SerialConnection(Connection):
         self.arduino = None
 
     def startRxTask(self):
-        logging.debug(f'PYDEBUG: SerialConnection::startRxTask: dev={self.dev}')
+        self.logger.debug(f'PYDEBUG: SerialConnection::startRxTask: dev={self.dev}')
         if self.daemon is not None:
             raise RuntimeError(f'PYDEBUG: SerialConnection::startRxTask: dev={self.dev}, error: RX thread already started!')
         
@@ -251,20 +254,20 @@ class SerialConnection(Connection):
         self.daemon.start()
 
     def stopRxTask(self):
-        logging.debug(f'PYDEBUG: SerialConnection::stopRxTask dev={self.dev}')
+        self.logger.debug(f'PYDEBUG: SerialConnection::stopRxTask dev={self.dev}')
         if self.daemon is not None:
             self.shutdown = True
             self.daemon.join()
             self.daemon = None
 
     def sendMessage(self, b: bytes):
-        logging.debug(f'PYDEBUG: SerialConnection::sendMessage, dev={self.dev}, Message={b}')
+        self.logger.debug(f'PYDEBUG: SerialConnection::sendMessage, dev={self.dev}, Message={b}')
         if self.arduino and self.arduino.is_open:
             self.arduino.write(b)
 
     def sendCommand(self, m: str):
         cm = MessageEncoder().encodeBytes(payload=[MessageType.MT_COMMAND, m, 1])
-        logging.debug(f'PYDEBUG: SerialConnection::sendCommand, dev={self.dev}, Command={bytes(cm)}')
+        self.logger.debug(f'PYDEBUG: SerialConnection::sendCommand, dev={self.dev}, Command={bytes(cm)}')
         self.sendMessage(bytes(cm))
 
     def rxTask(self):
@@ -294,24 +297,24 @@ class SerialConnection(Connection):
 
                         if readDebug:
                             chunk, self.rxBuffer = self.rxBuffer.split(b'\r\n', maxsplit=1)
-                            logging.debug(f'[{self.alias}]: {bytes(chunk).decode("utf8", errors="ignore")}')
+                            self.logger.debug(f'WARNING - DEBUG SHOULD NOT BE SENT VIA SERIAL AS A STRING DUE TO POTENTIAL CHARACTER MAPPING ISSUES. [{self.alias}]: {bytes(chunk).decode("utf8", errors="ignore")}')
                             print(f'[{self.alias}]: {bytes(chunk).decode("utf8", errors="ignore")}')
                         elif readMessage:
                             chunk, self.rxBuffer = self.rxBuffer.split(b'\x00', maxsplit=1)
-                            logging.debug(f'PYDEBUG: SerialConnection::rxTask, dev={self.dev}, chunk bytes: {chunk}')
+                            self.logger.debug(f'PYDEBUG: SerialConnection::rxTask, dev={self.dev}, chunk bytes: {chunk}')
                             if len(chunk) > 0:
                                 try:
                                     md = self.parseBytes(chunk)
                                     self.onMessageRecv(m=md)
                                 except Exception as ex:
-                                    logging.debug(f'PYDEBUG: SerialConnection::rxTask, dev={self.dev}, Exception: {traceback.format_exc()}')
+                                    self.logger.debug(f'PYDEBUG: SerialConnection::rxTask, dev={self.dev}, Exception: {traceback.format_exc()}')
                             else:
-                                logging.debug(f'PYDEBUG: SerialConnection::rxTask, dev={self.dev}, Warning. Received empty message from arduino.')
+                                self.logger.debug(f'PYDEBUG: SerialConnection::rxTask, dev={self.dev}, Warning. Received empty message from arduino.')
                 else:
                     time.sleep(0.01)
             except OSError as oserror:
-                logging.error(f'OS Error = : {str(oserror)}')
-                logging.debug(f'PYDEBUG: SerialConnection::rxTask, dev={self.dev}, Exception: {traceback.format_exc()}, OS Error: {str(oserror)}')
+               # self.logger.error(f'OS Error = : {str(oserror)}')
+                self.logger.debug(f'PYDEBUG: SerialConnection::rxTask, dev={self.dev}, Exception: {traceback.format_exc()}, OS Error: {str(oserror)}')
                 
                 self.daemon = None
                 self.arduino = None
@@ -320,7 +323,7 @@ class SerialConnection(Connection):
                 break
 
             except Exception as error:
-                logging.debug(f'PYDEBUG: SerialConnection::rxTask, dev={self.dev}, Exception: {traceback.format_exc()}')
+                self.logger.debug(f'PYDEBUG: SerialConnection::rxTask, dev={self.dev}, Exception: {traceback.format_exc()}')
                 
                 self.daemon = None
                 self.arduino = None
@@ -368,9 +371,9 @@ class ArduinoConnection(HalInterface):
         self.serialConn = SerialConnection(dev=settings.dev, baudRate=settings.baud_rate, profileSignature=self.settings.yamlProfileSignature, timeout=settings.connection_timeout)
         self.serialConn.alias = settings.alias
         self.serialDeviceAvailable = False
-
+        self.logger = get_logger()  # Get logger once during initialization
         if self.settings.enabled == True:
-            
+            self.logger.debug(f'PYDEBUG: ArduinoConnection::__init__, dev={self.settings.dev}, alias={self.settings.alias}')
             self.serialConn.messageReceivedSubscribe(mt=MessageType.MT_PINCHANGE, callback=lambda m: self.onMessage(m))
             self.serialConn.messageReceivedSubscribe(mt=MessageType.MT_CONFIG_ACK, callback=lambda m: self.onMessage(m))
             self.serialConn.messageReceivedSubscribe(mt=MessageType.MT_CONFIG_NAK, callback=lambda m: self.onMessage(m))
@@ -379,13 +382,14 @@ class ArduinoConnection(HalInterface):
             self.component = self.register_component(self.settings.component_name)
             try:
                 for f in self.settings.io_map.keys():
-                    f.debugSubscribe(callback=lambda d: self.onDebug(d))
+                    f.debugSubscribe(callback=lambda d: self.onDebug(f'{f.featureName}: {d}'))
                     f.Setup()
                     f.sendMessageSubscribe(callback=lambda m: self.sendMessage(m))
                     self.register_pins(f)
             except Exception as ex:
                 just_the_string = traceback.format_exc()
-                logging.debug(f'PYDEBUG: Error [{settings.alias}: {str(just_the_string)}') 
+                logger = get_logger()
+                logger.debug(f'PYDEBUG: Error [{settings.alias}: {str(just_the_string)}') 
         
     def __str__(self) -> str:
         return f'Arduino Alias = {self.settings.alias}, Component Name = {self.settings.component_name}, Enabled = {self.settings.enabled}'
@@ -399,7 +403,8 @@ class ArduinoConnection(HalInterface):
         
         
     def onDebug(self, d:str):
-        logging.debug(f'PYDEBUG: [{self.settings.alias}]: {d}') 
+        logger = get_logger()
+        logger.debug(f'PYDEBUG: [{self.settings.alias}]: {d}') 
     
     def onConnectionStateChange(self, state:ConnectionState):
         if self.settings.enabled == True:
@@ -411,7 +416,8 @@ class ArduinoConnection(HalInterface):
                         f.OnDisconnected()
             except Exception as ex:
                 just_the_string = traceback.format_exc()
-                logging.debug(f'PYDEBUG: Error [{self.settings.alias}: {str(just_the_string)}') 
+                logger = get_logger()
+                logger.debug(f'PYDEBUG: Error [{self.settings.alias}: {str(just_the_string)}') 
 
     def onMessage(self, m:ProtocolMessage):
         try:
@@ -424,7 +430,8 @@ class ArduinoConnection(HalInterface):
             pass
         except Exception as ex:
             just_the_string = traceback.format_exc()
-            logging.debug(f'PYDEBUG: Error [{self.settings.alias}: {str(just_the_string)}') 
+            logger = get_logger()
+            logger.debug(f'PYDEBUG: Error [{self.settings.alias}: {str(just_the_string)}') 
  
         
 
@@ -436,7 +443,7 @@ class ArduinoConnection(HalInterface):
             self.serialConn.startRxTask()
 
         if self.serialConn.status == ThreadStatus.CRASHED:
-            logging.debug(f'PYDEBUG: ArduinoConnection::doWork, dev={self.settings.dev}, alias={self.settings.alias}, ThreadStatus == CRASHED')
+            self.logger.debug(f'PYDEBUG: ArduinoConnection::doWork, dev={self.settings.dev}, alias={self.settings.alias}, ThreadStatus == CRASHED')
             # perhaps device was unplugged..
             found = False
             for port in serial.tools.list_ports.comports():
@@ -449,12 +456,12 @@ class ArduinoConnection(HalInterface):
             if found == False:
                 self.serialDeviceAvailable = False
                 retry = 2.5
-                logging.debug(f'PYDEBUG: ArduinoConnection::doWork, dev={self.settings.dev}, alias={self.settings.alias}. Error: Serial device not found! Retrying in {retry} seconds..')
+                self.logger.debug(f'PYDEBUG: ArduinoConnection::doWork, dev={self.settings.dev}, alias={self.settings.alias}. Error: Serial device not found! Retrying in {retry} seconds..')
                 time.sleep(retry) # TODO: Make retry settable via the yaml config?
                 
 
             else:
-                logging.debug(f'PYDEBUG: ArduinoConnection::doWork, dev={self.settings.dev}, alias={self.settings.alias}, Serial device found, restarting RX thread..')
+                self.logger.debug(f'PYDEBUG: ArduinoConnection::doWork, dev={self.settings.dev}, alias={self.settings.alias}, Serial device found, restarting RX thread..')
                 time.sleep(1) # TODO: Consider making this delay settable? Trying to avoid hammering the serial port when its in a strange state
                 self.serialConn.startRxTask()
         if self.serialConn.connectionState == ConnectionState.CONNECTED:
@@ -463,10 +470,10 @@ class ArduinoConnection(HalInterface):
             if self.serialConn.connectionState == ConnectionState.CONNECTED:
                 maybe_enabled = self.serialConn.featureMapDecoder.isFeatureEnabledByInt(f.featureID)
                 if maybe_enabled == False:
-                    logging.error(f'ERROR: ArduinoConnection::doWork, dev={self.settings.dev}, alias={self.settings.alias}, Feature {f.featureName} is not enabled by arduino config. See Config.h for Feature flags. Skipping..')
+                    self.logger.error(f'ERROR: ArduinoConnection::doWork, dev={self.settings.dev}, alias={self.settings.alias}, Feature {f.featureName} is not enabled by arduino config. See Config.h for Feature flags. Skipping..')
                     continue
             if self.serialConn.connectionState == ConnectionState.CONNECTED and f.ConfigSyncError() == True:
-                logging.debug(f'PYDEBUG: ArduinoConnection::doWork, dev={self.settings.dev}, alias={self.settings.alias}, Feature {f.featureName} reported sync error. Terminating connection..')
+                self.logger.debug(f'PYDEBUG: ArduinoConnection::doWork, dev={self.settings.dev}, alias={self.settings.alias}, Feature {f.featureName} reported sync error. Terminating connection..')
                 self.serialConn.setState(newState=ConnectionState.ERROR)
                 return
             else:
@@ -475,38 +482,8 @@ class ArduinoConnection(HalInterface):
                        f.Loop()
                     else:
                         # Handle lock acquisition failure
-                        logging.warning("Could not acquire lock for feature")
+                        self.logger.warning("Could not acquire lock for feature")
                 
-        '''
-                if self.serialConn.getConnectionState() == ConnectionState.CONNECTED and self.settings.profileSignature is not self.serialConn.arduinoProfileSignature:
-            
-            #time.sleep(5)
-            j = self.settings.configJSON()
-            #config_json = json.dumps(j)
-            #h = int(hashlib.sha256(config_json.encode('utf-8')).hexdigest(), 16) % 10**8
-            for k, v in j.items():
-                total = len(v)
-                seq = 0
-                for k1, v1 in v.items():
-                    v1['li'] = k1
-                    #print(v1)
-                    cf = ConfigMessage(configJSON=json.dumps(v1), seq=seq, total=total, featureID=v1['fi'])
-                    print(json.dumps(v1))
-                    seq += 1
-                    try:
-                        self.serialConn.sendMessage(cf.packetize())
-                        self.serialConn.arduino.flush()
-                        #if seq == 1:
-                        #    time.sleep(5)
-                    except Exception as error:
-                        just_the_string = traceback.format_exc()
-                        logging.debug(f'PYDEBUG: ArduinoConnection::doWork, dev={self.settings.dev}, alias={self.settings.alias}, Exception: {str(error)}, Traceback = {just_the_string}')
-                        # Future TODO: Consider doing something intelligent and not just reporting an error. Maybe increment a hal pin that reflects error counts?
-                        return
-                    time.sleep(.05)
-            self.serialConn.arduinoProfileSignature = self.settings.profileSignature
-        
-        '''
 
     
 '''
