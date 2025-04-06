@@ -237,16 +237,6 @@ def main(stdscr=None):
         sys.exit()
 
     main_loop(arduino_connections)
-
-#try:
-   # print('IM ALIVE')
-#    time.sleep(5)
-#except Exception as e:
-#    print(f'Error: {e}')
-#except KeyboardInterrupt:
-#    print('Keyboard interrupt!!!!!')
-#finally:
-#    print('IM DEAD')
     
 if __name__ == "__main__":
    main()
