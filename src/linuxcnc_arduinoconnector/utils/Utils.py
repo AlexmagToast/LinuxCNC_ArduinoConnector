@@ -19,14 +19,17 @@ def try_load_linuxcnc():
     try:
         modulename = 'hal'
         if modulename not in sys.modules:
-        #    print(f'You have not imported the {modulename} module')
+            print(f'ERROR You have not imported the {modulename} module')
             import hal
         modulename = 'linuxcnc'
         if modulename not in sys.modules:
-        #    print(f'You have not imported the {modulename} module')
+            print(f'ERROR You have not imported the {modulename} module')
             import linuxcnc
     except ImportError:
         raise ImportError('Error. linuxcnc module not found. Hal emulation requires linuxcnc module.')
+    except Exception as err:
+        print(f'ERROR: {str(err)}')
+        raise err
     return True
     
 # taken from https://stackoverflow.com/questions/1742866/compute-crc-of-file-in-python

@@ -19,11 +19,11 @@ class LinuxCNCInterface:
         self.load_linuxcnc()
 
     def load_linuxcnc(self):
-        from linuxcnc_arduinoconnector.utils.Utils import try_load_linuxcnc
+        #from linuxcnc_arduinoconnector.utils.Utils import try_load_linuxcnc
         try:
-            try_load_linuxcnc()
-            self.linuxcnc = sys.modules['linuxcnc']
-            self.hal = sys.modules['hal']
+            #try_load_linuxcnc()
+            #self.linuxcnc = sys.modules['linuxcnc']
+            #self.hal = sys.modules['hal']
             
             
             import linuxcnc

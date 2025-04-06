@@ -22,8 +22,8 @@ class HalInterface:
         self.remote_debug_enabled = False
         self.remote_debug_port = 5678
         self.wait_on_remote_debug_connect = False
-        if self.hal_emulation == False:
-            self.load_linuxcnc()
+        #if self.hal_emulation == False:
+        self.load_linuxcnc()
 
     def load_linuxcnc(self):
         from linuxcnc_arduinoconnector.utils.Utils import try_load_linuxcnc
@@ -31,42 +31,8 @@ class HalInterface:
             try_load_linuxcnc()
             self.linuxcnc = sys.modules['linuxcnc']
             self.hal = sys.modules['hal']
-            import linuxcnc
-            s = linuxcnc.stat() # create a connection to the status channel
-            s.poll() # get current values
-            self.linuxcnc_ini = linuxcnc.ini(s.ini_filename)
-            print(f'Arduino Connector: LinuxCNC INI file: {self.linuxcnc_ini}')
-            self.yaml_profile_path = self.linuxcnc_ini.find('ARDUINO_CONNECTOR', 'YAML_PROFILE_PATH')
-            if self.yaml_profile_path is None:
-                logging.error('Error. YAML_PROFILE_PATH not found in linuxcnc.ini')
-                print(f'Arduino Connector: Error. YAML_PROFILE_PATH not found in linuxcnc.ini')
-                self.linuxcnc_error = True
-            else:
-                print(f'Arduino Connector: YAML_PROFILE_PATH: {self.yaml_profile_path}')
-            self.remote_debug_enabled = self.linuxcnc_ini.find('ARDUINO_CONNECTOR', 'REMOTE_DEBUG_ENABLED')
-            if self.remote_debug_enabled is None:
-                logging.error('REMOTE_DEBUG_ENABLED not found in linuxcnc.ini, defaulting to False')
-                print(f'Arduino Connector: REMOTE_DEBUG_ENABLED not found in linuxcnc.ini, defaulting to False')
-                self.remote_debug_enabled = False
-            else:
-                print(f'Arduino Connector: REMOTE_DEBUG_ENABLED: {self.remote_debug_enabled}')
-            self.remote_debug_port = self.linuxcnc_ini.find('ARDUINO_CONNECTOR', 'REMOTE_DEBUG_PORT')
-            if self.remote_debug_port is None:
-                logging.error('REMOTE_DEBUG_PORT not found in linuxcnc.ini, defaulting to 5678')
-                print(f'Arduino Connector: REMOTE_DEBUG_PORT not found in linuxcnc.ini, defaulting to 5678')
-                self.remote_debug_port = 5678
-            else:
-                print(f'Arduino Connector: REMOTE_DEBUG_PORT: {self.remote_debug_port}')
-            self.wait_on_remote_debug_connect = self.linuxcnc_ini.find('ARDUINO_CONNECTOR', 'WAIT_ON_REMOTE_DEBUG_CONNECT')
-            if self.wait_on_remote_debug_connect is None:
-                logging.error('WAIT_ON_REMOTE_DEBUG_CONNECT not found in linuxcnc.ini, defaulting to False')
-                print(f'Arduino Connector: WAIT_ON_REMOTE_DEBUG_CONNECT not found in linuxcnc.ini, defaulting to False')
-                self.wait_on_remote_debug_connect = False
-            else:
-                print(f'Arduino Connector: WAIT_ON_REMOTE_DEBUG_CONNECT: {self.wait_on_remote_debug_connect}')
-            #machine_name = self.linuxcnc_ini.find('EMC', 'MACHINE') or "unknown"
-            #print(f"machine name: {machine_name}")
-            logging.debug('Successfully loaded linuxcnc module.')
+            print(f'Arduino Connector: Successfully loaded linuxcnc modules.')
+            #logging.debug('Successfully loaded linuxcnc module.')
 
         except ImportError:
             logging.error('Error. linuxcnc module not found. Switching to HAL emulation mode.')
@@ -78,7 +44,7 @@ class HalInterface:
         #    print(f'Arduino Connector: Error loading linuxcnc: {str(ex)}')
         #    self.linuxcnc_error = True
         except Exception as ex:
-            logging.error(f'Error loading linuxcnc: {str(ex)}')
+            #logging.error(f'Error loading linuxcnc: {str(ex)}')
             print(f'Arduino Connector: Error loading linuxcnc: {str(ex)}')
             self.linuxcnc_error = True
     def register_component(self, component_name):

@@ -10,6 +10,7 @@ import threading
 import getopt
 import concurrent.futures
 import pkg_resources
+import signal
 
 from linuxcnc_arduinoconnector.interfaces.LinuxCNCInterface import LinuxCNCInterface
 from linuxcnc_arduinoconnector.utils.LoggingUtils import setup_logger
@@ -68,7 +69,7 @@ if launchedByLinuxCNC:
     linuxcnc_instance = LinuxCNCInterface()
     if linuxcnc_instance.linuxcnc_error:
         print(f'Error loading linuxcnc: {linuxcnc_instance.linuxcnc_error}')
-        sys.exit(1)
+        raise Exception(f'Error loading linuxcnc: {linuxcnc_instance.linuxcnc_error}')
     else:
         print(f'Arduino Connector: Successfully created linuxcnc interface instance!')
     
@@ -101,10 +102,26 @@ def main_loop(arduino_connections):
     last_update = time.time()
     worker_threads = {}
     api_thread = None
+    running = True
+
+    # Set up signal handler for graceful shutdown
+    def signal_handler(sig, frame):
+        nonlocal running
+        running = False
+        print("Received keyboard interrupt, shutting down!!")
+        # Handle graceful shutdown
+        for ac in arduino_connections:
+            ac.serialConn.stopRxTask()
+        if file_logger is not None:
+            file_logger.info("Received keyboard interrupt, shutting down")
+
+    # Register signal handler
+    original_sigint_handler = signal.getsignal(signal.SIGINT)
+    signal.signal(signal.SIGINT, signal_handler)
 
     # Set up Arduino connections for the API
     set_arduino_connections(arduino_connections)
-    DEFAULT_API_ENABLED = False
+    #DEFAULT_API_ENABLED = False
     # Start API server if running as daemon (no stdscr)
     if DEFAULT_API_ENABLED:
         api_thread = run_api_server_in_thread()
@@ -115,31 +132,27 @@ def main_loop(arduino_connections):
 
     try:
         # Start worker threads for each Arduino connection
-        #for ac in arduino_connections:
-        #    worker_thread = threading.Thread(target=do_work, args=(ac,), daemon=True)
-        #    worker_thread.start()
-        #    worker_threads[ac] = worker_thread
+        for ac in arduino_connections:
+            worker_thread = threading.Thread(target=do_work, args=(ac,), daemon=True)
+            worker_thread.start()
+            worker_threads[ac] = worker_thread
         
         # Main loop
-        while True:
+        while running:
             # Restart any threads that have stopped
-            #for ac, thread in list(worker_threads.items()):
-            #    if not thread.is_alive():
-            #        # Restart the thread
-            #        worker_thread = threading.Thread(target=do_work, args=(ac,), daemon=True)
-            #        worker_thread.start()
-            #        worker_threads[ac] = worker_thread
+            for ac, thread in list(worker_threads.items()):
+                if not thread.is_alive():
+                    # Restart the thread
+                    worker_thread = threading.Thread(target=do_work, args=(ac,), daemon=True)
+                    worker_thread.start()
+                    worker_threads[ac] = worker_thread
             
             time.sleep(0.05)
-
     except KeyboardInterrupt:
-        print("Received keyboard interrupt, shutting down!!")
         # Handle graceful shutdown
         for ac in arduino_connections:
             ac.serialConn.stopRxTask()
-        if file_logger is not None:
-            file_logger.info("Received keyboard interrupt, shutting down")
-       
+        print("Arduino Connector: Received keyboard interrupt, shutting down!")
         #sys.exit(0)
     except Exception as err:
         # Handle unexpected errors
@@ -150,7 +163,9 @@ def main_loop(arduino_connections):
         logging.critical(f'PYDEBUG: error: {str(just_the_string)}')
         sys.exit(1)
     finally:
-        print('IM DEAD!!!!!!!!!!!')
+        # Restore original signal handler
+        signal.signal(signal.SIGINT, original_sigint_handler)
+        #print('IM DEAD!!!!!!!!!!!')
         
 def main(stdscr=None):
     argumentList = sys.argv[1:]
@@ -195,8 +210,8 @@ def main(stdscr=None):
         file_logger = setup_logger(logger_name='linuxcnc_arduinoconnector', log_file_path=linuxcnc_instance.log_file_path, log_level=linuxcnc_instance.log_level, log_format=DEFAULT_LOGGING_FORMAT)
         if os.path.exists(linuxcnc_instance.yaml_profile_path):
             devs = ArduinoYamlParser.parseYaml(path=linuxcnc_instance.yaml_profile_path)
-            for a in devs:
-                arduino_map.append(ArduinoConnection(a))
+            #for a in devs:
+            #    arduino_map.append(ArduinoConnection(a))
         else:
             print(f'Error. YAML_PROFILE_PATH not found in linuxcnc.ini: {linuxcnc_instance.yaml_profile_path}')
             if file_logger is not None:
