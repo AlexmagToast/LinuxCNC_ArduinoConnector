@@ -579,26 +579,25 @@ class ArduinoDetailView(ListViewBase):
         yield Header(show_clock=True)
         yield Label("Arduino LinuxCNC Connector V2.0", id="title", classes="heading")
         
-        # Add a prominent back button at the top
-        with Horizontal(id="back_button_container", classes="back-button-container"):
-            yield Button("« Back to List", id="back", variant="default")
+        # Remove the top back button, we'll only use the one at the bottom
         
-        # Container for Arduino details
-        yield Container(id="details_container", classes="details-box")
+        # Horizontal layout for details and feature status if possible
+        with Horizontal(id="details_row"):
+            # Container for Arduino details
+            yield Container(id="details_container", classes="details-box")
+            
+            # Container for feature status
+            yield Container(id="feature_status_container", classes="details-box")
         
-        # Container for feature status - added between details and pin table
-        yield Container(id="feature_status_container", classes="details-box")
-        
-        # Create styled table with border
+        # Create styled table with border - give it more space
         yield DataTable(id="pin_table", zebra_stripes=True, classes="table-border")
         
-        # Add instructions for hal emulation mode
+        # Make instructions more compact
         yield Label("", id="emulation_instructions", classes="emulation-instructions")
         
-        # Add styled buttons
+        # Make button container more compact with back button first - removed refresh button
         with Horizontal(id="buttons_container", classes="button-container"):
-            yield Button("Back to List", id="back_bottom", variant="default")
-            yield Button("Refresh", id="refresh", variant="primary")
+            yield Button("« Back", id="back_bottom", variant="default")
             yield Button("About", id="about", variant="primary")
             yield Button("Quit", id="quit", variant="error")
         
@@ -606,14 +605,14 @@ class ArduinoDetailView(ListViewBase):
     
     def on_mount(self) -> None:
         """Set up event handlers"""
-        # Set up pin table columns
+        # Set up pin table columns with smaller width for small screens
         pin_table = self.query_one("#pin_table")
-        pin_table.add_column("Pin", width=15)
-        pin_table.add_column("Pin Type", width=10) 
-        pin_table.add_column("HAL Pin Type", width=15)
-        pin_table.add_column("HAL Pin Dir", width=15)
-        pin_table.add_column("Pin ID", width=8)
-        pin_table.add_column("Value", width=10)
+        pin_table.add_column("Pin", width=10)         # Reduced from 15
+        pin_table.add_column("Type", width=6)         # Renamed and reduced from 10
+        pin_table.add_column("HAL Type", width=10)    # Renamed and reduced from 15
+        pin_table.add_column("Direction", width=10)   # Renamed and reduced from 15
+        pin_table.add_column("ID", width=4)           # Renamed and reduced from 8
+        pin_table.add_column("Value", width=8)        # Reduced from 10
         
         # Set cursor_type to row for whole row selection
         pin_table.cursor_type = "row"
@@ -942,16 +941,16 @@ class ArduinoDetailView(ListViewBase):
                 linuxcnc_str = f"{linuxcnc_status}"
                 print(f"DEBUG - Using default display for LinuxCNC status: {linuxcnc_status}")
             
-            # Build the detail labels with rich text formatting
+            # Use more compact format for the labels - use shorter labels and reduce text
             details_container.mount(
-                Label(f"[bold]Component Name:[/] {component_name}"),
+                Label(f"[bold]Name:[/] {component_name}"),
                 Label(f"[bold]Device:[/] {device}"),
-                Label(f"[bold]Serial Port Available:[/] {'[green]YES[/]' if serial_port_available else '[red]NO[/]'}"),
+                Label(f"[bold]Port:[/] {'[green]YES[/]' if serial_port_available else '[red]NO[/]'}"),
                 Label(f"[bold]Enabled:[/] [{enabled_color}]{enabled_str}[/]"),
-                Label(f"[bold]Arduino Status:[/] [{status_style}]{status}[/]"),
-                Label(f"[bold]LinuxCNC Status:[/] {linuxcnc_str}"),
-                Label(f"[bold]Arduino Reported Uptime:[/] {arduino_uptime}"),
-                Label(f"[bold]Connection to Arduino Uptime:[/] {connection_uptime}"),
+                Label(f"[bold]Status:[/] [{status_style}]{status}[/]"),
+                Label(f"[bold]LinuxCNC:[/] {linuxcnc_str}"),
+                Label(f"[bold]Uptime:[/] {arduino_uptime}"),
+                Label(f"[bold]Connected:[/] {connection_uptime}"),
             )
             
             print("DEBUG - Details container successfully updated with fields:")
@@ -966,8 +965,8 @@ class ArduinoDetailView(ListViewBase):
             # Update HAL emulation instructions
             instructions_label = self.query_one("#emulation_instructions")
             if self.hal_emulation:
-                # Show instructions for HAL emulation mode - updated for analog inputs
-                instructions_label.update("[italic]HAL Emulation Mode: Press [bold]ENTER[/bold] to toggle digital inputs or edit analog inputs, [bold]+/-[/bold] to increase/decrease analog input values, [bold]E[/bold] or [bold]double-click[/bold] to edit analog inputs[/italic]")
+                # Show more compact instructions with updated increment value
+                instructions_label.update("[italic]HAL Emulation: ENTER = toggle/edit, +/- = inc/dec by 50, E = edit[/italic]")
                 instructions_label.styles.display = "block"
             else:
                 # Hide instructions if not in HAL emulation mode
@@ -1000,17 +999,17 @@ class ArduinoDetailView(ListViewBase):
         # Add a header
         status_container.mount(Label("[bold]Feature Status:[/]"))
         
-        # Use a simple vertical layout - more stable than horizontal grid
+        # Use a compact format - single line per feature
         for name, status in self.feature_status.items():
             # Get status values
             ready = status.get("ready", False)
             
-            # Create status indicator
-            status_text = "[green]READY[/]" if ready else "[red]NOT READY[/]"
+            # Create status indicator - more compact
+            status_text = "[green]✓[/]" if ready else "[red]✗[/]"
             
-            # Add feature as a simple row
+            # Add feature as a single line with icon instead of text
             status_container.mount(
-                Label(f"• [bold]{name}:[/] {status_text}")
+                Label(f"[bold]{name}:[/] {status_text}")
             )
             
         # Debug
@@ -1025,12 +1024,6 @@ class ArduinoDetailView(ListViewBase):
                 self.feature_status[feature["name"]] = feature
                 print(f"DEBUG - Feature {feature['name']}: ready={feature.get('ready', False)}")
 
-    @on(Button.Pressed, "#back")
-    def on_back_button_pressed(self, event: Button.Pressed) -> None:
-        """Handle back button press"""
-        print("DEBUG - Back button pressed")
-        self.on_back()
-        
     @on(Button.Pressed, "#back_bottom")
     def on_back_bottom_button_pressed(self, event: Button.Pressed) -> None:
         """Handle back bottom button press"""
@@ -1048,12 +1041,6 @@ class ArduinoDetailView(ListViewBase):
         """Handle quit button press"""
         print("DEBUG - Quit button pressed")
         self._app.exit()
-        
-    @on(Button.Pressed, "#refresh")
-    def on_refresh_button_pressed(self, event: Button.Pressed) -> None:
-        """Handle refresh button press"""
-        print("DEBUG - Detail view: Refresh button pressed") 
-        self.update_all_data()
     
     def on_show(self) -> None:
         """Called when the view becomes visible"""
@@ -1495,17 +1482,17 @@ class ArduinoDetailView(ListViewBase):
         # Add a header
         status_container.mount(Label("[bold]Feature Status:[/]"))
         
-        # Use a simple vertical layout - more stable than horizontal grid
+        # Use a compact format - single line per feature
         for name, status in self.feature_status.items():
             # Get status values
             ready = status.get("ready", False)
             
-            # Create status indicator
-            status_text = "[green]READY[/]" if ready else "[red]NOT READY[/]"
+            # Create status indicator - more compact
+            status_text = "[green]✓[/]" if ready else "[red]✗[/]"
             
-            # Add feature as a simple row
+            # Add feature as a single line with icon instead of text
             status_container.mount(
-                Label(f"• [bold]{name}:[/] {status_text}")
+                Label(f"[bold]{name}:[/] {status_text}")
             )
             
         # Debug
@@ -1658,7 +1645,7 @@ class ArduinoDetailView(ListViewBase):
                 traceback.print_exc()
 
     def action_increase_value(self) -> None:
-        """Handle + key press to increase analog input value"""
+        """Handle + key press to increase analog input value by 50"""
         if not self.hal_emulation:
             return
             
@@ -1687,8 +1674,8 @@ class ArduinoDetailView(ListViewBase):
                     # Get current value
                     current_value = pin_data.get("current_value", pin_data.get("value", 0))
                     
-                    # Increase value
-                    new_value = current_value + 1
+                    # Increase value by 50 instead of 1
+                    new_value = current_value + 50
                     print(f"DEBUG - Increasing analog value for pin {pin_name} to {new_value}")
                     
                     # Update pin data
@@ -1726,7 +1713,7 @@ class ArduinoDetailView(ListViewBase):
                 traceback.print_exc()
 
     def action_decrease_value(self) -> None:
-        """Handle - key press to decrease analog input value"""
+        """Handle - key press to decrease analog input value by 50"""
         if not self.hal_emulation:
             return
             
@@ -1755,8 +1742,8 @@ class ArduinoDetailView(ListViewBase):
                     # Get current value
                     current_value = pin_data.get("current_value", pin_data.get("value", 0))
                     
-                    # Decrease value
-                    new_value = current_value - 1
+                    # Decrease value by 50 instead of 1
+                    new_value = current_value - 50
                     print(f"DEBUG - Decreasing analog value for pin {pin_name} to {new_value}")
                     
                     # Update pin data
@@ -1884,39 +1871,41 @@ class APIClientApp(App):
         text-align: center;
         background: #2d3142;
         color: #f9f8f9;
-        padding: 1;
-        margin-bottom: 1;
+        padding: 0;  /* Removed padding completely */
+        margin-bottom: 0;
         text-style: bold;
         width: 100%;
         border: wide #59546a;
     }
     
+    /* New styling for the details row container */
+    #details_row {
+        width: 100%;
+        height: auto;
+        margin: 0;
+        padding: 0;
+    }
+    
+    /* Adjust width of containers in horizontal layout for small screens */
+    #details_row > #details_container {
+        width: 60%;  /* Give details more space */
+        min-width: 30;
+        margin-right: 1;
+    }
+    
+    #details_row > #feature_status_container {
+        width: 40%;  /* Give feature status less space */
+        min-width: 20;
+    }
+    
     .button-container {
-        margin-top: 1;
+        margin-top: 0;
         align: center middle;
         height: auto;
     }
     
-    .back-button-container {
-        margin: 1 0;
-        align: left middle;
-        height: auto;
-        background: #252235;
-        padding: 1;
-        border-bottom: wide #59546a;
-    }
-    
-    #back {
-        background: #58546c;
-        margin-left: 2;
-    }
-    
-    #back_bottom {
-        background: #58546c;
-    }
-    
     Button {
-        margin: 1 2;
+        margin: 0 1;  /* Reduced button margins */
     }
     
     #refresh {
@@ -1937,41 +1926,58 @@ class APIClientApp(App):
     
     DataTable {
         width: 100%;
-        height: 80%;
+        height: 1fr;
+        min-height: 12;  /* Reduced minimum height for small screens */
+    }
+    
+    /* Make table columns fit better on small screens */
+    DataTable .datatable--header-cell {
+        padding: 0 1;    /* Reduced padding */
+    }
+    
+    DataTable .datatable--cell {
+        padding: 0 1;    /* Reduced padding */
     }
     
     .table-border {
         border: wide #59546a;
-        padding: 0 1;
+        padding: 0;
     }
     
     #details_container, #about_container, #feature_status_container {
         width: 100%;
         height: auto;
         border: wide #59546a;
-        padding: 1;
-        margin-bottom: 1;
+        padding: 0 1;
+        margin-bottom: 0;
+    }
+    
+    /* Make label text smaller in details containers */
+    #details_container Label, #feature_status_container Label {
+        height: 1;       /* Compact height */
+        margin: 0;       /* No margin */
+        padding: 0;      /* No padding */
     }
     
     #features_container {
         width: 100%;
         height: auto;
         border: wide #59546a;
-        padding: 1;
-        margin-bottom: 1;
+        padding: 0 1;
+        margin-bottom: 0;
         background: #292537;
     }
     
     #feature_status_grid {
-        margin-top: 1;
+        margin-top: 0;
         height: auto;
         width: 100%;
     }
     
     .feature-card {
-        padding: 1;
-        margin-right: 2;
-        margin-bottom: 1;
+        padding: 0 1;
+        margin-right: 1;
+        margin-bottom: 0;
         min-width: 20;
         max-width: 25;
         height: auto;
@@ -1982,12 +1988,12 @@ class APIClientApp(App):
     .feature-name {
         color: #e4c9ff;
         text-align: center;
-        margin-bottom: 1;
+        margin-bottom: 0;
     }
     
     .feature-detail {
         text-align: center;
-        margin-top: 1;
+        margin-top: 0;
     }
     
     .details-box {
@@ -1996,9 +2002,15 @@ class APIClientApp(App):
     
     .about-title {
         text-align: center;
-        margin: 1 0 2 0;
+        margin: 0;
         text-style: bold;
         color: #e4c9ff;
+    }
+    
+    .emulation-instructions {
+        margin: 0;
+        color: #a3a2a6;
+        text-align: center;
     }
     
     /* API Status Overlay Styling */
@@ -2007,7 +2019,7 @@ class APIClientApp(App):
         height: 100%;
         background: rgba(0, 0, 0, 0.7);
         align: center middle;
-        layer: above;  /* Use Textual's layer property instead of z-index */
+        layer: above;
     }
     
     #api_error_container {
@@ -2075,12 +2087,6 @@ class APIClientApp(App):
     
     #value_input {
         margin: 1 0;
-    }
-    
-    .emulation-instructions {
-        margin: 1 1;
-        color: #a3a2a6;
-        text-align: center;
     }
     """
     
