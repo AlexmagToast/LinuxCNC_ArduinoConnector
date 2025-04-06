@@ -73,10 +73,10 @@ class HalInterface:
             print(f'Arduino Connector: Error. linuxcnc module not found!')
             #self.hal_emulation = True
             self.linuxcnc_error = True
-        except linuxcnc.error as ex:
-            logging.error(f'Error loading linuxcnc: {str(ex)}')
-            print(f'Arduino Connector: Error loading linuxcnc: {str(ex)}')
-            self.linuxcnc_error = True
+        #except linuxcnc.error as ex:
+        #    logging.error(f'Error loading linuxcnc: {str(ex)}')
+        #    print(f'Arduino Connector: Error loading linuxcnc: {str(ex)}')
+        #    self.linuxcnc_error = True
         except Exception as ex:
             logging.error(f'Error loading linuxcnc: {str(ex)}')
             print(f'Arduino Connector: Error loading linuxcnc: {str(ex)}')
@@ -96,6 +96,7 @@ class HalInterface:
         if not self.hal_emulation or self.linuxcnc_error:
             return None
         try:
+            #import linuxcnc
             converted_type = None
             if pin_type == HalPinTypes.HAL_BIT:
                 converted_type = self.hal.HAL_BIT
@@ -115,6 +116,9 @@ class HalInterface:
             pin = component.newpin(pin_name, converted_type, converted_dir)
             logging.debug(f'Registered pin {pin_name} with HAL.')
             return pin
+        except Exception as ex:
+            logging.error(f'Error registering pin {pin_name}: {str(ex)}')
+            return None
         except self.linuxcnc.error as ex:
             logging.error(f'Error registering pin {pin_name}: {str(ex)}')
             return None

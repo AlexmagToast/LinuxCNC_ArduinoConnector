@@ -14,6 +14,7 @@ src/linuxcnc_arduinoconnector/features/Features.py
 src/linuxcnc_arduinoconnector/features/__init__.py
 src/linuxcnc_arduinoconnector/interfaces/ArduinoComms.py
 src/linuxcnc_arduinoconnector/interfaces/HalInterface.py
+src/linuxcnc_arduinoconnector/interfaces/LinuxCNCInterface.py
 src/linuxcnc_arduinoconnector/interfaces/__init__.py
 src/linuxcnc_arduinoconnector/models/ConfigModels.py
 src/linuxcnc_arduinoconnector/models/ProtocolModels.py

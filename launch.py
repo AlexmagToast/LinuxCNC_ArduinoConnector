@@ -12,6 +12,7 @@ import concurrent.futures
 import pkg_resources
 
 from linuxcnc_arduinoconnector.interfaces.LinuxCNCInterface import LinuxCNCInterface
+from linuxcnc_arduinoconnector.utils.LoggingUtils import setup_logger
 from linuxcnc_arduinoconnector.utils.YamlParser import ArduinoYamlParser
 from linuxcnc_arduinoconnector.interfaces.ArduinoComms import ArduinoConnection
 from linuxcnc_arduinoconnector.api import set_arduino_connections, run_api_server_in_thread
@@ -45,7 +46,7 @@ def launch_remote_debugger_listen(bind_addres:str, wait_on_connect=True, port=56
         #rint(f'Remote Debug Enabled based on override from Config.py, listening on port {port}')
         #if file_logger is not None:
         #    file_logger.debug(f'Remote Debug Enabled based on override from Config.py or linuxcnc profile, bound to {bind_addres} and listening on port {port}')
-        if wait_on_connect:
+        if wait_on_connect == True:
             #if file_logger is not None:
             #    file_logger.debug('Waiting for remote debugger to connect...')
             debugpy.wait_for_client()
@@ -95,7 +96,7 @@ def do_work(ac):
         else:
             print(f"Error in Arduino worker thread: {str(e)}")
 
-def main_loop(stdscr, arduino_connections):
+def main_loop(arduino_connections):
     """Main non-async loop for Arduino connections"""
     last_update = time.time()
     worker_threads = {}
@@ -103,7 +104,7 @@ def main_loop(stdscr, arduino_connections):
 
     # Set up Arduino connections for the API
     set_arduino_connections(arduino_connections)
-    
+    DEFAULT_API_ENABLED = False
     # Start API server if running as daemon (no stdscr)
     if DEFAULT_API_ENABLED:
         api_thread = run_api_server_in_thread()
@@ -114,40 +115,32 @@ def main_loop(stdscr, arduino_connections):
 
     try:
         # Start worker threads for each Arduino connection
-        for ac in arduino_connections:
-            worker_thread = threading.Thread(target=do_work, args=(ac,), daemon=True)
-            worker_thread.start()
-            worker_threads[ac] = worker_thread
+        #for ac in arduino_connections:
+        #    worker_thread = threading.Thread(target=do_work, args=(ac,), daemon=True)
+        #    worker_thread.start()
+        #    worker_threads[ac] = worker_thread
         
         # Main loop
         while True:
             # Restart any threads that have stopped
-            for ac, thread in list(worker_threads.items()):
-                if not thread.is_alive():
-                    # Restart the thread
-                    worker_thread = threading.Thread(target=do_work, args=(ac,), daemon=True)
-                    worker_thread.start()
-                    worker_threads[ac] = worker_thread
-            
-            if stdscr is None:
-                time.sleep(0.05)
-                continue
-            
-            # Handle UI if in console mode
-            key = stdscr.getch()
-            if key == ord('q'):
-                break
+            #for ac, thread in list(worker_threads.items()):
+            #    if not thread.is_alive():
+            #        # Restart the thread
+            #        worker_thread = threading.Thread(target=do_work, args=(ac,), daemon=True)
+            #        worker_thread.start()
+            #        worker_threads[ac] = worker_thread
             
             time.sleep(0.05)
 
     except KeyboardInterrupt:
+        print("Received keyboard interrupt, shutting down!!")
         # Handle graceful shutdown
         for ac in arduino_connections:
             ac.serialConn.stopRxTask()
         if file_logger is not None:
             file_logger.info("Received keyboard interrupt, shutting down")
-        print("Received keyboard interrupt, shutting down")
-        sys.exit(0)
+       
+        #sys.exit(0)
     except Exception as err:
         # Handle unexpected errors
         arduino_connections.clear()
@@ -156,6 +149,8 @@ def main_loop(stdscr, arduino_connections):
             file_logger.critical(f'Error in main loop: {str(just_the_string)}')
         logging.critical(f'PYDEBUG: error: {str(just_the_string)}')
         sys.exit(1)
+    finally:
+        print('IM DEAD!!!!!!!!!!!')
         
 def main(stdscr=None):
     argumentList = sys.argv[1:]
@@ -196,15 +191,21 @@ def main(stdscr=None):
             
             sys.exit(1)
     elif launchedByLinuxCNC and linuxcnc_instance is not None:
+        print(f'Arduino Connector: Successfully created linuxcnc interface instance!')
+        file_logger = setup_logger(logger_name='linuxcnc_arduinoconnector', log_file_path=linuxcnc_instance.log_file_path, log_level=linuxcnc_instance.log_level, log_format=DEFAULT_LOGGING_FORMAT)
         if os.path.exists(linuxcnc_instance.yaml_profile_path):
             devs = ArduinoYamlParser.parseYaml(path=linuxcnc_instance.yaml_profile_path)
             for a in devs:
                 arduino_map.append(ArduinoConnection(a))
         else:
             print(f'Error. YAML_PROFILE_PATH not found in linuxcnc.ini: {linuxcnc_instance.yaml_profile_path}')
+            if file_logger is not None:
+                file_logger.error(f'Error. YAML_PROFILE_PATH not found in linuxcnc.ini: {linuxcnc_instance.yaml_profile_path}')
             sys.exit(1)
     if len(devs) == 0:
         print('No Arduino profiles found in profile yaml!')
+        if file_logger is not None:
+            file_logger.error('No Arduino profiles found in profile yaml!')
         sys.exit()
 
     arduino_connections = []
@@ -215,11 +216,22 @@ def main(stdscr=None):
             file_logger.info(f'PYDEBUG: Loaded Arduino profile: {str(c)}')
     except Exception as err:
         just_the_string = traceback.format_exc()
-        file_logger.debug(f'PYDEBUG: error: {str(just_the_string)}')
+        if file_logger is not None:
+            file_logger.debug(f'PYDEBUG: error: {str(just_the_string)}')
         print(f'PYDEBUG: error: {str(just_the_string)}')
         sys.exit()
 
-    main_loop(stdscr, arduino_connections)
+    main_loop(arduino_connections)
 
+#try:
+   # print('IM ALIVE')
+#    time.sleep(5)
+#except Exception as e:
+#    print(f'Error: {e}')
+#except KeyboardInterrupt:
+#    print('Keyboard interrupt!!!!!')
+#finally:
+#    print('IM DEAD')
+    
 if __name__ == "__main__":
    main()

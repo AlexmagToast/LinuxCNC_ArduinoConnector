@@ -34,8 +34,14 @@ def setup_logger(
         # Ensure the directory exists
         #log_file_path.parent.mkdir(parents=True, exist_ok=True)
         #if not os.path.exists(log_file_path):
-            
-        
+        print(f'Arduino Connector: Creating log file: {log_file_path}')
+        print(f'Arduino Connector: max_bytes: {max_bytes}')
+        print(f'Arduino Connector: backup_count: {backup_count}')   
+        print(f'Arduino Connector: log_level: {log_level}')
+        print(f'Arduino Connector: log_format: {log_format}')
+        #create log file directory if it doesn't exist
+        log_file_path = Path(log_file_path)
+        log_file_path.parent.mkdir(parents=True, exist_ok=True)
         # Create a rotating file handler
         handler = RotatingFileHandler(
             str(log_file_path),
