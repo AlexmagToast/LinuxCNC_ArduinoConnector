@@ -175,10 +175,13 @@ def setup_logger(
     """
     # Create a logger
     logger = logging.getLogger(logger_name)
-    if 'debug' in logger_name.lower():
+    print(f"DEBUG - Setting up logger with name: {logger_name}, log_level: {log_level}")
+    if 'debug' in log_level.lower():
         log_level = logging.DEBUG
-    elif 'info' in logger_name.lower():
+    elif 'info' in log_level.lower():
         log_level = logging.INFO
+    elif 'error' in log_level.lower():
+        log_level = logging.ERROR
     else:
         log_level = logging.NOTSET
     logger.setLevel(log_level)

@@ -15,7 +15,7 @@ DEFAULT_LOGGING_FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 DEFAULT_LOG_TO_CONSOLE = True
 
 DEFAULT_LOG_FILE_PATH = '/tmp/arduino_connector/logs'
-DEFAULT_LOG_LEVEL = 'INFO'
+DEFAULT_LOG_LEVEL = 'DEBUG'
 
 DEFAULT_REMOTE_DEBUG_ENABLED = False
 DEFAULT_REMOTE_DEBUG_PORT = 5678

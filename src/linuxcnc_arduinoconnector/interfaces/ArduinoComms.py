@@ -366,7 +366,7 @@ class HalPinConnection:
 
 class ArduinoConnection(HalInterface):
     def __init__(self, settings:ArduinoSettings):
-        super().__init__()  #  call the HalInterface constructor
+        super().__init__(hal_emulation=settings.hal_emulation)  #  call the HalInterface constructor
         self.settings = settings
         self.serialConn = SerialConnection(dev=settings.dev, baudRate=settings.baud_rate, profileSignature=self.settings.yamlProfileSignature, timeout=settings.connection_timeout)
         self.serialConn.alias = settings.alias

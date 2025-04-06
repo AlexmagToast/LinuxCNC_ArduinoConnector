@@ -6,7 +6,7 @@ from linuxcnc_arduinoconnector.utils.LoggingUtils import get_logger
 
 
 class LinuxCNCInterface:
-    def __init__(self, hal_emulation=True):
+    def __init__(self):
         self.linuxcnc = None
         self.linuxcnc_error = False
         self.linuxcnc_ini = None

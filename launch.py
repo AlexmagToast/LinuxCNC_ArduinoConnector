@@ -82,16 +82,18 @@ arduino_map = []
 
 def do_work(ac, logger):
     """Run Arduino connection worker function in a thread"""
-    try:
-        ac.doWork()
+    while True:
+        try:
+            ac.doWork()
 
-    except KeyboardInterrupt:
-        # Handle graceful shutdown
-        ac.serialConn.stopRxTask()
-        logger.info(f'Received keyboard interrupt during do_work, shutting down')
-        sys.exit(0)
-    except Exception as e:
-        logger.error(f"Error in Arduino worker thread: {str(e)}")
+        except KeyboardInterrupt:
+            # Handle graceful shutdown
+            ac.serialConn.stopRxTask()
+            logger.info(f'Received keyboard interrupt during do_work, shutting down')
+            print("DEBUG - Received keyboard interrupt during do_work, shutting down")
+            sys.exit(0)
+        except Exception as e:
+                logger.error(f"Error in Arduino worker thread: {str(e)}")
 
 def main_loop(arduino_connections, logger):
     """Main non-async loop for Arduino connections"""
@@ -105,14 +107,16 @@ def main_loop(arduino_connections, logger):
         nonlocal running
         running = False
         logger.info(f'Received keyboard interrupt via signal handler, shutting down!!')
+        print("DEBUG - Received keyboard interrupt via signal handler, shutting down!!")
         # Handle graceful shutdown
         try:
             logger.info(f'Stopping RxTask for all Arduino connections, Arduino connections: {len(arduino_connections)}')
+            print(f"DEBUG - Stopping RxTask for all Arduino connections, Arduino connections: {len(arduino_connections)}")
             for ac in arduino_connections:
                 ac.serialConn.stopRxTask()
         except Exception as e:
             logger.error(f'Error stopping RxTask: {str(e)}')
-
+            print("DEBUG - Error stopping RxTask: {str(e)}")
 
     # Register signal handler
     logger.debug(f'Registering signal handler for SIGINT')
@@ -128,9 +132,12 @@ def main_loop(arduino_connections, logger):
         logger.info(f"API server started on port {DEFAULT_API_PORT}")
 
     try:
+        
         # Start worker threads for each Arduino connection
         logger.info(f'Starting worker threads for each Arduino connection')
         for ac in arduino_connections:
+            if launchedByLinuxCNC and ac.hal_emulation == True:
+                raise Exception(f'Error. ArduinoConnection::doWork, dev={ac.settings.dev}, alias={ac.settings.alias}. HAL emulation is enabled, but this is not supported when launched by LinuxCNC.')
             worker_thread = threading.Thread(target=do_work, args=(ac, logger), daemon=True)
             worker_thread.start()
             worker_threads[ac] = worker_thread
@@ -147,12 +154,14 @@ def main_loop(arduino_connections, logger):
                     worker_thread.start()
                     worker_threads[ac] = worker_thread
             
-            time.sleep(1)
+            time.sleep(0.01)
     except KeyboardInterrupt:
         # Handle graceful shutdown
+        logger.info(f'Received keyboard interrupt in main loop, shutting down!')
+        print("DEBUG - Received keyboard interrupt in main loop, shutting down!")
         for ac in arduino_connections:
             ac.serialConn.stopRxTask()
-        logger.info(f'Received keyboard interrupt in main loop, shutting down!')
+
         #sys.exit(0)
     except Exception as err:
         # Handle unexpected errors
@@ -175,6 +184,7 @@ def main(stdscr=None):
     additional_args = []
     
     logger.info(f'Starting main function')
+    
     
     try:
         logger.info(f'Parsing command line arguments')
