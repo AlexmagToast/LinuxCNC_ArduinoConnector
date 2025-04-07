@@ -16,3 +16,12 @@ __pycache__/
 
 # Ignore specific compiled Python files for specific versions
 __init__.cpython-*.pyc
+
+# Ignore egg-related files and directories
+*.egg
+*.egg-info/
+*.egg-*
+
+# Ignore build and specific project directories
+build/
+ArduinoConnector.egg-info/
