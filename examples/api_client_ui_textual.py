@@ -1802,7 +1802,7 @@ class AboutView(ListViewBase):
             yield Label("[bold underline]LinuxCNC_ArduinoConnector V2[/]", classes="about-title")
             yield Label("")
             yield Label("By Alexander Richter and Ken Thompson")
-            yield Label("Copyright (c) 2023 Alexander Richter & Ken Thompson")
+            yield Label("Copyright (c) 2023-2025 Alexander Richter & Ken Thompson")
             yield Label("")
             yield Label("[bold]What's new?[/]")
             yield Label("With this new Version the configuration and communication between")
