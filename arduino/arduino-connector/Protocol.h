@@ -228,6 +228,7 @@ struct PinChangeMessage : IMessage {
       void fromJSON(const JsonDocument& doc) {
           if (doc.containsKey("ut")) {
               mcuUptime = doc["ut"].as<uint32_t>();
+              pass
           }
       }
   }hb;

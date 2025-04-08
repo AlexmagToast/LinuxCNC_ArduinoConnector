@@ -917,6 +917,9 @@ class ArduinoDetailView(ListViewBase):
             arduino_uptime = arduino_details.get("arduino_reported_uptime", "N/A")
             connection_uptime = arduino_details.get("connection_uptime", "N/A")
             
+            # Debug log uptime values to help troubleshoot
+            print(f"DEBUG - Arduino uptime: '{arduino_uptime}', Connection uptime: '{connection_uptime}'")
+            
             # Linux CNC Status
             linuxcnc_status = arduino_details.get("linuxcnc_status", "DISCONNECTED")
             hal_emulation = arduino_details.get("hal_emulation", False)
@@ -949,7 +952,7 @@ class ArduinoDetailView(ListViewBase):
                 Label(f"[bold]Enabled:[/] [{enabled_color}]{enabled_str}[/]"),
                 Label(f"[bold]Status:[/] [{status_style}]{status}[/]"),
                 Label(f"[bold]LinuxCNC:[/] {linuxcnc_str}"),
-                Label(f"[bold]Uptime:[/] {arduino_uptime}"),
+                Label(f"[bold]Arduino uptime:[/] {arduino_uptime}"),
                 Label(f"[bold]Connected:[/] {connection_uptime}"),
             )
             

@@ -25,7 +25,7 @@ mcu:
       - pin_id: 5
         pin_name: dout.5 #hal pin name
     analogInputs:
-      - pin_id: A1
+      - pin_id: A2
         pin_name: ain.1 #hal pin name           #optional
         pin_type: HAL_FLOAT #hal pin type     #optional    
         pin_smoothing: 200 #smoothing const   #optional
@@ -36,7 +36,7 @@ mcu:
 
 
     analogOutputs:
-      - pin_id: A4
+      - pin_id: A3
         pin_name: aout.4 #hal pin name
         pin_type: HAL_FLOAT #hal pin type
         pin_smoothing: 200 #smoothing const   #optional

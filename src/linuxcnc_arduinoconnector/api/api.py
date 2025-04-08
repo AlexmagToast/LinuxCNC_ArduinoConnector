@@ -91,6 +91,7 @@ def format_uptime(seconds):
     elif hours > 0:
         return f"{int(hours)}h {int(minutes)}m"
     else:
+        # Always show minutes, even if zero
         return f"{int(minutes)}m"
 
 def format_connection_uptime(seconds):
@@ -107,6 +108,7 @@ def format_connection_uptime(seconds):
     elif minutes > 0:
         return f"{int(minutes)}m {int(secs)}s"
     else:
+        # Just seconds
         return f"{int(secs)}s"
 
 @app.get("/health", response_model=ApiHealth)
@@ -292,21 +294,24 @@ async def get_arduino_details(alias: str):
             if hasattr(arduino.serialConn, 'arduinoReportedUptime') and arduino.serialConn.arduinoReportedUptime > 0:
                 # Log the raw uptime value for debugging
                 logging.info(f"Raw arduinoReportedUptime: {arduino.serialConn.arduinoReportedUptime}")
+                logging.info(f"Type of arduinoReportedUptime: {type(arduino.serialConn.arduinoReportedUptime).__name__}")
                 
                 # If ut_minutes wasn't found, use the existing uptime value
-                if ut_minutes is None:
+                #if ut_minutes is None:
                     # Check whether the value is likely to be milliseconds or minutes
                     # If the value is very small (less than 1000), it's likely in minutes already
-                    if arduino.serialConn.arduinoReportedUptime < 1000:
-                        # Assume this is minutes already
-                        ut_minutes = int(arduino.serialConn.arduinoReportedUptime)
-                        arduino_uptime = format_uptime(ut_minutes * 60)  # Convert to seconds
-                        logging.info(f"Treating small value as minutes directly: {ut_minutes} -> {arduino_uptime}")
-                    else:
-                        # For backward compatibility, convert the existing uptime value
-                        # Note: arduinoReportedUptime is in milliseconds, convert to seconds
-                        arduino_uptime = format_uptime(arduino.serialConn.arduinoReportedUptime / 1000)
-                        logging.info(f"Using default uptime calculation: {arduino_uptime}")
+                if arduino.serialConn.arduinoReportedUptime < 1:
+                    # Assume this is minutes already
+                    #ut_minutes = int(arduino.serialConn.arduinoReportedUptime)
+                    arduino_uptime = "0"  # Convert to seconds
+                    logging.info(f"Treating small value as minutes directly: {ut_minutes} -> {arduino_uptime}")
+                else:
+                    # For backward compatibility, convert the existing uptime value
+                    # Note: arduinoReportedUptime is in milliseconds, convert to seconds
+                    arduino_uptime = format_uptime(arduino.serialConn.arduinoReportedUptime * 60)
+                    logging.info(f"Using default uptime calculation: {arduino_uptime}")
+            #else:
+             #   logging.info(f"Arduino uptime not available or zero: {getattr(arduino.serialConn, 'arduinoReportedUptime', 'Not set')}")
         except Exception as e:
             logging.error(f"Error calculating arduino uptime: {str(e)}")
         
