@@ -23,60 +23,60 @@ int convertPinString(const char* pinStr) {
     }
   }
 
-  // Handle 'D' pins
+  // Handle 'D' pins - map to digital pin constants if defined, otherwise use raw number
   if (pinStr[0] == 'D') {
     switch (pinNum) {
-    #if defined(D0) || __has_include(<pins_arduino.h>)
+    #ifdef D0
       case 0: return D0;
     #else
       case 0: return 0;
     #endif
-    #if defined(D1) || __has_include(<pins_arduino.h>)
+    #ifdef D1
       case 1: return D1;
     #else
       case 1: return 1;
     #endif
-    #if defined(D2) || __has_include(<pins_arduino.h>)
+    #ifdef D2
       case 2: return D2;
     #else
       case 2: return 2;
     #endif
-    #if defined(D3) || __has_include(<pins_arduino.h>)
+    #ifdef D3
       case 3: return D3;
     #else
       case 3: return 3;
     #endif
-    #if defined(D4) || __has_include(<pins_arduino.h>)
+    #ifdef D4
       case 4: return D4;
     #else
       case 4: return 4;
     #endif
-    #if defined(D5) || __has_include(<pins_arduino.h>)
+    #ifdef D5
       case 5: return D5;
     #else
       case 5: return 5;
     #endif
-    #if defined(D6) || __has_include(<pins_arduino.h>)
+    #ifdef D6
       case 6: return D6;
     #else
       case 6: return 6;
     #endif
-    #if defined(D7) || __has_include(<pins_arduino.h>)
+    #ifdef D7
       case 7: return D7;
     #else
       case 7: return 7;
     #endif
-    #if defined(D8) || __has_include(<pins_arduino.h>)
+    #ifdef D8
       case 8: return D8;
     #else
       case 8: return 8;
     #endif
-    #if defined(D9) || __has_include(<pins_arduino.h>)
+    #ifdef D9
       case 9: return D9;
     #else
       case 9: return 9;
     #endif
-    #if defined(D10) || __has_include(<pins_arduino.h>)
+    #ifdef D10
       case 10: return D10;
     #else
       case 10: return 10;
@@ -86,7 +86,7 @@ int convertPinString(const char* pinStr) {
     return pinNum;  // Return the number if pin is not defined
   }
 
-  // Handle 'A' pins
+  // Handle 'A' pins - map to analog pin constants if defined, otherwise use raw number
   if (pinStr[0] == 'A') {
     switch (pinNum) {
       #ifdef A0

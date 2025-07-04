@@ -16,7 +16,7 @@ console_handler = logging.StreamHandler()
 console_handler.setLevel(logging.DEBUG)
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 console_handler.setFormatter(formatter)
-logging.getLogger().addHandler(console_handler)
+#logging.getLogger().addHandler(console_handler)
 logging.getLogger().setLevel(logging.DEBUG)
 
 RX_MAX_QUEUE_SIZE = 10

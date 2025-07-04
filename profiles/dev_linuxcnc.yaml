@@ -6,16 +6,21 @@ mcu:
   hal_emulation: false
   io_map:           
     digitalInputs:
-      - pin_id: D7
+      - pin_id: D8
         pin_name: ir-sensor-in #hal pin name
         input_pullup: true
         pin_enabled: true
         pin_debounce: 50
-    #digitalOutputs:
-    #  - pin_id: D7
-    #    pin_name: dust-cover-out #hal pin name
-    #    pin_enabled: false
-    #    pin_connected_state: 1
-    #    pin_disconnected_state: 0
-    #    pin_initial_state: 0
-        
+    digitalOutputs:
+      - pin_id: D6
+        pin_name: dust-cover-out #hal pin name
+        pin_enabled: true
+        pin_connected_state: 1
+        pin_disconnected_state: 1
+        pin_initial_state: 1
+      - pin_id: D7
+        pin_name: dust-cover-act #hal pin name
+        pin_enabled: true
+        pin_connected_state: 1
+        pin_disconnected_state: 1
+        pin_initial_state: 1
