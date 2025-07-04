@@ -1,3 +1,29 @@
+/*
+  LinuxCNC_ArduinoConnector
+  By Alexander Richter, info@theartoftinkering.com &
+  Ken Thompson (not THAT Ken Thompson), https://github.com/KennethThompson
+  
+  MIT License
+  Copyright (c) 2023-2025 Alexander Richter & Ken Thompson
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files (the "Software"), to deal
+  in the Software without restriction, including without limitation the rights
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  copies of the Software, and to permit persons to whom the Software is
+  furnished to do so, subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in all  
+  copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+  SOFTWARE.
+*/
 #ifndef PIN_MAP_H
 #define PIN_MAP_H
 
@@ -89,57 +115,53 @@ int convertPinString(const char* pinStr) {
   // Handle 'A' pins - map to analog pin constants if defined, otherwise use raw number
   if (pinStr[0] == 'A') {
     switch (pinNum) {
-      #ifdef A0
-      case 0: return A0;
+      #ifdef PIN_A0 || __has_include(<pins_arduino.h>)
+      case 0: return PIN_A0;
       #endif
-      #ifdef A1
-      case 1: return A1;
+      #ifdef PIN_A1 || __has_include(<pins_arduino.h>)
+      case 1: return PIN_A1;
       #endif
-      #ifdef A2
-      case 2: return A2;
+      #ifdef PIN_A2 || __has_include(<pins_arduino.h>)
+      case 2: return PIN_A2;
       #endif
-      #ifdef A3
-      case 3: return A3;
+      #ifdef PIN_A3 || __has_include(<pins_arduino.h>)
+      case 3: return PIN_A3;
       #endif
-      #ifdef A4
-      case 4: return A4;
+      #ifdef PIN_A4 || __has_include(<pins_arduino.h>)
+      case 4: return PIN_A4;
       #endif
-      #ifdef A5
-      case 5: return A5;
+      #ifdef PIN_A5 || __has_include(<pins_arduino.h>)
+      case 5: return PIN_A5;
       #endif
-      #ifdef A6
-      case 6: return A6;
+      #ifdef PIN_A6 || __has_include(<pins_arduino.h>)
+      case 6: return PIN_A6;
       #endif
-      #ifdef A7
-      case 7: return A7;
+      #ifdef PIN_A7 || __has_include(<pins_arduino.h>)
+      case 7: return PIN_A7;
       #endif
-      #ifdef A8
-      case 8: return A8;
+      #ifdef PIN_A8 || __has_include(<pins_arduino.h>)
+      case 8: return PIN_A8;
       #endif
-      #ifdef A9
-      case 9: return A9;
+      #ifdef PIN_A9 || __has_include(<pins_arduino.h>)
+      case 9: return PIN_A9;
       #endif
-      #ifdef A10
-      case 10: return A10;
+      #ifdef PIN_A10 || __has_include(<pins_arduino.h>)
+      case 10: return PIN_A10;
       #endif
-      #ifdef A11
-      case 11: return A11;
+      #ifdef PIN_A11 || __has_include(<pins_arduino.h>)
+      case 11: return PIN_A11;
       #endif
-      #ifdef A12
-      case 12: return A12;
+      #ifdef PIN_A12 || __has_include(<pins_arduino.h>)
+      case 12: return PIN_A12;
       #endif
-      #ifdef A13
-      case 13: return A13;
+      #ifdef PIN_A13 || __has_include(<pins_arduino.h>)
+      case 13: return PIN_A13;
       #endif
-      #ifdef A14
-      case 14: return A14;
+      #ifdef PIN_A14 || __has_include(<pins_arduino.h>)
+      case 14: return PIN_A14;
       #endif
-      #ifdef A15
+      #ifdef A15 || __has_include(<pins_arduino.h>)
       case 15: return A15;
-      #endif
-      // ... (cases for A16 to A49)
-      #ifdef A50
-      case 50: return A50;
       #endif
     }
     return pinNum;  // Return the number if pin is not defined

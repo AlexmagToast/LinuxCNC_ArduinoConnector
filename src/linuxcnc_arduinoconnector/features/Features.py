@@ -1,13 +1,14 @@
-
 from abc import ABCMeta, abstractmethod
 from enum import Enum
 import logging
 import time
+import threading
 
 import numpy
 
-from linuxcnc_arduinoconnector.ConfigModels import AnalogPin, ArduinoPin, DigitalPin, HalPinDirection
-from linuxcnc_arduinoconnector.ProtocolModels import ConfigMessage, MessageType, ProtocolMessage
+from linuxcnc_arduinoconnector.models.ConfigModels import AnalogPin, ArduinoPin, DigitalPin, HalPinDirection
+from linuxcnc_arduinoconnector.models.ProtocolModels import ConfigMessage, MessageType, PinChangeMessage, ProtocolMessage
+from linuxcnc_arduinoconnector.utils.LoggingUtils import get_logger
 
 # The Features enum is used by the Feature objects to set the Feature properties such as the corresponding constant name, config string name, and feature ID
 class Features(Enum):
@@ -68,6 +69,53 @@ class IOFeature(metaclass=ABCMeta):
         self.pinConfigSyncMap = {}
         self._sendMessageCallbacks = []
         self._debugCallbacks = []
+        self._lock = None  # Initialize as None, will be created on first use
+        self.pinChangePending = False
+        
+    def _get_lock(self):
+        """Get the lock, creating it if needed"""
+        if self._lock is None:
+            self._lock = threading.RLock()
+        return self._lock
+        
+    def acquire_lock(self, timeout=None):
+        """Acquire the feature lock with optional timeout"""
+        return self._get_lock().acquire(timeout=timeout)
+        
+    def release_lock(self):
+        """Release the feature lock"""
+        if self._lock is not None:
+            self._lock.release()
+        
+    def with_lock(self, timeout=None):
+        """Context manager for using the feature lock"""
+        class FeatureLockContext:
+            def __init__(self, feature, timeout):
+                self.feature = feature
+                self.timeout = timeout
+                self.acquired = False
+                
+            def __enter__(self):
+                self.acquired = self.feature.acquire_lock(self.timeout)
+                return self.acquired
+                
+            def __exit__(self, exc_type, exc_val, exc_tb):
+                if self.acquired:
+                    self.feature.release_lock()
+                    
+        return FeatureLockContext(self, timeout)
+        
+    def __getstate__(self):
+        """Support for pickling - exclude the lock"""
+        state = self.__dict__.copy()
+        # Don't pickle the lock
+        state['_lock'] = None
+        return state
+    
+    def __setstate__(self, state):
+        """Support for unpickling - recreate state but without active lock"""
+        self.__dict__.update(state)
+        # Lock will be created on first use via _get_lock
 
     def FeatureName(self):
         return self.featureName
@@ -90,7 +138,13 @@ class IOFeature(metaclass=ABCMeta):
     def Debug(self, s:str):
         for dc in self._debugCallbacks:
             dc(f'[{self.featureName}] {s}')
-            
+    
+    def SetPinChangePending(self, pending:bool):
+        self.pinChangePending = pending
+        
+    def GetPinChangePending(self) -> bool:
+        return self.pinChangePending
+    
     @abstractmethod
     def OnConnected(self):
         self.configSyncError = False # Clear the error flag on reconnect
@@ -183,15 +237,19 @@ class DigitalInputs(IOFeature):
     def OnMessageRecv(self, pm:ProtocolMessage):
         super().OnMessageRecv(pm)
         if (pm.mt == MessageType.MT_PINCHANGE):
-            logging.debug(f'PINCHANGE: {pm.payload}')
+            self.Debug(f'PINCHANGE: {pm.payload}')
             for pi in pm.pinInfo:
                 # find the pin in the pinList
                 for p in self.pinList:
+                    # check if the pinID is an integer, and if it is, convert it to a string
+                    if isinstance(p.pinID, int):
+                        p.pinID = str(p.pinID)
                     if p.pinID == pi.pinID:
                         p.halPinCurrentValue = pi.pinValue
+                        p.arduinoPinCurrentValue = pi.pinValue  # Store the value in our permanent property
                         if p.halPinConnection != None:
                             p.halPinConnection.set(p.halPinCurrentValue)
-                        logging.debug(f'PININFO: {pi}')
+                        self.Debug(f'PININFO: {pi}')
                         break
     
     def OnConnected(self):
@@ -219,19 +277,13 @@ class DigitalInputs(IOFeature):
 class DigitalOutputs(IOFeature):
     def __init__(self) -> None:
         IOFeature.__init__(self, featureName=str(Features.DIGITAL_OUTPUTS), featureConfigName=Features.DIGITAL_OUTPUTS.configName(), featureID=int(Features.DIGITAL_OUTPUTS))
+        self.featureReady = True
     
     def YamlParser(self):
         return lambda yaml, featureID : DigitalPin(yaml=yaml, featureID=featureID, halPinDirection=HalPinDirection.HAL_IN)
     
     def OnMessageRecv(self, pm:ProtocolMessage):
         super().OnMessageRecv(pm)
-        #if (pm.mt == MessageType.MT_PINCHANGE):
-           # maybe_message = #PinChangeMessage#MessageDecoder.parseBytes(pm.payload)
-        #    print(f'PINCHANGE: {pm.payload}')
-        #    for p in pm.pinInfo:
-        #        print(f'PININFO: {p}')
-
-        #    pass    
     
     def OnConnected(self):
         super().OnConnected()
@@ -244,8 +296,25 @@ class DigitalOutputs(IOFeature):
     
     def Loop(self):
         super().Loop()
-        if (self.FeatureReady() == True and self.ConfigComplete() == True):
+        if (self.FeatureReady() == True and self.ConfigComplete() == True ):
             #self.Debug('Feature is ready for processing.')
+            #if self.GetPinChangePending() == True:
+            for p in self.pinList:
+                if p.halPinConnection != None:
+                    currentValue = p.halPinConnection.get()
+                    p.halPinCurrentValue = 1 if currentValue else 0
+                    
+                if p.arduinoPinCurrentValue != p.halPinCurrentValue:
+                    self.Debug(f'PINCHANGE: logicalID = {p.pinLogicalID}, pinID = {p.pinID}, halPinCurrentValue = {p.halPinCurrentValue}, arduinoPinCurrentValue = {p.arduinoPinCurrentValue}')
+                    for c in self._sendMessageCallbacks:
+                        #message_json = { 'l': p.pinLogicalID, 'p': p.pinID, 'v': p.halPinCurrentValue }
+                        json_str = f'{{"l": {p.pinLogicalID}, "p": {p.pinID}, "v": {p.halPinCurrentValue}}}'
+                        pc = PinChangeMessage(featureID=p.featureID, seqID=p.pinLogicalID, responseReq=0, message=json_str)
+                        for c in self._sendMessageCallbacks:
+                            c(pc.packetize())
+                        self.Debug(f'PINCHANGE: {pc.packetize()}')
+                    p.arduinoPinCurrentValue = p.halPinCurrentValue
+                #self.SetPinChangePending(False)
             pass
 '''
     AnalogInputs
@@ -253,33 +322,98 @@ class DigitalOutputs(IOFeature):
 class AnalogInputs(IOFeature):
     def __init__(self) -> None:
         IOFeature.__init__(self, featureName=str(Features.ANALOG_INPUTS), featureConfigName=Features.ANALOG_INPUTS.configName(), featureID=int(Features.ANALOG_INPUTS))
-    
+        self.featureReady = True
     def YamlParser(self):
         return lambda yaml, featureID : AnalogPin(yaml=yaml, featureID=featureID, halPinDirection=HalPinDirection.HAL_OUT)
+    
+    def OnMessageRecv(self, pm:ProtocolMessage):
+        super().OnMessageRecv(pm)
+        if (pm.mt == MessageType.MT_PINCHANGE):
+            self.Debug(f'PINCHANGE: {pm.payload}')
+            for pi in pm.pinInfo:
+                # find the pin in the pinList
+                for p in self.pinList:
+                    # check if the pinID is an integer, and if it is, convert it to a string
+                    if isinstance(p.pinID, int):
+                        p.pinID = str(p.pinID)
+                    if p.pinID == pi.pinID:
+                        p.halPinCurrentValue = pi.pinValue
+                        p.arduinoPinCurrentValue = pi.pinValue  # Store the value in our permanent property
+                        if p.halPinConnection != None:
+                            p.halPinConnection.set(p.halPinCurrentValue)
+                        self.Debug(f'PININFO: {pi}')
+                        break
+    
+    def OnConnected(self):
+        super().OnConnected()
+    
+    def OnDisconnected(self):
+        super().OnDisconnected()
+    
+    def Setup(self):
+        super().Setup()
+    
+    def Loop(self):
+        super().Loop()
 '''
     AnalogOutputs
 '''
 class AnalogOutputs(IOFeature):
     def __init__(self) -> None:
         IOFeature.__init__(self, featureName=str(Features.ANALOG_OUTPUTS), featureConfigName=Features.ANALOG_OUTPUTS.configName(), featureID=int(Features.ANALOG_OUTPUTS))
-    
+        self.featureReady = True
     def YamlParser(self):
         return lambda yaml, featureID : AnalogPin(yaml=yaml, featureID=featureID, halPinDirection=HalPinDirection.HAL_IN)
-
+    def OnMessageRecv(self, pm:ProtocolMessage):
+        super().OnMessageRecv(pm)
+    
+    def OnConnected(self):
+        super().OnConnected()
+    
+    def OnDisconnected(self):
+        super().OnDisconnected()
+    
+    def Setup(self):
+        super().Setup()
+    
+    def Loop(self):
+        super().Loop()
+        if (self.FeatureReady() == True and self.ConfigComplete() == True ):
+            #self.Debug('Feature is ready for processing.')
+            #if self.GetPinChangePending() == True:
+            for p in self.pinList:
+                if p.halPinConnection != None:
+                    currentValue = p.halPinConnection.get()
+                    p.halPinCurrentValue = currentValue
+                    
+                if p.arduinoPinCurrentValue != p.halPinCurrentValue:
+                    self.Debug(f'PINCHANGE: logicalID = {p.pinLogicalID}, pinID = {p.pinID}, halPinCurrentValue = {p.halPinCurrentValue}, arduinoPinCurrentValue = {p.arduinoPinCurrentValue}')
+                    for c in self._sendMessageCallbacks:
+                        import json
+                        message_json = { 'l': p.pinLogicalID, 'p': p.pinID, 'v': p.halPinCurrentValue }
+                        json_str = json.dumps(message_json)
+                        #json_str = f'{{"l": {p.pinLogicalID}, "p": {p.pinID}, "v": {p.halPinCurrentValue}}}'
+                        pc = PinChangeMessage(featureID=p.featureID, seqID=p.pinLogicalID, responseReq=0, message=json_str)
+                        for c in self._sendMessageCallbacks:
+                            c(pc.packetize())
+                        self.Debug(f'PINCHANGE: {pc.packetize()}')
+                    p.arduinoPinCurrentValue = p.halPinCurrentValue
+                #self.SetPinChangePending(False)
+            pass
 # Create an instance of each feature for YAML processing purposes.
 # When the yaml config is parsed, the objects get copied/duplicated and assigned to a particular MCU.  Each MCU has its own copy of a feature object so
 # logic can be executed as needed for Config updates, pin updates, etc.
  
 di = DigitalInputs()
 do = DigitalOutputs()
-#ai = AnalogInputs()
-#ao = AnalogOutputs()
+ai = AnalogInputs()
+ao = AnalogOutputs()
 
 # the featureList holds the IOFeature object copies for reference during yaml parsing.
 InstantiatedFeaturesList = [ di, 
                 do,
-                #ai,
-                #ao
+                ai,
+                ao
               ]
 
 class FeatureMapDecoder:

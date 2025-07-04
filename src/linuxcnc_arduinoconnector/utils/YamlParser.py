@@ -2,8 +2,8 @@ import logging
 import os
 import copy
 import yaml
-from linuxcnc_arduinoconnector.ConfigModels import ArduinoSettings, ConfigConnectionTypes, ConfigElement, ConnectionConfigElement, SerialConfigElement
-from linuxcnc_arduinoconnector.Utils import forLoopCrc
+from linuxcnc_arduinoconnector.models.ConfigModels import ArduinoSettings, ConfigConnectionTypes, ConfigElement, ConnectionConfigElement, SerialConfigElement
+from linuxcnc_arduinoconnector.utils.Utils import forLoopCrc
 
 
 class ArduinoYamlParser:
@@ -11,7 +11,7 @@ class ArduinoYamlParser:
         if os.path.exists(path) == False:
             raise FileNotFoundError(f'Error. {path} not found.')
         #import Features.featureList from Features
-        from linuxcnc_arduinoconnector.Features import InstantiatedFeaturesList
+        from linuxcnc_arduinoconnector.features import InstantiatedFeaturesList
         crcval = int(forLoopCrc(path))
         with open(path, 'r') as file:
             logging.debug(f'PYDEBUG: Loading config, path = {path}')

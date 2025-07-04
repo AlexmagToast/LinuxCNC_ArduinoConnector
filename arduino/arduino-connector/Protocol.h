@@ -4,7 +4,7 @@
   Ken Thompson (not THAT Ken Thompson), https://github.com/KennethThompson
   
   MIT License
-  Copyright (c) 2023 Alexander Richter & Ken Thompson
+  Copyright (c) 2023-2025 Alexander Richter & Ken Thompson
 
   Permission is hereby granted, free of charge, to any person obtaining a copy
   of this software and associated documentation files (the "Software"), to deal
@@ -13,7 +13,7 @@
   copies of the Software, and to permit persons to whom the Software is
   furnished to do so, subject to the following conditions:
 
-  The above copyright notice and this permission notice shall be included in all
+  The above copyright notice and this permission notice shall be included in all  
   copies or substantial portions of the Software.
 
   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
@@ -61,6 +61,7 @@ namespace protocol
 struct HandshakeMessage : public IMessage {
     uint8_t protocolVersion = PROTOCOL_VERSION;
     uint32_t featureMap;
+    uint32_t featureMapExtended;
     uint32_t timeout;
     uint32_t profileSignature = 0; // 0 indicates no config, >0 indicates an existing config
 
@@ -87,6 +88,7 @@ struct HandshakeMessage : public IMessage {
         doc["mt"] = MessageTypes::MT_HANDSHAKE;
         doc["pv"] = protocolVersion;
         doc["fm"] = featureMap;
+        doc["fx"] = featureMapExtended;
         doc["to"] = timeout;
         doc["ps"] = profileSignature;
 
@@ -104,6 +106,9 @@ struct HandshakeMessage : public IMessage {
         }
         if (doc.containsKey("fm")) {
             featureMap = doc["fm"].as<uint32_t>();
+        }
+        if (doc.containsKey("fx")) {
+            featureMapExtended = doc["fx"].as<uint32_t>();
         }
         if (doc.containsKey("to")) {
             timeout = doc["to"].as<uint32_t>();
@@ -223,6 +228,7 @@ struct PinChangeMessage : IMessage {
       void fromJSON(const JsonDocument& doc) {
           if (doc.containsKey("ut")) {
               mcuUptime = doc["ut"].as<uint32_t>();
+              pass
           }
       }
   }hb;

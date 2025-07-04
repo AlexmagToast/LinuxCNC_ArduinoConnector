@@ -1,0 +1,9 @@
+[ARDUINO_CONNECTOR]
+YAML_PROFILE_PATH = /path/to/your/profile.yaml
+#remainder is optional
+LOG_PATH = /home/youruser/.arduino_connector
+LOG_LEVEL = ALL # default: /tmp/arduino_connector/logs
+REMOTE_DEBUG = 0
+WAIT_ON_REMOTE_DEBUG_CONNECT = 0s
+REMOTE_DEBUG_PORT = 5678
+REMOTE_DEBUG_BIND_ADDRESS = 0.0.0.0

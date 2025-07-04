@@ -4,7 +4,7 @@
   Ken Thompson (not THAT Ken Thompson), https://github.com/KennethThompson
   
   MIT License
-  Copyright (c) 2023 Alexander Richter & Ken Thompson
+  Copyright (c) 2023-2025 Alexander Richter & Ken Thompson
 
   Permission is hereby granted, free of charge, to any person obtaining a copy
   of this software and associated documentation files (the "Software"), to deal
@@ -13,7 +13,7 @@
   copies of the Software, and to permit persons to whom the Software is
   furnished to do so, subject to the following conditions:
 
-  The above copyright notice and this permission notice shall be included in all
+  The above copyright notice and this permission notice shall be included in all  
   copies or substantial portions of the Software.
 
   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
@@ -27,7 +27,7 @@
 #ifndef CONNECTION_H_
 #define CONNECTION_H_
 #pragma once
-//#include "Arduino.h"
+
 #include "Config.h"
 #include "Protocol.h"
 #include "RXBuffer.h"
@@ -39,18 +39,29 @@
 #endif
 
 
+/**
+ * @enum ConnectionState
+ * @brief Defines the possible states of a connection
+ */
 enum ConnectionState
 {
-  CS_DISCONNECTED = 0,
-  CS_CONNECTING,
-  CS_CONNECTED,
-  CS_RECONNECTED,
-  CS_DISCONNECTING,
-  CS_CONNECTION_TIMEOUT,
-  CS_ERROR
+  CS_DISCONNECTED = 0,     ///< No active connection
+  CS_CONNECTING,           ///< Connection attempt in progress
+  CS_CONNECTED,            ///< Connection established
+  CS_RECONNECTED,          ///< Connection re-established after disconnect
+  CS_DISCONNECTING,        ///< Connection being terminated
+  CS_CONNECTION_TIMEOUT,   ///< Connection timed out
+  CS_ERROR                 ///< Error state
 };
 
 
+/**
+ * @class ConnectionBase
+ * @brief Base class for implementing connections with message handling capabilities
+ *
+ * This class provides the core functionality for establishing, maintaining, and 
+ * handling communication over various transport layers.
+ */
 class ConnectionBase : public RXBuffer, public Stream {
   using m_cmcb = void (*)(protocol::ConfigMessage&);
   using m_pcmcb = void (*)(const protocol::PinChangeMessage&);
@@ -58,77 +69,108 @@ class ConnectionBase : public RXBuffer, public Stream {
 
 public:
 
+  /**
+   * @brief Constructor for ConnectionBase
+   * @param retryPeriod Time in milliseconds between connection retry attempts
+   */
   ConnectionBase(uint16_t retryPeriod) : RXBuffer(), _retryPeriod(retryPeriod)
   {
     _buffer = new char[_bufferSize];
   }
-  //virtual void onMessage(uint8_t* d, const size_t& size)=0;
 
+  /**
+   * @brief Destructor for ConnectionBase
+   */
   ~ConnectionBase()
   {
     delete[] _buffer;
   }
+
+  /**
+   * @brief Register a callback for configuration messages
+   * @param act Callback function to handle configuration messages
+   */
   void RegisterConfigCallback(m_cmcb act)
   {
     _configAction = act;
   
   }
 
+  /**
+   * @brief Register a callback for pin change messages
+   * @param act Callback function to handle pin change messages
+   */
   void RegisterPinChangeCallback(m_pcmcb act)
   {
     _pinChangeAction = act;
   }
 
+  /**
+   * @brief Register a callback for connection state changes
+   * @param act Callback function to handle connection state changes
+   */
   void RegisterCSCallback(m_cscb act)
   {
     _csAction = act;
   }
 
   #ifdef DEBUG
+  /**
+   * @brief Send a debug message
+   * @param message The debug message to send
+   */
   virtual void SendDebugMessage(String& message)
   {
     _sendDebugMessage(message);
   }
   #endif
 
+  /**
+   * @brief Get the current connection state
+   * @return Reference to the current state
+   */
   int& GetState()
   {
     return _myState;
   }
 
+  /**
+   * @brief Set the unique identifier for this device
+   * @param uid Unique identifier string
+   */
   void setUID(const char* uid)
   {
     _uid = uid;
   }
 
+  /**
+   * @brief Send a generic message
+   * @param m Message to send
+   */
   virtual void SendMessage( protocol::IMessage& m)
   {}
-/*
-  virtual void SendPinStatusMessage(char sig, int pin, int state)
-  {
-    String status = String(sig);
-    status += String(pin);
-    status += ":";
-    status += String(state);
-    protocol::pm.status = status;
-    protocol::pm.status += " ";
-    _sendPinStatusMessage();
-  }
-*/
+
+  /**
+   * @brief Send a pin change message
+   * @param featureID ID of the feature
+   * @param seqID Sequence ID
+   * @param responseReq Response required flag
+   * @param message Message content
+   */
   virtual void SendPinChangeMessage(uint8_t& featureID, uint8_t& seqID, uint8_t& responseReq, String& message)
   {
-    //this->println("SENDING PIN MESSAGE!");
-    
     protocol::pcm.featureID = featureID;
     protocol::pcm.responseReq = responseReq;
     protocol::pcm.message = message;
     protocol::pcm.seqID = seqID;
     
-    _sendPinChangeMessage();
-    
+    _sendPinChangeMessage();    
   }
 
 
+  /**
+   * @brief Main work function to be called regularly to maintain the connection and process messages
+   */
   void DoWork()
   {
     if( _initialized == false)
@@ -208,15 +250,12 @@ public:
   }
   
   #ifdef DEBUG
-  /*
-  String IpAddress2String(const IPAddress& ipAddress)
-  {
-    return String(ipAddress[0]) + String(".") +\
-    String(ipAddress[1]) + String(".") +\
-    String(ipAddress[2]) + String(".") +\
-    String(ipAddress[3]); 
-  }
-  */
+
+  /**
+   * @brief Convert connection state to human-readable string
+   * @param state State to convert
+   * @return String representation of the state
+   */
   String stateToString(int& state)
   {
     switch(state)
@@ -240,48 +279,42 @@ public:
     }
   }
   #endif
-/*
-  uint8_t CommandReceived()
-  {
-    return _commandReceived;
-  }
 
-  const protocol::CommandMessage& GetReceivedCommand()
-  {
-    uint8_t r = _commandReceived;
-    if (_commandReceived)
-      _commandReceived = 0; // Clear flag.  Crude, but works.
-    return protocol::cm;
-  }
-*/
-
-  // Stream class methods
-virtual size_t write(uint8_t byte) override {
-  #ifndef DEBUG
-  return 1;
-  #endif
-
-  if (byte == '\r') {
-    return 1; // Ignore \r characters
-  }
-  
-  if (byte == '\n') {
-    // Construct the debug message from the buffer up to but not including the \n character
-    String debugMessage = String(_buffer).substring(0, _bufferIndex);
-    #ifdef DEBUG
-    _sendDebugMessage(debugMessage);
+  /**
+   * @brief Implementation of Stream's write method
+   * @param byte Byte to write
+   * @return Number of bytes written
+   */
+  virtual size_t write(uint8_t byte) override {
+    #ifndef DEBUG
+    return 1;
     #endif
-    _bufferIndex = 0; // Reset buffer index after calling _sendDebugMessage
-    return 1;
+
+    if (byte == '\r') {
+      return 1; // Ignore \r characters
+    }
+    
+    if (byte == '\n') {
+      // Construct the debug message from the buffer up to but not including the \n character
+      String debugMessage = String(_buffer).substring(0, _bufferIndex);
+      #ifdef DEBUG
+      _sendDebugMessage(debugMessage);
+      #endif
+      _bufferIndex = 0; // Reset buffer index after calling _sendDebugMessage
+      return 1;
+    }
+    
+    if (_bufferIndex < _bufferSize) {
+      _buffer[_bufferIndex++] = byte;
+      return 1;
+    }
+    
+    return 0;  // Buffer is full
   }
-  
-  if (_bufferIndex < _bufferSize) {
-    _buffer[_bufferIndex++] = byte;
-    return 1;
-  }
-  
-  return 0;  // Buffer is full
-}
+  /**
+   * @brief Implementation of Stream's read method
+   * @return Byte read or -1 if none available
+   */
   virtual int read() override {
     // Implement your read logic here
     // Example: read a byte from a buffer
@@ -291,12 +324,20 @@ virtual size_t write(uint8_t byte) override {
     return -1;  // Return -1 if none available
   }
 
+  /**
+   * @brief Implementation of Stream's available method
+   * @return Number of bytes available for reading
+   */
   virtual int available() override {
     // Implement your logic to return the number of bytes available for reading
     // Example: return the number of bytes in the buffer
     return _bufferIndex;
   }
 
+  /**
+   * @brief Implementation of Stream's peek method
+   * @return Next byte without removing it, or -1 if none available
+   */
   virtual int peek() override {
     // Implement your peek logic here
     // Example: return the next byte in the buffer without removing it
@@ -306,6 +347,9 @@ virtual size_t write(uint8_t byte) override {
     return -1;
   }
 
+  /**
+   * @brief Implementation of Stream's flush method
+   */
   virtual void flush() override {
     // Implement your flush logic here
     // Example: clear the buffer
@@ -313,49 +357,82 @@ virtual size_t write(uint8_t byte) override {
   }
 
 protected:
+  /**
+   * @brief Called during initialization
+   * @return Status code (0 for success)
+   */
   virtual uint8_t _onInit()
   {
     return 0;
   }
+  /**
+   * @brief Called when connection is established
+   */
   virtual void _onConnect()
   {
 
   }
+  /**
+   * @brief Called when connection is closed
+   */
   virtual void _onDisconnect()
   {
 
   }
+  /**
+   * @brief Called when an error occurs
+   */
   virtual void _onError()
   {
 
   }
+  /**
+   * @brief Called during regular processing in DoWork
+   */
   virtual void _onDoWork()
   {
 
   }
 
 
+  /**
+   * @brief Send handshake message to establish connection
+   */
   virtual void _sendHandshakeMessage()
   {
 
   }
 
+  /**
+   * @brief Send heartbeat message to maintain connection
+   */
   virtual void _sendHeartbeatMessage()
   {
 
   }
 
+  /**
+   * @brief Send pin change message
+   */
   virtual void _sendPinChangeMessage(){
 
   }
                 //_sendPinChangeMessage
   #ifdef DEBUG
+  /**
+   * @brief Send debug message
+   * @param message Debug message to send
+   */
   virtual void _sendDebugMessage(String& message)
   {
     
   }
   #endif
 
+  /**
+   * @brief Handle received handshake message
+   * @param n Handshake message
+   */
   void _onHandshakeMessage(const protocol::HandshakeMessage& n)
   {
       #ifdef DEBUG_VERBOSE
@@ -369,6 +446,10 @@ protected:
       _handshakeReceived = 1;
   }
 
+  /**
+   * @brief Handle received heartbeat message
+   * @param n Heartbeat message
+   */
   void _onHeartbeatMessage(const protocol::HeartbeatMessage& n)
   {
       //#ifdef DEBUG_VERBOSE
@@ -377,22 +458,11 @@ protected:
       _heartbeatReceived = 1;
   }
 
-  /*
-  void _onCommandMessage(const protocol::CommandMessage& n)
-  {
-      #ifdef DEBUG_VERBOSE
-      this->println(" ---- RX COMMAND MESSAGE DUMP ----");
-      this->print(" Command: ");
-      this->println(n.cmd);
-      //this->print(" Board Index: ");
-      //this->println(n.boardIndex);
-      this->println(" ---- RX END COMMAND MESSAGE DUMP ----");
-      #endif
-      protocol::cm.cmd = n.cmd;
-      //protocol::cm.boardIndex = n.boardIndex-1;
-      _commandReceived = 1;
-  }
-  */
+
+  /**
+   * @brief Handle received configuration message
+   * @param n Configuration message
+   */
   void _onConfigMessage(protocol::ConfigMessage& n)
   {
       if(_configAction != NULL)
@@ -401,6 +471,10 @@ protected:
       }
       _receiveTimer = millis(); // Don';t let the heartbeat timeout elapse just because the arduino is busy processing config
   }
+  /**
+   * @brief Handle received pin change message
+   * @param n Pin change message
+   */
   void _onPinChangeMessage(const protocol::PinChangeMessage& n)
   {
     #ifdef DEBUG_VERBOSE
@@ -421,6 +495,10 @@ protected:
       }
       _receiveTimer = millis(); // Don't let the heartbeat timeout elapse just because the arduino is busy processing messages like this one
   }
+  /**
+   * @brief Set connection state and trigger callback if registered
+   * @param new_state New state to set
+   */
   void _setState(int new_state)
   {
     #ifdef DEBUG
@@ -438,6 +516,11 @@ protected:
     }
   }
 
+  /**
+   * @brief Print buffer contents for debugging
+   * @param buffer Buffer to print
+   * @param size Size of buffer
+   */
   void printBuffer(uint8_t* buffer, size_t size) {
     for (uint8_t i = 0; i < size; i++) {
       if (buffer[i] < 0x10) {
@@ -450,6 +533,11 @@ protected:
   }
 
    
+  /**
+   * @brief Process received message
+   * @param d Data buffer
+   * @param size Buffer size
+   */
   virtual void onMessage(uint8_t* d, const size_t& size)
   {
     JsonDocument doc;
@@ -490,14 +578,10 @@ protected:
         #ifdef DEBUG
           this->println(F("RX MT_INVITE_SYNC"));
         #endif
-        //if(_myState == ConnectionState::CS_CONNECTED)
-        //{
-          // Trigger a reconnect if the python side sends a handshake message when we 'think' we are already connected.
           #ifdef DEBUG
           this->println(F("RX MT_INVITE_SYNC, RESTARTING CONNECTION LOOP!"));
           #endif
           this->_setState(CS_DISCONNECTED);
-        //}
         break;
       }
       case protocol::MessageTypes::MT_HANDSHAKE:
@@ -515,8 +599,6 @@ protected:
         #ifdef DEBUG
           this->println(F("RX MT_HEARTBEAT"));
         #endif
-        //protocol::HeartbeatMessage h;
-        //hmm.fromJSON(doc);
         _onHeartbeatMessage(protocol::hb);
         break;
       }
@@ -542,17 +624,34 @@ protected:
       }
       case protocol::MessageTypes::MT_PINCHANGE:
       {
-        #ifdef DEBUG
-          this->println(F("RX MT_PINCHANGE"));
-        #endif
+
         protocol::PinChangeMessage p;
         p.fromJSON(doc);
+        /*
+        #ifdef DEBUG_VERBOSE
+          this->println(F("RX MT_PINCHANGE"));
+          this->print(F("FEATURE ID:"));
+          this->println(p.featureID);
+          this->print(F("RESPONSE REQ:"));
+          this->println(p.responseReq);
+          this->print(F("MESSAGE:"));
+          this->println(p.message);
+        #endif
+        */
+       
         _onPinChangeMessage(p);
         break;
       }
     }
     
   }
+  /**
+   * @brief Convert JSON document to MessagePack format
+   * @param doc JSON document
+   * @param buffer Target buffer
+   * @param s Buffer size
+   * @return Size of encoded data
+   */
   size_t _jsonToMsgPack(JsonDocument& doc, uint8_t * buffer, size_t s)
   {
     size_t sz = serializeMsgPack(doc, (uint8_t*)&buffer[1], s-1);
@@ -561,9 +660,16 @@ protected:
     return sz+1;
   }
 
+  /**
+   * @brief Prepare handshake message for sending
+   * @param buffer Target buffer
+   * @param size Buffer size
+   * @return Size of encoded message
+   */
   size_t _getHandshakeMessage(uint8_t * buffer, size_t size)
   {
     protocol::hm.featureMap = fm.features;//this->_featureMap;
+    protocol::hm.featureMapExtended = 0; // For future use
     protocol::hm.timeout = _retryPeriod * 2;
     #ifndef INTEGRATED_CALLBACKS_LOWMEMORY
     protocol::hm.uid = _uid;
@@ -597,24 +703,15 @@ protected:
     return sz;
   }
 
+  /**
+   * @brief Prepare heartbeat message for sending
+   * @param buffer Target buffer
+   * @param size Buffer size
+   * @return Size of encoded message
+   */
   size_t _getHeartbeatMessage(uint8_t * buffer, size_t size)
   {
     JsonDocument doc;
-    /*
-    //unsigned long diff = millis() - _connectedTime;
-    unsigned long runMillis = millis();
-    unsigned long allSeconds=runMillis/1000;
-    int runDays = allSeconds/86400;
-    int secsRemaining = allSeconds%86400;
-
-    int runHours=secsRemaining/3600;
-    secsRemaining=secsRemaining%3600;
-
-    int runMinutes=secsRemaining/60;
-    int runSeconds=secsRemaining%60;
-    char buf[32];
-    sprintf(buf,"%02d:%02d:%02d:%02d", runDays, runHours,runMinutes,runSeconds);
-    */
     protocol::hb.mcuUptime = millis() / 1000 / 60;
     protocol::hb.toJSON(doc);
     //doc["ut"] = diff;
@@ -629,6 +726,12 @@ protected:
     return sz;
   }
 
+  /**
+   * @brief Prepare pin change message for sending
+   * @param buffer Target buffer
+   * @param size Buffer size
+   * @return Size of encoded message
+   */
   size_t _getPinChangeMessage(uint8_t * buffer, size_t size)
   {
 
@@ -648,22 +751,14 @@ protected:
     return sz;
   }
 
-
-/*
-  protocol::PinStatusMessage& _getPinStatusMessage()
-  {
-    #ifdef DEBUG_VERBOSE
-      this->println(" ---- TX PINSTATUS MESSAGE DUMP ----");
-      this->print(" STATUS: ");
-      this->println(protocol::pm.status);      
-      //this->print(" Board Index: ");
-      //this->println(protocol::pm.boardIndex);
-      this->println(" ---- TX END PINSTATUS MESSAGE DUMP ----");
-    #endif
-    return protocol::pm;
-  }
-*/
   #ifdef DEBUG
+  /**
+   * @brief Prepare debug message for sending
+   * @param buffer Target buffer
+   * @param size Buffer size
+   * @param message Debug message
+   * @return Size of encoded message
+   */
   size_t _getDebugMessage(uint8_t * buffer, size_t size, String& message)
   {
     JsonDocument doc;
@@ -675,6 +770,10 @@ protected:
   #endif
   
 
+  /**
+   * @brief Get and clear handshake received flag
+   * @return Current flag value
+   */
   uint8_t _getHandshakeReceived()
   {
     uint8_t r = _handshakeReceived;
@@ -682,6 +781,10 @@ protected:
       _handshakeReceived = 0;
     return r;
   }
+  /**
+   * @brief Get and clear heartbeat received flag
+   * @return Current flag value
+   */
   uint8_t _getHeartbeatReceived()
   {
     uint8_t r = _heartbeatReceived;

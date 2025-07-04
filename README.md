@@ -1,4 +1,3 @@
-
 # You are in the Alpha Branch of V2 of Arduino-connector, it is still in early development and not working! 
 
 ## LinuxCNC_ArduinoConnector V2
@@ -16,7 +15,7 @@ and
 Ken Thompson (not THAT Ken Thompson)  
 https://github.com/KennethThompson
 
-Copyright (c) 2023 Alexander Richter & Ken Thompson
+Copyright (c) 2023-2025 Alexander Richter & Ken Thompson
 
 
 
@@ -42,6 +41,17 @@ We are however greatly motivated and spend (to the chagrin of our wives) most of
 # Can I help? 
 Of course! Even if you are not a Programmer we invite you to discuss with us new feature Ideas and improvements. We try to think of every possible way of how people could want to use things, but we are always happy for new Input!
 You can do so by creating an Issue here on Github or writing Alex an Email: info@theartoftinkering.com. 
+
+# API
+The Arduino Connector now provides a REST API for monitoring and controlling your Arduino connections when running in Linuxcnc (daemon) mode. 
+
+## API Endpoints
+
+- `GET /status` - Get overall daemon status
+- `GET /arduinos` - List all configured Arduinos with basic status information
+- `GET /arduinos/{alias}` - Get detailed information about a specific Arduino including pin states
+
+The API server runs on port 8765 by default. You can access the API documentation at http://localhost:8765/docs when the daemon is running.
 
 # License
 This program is free software; you can redistribute it and/or modify

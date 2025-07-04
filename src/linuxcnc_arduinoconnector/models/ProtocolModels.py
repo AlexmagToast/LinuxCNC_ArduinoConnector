@@ -176,7 +176,6 @@ class PinChangeMessage(ProtocolMessage):
                 'ms': message
             }
         else:
-            #self.payload = payload
             required_fields = ['fi', 'si', 'rr', 'ms']
             for field in required_fields:
                 if field not in payload:
@@ -186,16 +185,7 @@ class PinChangeMessage(ProtocolMessage):
             self.seqID = payload['si']
             self.responseReq = payload['rr']
             required_fields = ['l', 'p', 'v']
-            #self.message = payload['ms']
-            #self.pinInfo = parse_pin_info_elements(payload['ms'])
-                    # Parse the JSON string
-            # Create a list of PinInfoElement objects
             self.pinInfo = [PinInfoElement(item) for item in json.loads(payload['ms'])]
-            #pass
-        #self.payload = payload
-        #self.featureID = payload['fi']
-        #self.sequenceID = payload['se']
-        #self.featureArrayIndex = payload['fa']
         
 class HeartbeatMessage(ProtocolMessage):
     def __init__(self, payload):
@@ -207,7 +197,7 @@ class HandshakeMessage(ProtocolMessage):
     def __init__(self, payload):
         super().__init__(messageType=MessageType.MT_HANDSHAKE)
         
-        required_fields = ['pv', 'fm', 'to', 'ps']
+        required_fields = ['pv', 'fm', 'fx', 'to', 'ps']
         for field in required_fields:
             if field not in payload:
                 raise ValueError(f"{field} is undefined in payload")
@@ -217,6 +207,7 @@ class HandshakeMessage(ProtocolMessage):
             raise ValueError(f"Expected protocol version {MCU_PROTOCOL_VERSION}, got {self.protocolVersion}")
 
         self.enabledFeatures = payload['fm']
+        self.enabledFeaturesExtended = payload['fx']
         self.timeout = payload['to']
         self.profileSignature = payload['ps']
         self.UID = payload.get('ui', 'UNDEFINED')
@@ -229,17 +220,17 @@ class HandshakeMessage(ProtocolMessage):
 class MessageDecoder:
     @staticmethod
     def parseBytes(b: bytearray) -> ProtocolMessage:
-        logging.debug(f"PYDEBUG: cobs encoded: {b}")
+        #logging.debug(f"PYDEBUG: cobs encoded: {b}")
         
         try:
             decoded = cobs.decode(b)
-            logging.debug(f"PYDEBUG: cobs decoded: {decoded}")
+            #logging.debug(f"PYDEBUG: cobs decoded: {decoded}")
         except cobs.DecodeError as e:
             raise ValueError(f"Failed to decode COBS data: {e}")
 
         try:
             payload = msgpack.loads(decoded)
-            logging.debug(f"PYDEBUG: msgpack json decoded: {payload}")
+            #logging.debug(f"PYDEBUG: msgpack json decoded: {payload}")
         except msgpack.ExtraData as e:
             raise ValueError(f"Failed to unpack msgpack data: {e}")
         except msgpack.FormatError as e:

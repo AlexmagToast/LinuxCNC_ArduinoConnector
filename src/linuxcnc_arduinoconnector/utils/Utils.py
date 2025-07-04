@@ -1,4 +1,3 @@
-
 import logging
 import os
 from pathlib import Path
@@ -11,8 +10,8 @@ import psutil
 
 import serial
 
-from linuxcnc_arduinoconnector.ArduinoComms import ArduinoConnection
-from linuxcnc_arduinoconnector.ConfigModels import DEFAULT_PROFILE
+from linuxcnc_arduinoconnector.interfaces.ArduinoComms import ArduinoConnection
+from linuxcnc_arduinoconnector.models.ConfigModels import DEFAULT_PROFILE
 
 
 
@@ -20,14 +19,17 @@ def try_load_linuxcnc():
     try:
         modulename = 'hal'
         if modulename not in sys.modules:
-        #    print(f'You have not imported the {modulename} module')
+            print(f'ERROR You have not imported the {modulename} module')
             import hal
         modulename = 'linuxcnc'
         if modulename not in sys.modules:
-        #    print(f'You have not imported the {modulename} module')
+            print(f'ERROR You have not imported the {modulename} module')
             import linuxcnc
     except ImportError:
         raise ImportError('Error. linuxcnc module not found. Hal emulation requires linuxcnc module.')
+    except Exception as err:
+        print(f'ERROR: {str(err)}')
+        raise err
     return True
     
 # taken from https://stackoverflow.com/questions/1742866/compute-crc-of-file-in-python
@@ -45,7 +47,7 @@ def listDevices():
         print(f'Device: {port}')
 
 def locateProfile() -> list[ArduinoConnection]:
-    from linuxcnc_arduinoconnector.YamlParser import ArduinoYamlParser
+    from linuxcnc_arduinoconnector.utils.YamlParser import ArduinoYamlParser
     #logging.debug(f'Starting up!')
     home_profile_loc = Path.home() / ".arduino" / DEFAULT_PROFILE #"profile.yaml"
     arduino_profiles = []
@@ -185,7 +187,7 @@ async def main_async(arduino_connections):
 def launch_connector(target_profile:str):
     
     try:
-        from linuxcnc_arduinoconnector.YamlParser import ArduinoYamlParser
+        from linuxcnc_arduinoconnector.utils.YamlParser import ArduinoYamlParser
         devs = ArduinoYamlParser.parseYaml(path=target_profile)
     except Exception as err:
         just_the_string = traceback.format_exc()

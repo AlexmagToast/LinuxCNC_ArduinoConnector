@@ -89,11 +89,13 @@ class Features:
                 'pin_name': {'value': 'ain.', 'ignore': 0, 'optional':1},
                 'pin_type': {'value': 'HAL_FLOAT', 'ignore': 0, 'optional':1},
                 'pin_smoothing': {'value': 200, 'ignore': 0, 'optional':1},
+                'pin_smoothing_algo': {'value': 'SIMPLE', 'ignore': 0, 'optional':1},
                 'pin_min_val': {'value': 0, 'ignore': 0, 'optional':1},
                 'pin_max_val': {'value': 1023, 'ignore': 0, 'optional':1},
                 'pin_init_state': {'value': -1, 'ignore': 0, 'optional':1},
                 'pin_connected_state': {'value': -1, 'ignore': 0, 'optional':1},   
                 'pin_disconnected_state': {'value': 0, 'ignore': 0, 'optional':1},
+                'pin_resolution': {'value': 10, 'ignore': 0, 'optional':1},
                 'enabled': {'value': 'TRUE', 'ignore': 0, 'optional':1}
                 }
         }

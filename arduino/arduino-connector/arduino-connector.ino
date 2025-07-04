@@ -4,7 +4,7 @@
   Ken Thompson (not THAT Ken Thompson), https://github.com/KennethThompson
   
   MIT License
-  Copyright (c) 2023 Alexander Richter & Ken Thompson
+  Copyright (c) 2023-2025 Alexander Richter & Ken Thompson
 
   Permission is hereby granted, free of charge, to any person obtaining a copy
   of this software and associated documentation files (the "Software"), to deal
@@ -45,6 +45,7 @@ void setup() {
  // #endif
   
   serialClient.RegisterConfigCallback(Callbacks::onConfig);
+  serialClient.RegisterPinChangeCallback(Callbacks::onPinChange);
   featureController.ExcecuteFeatureSetups();
   #ifdef DINPUTS
     Features::DigitalInputs * din = new Features::DigitalInputs();
@@ -54,7 +55,14 @@ void setup() {
     Features::DigitalOutputs * dout = new Features::DigitalOutputs();
     featureController.RegisterFeature(dout);
   #endif
-
+  #ifdef AOUTPUTS
+    Features::AnalogOutputs * aout = new Features::AnalogOutputs();
+    featureController.RegisterFeature(aout);
+  #endif
+  #ifdef AINPUTS
+    Features::AnalogInputs * ain = new Features::AnalogInputs();
+    featureController.RegisterFeature(ain);
+  #endif
   serialClient.DoWork(); 
 }
 

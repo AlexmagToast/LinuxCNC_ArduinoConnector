@@ -1,0 +1,2542 @@
+#!/usr/bin/env python3
+"""
+Arduino Connector Textual-based UI
+A modern terminal UI for the Arduino Connector API
+"""
+import sys
+import requests
+import atexit
+import signal
+from datetime import datetime
+from typing import Dict, List, Any, Optional
+import asyncio
+import time
+import json
+
+from textual import on
+from textual.app import App, ComposeResult
+from textual.containers import Container, Horizontal, Vertical
+from textual.reactive import reactive
+from textual.widgets import (
+    Button, DataTable, Footer, Header, Label, Static, LoadingIndicator, Input
+)
+from textual import events
+from textual.widget import Widget
+from textual.screen import Screen, ModalScreen
+from textual.message import Message
+from textual.timer import Timer
+
+# Monkey patch to fix timer cleanup issue on exit
+original_stop_all = Timer._stop_all
+async def safe_stop_all(cls, timers):
+    """Safe version of _stop_all that handles Timer objects in _interval"""
+    try:
+        return await original_stop_all(timers)
+    except TypeError:
+        print("Caught Timer cleanup error, exiting safely")
+        return None
+
+Timer._stop_all = classmethod(safe_stop_all)
+
+# API configuration
+API_BASE_URL = "http://localhost:8765"
+
+# API Health Check Constants
+HEALTH_CHECK_INTERVAL = 5.0  # Seconds between health checks
+HEALTH_CHECK_TIMEOUT = 2.0   # Seconds to wait for a health check response
+
+class ApiStatusOverlay(Container):
+    """An overlay that shows when the API is down"""
+    
+    def __init__(self, app_instance):
+        super().__init__(id="api_status_overlay")
+        self._app = app_instance
+        self._countdown = HEALTH_CHECK_INTERVAL
+        self._timer_id = None
+        
+    def compose(self) -> ComposeResult:
+        """Compose the overlay"""
+        yield Container(
+            Label("API Connection Error", id="api_error_title", classes="error-title"),
+            Label("The Arduino Connector API is not responding", id="api_error_message"),
+            Label("", id="retry_countdown"),
+            LoadingIndicator(id="retry_loading"),
+            Button("Try Again Now", id="retry_now", variant="primary"),
+            Label("Press 'q' to quit the application", id="quit_hint", classes="quit-hint"),
+            id="api_error_container",
+            classes="error-container"
+        )
+    
+    def on_mount(self) -> None:
+        """Set up event handlers"""
+        retry_button = self.query_one("#retry_now")
+        retry_button.on_click = self.retry_now
+        
+        # Initialize UI elements
+        self.query_one("#retry_loading").styles.display = "none"
+        
+        # Start countdown
+        self.start_countdown()
+    
+    def start_countdown(self) -> None:
+        """Start the countdown timer for automatic retry"""
+        self._countdown = int(HEALTH_CHECK_INTERVAL)
+        self.update_countdown_display()
+        
+        # Cancel existing timer if any
+        if self._timer_id is not None:
+            try:
+                self._app.set_timer(self._timer_id, None)
+            except Exception as e:
+                print(f"Error cancelling timer: {e}")
+            self._timer_id = None
+        
+        # Use a simple callback for countdown
+        def countdown_callback():
+            self._countdown -= 1
+            self.update_countdown_display()
+            
+            if self._countdown <= 0:
+                # Time to retry
+                if self._timer_id is not None:
+                    try:
+                        self._app.set_timer(self._timer_id, None)
+                    except Exception:
+                        pass
+                    self._timer_id = None
+                
+                # Execute health check
+                self._app.check_api_health()
+            else:
+                # Schedule next countdown tick
+                self._timer_id = self._app.set_timer(1.0, countdown_callback)
+        
+        # Start the countdown
+        self._timer_id = self._app.set_timer(1.0, countdown_callback)
+    
+    def update_countdown_display(self) -> None:
+        """Update the countdown label"""
+        countdown_label = self.query_one("#retry_countdown")
+        countdown_label.update(f"Automatically retrying in {self._countdown} seconds...")
+    
+    def retry_now(self) -> None:
+        """Handle manual retry button click"""
+        # Cancel the countdown timer
+        if self._timer_id is not None:
+            try:
+                self._app.set_timer(self._timer_id, None)
+            except Exception:
+                pass
+            self._timer_id = None
+        
+        # Show loading indicator
+        self.query_one("#retry_loading").styles.display = "block"
+        self.query_one("#retry_countdown").styles.display = "none"
+        self.query_one("#retry_now").disabled = True
+        
+        # Execute health check after a small delay
+        def execute_health_check():
+            try:
+                self._app.check_api_health()
+            except Exception as e:
+                print(f"Error during health check: {e}")
+                self.query_one("#retry_now").disabled = False
+                self.query_one("#retry_loading").styles.display = "none"
+                self.query_one("#retry_countdown").styles.display = "block"
+                # Restart countdown
+                self.start_countdown()
+                
+        self._app.set_timer(0.5, execute_health_check)
+
+class ListViewBase(Widget):
+    """Base class for list views"""
+    
+    def __init__(self, app_instance):
+        super().__init__()
+        self._app = app_instance
+    
+    def on_key(self, event: events.Key) -> None:
+        """Handle key events"""
+        if event.key == "q":
+            self._app.exit()
+        elif event.key == "r":
+            if hasattr(self, 'on_refresh'):
+                self.on_refresh()
+            else:
+                self._app.refresh_data()
+        elif event.key == "b" or event.key == "escape":
+            # Use 'b' and escape as shortcuts to go back from details view
+            if self._app.current_view == "detail" and hasattr(self, 'on_back'):
+                print("DEBUG - Back key pressed")
+                self.on_back()
+            # Also handle escape to go back from about view
+            elif self._app.current_view == "about" and hasattr(self, 'on_back'):
+                print("DEBUG - Back key pressed from about")
+                self.on_back()
+        elif event.key == "enter":
+            # Skip enter handling if API is unavailable
+            if not getattr(self._app, 'api_available', True):
+                return
+                
+            # When Enter key is pressed in list view, show details of selected Arduino
+            if self._app.current_view == "list" and hasattr(self, 'on_show_details'):
+                self.on_show_details()
+            # Remove the enter key handling for going back to list view
+            # This allows the enter key to be used exclusively for pin toggling in detail view
+
+class StatusBadge(Static):
+    """A colored badge for showing status"""
+    
+    def __init__(self, status: str, **kwargs):
+        super().__init__("", **kwargs)
+        self.status = status
+        
+    def on_mount(self) -> None:
+        self.update_status(self.status)
+        
+    def update_status(self, status: str) -> None:
+        """Update the badge status"""
+        self.status = status
+        if status == "CONNECTED":
+            self.add_class("connected")
+            self.remove_class("disconnected")
+            self.remove_class("disabled")
+        elif status == "DISABLED":
+            self.add_class("disabled")
+            self.remove_class("connected")
+            self.remove_class("disconnected")
+        else:
+            self.add_class("disconnected")
+            self.remove_class("connected")
+            self.remove_class("disabled")
+        self.update(status)
+
+class ArduinoListView(ListViewBase):
+    """Shows a list of all connected Arduinos"""
+    
+    def __init__(self, app_instance, **kwargs):
+        super().__init__(app_instance, **kwargs)
+        self._app = app_instance
+        self._update_timer_id = None
+        
+        # Create the Arduino table without columns (will add in on_mount)
+        self.arduino_table = DataTable(id="arduino_table", zebra_stripes=True)
+    
+    def compose(self) -> ComposeResult:
+        """Compose the user interface"""
+        yield Header(show_clock=True)
+        yield Label("Arduino LinuxCNC Connector V2.0", id="title", classes="heading")
+        
+        # Create styled table with border
+        yield self.arduino_table
+        
+        # Add styled buttons
+        with Horizontal(id="buttons_container", classes="button-container"):
+            yield Button("Refresh", id="refresh", variant="primary")
+            yield Button("Details", id="show_details", variant="success", disabled=True)
+            yield Button("About", id="about", variant="primary")
+            yield Button("Quit", id="quit", variant="error")
+        
+        yield Footer()
+    
+    def on_mount(self) -> None:
+        """Set up event handlers"""
+        # Add columns to the table now that we have an app context
+        self.arduino_table.add_column("Alias", width=20)
+        self.arduino_table.add_column("Component Name", width=20)
+        self.arduino_table.add_column("Device", width=25)
+        self.arduino_table.add_column("Arduino Status", width=15)
+        self.arduino_table.add_column("LinuxCNC", width=10)
+        self.arduino_table.add_column("Features", width=20)
+        
+        # Set cursor_type to row for whole row selection
+        self.arduino_table.cursor_type = "row"
+        
+        # Set up table event handler
+        self.arduino_table.on_row_highlighted = self.on_row_selected
+        
+        # Try to focus the table if possible
+        try:
+            # For newer Textual versions
+            self.arduino_table.focus()
+        except AttributeError:
+            # Fallback for older versions
+            pass
+            
+        # Start automatic updates
+        self.start_auto_updates()
+    
+    def on_show(self) -> None:
+        """Called when the view becomes visible"""
+        # Start automatic updates
+        self.start_auto_updates()
+    
+    def on_hide(self) -> None:
+        """Called when the view is hidden"""
+        # Stop automatic updates
+        self.stop_auto_updates()
+        
+    def start_auto_updates(self) -> None:
+        """Start automatic data updates"""
+        # Setup a timer to refresh data every 3 seconds for more responsive updates
+        if self._update_timer_id is None:
+            self._update_timer_id = self._app.set_timer(3.0, self.perform_update)
+    
+    def perform_update(self) -> None:
+        """Execute a single update and schedule the next one"""
+        try:
+            # Update the data - make sure this happens without interruption
+            print("DEBUG - List view auto-refresh: Updating data")
+            self._app.refresh_data()
+            
+            # Schedule the next update - use a shorter interval for more responsive status updates
+            self._update_timer_id = self._app.set_timer(3.0, self.perform_update)
+        except Exception as e:
+            print(f"Error in list view perform_update: {e}")
+            # Try to schedule another update anyway
+            try:
+                self._update_timer_id = self._app.set_timer(3.0, self.perform_update)
+            except Exception:
+                pass
+    
+    def stop_auto_updates(self) -> None:
+        """Stop automatic data updates"""
+        if self._update_timer_id is not None:
+            try:
+                self._app.set_timer(self._update_timer_id, None)
+            except Exception as e:
+                print(f"Error cancelling list view timer: {e}")
+            self._update_timer_id = None
+    
+    @on(Button.Pressed, "#refresh")
+    def on_refresh_button_pressed(self, event: Button.Pressed) -> None:
+        """Handle refresh button press"""
+        print("DEBUG - Refresh button pressed")
+        self.on_refresh()
+        
+    @on(Button.Pressed, "#show_details")
+    def on_details_button_pressed(self, event: Button.Pressed) -> None:
+        """Handle details button press"""
+        print("DEBUG - Details button pressed")
+        self.on_show_details()
+        
+    @on(Button.Pressed, "#about")
+    def on_about_button_pressed(self, event: Button.Pressed) -> None:
+        """Handle about button press"""
+        print("DEBUG - About button pressed")
+        self.on_about()
+        
+    @on(Button.Pressed, "#quit")
+    def on_quit_button_pressed(self, event: Button.Pressed) -> None:
+        """Handle quit button press"""
+        print("DEBUG - Quit button pressed")
+        self._app.exit()
+    
+    def on_refresh(self) -> None:
+        """Handle refresh button click"""
+        self._app.refresh_data()
+    
+    def on_show_details(self) -> None:
+        """Handle show details button click"""
+        # Check if table exists and has rows before trying to access data
+        if not hasattr(self, 'arduino_table') or self.arduino_table is None:
+            print("DEBUG - Cannot show details: arduino_table doesn't exist")
+            return
+            
+        if self.arduino_table.cursor_row is None:
+            print("DEBUG - Cannot show details: No row selected")
+            return
+            
+        # Check if table has any rows
+        if self.arduino_table.row_count == 0:
+            print("DEBUG - Cannot show details: Table has no rows")
+            return
+            
+        try:
+            # Get the selected Arduino's alias
+            alias = self.arduino_table.get_cell_at((self.arduino_table.cursor_row, 0))
+            if not alias or alias == "Unknown":
+                print(f"DEBUG - Cannot show details: Invalid alias '{alias}'")
+                return
+                
+            print(f"DEBUG - Showing details for Arduino: {alias}")
+            self._app.switch_view("detail", alias)
+        except Exception as e:
+            print(f"DEBUG - Error showing details: {e}")
+            import traceback
+            traceback.print_exc()
+            # Don't try to switch views if we can't get the alias
+            
+    def on_about(self) -> None:
+        """Handle about button click"""
+        self._app.switch_view("about")
+    
+    def on_row_selected(self, cursor_row) -> None:
+        """Enable/disable show details button based on row selection"""
+        # Enable details button only when a row is selected AND table has rows
+        should_enable = cursor_row is not None and self.arduino_table.row_count > 0
+        details_button = self.query_one("#show_details")
+        
+        if details_button.disabled == should_enable:  # Only update if needed
+            print(f"DEBUG - Setting details button enabled: {should_enable}")
+            details_button.disabled = not should_enable
+    
+    def update_data(self, arduinos: List[Dict[str, Any]]) -> None:
+        """Update the Arduino data table"""
+        print(f"DEBUG - ArduinoListView.update_data called with {len(arduinos)} arduinos")
+        
+        # Clear the table
+        self.arduino_table.clear()
+        print(f"DEBUG - Cleared table, now has {self.arduino_table.row_count} rows")
+        
+        # Add the data rows with styled status cells
+        for arduino in arduinos:
+            # Alias
+            alias = arduino.get("alias", "Unknown")
+            print(f"DEBUG - Processing Arduino: {alias}")
+            
+            # Component Name
+            component_name = arduino.get("component_name", "")
+            
+            # Device
+            device = arduino.get("device", "Unknown")
+            
+            # Arduino Status - determine status based on api_client_ui.py logic
+            status = None
+            status_fields = ["arduino_status", "state", "status", "connection_state", "connection"]
+            for field in status_fields:
+                if field in arduino:
+                    status = arduino[field]
+                    print(f"DEBUG - Found status in field '{field}': {status}")
+                    break
+            
+            if status is None:
+                status = "UNKNOWN"
+                print(f"DEBUG - No status field found, using default: {status}")
+                
+            # Check enabled state
+            enabled = arduino.get("enabled")
+            
+            # Debug print for enabled status
+            print(f"DEBUG - Arduino {alias} enabled={enabled} (type: {type(enabled).__name__})")
+            
+            # Check multiple conditions that indicate disabled status (from api_client_ui.py)
+            is_disabled = (
+                enabled is False or 
+                enabled == 'False' or 
+                enabled == 'false' or 
+                enabled == 0 or 
+                enabled == '0' or 
+                str(enabled).lower() == 'false' or
+                "_DISABLED" in component_name
+            )
+            
+            if is_disabled:
+                status = "DISABLED"
+                print(f"DEBUG - Setting {alias} to DISABLED because enabled={enabled}")
+            
+            # Format status with color based on possible ConnectionState values
+            if status == "CONNECTED":
+                status_str = f"[green]{status}[/]"
+            elif status == "DISABLED":
+                status_str = f"[yellow]{status}[/]"
+            elif status == "DISCONNECTED" or status == "DISCONNECTED_RETRY_PENDING":
+                status_str = f"[red]{status}[/]"
+            elif status == "CONNECTING" or status == "HANDSHAKING" or status == "WAITING_FOR_DEVICE":
+                status_str = f"[blue]{status}[/]"
+            elif status == "RECONNECTING":
+                status_str = f"[magenta]{status}[/]"
+            else:
+                # Handle any other possible states
+                status_str = f"[red]{status}[/]"
+            
+            # LinuxCNC Status
+            linuxcnc_status = arduino.get("linuxcnc_status", "DISCONNECTED")
+            hal_emulation = arduino.get("hal_emulation", False)
+            
+            # Print additional debug information about LinuxCNC status
+            print(f"DEBUG - LinuxCNC status: {linuxcnc_status}, HAL emulation: {hal_emulation}")
+            
+            # Format LinuxCNC status based on HAL emulation and linuxcnc_status from API
+            if hal_emulation:
+                linuxcnc_str = f"[black on yellow]EMULATION_ENABLED[/]"
+                print(f"DEBUG - Using EMULATION_ENABLED display for LinuxCNC status")
+            elif linuxcnc_status == "CONNECTED":
+                # LinuxCNC successfully loaded
+                linuxcnc_str = f"[green]{linuxcnc_status}[/]"
+                print(f"DEBUG - Using CONNECTED display for LinuxCNC status")
+            elif linuxcnc_status == "ERROR":
+                # LinuxCNC failed to load
+                linuxcnc_str = f"[red]{linuxcnc_status}[/]"
+                print(f"DEBUG - Using ERROR display for LinuxCNC status")
+            else:
+                # Other status (disconnected, etc.)
+                linuxcnc_str = f"{linuxcnc_status}"
+                print(f"DEBUG - Using default display for LinuxCNC status: {linuxcnc_status}")
+            
+            # Features
+            features = arduino.get("features", [])
+            if isinstance(features, list):
+                features_str = ", ".join(features) if features else "None"
+            else:
+                features_str = str(features)
+            
+            # Add row to table
+            try:
+                self.arduino_table.add_row(
+                    alias, component_name, device, status_str, linuxcnc_str, features_str
+                )
+                print(f"DEBUG - Added row for {alias}, table now has {self.arduino_table.row_count} rows")
+            except Exception as e:
+                print(f"DEBUG - Error adding row for {alias}: {e}")
+                import traceback
+                traceback.print_exc()
+            
+        # Enable details button only if rows exist
+        has_rows = self.arduino_table.row_count > 0
+        print(f"DEBUG - Table has {self.arduino_table.row_count} rows, setting details button to {'enabled' if has_rows else 'disabled'}")
+        self.query_one("#show_details").disabled = not has_rows
+
+class EditPinValueModal(ModalScreen):
+    """A modal dialog for editing pin values"""
+    
+    BINDINGS = [
+        ("escape", "cancel", "Cancel"),
+        ("enter", "submit", "Submit"),
+    ]
+    
+    def __init__(self, pin_name: str, current_value: str, **kwargs):
+        super().__init__(**kwargs)
+        self.pin_name = pin_name
+        self.current_value = current_value
+        
+    def compose(self) -> ComposeResult:
+        with Vertical(id="edit_dialog"):
+            yield Label(f"Edit value for pin: {self.pin_name}")
+            yield Input(value=str(self.current_value), id="value_input")
+            with Horizontal(id="dialog_buttons"):
+                yield Button("Cancel", id="cancel_button", variant="error")
+                yield Button("Save", id="save_button", variant="success")
+                
+    def on_mount(self) -> None:
+        # Focus the input field
+        self.query_one("#value_input").focus()
+    
+    @on(Button.Pressed, "#cancel_button")
+    def cancel_pressed(self) -> None:
+        self.dismiss(None)
+        
+    @on(Button.Pressed, "#save_button")
+    def save_pressed(self) -> None:
+        value = self.query_one("#value_input").value
+        try:
+            # Try to convert to float or int
+            if "." in value:
+                new_value = float(value)
+            else:
+                new_value = int(value)
+            self.dismiss(new_value)
+        except ValueError:
+            # Show error if value can't be converted
+            self.query_one("#value_input").styles.border = ("solid", "red")
+    
+    def action_cancel(self) -> None:
+        """Cancel the edit dialog"""
+        self.dismiss(None)
+        
+    def action_submit(self) -> None:
+        """Submit the edit dialog"""
+        self.save_pressed()
+
+class ArduinoDetailView(ListViewBase):
+    """Shows detailed information for a single Arduino"""
+    
+    BINDINGS = [
+        ("e", "edit_pin", "Edit Analog Input"),
+        ("enter", "enter", "Toggle/Edit Pin Value"),
+        ("+", "increase_value", "Increase Analog Input"),
+        ("-", "decrease_value", "Decrease Analog Input"),
+    ]
+    
+    def __init__(self, app_instance: "APIClientApp", **kwargs):
+        super().__init__(app_instance)
+        self._app = app_instance
+        self.current_alias = None
+        self._update_timer_id = None
+        self._selection_cooldown = 1.0  # Seconds to delay updates after selection changes
+        self._last_user_interaction = 0  # Track when user last interacted with UI
+        self.hal_emulation = False  # Track if HAL emulation is enabled
+        self.pin_data = {}  # Store pin data for access in key handlers
+        self.feature_status = {}  # Store feature status information but don't use it yet
+        
+    @property
+    def app(self) -> "APIClientApp":
+        """Access to the app instance."""
+        return self._app
+    
+    def compose(self) -> ComposeResult:
+        """Compose the user interface"""
+        yield Header(show_clock=True)
+        yield Label("Arduino LinuxCNC Connector V2.0", id="title", classes="heading")
+        
+        # Remove the top back button, we'll only use the one at the bottom
+        
+        # Horizontal layout for details and feature status if possible
+        with Horizontal(id="details_row"):
+            # Container for Arduino details
+            yield Container(id="details_container", classes="details-box")
+            
+            # Container for feature status
+            yield Container(id="feature_status_container", classes="details-box")
+        
+        # Create styled table with border - give it more space
+        yield DataTable(id="pin_table", zebra_stripes=True, classes="table-border")
+        
+        # Make instructions more compact
+        yield Label("", id="emulation_instructions", classes="emulation-instructions")
+        
+        # Make button container more compact with back button first - removed refresh button
+        with Horizontal(id="buttons_container", classes="button-container"):
+            yield Button("« Back", id="back_bottom", variant="default")
+            yield Button("About", id="about", variant="primary")
+            yield Button("Quit", id="quit", variant="error")
+        
+        yield Footer()
+    
+    def on_mount(self) -> None:
+        """Set up event handlers"""
+        # Set up pin table columns with smaller width for small screens
+        pin_table = self.query_one("#pin_table")
+        pin_table.add_column("Pin", width=10)         # Reduced from 15
+        pin_table.add_column("Type", width=6)         # Renamed and reduced from 10
+        pin_table.add_column("HAL Type", width=10)    # Renamed and reduced from 15
+        pin_table.add_column("Direction", width=10)   # Renamed and reduced from 15
+        pin_table.add_column("ID", width=4)           # Renamed and reduced from 8
+        pin_table.add_column("Value", width=8)        # Reduced from 10
+        
+        # Set cursor_type to row for whole row selection
+        pin_table.cursor_type = "row"
+        
+    def on_data_table_cell_selected(self, event: DataTable.CellSelected) -> None:
+        """Handle cell selection events"""
+        self._last_user_interaction = time.time()
+    
+    def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
+        """Handle row selection events"""
+        self._last_user_interaction = time.time()
+    
+    def on_data_table_row_highlighted(self, event: DataTable.RowHighlighted) -> None:
+        """Handle row highlight events"""
+        self._last_user_interaction = time.time()
+    
+    def on_data_table_cell_double_clicked(self, event: DataTable.CellSelected) -> None:
+        """Handle cell double-click events"""
+        self._last_user_interaction = time.time()
+        
+        # Proceed only if in HAL emulation mode
+        if not self.hal_emulation:
+            return
+            
+        try:
+            # Get the pin table
+            pin_table = self.query_one("#pin_table")
+            
+            # Get the row from the cursor position
+            if not hasattr(pin_table, "cursor_row") or pin_table.cursor_row is None:
+                print("DEBUG - No row selected for double-click")
+                return
+                
+            row = pin_table.cursor_row
+            
+            # Get pin name and type from selected row
+            pin_name = pin_table.get_cell_at((row, 0))
+            pin_type = pin_table.get_cell_at((row, 1))
+            
+            # Only edit analog input pins (ain)
+            if pin_type == "ain" and pin_name in self.pin_data:
+                # Check if pin's feature is ready
+                pin_data = self.pin_data[pin_name]
+                feature_name = pin_data.get("feature_name", "")
+                feature_ready = pin_data.get("feature_ready", True)  # Default to True for backward compatibility
+                
+                # We can also check feature status map for more details
+                if feature_name in self.feature_status:
+                    feature_ready = self.feature_status[feature_name].get("ready", feature_ready)
+                
+                # Only continue if feature is ready
+                if not feature_ready:
+                    print(f"DEBUG - Cannot edit pin {pin_name}: feature {feature_name} is not ready")
+                    return
+                    
+                # Get current value
+                current_value = pin_data.get("current_value", pin_data.get("value", 0))
+                
+                # Show the edit dialog
+                print(f"DEBUG - Opening edit dialog for pin {pin_name} with value {current_value} (via double-click)")
+                self.open_edit_dialog(pin_name, current_value)
+        except Exception as e:
+            print(f"DEBUG - Error handling double-click: {e}")
+            import traceback
+            traceback.print_exc()
+            
+    def on_key(self, event: events.Key) -> None:
+        """Handle keyboard events"""
+        # Update the interaction timestamp to prevent updates while user is active
+        self._last_user_interaction = time.time()
+        
+        # Handle 'e' key for editing analog input pins
+        if event.key == "e" and self.hal_emulation:
+            pin_table = self.query_one("#pin_table")
+            if pin_table and pin_table.cursor_row is not None:
+                try:
+                    # Get pin name and type from selected row
+                    pin_name = pin_table.get_cell_at((pin_table.cursor_row, 0))
+                    pin_type = pin_table.get_cell_at((pin_table.cursor_row, 1))
+                    
+                    # Only edit analog input pins (ain)
+                    if pin_type == "ain" and pin_name in self.pin_data:
+                        # Check if pin's feature is ready
+                        pin_data = self.pin_data[pin_name]
+                        feature_name = pin_data.get("feature_name", "")
+                        feature_ready = pin_data.get("feature_ready", True)  # Default to True for backward compatibility
+                        
+                        # We can also check feature status map for more details
+                        if feature_name in self.feature_status:
+                            feature_ready = self.feature_status[feature_name].get("ready", feature_ready)
+                        
+                        # Only continue if feature is ready
+                        if not feature_ready:
+                            print(f"DEBUG - Cannot edit pin {pin_name}: feature {feature_name} is not ready")
+                            return
+                            
+                        # Get current value
+                        current_value = pin_data.get("current_value", pin_data.get("value", 0))
+                        
+                        # Show the edit dialog
+                        print(f"DEBUG - Opening edit dialog for pin {pin_name} with value {current_value} (via e key)")
+                        self.open_edit_dialog(pin_name, current_value)
+                        return
+                except Exception as e:
+                    print(f"DEBUG - Error handling edit key: {e}")
+                    import traceback
+                    traceback.print_exc()
+        
+        # Handle ENTER key for digital inputs and analog inputs
+        elif event.key == "enter" and self.hal_emulation:
+            pin_table = self.query_one("#pin_table")
+            if pin_table and pin_table.cursor_row is not None:
+                try:
+                    # Get pin name and type from selected row
+                    pin_name = pin_table.get_cell_at((pin_table.cursor_row, 0))
+                    pin_type = pin_table.get_cell_at((pin_table.cursor_row, 1))
+                    
+                    # For analog input pins, open edit dialog
+                    if pin_type == "ain" and pin_name in self.pin_data:
+                        # Check if pin's feature is ready
+                        pin_data = self.pin_data[pin_name]
+                        feature_name = pin_data.get("feature_name", "")
+                        feature_ready = pin_data.get("feature_ready", True)
+                        
+                        if feature_name in self.feature_status:
+                            feature_ready = self.feature_status[feature_name].get("ready", feature_ready)
+                        
+                        if not feature_ready:
+                            print(f"DEBUG - Cannot edit pin {pin_name}: feature {feature_name} is not ready")
+                            return
+                            
+                        current_value = pin_data.get("current_value", pin_data.get("value", 0))
+                        print(f"DEBUG - Opening edit dialog for pin {pin_name} with value {current_value} (via Enter key)")
+                        self.open_edit_dialog(pin_name, current_value)
+                        return
+                    
+                    # For digital input pins, toggle the value
+                    elif pin_type == "din" and pin_name in self.pin_data:
+                        # Check if pin's feature is ready
+                        pin_data = self.pin_data[pin_name]
+                        feature_name = pin_data.get("feature_name", "")
+                        feature_ready = pin_data.get("feature_ready", True)  # Default to True for backward compatibility
+                        
+                        # We can also check feature status map for more details
+                        if feature_name in self.feature_status:
+                            feature_ready = self.feature_status[feature_name].get("ready", feature_ready)
+                        
+                        # Only continue if feature is ready
+                        if not feature_ready:
+                            print(f"DEBUG - Cannot toggle pin {pin_name}: feature {feature_name} is not ready")
+                            return
+                            
+                        # Get current value
+                        current_value = pin_data.get("current_value", pin_data.get("value", 0))
+                        
+                        # Convert to boolean/int if needed
+                        if isinstance(current_value, str):
+                            if current_value.lower() in ("true", "1", "high"):
+                                current_value = 1
+                            else:
+                                current_value = 0
+                        elif isinstance(current_value, bool):
+                            current_value = 1 if current_value else 0
+                        
+                        # Toggle value (0->1, 1->0)
+                        new_value = 0 if current_value else 1
+                        print(f"DEBUG - Toggling digital pin {pin_name} from {current_value} to {new_value}")
+                        
+                        # Update pin data
+                        pin_data["current_value"] = new_value
+                        pin_data["value"] = new_value
+                        
+                        # Update table display
+                        value_str = "[green]HIGH[/]" if new_value else "[red]LOW[/]"
+                        value_str = f"[bold][reverse]{value_str}[/reverse][/bold]"
+                        pin_table.update_cell_at((pin_table.cursor_row, 5), value_str)
+                        
+                        # Make API call to update the pin value if available
+                        try:
+                            if self.app.api_available and self.current_alias:
+                                requests.post(
+                                    f"{API_BASE_URL}/arduinos/{self.current_alias}/pins/{pin_name}/value",
+                                    json={"value": new_value},
+                                    timeout=1.0
+                                )
+                                print(f"DEBUG - Sent pin value update to API for digital pin: {pin_name}={new_value}")
+                        except Exception as e:
+                            print(f"DEBUG - Failed to update API: {e}")
+                        
+                        # Schedule a refresh after changing the pin value
+                        def delayed_refresh():
+                            try:
+                                self.update_all_data()
+                            except Exception as e:
+                                print(f"DEBUG - Error in delayed refresh: {e}")
+                                
+                        self.app.set_timer(0.2, delayed_refresh)
+                        
+                        # Don't call parent handler to avoid default Enter behavior
+                        return
+                except Exception as e:
+                    print(f"DEBUG - Error handling Enter key: {e}")
+                    import traceback
+                    traceback.print_exc()
+        
+        # Call parent handler for normal key processing
+        super().on_key(event)
+    
+    async def open_edit_dialog(self, pin_name: str, current_value: any) -> None:
+        """Open a dialog to edit the pin value"""
+        try:
+            # Create and show the edit dialog
+            edit_dialog = EditPinValueModal(pin_name, current_value)
+            new_value = await self.app.push_screen(edit_dialog)
+            
+            # If user canceled, new_value will be None
+            if new_value is not None:
+                print(f"DEBUG - Setting pin {pin_name} to new value: {new_value}")
+                
+                # Get pin data
+                pin_data = self.pin_data[pin_name]
+                
+                # Update pin data
+                pin_data["current_value"] = new_value
+                pin_data["value"] = new_value
+                
+                # Update table display - get the current row
+                pin_table = self.query_one("#pin_table")
+                for i in range(pin_table.row_count):
+                    if pin_table.get_cell_at((i, 0)) == pin_name:
+                        pin_table.update_cell_at((i, 5), f"[bold][reverse]{new_value}[/reverse][/bold]")
+                        break
+                
+                # Make API call to update the pin value if available
+                try:
+                    if self.app.api_available and self.current_alias:
+                        requests.post(
+                            f"{API_BASE_URL}/arduinos/{self.current_alias}/pins/{pin_name}/value",
+                            json={"value": new_value},
+                            timeout=1.0
+                        )
+                        print(f"DEBUG - Sent pin value update to API: {pin_name}={new_value}")
+                except Exception as e:
+                    print(f"DEBUG - Failed to send pin update to API: {e}")
+                
+                # Schedule a refresh after changing the pin value
+                def delayed_refresh():
+                    try:
+                        self.update_all_data()
+                    except Exception as e:
+                        print(f"DEBUG - Error in delayed refresh: {e}")
+                        
+                self.app.set_timer(0.5, delayed_refresh)
+        except Exception as e:
+            print(f"DEBUG - Error in open_edit_dialog: {e}")
+            import traceback
+            traceback.print_exc()
+
+    def update_details_container(self, arduino_details: Dict[str, Any]) -> None:
+        """Update the details container with fresh data"""
+        # Debug print the raw arduino_details to see what we're working with
+        print("\nDEBUG - update_details_container: Starting with data:")
+        for key in arduino_details.keys():
+            if key != "pins" and key != "features":  # Don't print large data structures
+                print(f"  {key}: {arduino_details.get(key)}")
+        
+        # Get the container and clear previous content
+        details_container = self.query_one("#details_container")
+        details_container.remove_children()
+        
+        try:
+            # Extract required fields with safe fallbacks
+            component_name = arduino_details.get("component_name", "Unknown")
+            device = arduino_details.get("device", "Unknown")
+            serial_port_available = arduino_details.get("serial_port_available", False)
+            
+            # Get Arduino status
+            status = arduino_details.get("arduino_status", "Unknown")
+            # Format status with proper styling for all possible states
+            if status == "CONNECTED":
+                status_style = "green"
+            elif status == "DISABLED":
+                status_style = "yellow"
+            elif status == "DISCONNECTED" or status == "DISCONNECTED_RETRY_PENDING":
+                status_style = "red"
+            elif status == "CONNECTING" or status == "HANDSHAKING" or status == "WAITING_FOR_DEVICE":
+                status_style = "blue"
+            elif status == "RECONNECTING":
+                status_style = "magenta"
+            else:
+                # Default to red for unknown states
+                status_style = "red"
+            
+            # Get enabled status - check if it exists to avoid errors
+            enabled = False
+            if "enabled" in arduino_details:
+                enabled = arduino_details["enabled"]
+            enabled_str = "YES" if enabled else "NO"
+            enabled_color = "green" if enabled else "red"
+            
+            # Get uptime information
+            arduino_uptime = arduino_details.get("arduino_reported_uptime", "N/A")
+            connection_uptime = arduino_details.get("connection_uptime", "N/A")
+            
+            # Debug log uptime values to help troubleshoot
+            print(f"DEBUG - Arduino uptime: '{arduino_uptime}', Connection uptime: '{connection_uptime}'")
+            
+            # Linux CNC Status
+            linuxcnc_status = arduino_details.get("linuxcnc_status", "DISCONNECTED")
+            hal_emulation = arduino_details.get("hal_emulation", False)
+            
+            # Print additional debug information about LinuxCNC status
+            print(f"DEBUG - LinuxCNC status: {linuxcnc_status}, HAL emulation: {hal_emulation}")
+            
+            # Format LinuxCNC status based on HAL emulation and linuxcnc_status from API
+            if hal_emulation:
+                linuxcnc_str = f"[black on yellow]EMULATION_ENABLED[/]"
+                print(f"DEBUG - Using EMULATION_ENABLED display for LinuxCNC status")
+            elif linuxcnc_status == "CONNECTED":
+                # LinuxCNC successfully loaded
+                linuxcnc_str = f"[green]{linuxcnc_status}[/]"
+                print(f"DEBUG - Using CONNECTED display for LinuxCNC status")
+            elif linuxcnc_status == "ERROR":
+                # LinuxCNC failed to load
+                linuxcnc_str = f"[red]{linuxcnc_status}[/]"
+                print(f"DEBUG - Using ERROR display for LinuxCNC status")
+            else:
+                # Other status (disconnected, etc.)
+                linuxcnc_str = f"{linuxcnc_status}"
+                print(f"DEBUG - Using default display for LinuxCNC status: {linuxcnc_status}")
+            
+            # Use more compact format for the labels - use shorter labels and reduce text
+            details_container.mount(
+                Label(f"[bold]Name:[/] {component_name}"),
+                Label(f"[bold]Device:[/] {device}"),
+                Label(f"[bold]Port:[/] {'[green]YES[/]' if serial_port_available else '[red]NO[/]'}"),
+                Label(f"[bold]Enabled:[/] [{enabled_color}]{enabled_str}[/]"),
+                Label(f"[bold]Status:[/] [{status_style}]{status}[/]"),
+                Label(f"[bold]LinuxCNC:[/] {linuxcnc_str}"),
+                Label(f"[bold]Arduino uptime:[/] {arduino_uptime}"),
+                Label(f"[bold]Connected:[/] {connection_uptime}"),
+            )
+            
+            print("DEBUG - Details container successfully updated with fields:")
+            print(f"  Component Name: {component_name}")
+            print(f"  Device: {device}")
+            print(f"  Serial Port Available: {serial_port_available}")
+            print(f"  Enabled: {enabled}")
+            print(f"  Arduino Status: {status}")
+            print(f"  LinuxCNC Status: {linuxcnc_status}")
+            print(f"  HAL Emulation: {hal_emulation}")
+            
+            # Update HAL emulation instructions
+            instructions_label = self.query_one("#emulation_instructions")
+            if self.hal_emulation:
+                # Show more compact instructions with updated increment value
+                instructions_label.update("[italic]HAL Emulation: ENTER = toggle/edit, +/- = inc/dec by 50, E = edit[/italic]")
+                instructions_label.styles.display = "block"
+            else:
+                # Hide instructions if not in HAL emulation mode
+                instructions_label.update("")
+                instructions_label.styles.display = "none"
+        except Exception as e:
+            print(f"ERROR - Failed to populate details container: {e}")
+            import traceback
+            traceback.print_exc()
+            
+            # Add a fallback message to the container
+            details_container.mount(
+                Label("[bold red]Error loading Arduino details[/]"),
+                Label(f"Error: {str(e)}")
+            )
+
+    def update_feature_status_display(self):
+        """Update the feature status container with current feature status information"""
+        # Get the container and clear its contents
+        status_container = self.query_one("#feature_status_container")
+        
+        # We'll rebuild the entire content
+        status_container.remove_children()
+        
+        # If no features, show a message and return
+        if not self.feature_status:
+            status_container.mount(Label("No feature information available"))
+            return
+        
+        # Add a header
+        status_container.mount(Label("[bold]Feature Status:[/]"))
+        
+        # Use a compact format - single line per feature
+        for name, status in self.feature_status.items():
+            # Get status values
+            ready = status.get("ready", False)
+            
+            # Create status indicator - more compact
+            status_text = "[green]✓[/]" if ready else "[red]✗[/]"
+            
+            # Add feature as a single line with icon instead of text
+            status_container.mount(
+                Label(f"[bold]{name}:[/] {status_text}")
+            )
+            
+        # Debug
+        print(f"DEBUG - Feature status display updated with {len(self.feature_status)} features")
+
+    def store_feature_status(self, features):
+        """Store feature status information but don't do anything with it yet"""
+        # Create a map of feature name to status for easy lookup
+        self.feature_status = {}
+        for feature in features:
+            if isinstance(feature, dict) and "name" in feature:
+                self.feature_status[feature["name"]] = feature
+                print(f"DEBUG - Feature {feature['name']}: ready={feature.get('ready', False)}")
+
+    @on(Button.Pressed, "#back_bottom")
+    def on_back_bottom_button_pressed(self, event: Button.Pressed) -> None:
+        """Handle back bottom button press"""
+        print("DEBUG - Back bottom button pressed")
+        self.on_back()
+    
+    @on(Button.Pressed, "#about")
+    def on_about_button_pressed(self, event: Button.Pressed) -> None:
+        """Handle about button press"""
+        print("DEBUG - About button pressed")
+        self.on_about()
+    
+    @on(Button.Pressed, "#quit")
+    def on_quit_button_pressed(self, event: Button.Pressed) -> None:
+        """Handle quit button press"""
+        print("DEBUG - Quit button pressed")
+        self._app.exit()
+    
+    def on_show(self) -> None:
+        """Called when the view becomes visible"""
+        # Start automatic updates
+        self.start_auto_updates()
+    
+    def on_hide(self) -> None:
+        """Called when the view is hidden"""
+        # Stop automatic updates
+        self.stop_auto_updates()
+    
+    def start_auto_updates(self) -> None:
+        """Start automatic pin updates"""
+        # Setup a timer to refresh pin data every 1 second
+        if self._update_timer_id is None:
+            self._update_timer_id = self.app.set_timer(1.0, self.perform_update)
+    
+    def perform_update(self) -> None:
+        """Execute a single update and schedule the next one"""
+        try:
+            # Check if we should skip full update due to recent user interaction
+            current_time = time.time()
+            if (current_time - self._last_user_interaction) < self._selection_cooldown:
+                print(f"DEBUG - User interaction cooldown active, only updating connection status")
+                # Update only the connection status during cooldown
+                self.update_connection_status()
+            else:
+                # Update all data when cooldown is not active
+                self.update_all_data()
+            
+            # Schedule the next update
+            self._update_timer_id = self.app.set_timer(1.0, self.perform_update)
+        except Exception as e:
+            print(f"Error in perform_update: {e}")
+            # Try to schedule another update anyway
+            try:
+                self._update_timer_id = self.app.set_timer(1.0, self.perform_update)
+            except Exception:
+                pass
+                
+    def update_connection_status(self) -> None:
+        """Update only the connection status to always keep it current"""
+        if not self.current_alias or not self.app.api_available:
+            return
+            
+        try:
+            # Get fresh Arduino details
+            arduino_details = self._app.get_arduino_details(self.current_alias)
+            if not arduino_details:
+                print("DEBUG - update_connection_status: No Arduino details received from API")
+                return
+                
+            # Update only the connection status in the details container
+            details_container = self.query_one("#details_container")
+            if details_container:
+                # Find the status label and update it
+                for child in details_container.children:
+                    try:
+                        label_text = child.render()
+                        if "[bold]Arduino Status:[/]" in label_text:
+                            # Get fresh status
+                            status = arduino_details.get("arduino_status", "Unknown")
+                            # Format status with proper styling
+                            if status == "CONNECTED":
+                                status_style = "green"
+                            elif status == "DISABLED":
+                                status_style = "yellow"
+                            elif status == "DISCONNECTED" or status == "DISCONNECTED_RETRY_PENDING":
+                                status_style = "red"
+                            elif status == "CONNECTING" or status == "HANDSHAKING" or status == "WAITING_FOR_DEVICE":
+                                status_style = "blue"
+                            elif status == "RECONNECTING":
+                                status_style = "magenta"
+                            else:
+                                # Default to red for unknown states
+                                status_style = "red"
+                            
+                            # Update just the status label
+                            child.update(f"[bold]Arduino Status:[/] [{status_style}]{status}[/]")
+                            print(f"DEBUG - Updated connection status to [{status_style}]{status}[/]")
+                            break
+                    except Exception as e:
+                        print(f"DEBUG - Error checking label: {e}")
+                        
+        except Exception as e:
+            print(f"ERROR - update_connection_status: {e}")
+            import traceback
+            traceback.print_exc()
+            
+    def stop_auto_updates(self) -> None:
+        """Stop automatic pin updates"""
+        if self._update_timer_id is not None:
+            try:
+                self.app.set_timer(self._update_timer_id, None)
+            except Exception as e:
+                print(f"Error cancelling timer: {e}")
+            self._update_timer_id = None
+    
+    def update_all_data(self) -> None:
+        """Update all Arduino data automatically"""
+        if not self.current_alias:
+            return
+        
+        # Skip update if API is unavailable
+        if not self.app.api_available:
+            return
+            
+        try:
+            # Get fresh Arduino details
+            arduino_details = self._app.get_arduino_details(self.current_alias)
+            if not arduino_details:
+                print("DEBUG - update_all_data: No Arduino details received from API")
+                return
+                
+            # Debug log the keys to see what's in the response
+            print(f"DEBUG - update_all_data: Received keys: {list(arduino_details.keys())}")
+                
+            # Update hal_emulation flag on each refresh to ensure it's current
+            self.hal_emulation = arduino_details.get("hal_emulation", False)
+            
+            # First update details container - this should be stable
+            try:
+                self.update_details_container(arduino_details)
+                print("DEBUG - Updated details container successfully")
+            except Exception as e:
+                print(f"ERROR - update_all_data: Failed to update details container: {e}")
+                import traceback
+                traceback.print_exc()
+                
+            # Then update feature status - lower priority
+            try:
+                if "features" in arduino_details:
+                    self.store_feature_status(arduino_details["features"])
+                    self.update_feature_status_display()
+                    print("DEBUG - Updated feature status display successfully")
+                else:
+                    print("DEBUG - update_all_data: No features data in Arduino details")
+            except Exception as e:
+                print(f"ERROR - update_all_data: Failed to update feature status: {e}")
+                import traceback
+                traceback.print_exc()
+            
+            # Finally update pin table (most complex)
+            try:
+                self.update_pin_table(arduino_details.get("pins", []))
+                print("DEBUG - Updated pin table successfully")
+            except Exception as e:
+                print(f"ERROR - update_all_data: Failed to update pin table: {e}")
+                import traceback
+                traceback.print_exc()
+                
+        except Exception as e:
+            print(f"ERROR - update_all_data: {e}")
+            import traceback
+            traceback.print_exc()
+    
+    def on_back(self) -> None:
+        """Handle the back button click"""
+        self.stop_auto_updates()
+        self._app.switch_view("list")
+    
+    def on_about(self) -> None:
+        """Handle about button click"""
+        # Stop auto-updates first
+        self.stop_auto_updates()
+        self._app.switch_view("about")
+    
+    def load_details(self, alias: str) -> None:
+        """Load the details for the given Arduino"""
+        self.current_alias = alias
+        print(f"DEBUG - Loading details for {alias}")
+        
+        # Get the Arduino details
+        arduino_details = self._app.get_arduino_details(alias)
+        if not arduino_details:
+            print("DEBUG - No Arduino details received from API")
+            return
+        
+        # Debug print to see the actual response structure
+        print(f"DEBUG - Received Arduino details keys: {list(arduino_details.keys())}")
+        
+        # Store HAL emulation state
+        self.hal_emulation = arduino_details.get("hal_emulation", False)
+        print(f"DEBUG - HAL emulation mode: {self.hal_emulation}")
+        
+        # Initial update of all data - in specific order
+        try:
+            # First update basic details (most important)
+            self.update_details_container(arduino_details)
+            print("DEBUG - Details container updated successfully")
+            
+            # Then try to update feature status
+            if "features" in arduino_details:
+                self.store_feature_status(arduino_details["features"])
+                self.update_feature_status_display()
+                print("DEBUG - Feature status display updated successfully")
+            else:
+                print("DEBUG - No features data in Arduino details")
+                
+            # Finally update pin table (most complex)
+            self.update_pin_table(arduino_details.get("pins", []))
+            print("DEBUG - Pin table updated successfully")
+        except Exception as e:
+            print(f"ERROR - Failed to update UI: {e}")
+            import traceback
+            traceback.print_exc()
+        
+        # Start automatic updates - timer will keep everything refreshed
+        self.start_auto_updates()
+        print("DEBUG - Started automatic updates")
+
+    def update_pin_table(self, pins) -> None:
+        """Update the pin table with in-place updates to preserve selection"""
+        pin_table = self.query_one("#pin_table")
+        if not pin_table:
+            return
+            
+        # Process the pins data into a name-indexed dict for easier lookup
+        pin_data_by_name = {}
+        if isinstance(pins, dict):
+            # Convert dict to name-indexed format
+            for pin_name, pin_data in pins.items():
+                pin_data_by_name[pin_name] = pin_data.copy() if isinstance(pin_data, dict) else {"value": pin_data}
+                pin_data_by_name[pin_name]["pin_name"] = pin_name
+        elif isinstance(pins, list):
+            # Convert list to name-indexed format
+            for pin_item in pins:
+                pin_name = pin_item.get("pin_name", "Unknown")
+                pin_data_by_name[pin_name] = pin_item
+        
+        # Store pin data for access in key handlers
+        self.pin_data = pin_data_by_name
+        
+        # Check if this is the first update (empty table)
+        if pin_table.row_count == 0:
+            # First time - build the table from scratch
+            self._build_initial_pin_table(pin_table, pin_data_by_name)
+            return
+            
+        # Store all current displayed pin names
+        current_pins = []
+        for i in range(pin_table.row_count):
+            try:
+                current_pins.append(pin_table.get_cell_at((i, 0)))
+            except Exception:
+                pass
+                
+        # Find pins to remove, update, or add
+        pins_to_remove = [pin for pin in current_pins if pin not in pin_data_by_name]
+        pins_to_update = [pin for pin in current_pins if pin in pin_data_by_name]
+        pins_to_add = [pin for pin in pin_data_by_name if pin not in current_pins]
+        
+        # Remember cursor position
+        cursor_row = pin_table.cursor_row
+        cursor_col = pin_table.cursor_column
+        
+        # Update existing pins in-place - this preserves selection
+        for pin_name in pins_to_update:
+            try:
+                # Find the row for this pin
+                row_idx = current_pins.index(pin_name)
+                
+                # Get pin data
+                pin_data = pin_data_by_name[pin_name]
+                
+                # Only update the value column (column 5)
+                # Get current and new values
+                current_value = pin_table.get_cell_at((row_idx, 5))
+                
+                # Format the new value
+                value = pin_data.get("current_value", pin_data.get("value", "N/A"))
+                hal_pin_type = pin_data.get("hal_pin_type", "N/A")
+                
+                # Format digital pin values with color
+                if hal_pin_type == "HAL_BIT" and value not in ('N/A', None):
+                    if value == 1 or value == "1" or value is True:
+                        value_str = f"[green]HIGH[/]"
+                    else:
+                        value_str = f"[red]LOW[/]"
+                else:
+                    value_str = str(value)
+                
+                # Highlight changed values
+                if current_value != value_str:
+                    value_str = f"[bold][reverse]{value_str}[/reverse][/bold]"
+                    
+                # Update just this cell
+                pin_table.update_cell_at((row_idx, 5), value_str)
+            except Exception as e:
+                print(f"DEBUG - Error updating pin {pin_name}: {e}")
+        
+        # There are table changes (adds/removes) - do a full rebuild if needed
+        if pins_to_add or pins_to_remove:
+            print(f"DEBUG - Table structure changed! {len(pins_to_add)} pins added, {len(pins_to_remove)} removed")
+            self._rebuild_pin_table(pin_table, pin_data_by_name, cursor_row, cursor_col)
+    
+    def _build_initial_pin_table(self, pin_table, pin_data_by_name):
+        """Build the initial pin table from scratch"""
+        print("DEBUG - Building initial pin table with pins count:", len(pin_data_by_name))
+        
+        # Make sure we have pins to add
+        if not pin_data_by_name:
+            print("DEBUG - No pins to add to table")
+            return
+            
+        # Add all pins to the table
+        for pin_name, pin_data in pin_data_by_name.items():
+            try:
+                # Format fields
+                pin_type = pin_data.get("pin_type", "N/A")
+                hal_pin_type = pin_data.get("hal_pin_type", "N/A")
+                hal_pin_dir = pin_data.get("hal_pin_direction", "N/A")
+                pin_id = pin_data.get("pin_id", "N/A")
+                
+                # Format value
+                value = pin_data.get("current_value", pin_data.get("value", "N/A"))
+                
+                # Format digital pin values with color
+                if hal_pin_type == "HAL_BIT" and value not in ('N/A', None):
+                    if value == 1 or value == "1" or value is True:
+                        value_str = f"[green]HIGH[/]"
+                    else:
+                        value_str = f"[red]LOW[/]"
+                else:
+                    value_str = str(value)
+                
+                # Add the row (using only the original columns)
+                pin_table.add_row(
+                    pin_name,
+                    pin_type,
+                    hal_pin_type,
+                    hal_pin_dir,
+                    str(pin_id),
+                    value_str
+                )
+            except Exception as e:
+                print(f"ERROR - Failed to add pin {pin_name} to table: {e}")
+        
+        print(f"DEBUG - Added {pin_table.row_count} pins to table")
+    
+    def _rebuild_pin_table(self, pin_table, pin_data_by_name, old_cursor_row=None, old_cursor_col=None):
+        """Rebuild the entire pin table when structure changes"""
+        # Remember which pin was selected
+        selected_pin_name = None
+        if old_cursor_row is not None and old_cursor_row < pin_table.row_count:
+            try:
+                selected_pin_name = pin_table.get_cell_at((old_cursor_row, 0))
+                print(f"DEBUG - Remembering selected pin: {selected_pin_name}")
+            except Exception:
+                pass
+        
+        # Remember old values for highlighting
+        old_values = {}
+        for i in range(pin_table.row_count):
+            try:
+                pin_name = pin_table.get_cell_at((i, 0))
+                current_value = pin_table.get_cell_at((i, 5))
+                old_values[pin_name] = current_value
+            except Exception:
+                pass
+        
+        # Clear the table
+        pin_table.clear()
+        
+        # Add all pins in order
+        for pin_name, pin_data in pin_data_by_name.items():
+            self._add_pin_to_table(pin_table, pin_name, pin_data, old_values.get(pin_name))
+            
+        # Restore selection if possible
+        if selected_pin_name in pin_data_by_name:
+            # Find the row index of the selected pin
+            new_pin_names = list(pin_data_by_name.keys())
+            try:
+                new_row = new_pin_names.index(selected_pin_name)
+                pin_table.cursor_row = new_row
+                pin_table.cursor_column = old_cursor_col if old_cursor_col is not None else 0
+                print(f"DEBUG - Restored selection to {selected_pin_name} at row {new_row}")
+            except ValueError:
+                print(f"DEBUG - Could not find {selected_pin_name} in new data")
+        elif pin_table.row_count > 0 and old_cursor_row is not None:
+            # Try to select a row at approximately the same position
+            new_row = min(old_cursor_row, pin_table.row_count - 1)
+            pin_table.cursor_row = new_row
+            pin_table.cursor_column = old_cursor_col if old_cursor_col is not None else 0
+            print(f"DEBUG - Selected row {new_row} based on previous position")
+
+    def _add_pin_to_table(self, pin_table, pin_name, pin_data, old_value=None):
+        """Helper method to add a pin to the table with consistent formatting"""
+        try:
+            # Format pin fields based on api_client_ui.py
+            pin_type = pin_data.get("pin_type", "N/A")
+            hal_pin_type = pin_data.get("hal_pin_type", "N/A")
+            hal_pin_dir = pin_data.get("hal_pin_direction", "N/A")
+            pin_id = pin_data.get("pin_id", "N/A")
+            
+            # Format value
+            value = pin_data.get("current_value", pin_data.get("value", "N/A"))
+            
+            # Format digital pin values with color (matching api_client_ui.py)
+            if hal_pin_type == "HAL_BIT" and value not in ('N/A', None):
+                if value == 1 or value == "1" or value is True:
+                    value_str = f"[green]HIGH[/]"
+                else:
+                    value_str = f"[red]LOW[/]"
+            else:
+                value_str = str(value)
+                
+            # Highlight the value if it has changed
+            if old_value is not None and value_str != old_value:
+                value_str = f"[bold][reverse]{value_str}[/reverse][/bold]"
+            
+            # Add the row (using only the original columns)
+            pin_table.add_row(
+                pin_name,
+                pin_type,
+                hal_pin_type,
+                hal_pin_dir,
+                str(pin_id),
+                value_str
+            )
+        except Exception as e:
+            print(f"ERROR - Failed to add pin {pin_name} to table: {e}")
+            import traceback
+            traceback.print_exc()
+    
+    def update_feature_status_display(self):
+        """Update the feature status container with current feature status information"""
+        # Get the container and clear its contents
+        status_container = self.query_one("#feature_status_container")
+        
+        # We'll rebuild the entire content
+        status_container.remove_children()
+        
+        # If no features, show a message and return
+        if not self.feature_status:
+            status_container.mount(Label("No feature information available"))
+            return
+        
+        # Add a header
+        status_container.mount(Label("[bold]Feature Status:[/]"))
+        
+        # Use a compact format - single line per feature
+        for name, status in self.feature_status.items():
+            # Get status values
+            ready = status.get("ready", False)
+            
+            # Create status indicator - more compact
+            status_text = "[green]✓[/]" if ready else "[red]✗[/]"
+            
+            # Add feature as a single line with icon instead of text
+            status_container.mount(
+                Label(f"[bold]{name}:[/] {status_text}")
+            )
+            
+        # Debug
+        print(f"DEBUG - Feature status display updated with {len(self.feature_status)} features")
+
+    def store_feature_status(self, features):
+        """Store feature status information but don't do anything with it yet"""
+        # Create a map of feature name to status for easy lookup
+        self.feature_status = {}
+        for feature in features:
+            if isinstance(feature, dict) and "name" in feature:
+                self.feature_status[feature["name"]] = feature
+                print(f"DEBUG - Feature {feature['name']}: ready={feature.get('ready', False)}")
+
+    def action_edit_pin(self) -> None:
+        """Handle e key press to edit analog output pins"""
+        if not self.hal_emulation:
+            return
+            
+        pin_table = self.query_one("#pin_table")
+        if pin_table and pin_table.cursor_row is not None:
+            try:
+                # Get pin name and type from selected row
+                pin_name = pin_table.get_cell_at((pin_table.cursor_row, 0))
+                pin_type = pin_table.get_cell_at((pin_table.cursor_row, 1))
+                
+                # Only edit analog output pins (aout)
+                if pin_type == "aout" and pin_name in self.pin_data:
+                    # Check if pin's feature is ready
+                    pin_data = self.pin_data[pin_name]
+                    feature_name = pin_data.get("feature_name", "")
+                    feature_ready = pin_data.get("feature_ready", True)  # Default to True for backward compatibility
+                    
+                    # We can also check feature status map for more details
+                    if feature_name in self.feature_status:
+                        feature_ready = self.feature_status[feature_name].get("ready", feature_ready)
+                    
+                    # Only continue if feature is ready
+                    if not feature_ready:
+                        return
+                        
+                    # Get current value
+                    current_value = pin_data.get("current_value", pin_data.get("value", 0))
+                    
+                    # Show the edit dialog - use call_later to handle the async method
+                    print(f"DEBUG - Activating edit dialog for pin {pin_name} via action_edit_pin")
+                    asyncio.create_task(self.open_edit_dialog(pin_name, current_value))
+            except Exception as e:
+                print(f"ERROR in action_edit_pin: {e}")
+                import traceback
+                traceback.print_exc()
+    
+    def action_enter(self) -> None:
+        """Handle Enter key press for toggling digital inputs or editing analog outputs"""
+        if not self.hal_emulation:
+            return
+            
+        pin_table = self.query_one("#pin_table")
+        if pin_table and pin_table.cursor_row is not None:
+            try:
+                # Get pin name and type from selected row
+                pin_name = pin_table.get_cell_at((pin_table.cursor_row, 0))
+                pin_type = pin_table.get_cell_at((pin_table.cursor_row, 1))
+                
+                print(f"DEBUG - action_enter called for pin {pin_name}, type {pin_type}")
+                
+                # For analog output pins, open edit dialog
+                if pin_type == "aout" and pin_name in self.pin_data:
+                    # Check if pin's feature is ready
+                    pin_data = self.pin_data[pin_name]
+                    feature_name = pin_data.get("feature_name", "")
+                    feature_ready = pin_data.get("feature_ready", True)
+                    
+                    if feature_name in self.feature_status:
+                        feature_ready = self.feature_status[feature_name].get("ready", feature_ready)
+                    
+                    if not feature_ready:
+                        return
+                        
+                    current_value = pin_data.get("current_value", pin_data.get("value", 0))
+                    
+                    # Use create_task to properly handle the async method
+                    print(f"DEBUG - Activating edit dialog for pin {pin_name} via action_enter")
+                    asyncio.create_task(self.open_edit_dialog(pin_name, current_value))
+                    return
+                
+                # For digital input pins, toggle the value
+                elif pin_type == "din" and pin_name in self.pin_data:
+                    # Check if pin's feature is ready
+                    pin_data = self.pin_data[pin_name]
+                    feature_name = pin_data.get("feature_name", "")
+                    feature_ready = pin_data.get("feature_ready", True)  # Default to True for backward compatibility
+                    
+                    # We can also check feature status map for more details
+                    if feature_name in self.feature_status:
+                        feature_ready = self.feature_status[feature_name].get("ready", feature_ready)
+                    
+                    # Only continue if feature is ready
+                    if not feature_ready:
+                        return
+                        
+                    # Get current value
+                    current_value = pin_data.get("current_value", pin_data.get("value", 0))
+                    
+                    # Convert to boolean/int if needed
+                    if isinstance(current_value, str):
+                        if current_value.lower() in ("true", "1", "high"):
+                            current_value = 1
+                        else:
+                            current_value = 0
+                    elif isinstance(current_value, bool):
+                        current_value = 1 if current_value else 0
+                    
+                    # Toggle value (0->1, 1->0)
+                    new_value = 0 if current_value else 1
+                    print(f"DEBUG - Toggling digital pin {pin_name} from {current_value} to {new_value}")
+                    
+                    # Update pin data
+                    pin_data["current_value"] = new_value
+                    pin_data["value"] = new_value
+                    
+                    # Update table display
+                    value_str = "[green]HIGH[/]" if new_value else "[red]LOW[/]"
+                    value_str = f"[bold][reverse]{value_str}[/reverse][/bold]"
+                    pin_table.update_cell_at((pin_table.cursor_row, 5), value_str)
+                    
+                    # Make API call to update the pin value if available
+                    try:
+                        if self.app.api_available and self.current_alias:
+                            requests.post(
+                                f"{API_BASE_URL}/arduinos/{self.current_alias}/pins/{pin_name}/value",
+                                json={"value": new_value},
+                                timeout=1.0
+                            )
+                            print(f"DEBUG - Sent pin value update to API for digital pin: {pin_name}={new_value}")
+                    except Exception as e:
+                        print(f"DEBUG - Failed to update API: {e}")
+                    
+                    # Schedule a refresh after changing the pin value
+                    def delayed_refresh():
+                        try:
+                            self.update_all_data()
+                        except Exception as e:
+                            print(f"DEBUG - Error in delayed refresh: {e}")
+                            
+                    self.app.set_timer(0.2, delayed_refresh)
+            except Exception as e:
+                print(f"ERROR in action_enter: {e}")
+                import traceback
+                traceback.print_exc()
+
+    def action_increase_value(self) -> None:
+        """Handle + key press to increase analog input value by 50"""
+        if not self.hal_emulation:
+            return
+            
+        pin_table = self.query_one("#pin_table")
+        if pin_table and pin_table.cursor_row is not None:
+            try:
+                # Get pin name and type from selected row
+                pin_name = pin_table.get_cell_at((pin_table.cursor_row, 0))
+                pin_type = pin_table.get_cell_at((pin_table.cursor_row, 1))
+                
+                # Only edit analog input pins (ain)
+                if pin_type == "ain" and pin_name in self.pin_data:
+                    # Check if pin's feature is ready
+                    pin_data = self.pin_data[pin_name]
+                    feature_name = pin_data.get("feature_name", "")
+                    feature_ready = pin_data.get("feature_ready", True)  # Default to True for backward compatibility
+                    
+                    # We can also check feature status map for more details
+                    if feature_name in self.feature_status:
+                        feature_ready = self.feature_status[feature_name].get("ready", feature_ready)
+                    
+                    # Only continue if feature is ready
+                    if not feature_ready:
+                        return
+                        
+                    # Get current value
+                    current_value = pin_data.get("current_value", pin_data.get("value", 0))
+                    
+                    # Increase value by 50 instead of 1
+                    new_value = current_value + 50
+                    print(f"DEBUG - Increasing analog value for pin {pin_name} to {new_value}")
+                    
+                    # Update pin data
+                    pin_data["current_value"] = new_value
+                    pin_data["value"] = new_value
+                    
+                    # Update table display
+                    value_str = f"[green]{new_value}[/]"
+                    value_str = f"[bold][reverse]{value_str}[/reverse][/bold]"
+                    pin_table.update_cell_at((pin_table.cursor_row, 5), value_str)
+                    
+                    # Make API call to update the pin value if available
+                    try:
+                        if self.app.api_available and self.current_alias:
+                            requests.post(
+                                f"{API_BASE_URL}/arduinos/{self.current_alias}/pins/{pin_name}/value",
+                                json={"value": new_value},
+                                timeout=1.0
+                            )
+                            print(f"DEBUG - Sent pin value update to API for analog pin: {pin_name}={new_value}")
+                    except Exception as e:
+                        print(f"DEBUG - Failed to update API: {e}")
+                    
+                    # Schedule a refresh after changing the pin value
+                    def delayed_refresh():
+                        try:
+                            self.update_all_data()
+                        except Exception as e:
+                            print(f"DEBUG - Error in delayed refresh: {e}")
+                            
+                    self.app.set_timer(0.2, delayed_refresh)
+            except Exception as e:
+                print(f"ERROR in action_increase_value: {e}")
+                import traceback
+                traceback.print_exc()
+
+    def action_decrease_value(self) -> None:
+        """Handle - key press to decrease analog input value by 50"""
+        if not self.hal_emulation:
+            return
+            
+        pin_table = self.query_one("#pin_table")
+        if pin_table and pin_table.cursor_row is not None:
+            try:
+                # Get pin name and type from selected row
+                pin_name = pin_table.get_cell_at((pin_table.cursor_row, 0))
+                pin_type = pin_table.get_cell_at((pin_table.cursor_row, 1))
+                
+                # Only edit analog input pins (ain)
+                if pin_type == "ain" and pin_name in self.pin_data:
+                    # Check if pin's feature is ready
+                    pin_data = self.pin_data[pin_name]
+                    feature_name = pin_data.get("feature_name", "")
+                    feature_ready = pin_data.get("feature_ready", True)  # Default to True for backward compatibility
+                    
+                    # We can also check feature status map for more details
+                    if feature_name in self.feature_status:
+                        feature_ready = self.feature_status[feature_name].get("ready", feature_ready)
+                    
+                    # Only continue if feature is ready
+                    if not feature_ready:
+                        return
+                        
+                    # Get current value
+                    current_value = pin_data.get("current_value", pin_data.get("value", 0))
+                    
+                    # Decrease value by 50 instead of 1
+                    new_value = current_value - 50
+                    print(f"DEBUG - Decreasing analog value for pin {pin_name} to {new_value}")
+                    
+                    # Update pin data
+                    pin_data["current_value"] = new_value
+                    pin_data["value"] = new_value
+                    
+                    # Update table display
+                    value_str = f"[red]{new_value}[/]"
+                    value_str = f"[bold][reverse]{value_str}[/reverse][/bold]"
+                    pin_table.update_cell_at((pin_table.cursor_row, 5), value_str)
+                    
+                    # Make API call to update the pin value if available
+                    try:
+                        if self.app.api_available and self.current_alias:
+                            requests.post(
+                                f"{API_BASE_URL}/arduinos/{self.current_alias}/pins/{pin_name}/value",
+                                json={"value": new_value},
+                                timeout=1.0
+                            )
+                            print(f"DEBUG - Sent pin value update to API for analog pin: {pin_name}={new_value}")
+                    except Exception as e:
+                        print(f"DEBUG - Failed to update API: {e}")
+                    
+                    # Schedule a refresh after changing the pin value
+                    def delayed_refresh():
+                        try:
+                            self.update_all_data()
+                        except Exception as e:
+                            print(f"DEBUG - Error in delayed refresh: {e}")
+                            
+                    self.app.set_timer(0.2, delayed_refresh)
+            except Exception as e:
+                print(f"ERROR in action_decrease_value: {e}")
+                import traceback
+                traceback.print_exc()
+
+class AboutView(ListViewBase):
+    """Shows information about the application"""
+    
+    def __init__(self, app_instance: "APIClientApp", **kwargs):
+        super().__init__(app_instance)
+        self._app = app_instance
+        
+    @property
+    def app(self) -> "APIClientApp":
+        """Access to the app instance."""
+        return self._app
+    
+    def compose(self) -> ComposeResult:
+        """Compose the user interface"""
+        yield Header(show_clock=True)
+        yield Label("About Arduino LinuxCNC Connector V2.0", id="title", classes="heading")
+        
+        # Container for About information
+        with Container(id="about_container", classes="details-box"):
+            yield Label("[bold underline]LinuxCNC_ArduinoConnector V2[/]", classes="about-title")
+            yield Label("")
+            yield Label("By Alexander Richter and Ken Thompson")
+            yield Label("Copyright (c) 2023-2025 Alexander Richter & Ken Thompson")
+            yield Label("")
+            yield Label("[bold]What's new?[/]")
+            yield Label("With this new Version the configuration and communication between")
+            yield Label("Arduino and the receiving Python script is completely reworked.")
+            yield Label("")
+            yield Label("[bold]For the User these are the Main new Features:[/]")
+            yield Label("- all of the configuration is done in a single yaml script")
+            yield Label("- support for multiple Microcontrollers simultaneously")
+            yield Label("- support for Ethernet and Wifi connections (in the future)")
+            yield Label("- more versatile communication protocol")
+            yield Label("- REST API for monitoring and controlling Arduino connections")
+            yield Label("")
+            yield Label("[bold]Support the project:[/]")
+            # Use simple format for links - no markup
+            yield Label("Patreon: https://www.patreon.com/theartoftinkering")
+            yield Label("Website: https://theartoftinkering.com")
+            yield Label("YouTube: https://youtube.com/@theartoftinkering")
+            yield Label("GitHub: https://github.com/KennethThompson")
+            
+        # Add styled buttons
+        with Horizontal(id="buttons_container", classes="button-container"):
+            yield Button("Back", id="back", variant="default")
+            yield Button("Quit", id="quit", variant="error")
+        
+        yield Footer()
+    
+    def on_mount(self) -> None:
+        """Set up event handlers"""
+        pass
+        
+    @on(Button.Pressed, "#back")
+    def on_back_button_pressed(self, event: Button.Pressed) -> None:
+        """Handle back button press"""
+        print("DEBUG - About: Back button pressed")
+        self.on_back()
+    
+    @on(Button.Pressed, "#quit")
+    def on_quit_button_pressed(self, event: Button.Pressed) -> None:
+        """Handle quit button press"""
+        print("DEBUG - About: Quit button pressed")
+        self._app.exit()
+    
+    def on_back(self) -> None:
+        """Handle the back button click"""
+        self._app.switch_view("list")
+
+class APIClientApp(App):
+    """Main application class for the API client"""
+    
+    # Define key bindings
+    BINDINGS = [
+        ("q", "quit", "Quit"),
+        ("r", "refresh", "Refresh"),
+        ("enter", "enter", "Select/Details"),
+        ("escape", "back", "Back"),
+        ("b", "back", "Back"),
+    ]
+    
+    # Define CSS for styling
+    CSS = """
+    Screen {
+        background: #1f1d2e;
+    }
+    
+    .heading {
+        text-align: center;
+        background: #2d3142;
+        color: #f9f8f9;
+        padding: 0;  /* Removed padding completely */
+        margin-bottom: 0;
+        text-style: bold;
+        width: 100%;
+        border: wide #59546a;
+    }
+    
+    /* New styling for the details row container */
+    #details_row {
+        width: 100%;
+        height: auto;
+        margin: 0;
+        padding: 0;
+    }
+    
+    /* Adjust width of containers in horizontal layout for small screens */
+    #details_row > #details_container {
+        width: 60%;  /* Give details more space */
+        min-width: 30;
+        margin-right: 1;
+    }
+    
+    #details_row > #feature_status_container {
+        width: 40%;  /* Give feature status less space */
+        min-width: 20;
+    }
+    
+    .button-container {
+        margin-top: 0;
+        align: center middle;
+        height: auto;
+    }
+    
+    Button {
+        margin: 0 1;  /* Reduced button margins */
+    }
+    
+    #refresh {
+        background: #3a78ab; 
+    }
+    
+    #show_details {
+        background: #39a870;
+    }
+    
+    #about {
+        background: #7a69b3;
+    }
+    
+    #quit {
+        background: #a84d39;
+    }
+    
+    DataTable {
+        width: 100%;
+        height: 1fr;
+        min-height: 12;  /* Reduced minimum height for small screens */
+    }
+    
+    /* Make table columns fit better on small screens */
+    DataTable .datatable--header-cell {
+        padding: 0 1;    /* Reduced padding */
+    }
+    
+    DataTable .datatable--cell {
+        padding: 0 1;    /* Reduced padding */
+    }
+    
+    .table-border {
+        border: wide #59546a;
+        padding: 0;
+    }
+    
+    #details_container, #about_container, #feature_status_container {
+        width: 100%;
+        height: auto;
+        border: wide #59546a;
+        padding: 0 1;
+        margin-bottom: 0;
+    }
+    
+    /* Make label text smaller in details containers */
+    #details_container Label, #feature_status_container Label {
+        height: 1;       /* Compact height */
+        margin: 0;       /* No margin */
+        padding: 0;      /* No padding */
+    }
+    
+    #features_container {
+        width: 100%;
+        height: auto;
+        border: wide #59546a;
+        padding: 0 1;
+        margin-bottom: 0;
+        background: #292537;
+    }
+    
+    #feature_status_grid {
+        margin-top: 0;
+        height: auto;
+        width: 100%;
+    }
+    
+    .feature-card {
+        padding: 0 1;
+        margin-right: 1;
+        margin-bottom: 0;
+        min-width: 20;
+        max-width: 25;
+        height: auto;
+        background: #312d43;
+        border: tall #413b58;
+    }
+    
+    .feature-name {
+        color: #e4c9ff;
+        text-align: center;
+        margin-bottom: 0;
+    }
+    
+    .feature-detail {
+        text-align: center;
+        margin-top: 0;
+    }
+    
+    .details-box {
+        background: #292537;
+    }
+    
+    .about-title {
+        text-align: center;
+        margin: 0;
+        text-style: bold;
+        color: #e4c9ff;
+    }
+    
+    .emulation-instructions {
+        margin: 0;
+        color: #a3a2a6;
+        text-align: center;
+    }
+    
+    /* API Status Overlay Styling */
+    #api_status_overlay {
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        align: center middle;
+        layer: above;
+    }
+    
+    #api_error_container {
+        background: #2d2138;
+        width: 60%;
+        height: auto;
+        padding: 2;
+        border: round #ec505e;
+        align: center middle;
+    }
+    
+    .error-container {
+        layout: vertical;
+        align: center middle;
+    }
+    
+    .error-title {
+        text-align: center;
+        text-style: bold;
+        color: #ec505e;
+        margin-bottom: 1;
+    }
+    
+    #api_error_message {
+        text-align: center;
+        margin-bottom: 1;
+    }
+    
+    #retry_countdown {
+        text-align: center;
+        margin-bottom: 1;
+        color: #a3a2a6;
+    }
+    
+    #retry_loading {
+        margin: 1 0;
+    }
+    
+    #retry_now {
+        margin-top: 1;
+        background: #3a78ab;
+    }
+    
+    .quit-hint {
+        margin-top: 1;
+        text-align: center;
+        color: #a3a2a6;
+        text-style: italic;
+    }
+    
+    /* Edit Pin Dialog */
+    #edit_dialog {
+        background: #2d2138;
+        padding: 2;
+        border: round #59546a;
+        min-width: 50;
+        max-width: 70;
+        min-height: 10;
+    }
+    
+    #dialog_buttons {
+        margin-top: 1;
+        align: center middle;
+    }
+    
+    #value_input {
+        margin: 1 0;
+    }
+    """
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.arduino_data = []
+        self.current_view = "list"
+        self.api_available = True
+        self._health_check_timer_id = None
+        
+        # Create views
+        self.list_view = ArduinoListView(app_instance=self)
+        self.detail_view = ArduinoDetailView(app_instance=self)
+        self.about_view = AboutView(app_instance=self)
+        self.api_status_overlay = ApiStatusOverlay(app_instance=self)
+    
+    def compose(self) -> ComposeResult:
+        """Compose the application UI"""
+        # Mount all views at startup
+        yield self.list_view
+        yield self.detail_view
+        yield self.about_view
+        
+        # Initially hide the detail and about views
+        self.detail_view.display = False
+        self.about_view.display = False
+        
+        # Add the API status overlay (initially hidden)
+        yield self.api_status_overlay
+        self.api_status_overlay.display = False
+    
+    def on_mount(self) -> None:
+        """Set up the application on mount"""
+        print("DEBUG - Application mounting")
+        
+        # Do initial health check
+        self.check_api_health()
+        
+        # Add explicit initial data refresh with delay
+        def initial_refresh():
+            print("DEBUG - Performing initial data refresh")
+            self.refresh_data()
+            
+        # Schedule the refresh with a short delay to ensure UI is ready
+        self.set_timer(0.5, initial_refresh)
+    
+    def check_api_health(self) -> None:
+        """Check if the API is available"""
+        print("DEBUG - Starting API health check")
+        # Cancel any existing health check timer
+        if self._health_check_timer_id is not None:
+            try:
+                self.set_timer(self._health_check_timer_id, None)
+            except Exception:
+                pass
+            self._health_check_timer_id = None
+            
+        try:
+            # Try to reach the health endpoint
+            print("DEBUG - Sending request to /health endpoint")
+            response = requests.get(f"{API_BASE_URL}/health", timeout=HEALTH_CHECK_TIMEOUT)
+            print(f"DEBUG - Health check response: status={response.status_code}")
+            
+            # Check if response is successful (status code 200)
+            if response.status_code == 200:
+                # API is available
+                if not self.api_available:
+                    print("DEBUG - API state changed: unavailable -> available")
+                    # Update state
+                    self.api_available = True
+                    
+                    # Hide the overlay
+                    self.hide_api_status_overlay()
+                    
+                    # Refresh data based on current view
+                    if self.current_view == "list":
+                        print("DEBUG - Health check triggering data refresh for list view")
+                        self.refresh_data()
+                    elif self.current_view == "detail":
+                        # If we are in detail view, refresh the details
+                        if self.detail_view.current_alias:
+                            print(f"DEBUG - Health check triggering detail refresh for {self.detail_view.current_alias}")
+                            self.detail_view.load_details(self.detail_view.current_alias)
+                else:
+                    print("DEBUG - API remains available") 
+                
+                # Schedule next health check
+                def schedule_next_check():
+                    self.check_api_health()
+                
+                print(f"DEBUG - Scheduling next health check in {HEALTH_CHECK_INTERVAL} seconds")    
+                self._health_check_timer_id = self.set_timer(HEALTH_CHECK_INTERVAL, schedule_next_check)
+            else:
+                # API responded but with an error status
+                print(f"DEBUG - API health check failed with status code: {response.status_code}")
+                self.handle_api_unavailable()
+                
+        except requests.exceptions.RequestException as e:
+            # API is unavailable or not responding
+            print(f"DEBUG - API health check failed with request error: {str(e)}")
+            self.handle_api_unavailable()
+        except Exception as e:
+            # Catch any other errors that might occur
+            print(f"DEBUG - Unexpected error in health check: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            self.handle_api_unavailable()
+    
+    def handle_api_unavailable(self) -> None:
+        """Handle case when API is unavailable"""
+        # If API was previously available, log state change
+        if self.api_available:
+            print("API is now unavailable")
+            
+        # Update state
+        self.api_available = False
+        
+        # Show API status overlay
+        self.show_api_status_overlay()
+    
+    def show_api_status_overlay(self) -> None:
+        """Show the API status overlay"""
+        # Set loading indicator to hidden and countdown to visible
+        try:
+            if self.api_status_overlay.display is False:
+                self.api_status_overlay.display = True
+                
+            loading = self.api_status_overlay.query_one("#retry_loading")
+            if loading:
+                loading.styles.display = "none"
+                
+            countdown = self.api_status_overlay.query_one("#retry_countdown")
+            if countdown:
+                countdown.styles.display = "block"
+                
+            retry_button = self.api_status_overlay.query_one("#retry_now")
+            if retry_button:
+                retry_button.disabled = False
+                
+            # Start the countdown
+            self.api_status_overlay.start_countdown()
+        except Exception as e:
+            print(f"Error showing API status overlay: {e}")
+    
+    def hide_api_status_overlay(self) -> None:
+        """Hide the API status overlay"""
+        # Cancel any running countdown timer in the overlay
+        if hasattr(self.api_status_overlay, "_timer_id") and self.api_status_overlay._timer_id is not None:
+            try:
+                self.set_timer(self.api_status_overlay._timer_id, None)
+            except Exception as e:
+                print(f"Error cancelling timer: {e}")
+            self.api_status_overlay._timer_id = None
+            
+        # Hide the overlay
+        self.api_status_overlay.display = False
+        
+        # If we're in detail view, restart auto-updates
+        if self.current_view == "detail" and hasattr(self.detail_view, "start_auto_updates"):
+            self.detail_view.start_auto_updates()
+    
+    def on_arduino_list_view_show_details_pressed(self, event: Button.Pressed) -> None:
+        """Handle the show details button press"""
+        # Get the selected row from the table
+        table = self.list_view.query_one("#arduino_table")
+        if table.cursor_row is not None:
+            alias = table.get_cell_at((table.cursor_row, 0))
+            self.switch_view("detail", alias)
+    
+    def switch_view(self, view_name: str, alias: str = None) -> None:
+        """Switch between views"""
+        # Don't switch views if API is unavailable
+        if not self.api_available and view_name != "about":
+            return
+            
+        if view_name == "list" and self.current_view != "list":
+            # Stop auto-updates in detail view before hiding
+            if self.current_view == "detail" and hasattr(self.detail_view, "stop_auto_updates"):
+                self.detail_view.stop_auto_updates()
+                
+            # Switch to list view
+            self.list_view.display = True
+            self.detail_view.display = False
+            self.about_view.display = False
+            self.current_view = "list"
+            # Update the list
+            self.refresh_data()
+        
+        elif view_name == "detail" and self.current_view != "detail":
+            # Switch to detail view
+            self.list_view.display = False
+            self.detail_view.display = True
+            self.about_view.display = False
+            self.current_view = "detail"
+            
+            # Load the Arduino details if an alias is provided
+            if alias:
+                self.detail_view.load_details(alias)
+                
+            # Start auto-updates in detail view
+            if hasattr(self.detail_view, "start_auto_updates"):
+                self.detail_view.start_auto_updates()
+                
+        elif view_name == "about" and self.current_view != "about":
+            # Switch to about view
+            self.list_view.display = False
+            self.detail_view.display = False
+            self.about_view.display = True
+            self.current_view = "about"
+    
+    def refresh_data(self) -> None:
+        """Refresh the data from the API"""
+        # Skip refresh if API is unavailable
+        if not self.api_available:
+            print("DEBUG - Skipping refresh because API marked as unavailable")
+            return
+            
+        print(f"DEBUG - Starting data refresh, current_view={self.current_view}")
+        try:
+            # Get Arduino list
+            print("DEBUG - Sending request to /arduinos endpoint")
+            response = requests.get(f"{API_BASE_URL}/arduinos", timeout=2)
+            print(f"DEBUG - Got response: status={response.status_code}")
+            response.raise_for_status()
+            
+            # Check response content
+            raw_content = response.text
+            print(f"DEBUG - Response content length: {len(raw_content)} chars")
+            print(f"DEBUG - Response starts with: {raw_content[:100]}")
+            
+            # Parse JSON
+            try:
+                arduinos = response.json()
+                
+                # Handle case where API returns null or non-list
+                if arduinos is None:
+                    print("DEBUG - API returned None instead of a list")
+                    arduinos = []
+                elif not isinstance(arduinos, list):
+                    print(f"DEBUG - API returned {type(arduinos).__name__} instead of a list")
+                    if isinstance(arduinos, dict):
+                        # If it's a single Arduino as a dict, convert to a list
+                        arduinos = [arduinos]
+                    else:
+                        arduinos = []
+                
+                print(f"DEBUG - Parsed JSON successfully, got {len(arduinos)} Arduino(s)")
+            except Exception as e:
+                print(f"DEBUG - JSON parse error: {e}")
+                print(f"DEBUG - Raw content: {raw_content}")
+                raise
+            
+            # Debug - print the first Arduino data to understand structure
+            if arduinos and len(arduinos) > 0:
+                print("\nDEBUG - First Arduino data:")
+                for key, value in arduinos[0].items():
+                    print(f"  {key}: {value} (type: {type(value).__name__})")
+                    
+                # Specifically check for enabled status fields
+                enabled_fields = ["enabled", "is_enabled", "enable", "active", "is_active"]
+                print("\nDEBUG - Checking for enabled status fields:")
+                for field in enabled_fields:
+                    if field in arduinos[0]:
+                        print(f"  Found '{field}': {arduinos[0][field]} (type: {type(arduinos[0][field]).__name__})")
+            else:
+                print("DEBUG - No Arduino data returned from API")
+                
+            self.arduino_data = arduinos
+            
+            # Update the current view
+            if self.current_view == "list":
+                print("DEBUG - Updating list view with data")
+                try:
+                    self.list_view.update_data(arduinos)
+                    print(f"DEBUG - List view updated, rows count: {self.list_view.arduino_table.row_count}")
+                except Exception as e:
+                    print(f"DEBUG - Error updating list view: {e}")
+                    import traceback
+                    traceback.print_exc()
+            elif self.current_view == "detail" and self.detail_view.current_alias:
+                print("DEBUG - Updating detail view for alias:", self.detail_view.current_alias)
+                self.detail_view.load_details(self.detail_view.current_alias)
+            else:
+                print(f"DEBUG - No view update needed, current_view={self.current_view}")
+                
+        except requests.exceptions.RequestException as e:
+            print(f"DEBUG - API request error: {e}")
+            # Treat any API error as potential unavailability
+            self.check_api_health()
+        except Exception as e:
+            print(f"DEBUG - Unexpected error during refresh: {e}")
+            import traceback
+            traceback.print_exc()
+    
+    def get_arduino_details(self, alias: str) -> Optional[Dict[str, Any]]:
+        """Get detailed information about a specific Arduino"""
+        # Skip if API is unavailable
+        if not self.api_available:
+            return None
+            
+        try:
+            print(f"DEBUG - Requesting details for Arduino: {alias}")
+            response = requests.get(f"{API_BASE_URL}/arduinos/{alias}", timeout=2)
+            print(f"DEBUG - Got response with status: {response.status_code}")
+            
+            # Check if response is successful
+            if response.status_code != 200:
+                print(f"ERROR - API returned error status: {response.status_code}")
+                print(f"ERROR - Response text: {response.text[:500]}...")
+                return None
+                
+            response.raise_for_status()
+            
+            # Log raw response for debugging (truncated to avoid excessive output)
+            raw_text = response.text
+            print(f"DEBUG - Raw API response for arduino details: {raw_text[:200]}...")
+            
+            # Parse response as JSON
+            try:
+                resp_data = response.json()
+                print(f"DEBUG - Successfully parsed JSON response with keys: {list(resp_data.keys())}")
+                
+                # Check for missing critical fields
+                required_fields = ["component_name", "device", "arduino_status", "pins"]
+                missing_fields = [field for field in required_fields if field not in resp_data]
+                if missing_fields:
+                    print(f"WARNING - Missing required fields in API response: {missing_fields}")
+                
+                return resp_data
+            except json.JSONDecodeError as e:
+                print(f"ERROR - Failed to parse JSON response: {e}")
+                print(f"ERROR - Raw response: {raw_text[:500]}")
+                return None
+                
+        except requests.exceptions.RequestException as e:
+            print(f"ERROR - Request error in get_arduino_details: {e}")
+            # Treat any API error as potential unavailability
+            self.check_api_health()
+            return None
+        except Exception as e:
+            print(f"ERROR - Unexpected error in get_arduino_details: {e}")
+            import traceback
+            traceback.print_exc()
+            return None
+    
+    def exit(self) -> None:
+        """Exit the application"""
+        # First disable all automatic updates
+        try:
+            # Turn off all automatic processing
+            if self.current_view == "detail":
+                self.detail_view.stop_auto_updates()
+                
+            # Cancel API status overlay timer
+            if hasattr(self, 'api_status_overlay') and hasattr(self.api_status_overlay, '_timer_id') and self.api_status_overlay._timer_id is not None:
+                try:
+                    self.set_timer(self.api_status_overlay._timer_id, None)
+                    self.api_status_overlay._timer_id = None
+                except Exception as e:
+                    print(f"Error cancelling overlay timer: {e}")
+                    
+            # Cancel health check timer
+            if self._health_check_timer_id is not None:
+                try:
+                    self.set_timer(self._health_check_timer_id, None)
+                    self._health_check_timer_id = None
+                except Exception as e:
+                    print(f"Error cancelling health check timer: {e}")
+        except Exception as e:
+            # Catch any errors during timer cleanup
+            print(f"Error during timer cleanup: {e}")
+            
+        # Exit without any further timer operations
+        try:
+            # Call the parent exit method
+            super().exit()
+        except TypeError:
+            # If we get a TypeError about Timer operations, force exit
+            import sys
+            print("Forcing exit due to Timer cleanup error")
+            sys.exit(0)
+        
+    def action_quit(self) -> None:
+        """Action handler for quit key binding"""
+        self.exit()
+        
+    def action_refresh(self) -> None:
+        """Action handler for refresh key binding"""
+        self.refresh_data()
+        
+    def action_enter(self) -> None:
+        """Action handler for enter key binding"""
+        try:
+            if self.current_view == "list":
+                table = self.list_view.query_one("#arduino_table")
+                if table and table.cursor_row is not None and table.row_count > 0:
+                    try:
+                        alias = table.get_cell_at((table.cursor_row, 0))
+                        self.switch_view("detail", alias)
+                    except Exception as e:
+                        print(f"Error getting cell data: {e}")
+            elif self.current_view == "detail" or self.current_view == "about":
+                self.switch_view("list")
+        except Exception as e:
+            print(f"Error in action_enter: {e}")
+
+    def action_back(self) -> None:
+        """Action handler for back key bindings"""
+        if self.current_view == "detail" or self.current_view == "about":
+            print("DEBUG - Back action triggered")
+            self.switch_view("list")
+
+    def _format_duration(self, seconds: int) -> str:
+        """Format seconds into days, hours, minutes (no seconds)"""
+        days, remainder = divmod(int(seconds), 86400)
+        hours, remainder = divmod(remainder, 3600)
+        minutes, _ = divmod(remainder, 60)  # Ignore seconds
+        
+        return f"{days}d {hours}h {minutes}m"
+
+    def _format_duration_from_minutes(self, minutes: float) -> str:
+        """Format minutes into days, hours, minutes"""
+        total_minutes = int(minutes)
+        days, remainder = divmod(total_minutes, 1440)  # 1440 = minutes in a day
+        hours, minutes = divmod(remainder, 60)
+        
+        return f"{days}d {hours}h {minutes}m"
+
+def force_exit():
+    """Force exit the application when all else fails"""
+    print("Forcing exit...")
+    sys.exit(0)
+
+# Register the force exit function with atexit
+atexit.register(force_exit)
+
+# Register a signal handler for SIGINT (Ctrl+C)
+def signal_handler(sig, frame):
+    """Handle SIGINT signal"""
+    print("SIGINT received, exiting...")
+    sys.exit(0)
+
+signal.signal(signal.SIGINT, signal_handler)
+
+def main():
+    app = APIClientApp()
+    app.run()
+
+if __name__ == "__main__":
+    main() 

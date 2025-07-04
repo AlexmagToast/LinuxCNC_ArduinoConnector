@@ -12,10 +12,26 @@ else
     real_user=$(whoami)
 fi
 #set -x #echo on
-pip3 install .
-sudo chmod +x arduino-connector.py
-sudo cp arduino-connector.py /usr/bin/arduino-connector
-echo To test: execute 'hal_run' and then 'loadusr arduino-connector'
+
+# Create a virtual environment
+VENV_PATH="/opt/arduino-connector-venv"
+echo "Creating Python virtual environment at $VENV_PATH"
+python3 -m venv $VENV_PATH
+
+# Install the package into the virtual environment
+echo "Installing package into virtual environment"
+$VENV_PATH/bin/pip install .
+
+# Create executable script
+sudo chmod +x launch.py
+sudo tee /usr/bin/arduino-connector > /dev/null << EOF
+#!/bin/bash
+$VENV_PATH/bin/python $(pwd)/launch.py "\$@"
+EOF
+sudo chmod +x /usr/bin/arduino-connector
+
+echo "Installation complete!"
+echo "To test: execute 'hal_run' and then 'loadusr arduino-connector'"
 #set +x #echo off
 
 # Commands that you don't want running as root would be invoked
