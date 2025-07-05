@@ -914,10 +914,11 @@ namespace Features
 
             if( json.containsKey("pr"))
             {
-                if (json["pr"] > 0)
+                int pr = json["pr"].as<int>();
+                if (pr > 0)
                 {
 #if defined(ARDUINO_ARCH_SAMD) || defined(ARDUINO_ARCH_SAM) || defined(ARDUINO_ARCH_RENESAS) || defined(ARDUINO_ARCH_MBED) || defined(ARDUINO_ARCH_ESP32) || defined(ARDUINO_ARCH_RP2040)
-                    analogReadResolution(json["pr"]);
+                    analogReadResolution(pr);
 #else
                     DEBUG_DEV.println(F("ERROR: analogReadResolution not supported on this platform"));
 #endif
@@ -1180,7 +1181,8 @@ namespace Features
 
             if(json.containsKey("pw"))
             {
-                if (json["pw"] > 0)
+                int pw = json["pw"].as<int>();
+                if (pw > 0)
                 {
 #if defined(ARDUINO_ARCH_SAMD) || defined(ARDUINO_ARCH_SAM) || defined(ARDUINO_ARCH_RENESAS) || defined(ARDUINO_ARCH_MBED) || defined(ARDUINO_ARCH_ESP32) || defined(ARDUINO_ARCH_RP2040)
                     analogWriteResolution(json["pw"]);
