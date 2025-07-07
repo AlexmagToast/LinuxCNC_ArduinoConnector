@@ -483,9 +483,9 @@ namespace Features
                 {
                     dp->inputPullup = 0;
                     if (dp->mid == -1)
-                        pinMode(atoi(dp->pid.c_str()), INPUT_PULLUP);
+                        pinMode(atoi(dp->pid.c_str()), INPUT);
                     else
-                        pinMode(dp->mid, INPUT_PULLUP);    
+                        pinMode(dp->mid, INPUT);    
                 }
             }
             else

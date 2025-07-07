@@ -1,26 +1,27 @@
 mcu: 
-  alias: Arduino ESP8266
-  component_name: arduino8266 
-  dev: /dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_0001-if00-port0
+  alias: M4 Grand Central
+  component_name: arduinom4 # Name of component to use in HAL
+  dev: /dev/serial/by-id/usb-Adafruit_Adafruit_Grand_Central_M4_AB5B58B75335353334202020FF184219-if00 
+  
   enabled: true
   hal_emulation: false
-  io_map:           
+  io_map:
+    digitalOutputs:
+      - pin_id: 3
+        pin_name: dout.03 #hal pin name
+        pin_enabled: true
+        pin_connected_state: 0
+        pin_disconnected_state: 0
+        pin_initial_state: 0
+      - pin_id: 4
+        pin_name: dout.04 #hal pin name
+        pin_enabled: true
+        pin_connected_state: 0
+        pin_disconnected_state: 0
+        pin_initial_state: 0
     digitalInputs:
-      - pin_id: D8
-        pin_name: ir-sensor-in #hal pin name
+      - pin_id: 2
+        pin_name: din.02 #hal pin name
         input_pullup: true
         pin_enabled: true
         pin_debounce: 50
-    digitalOutputs:
-      - pin_id: D6
-        pin_name: dust-cover-out #hal pin name
-        pin_enabled: true
-        pin_connected_state: 1
-        pin_disconnected_state: 1
-        pin_initial_state: 1
-      - pin_id: D7
-        pin_name: dust-cover-act #hal pin name
-        pin_enabled: true
-        pin_connected_state: 1
-        pin_disconnected_state: 1
-        pin_initial_state: 1
