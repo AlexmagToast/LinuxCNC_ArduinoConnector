@@ -1,3 +1,10 @@
+#include <Arduino.h>
+#include <stdlib.h>
+#include <ctype.h>
+#include <LiquidCrystal.h>
+#include <math.h>
+#include <string.h>
+
 /*
   LinuxCNC_ArduinoConnector
   By Alexander Richter, info@theartoftinkering.com 2022
@@ -34,6 +41,11 @@
   rotary encoder          = 'R' -write only  -Pin State: up/ down / -2147483648 to 2147483647
   joystick                = 'R' -write only  -Pin State: up/ down / -2147483648 to 2147483647
   multiplexed LEDs        = 'M' -read only   -Pin State: 0,1
+
+LCD Variables:
+  LCD Float Variables     = 'F' -write only  -Pin State: integer (×1000)
+  LCD Integer Variables   = 'N' -write only  -Pin State: integer value
+  LCD Boolean Variables   = 'B' -write only  -Pin State: 0,1
 
 Keyboard Input:
   Matrix Keypad           = 'M' -write only  -Pin State: 0,1
@@ -302,7 +314,71 @@ int currentLED = 0;
 #endif
 
 
+//#define LCD_VARS
+#ifdef LCD_VARS
+  // LCD Display Configuration
+  #define LCD_COLUMNS 20
+  #define LCD_ROWS 4
+    
+  // LCD Pin definitions
+  #define LCD_PINS_RS     82
+  #define LCD_PINS_ENABLE 61
+  #define LCD_PINS_D4     59
+  #define LCD_PINS_D5     70
+  #define LCD_PINS_D6     85
+  #define LCD_PINS_D7     71
 
+  // LCD object initialization
+  LiquidCrystal lcd(LCD_PINS_RS, LCD_PINS_ENABLE, LCD_PINS_D4, LCD_PINS_D5, LCD_PINS_D6, LCD_PINS_D7);
+
+  // Variable types
+  enum VarType {
+    VAR_FLOAT,
+    VAR_INT,
+    VAR_BOOL
+  };
+
+  // Structure for variable definition
+  struct LCDVar {
+    const char* name;        // Variable name
+    uint8_t row;             // Row on LCD (0-3)
+    uint8_t col;             // Column on LCD (0-19)
+    VarType type;            // Variable type
+    union {
+      float floatValue;       // For float variables
+      int32_t intValue;       // For int variables
+      bool boolValue;         // For bool variables
+    } value;
+    union {
+      float floatOldValue;    // For float variables
+      int32_t intOldValue;    // For int variables
+      bool boolOldValue;      // For bool variables
+    } oldValue;
+    uint8_t decimals;        // Number of decimal places (for float)
+  };
+
+  // Macros to simplify LCD variable definitions
+  #define LCD_FLOAT(name, row, col, decimals) {name, row, col, VAR_FLOAT, {.floatValue = 0.0}, {.floatOldValue = -999.0}, decimals}
+  #define LCD_INT(name, row, col) {name, row, col, VAR_INT, {.intValue = 0}, {.intOldValue = -999}, 0}
+  #define LCD_BOOL(name, row, col) {name, row, col, VAR_BOOL, {.boolValue = false}, {.boolOldValue = false}, 0}
+    
+  // Variable definitions - modify as needed
+  LCDVar lcdVars[] = {
+    LCD_FLOAT("Speed:  ", 0, 0, 3),      // Speed on row 0, column 0, 1 decimal place
+    LCD_FLOAT("Feed: ", 1, 0, 3)       // Feed on row 1, column 0, 2 decimal places
+  };
+  
+  // Macro to calculate the number of variables
+  #define LCD_VAR_COUNT (sizeof(lcdVars) / sizeof(lcdVars[0]))
+  
+  // Function to initialize LCD variables
+  void initLCDVars(); 
+
+  // Function to set LCD variable value from LinuxCNC
+  void setLCDVar(int index, float newValue);
+  void setLCDVar(int index, int32_t newValue);
+  void setLCDVar(int index, bool newValue);
+#endif
 
 //#define DEBUG
 //#######################################   END OF CONFIG     ###########################
@@ -391,15 +467,15 @@ int connectionState = 0;
 
 
 byte state = STATE_CMD;
-char inputbuffer[5];
+char inputbuffer[32];  // Increased size for large float values (e.g., 123400)
 byte bufferIndex = 0;
 char cmd = 0;
 uint16_t io = 0;
-uint16_t value = 0;
+int32_t value = 0;  // Changed from uint16_t to int32_t for LCD float values
 
 // Function Prototypes
 void readCommands();
-void commandReceived(char cmd, uint16_t io, uint16_t value);
+void commandReceived(char cmd, uint16_t io, int32_t value);
 void multiplexLeds();
 void readKeypad();
 int readAbsKnob();
@@ -483,8 +559,16 @@ for(int col = 0; col < numCols; col++) {
 }
 #endif
 
+#ifdef LCD_VARS
+  lcd.begin(LCD_COLUMNS, LCD_ROWS);
+  lcd.clear();
+  // Initialize LCD variables
+  initLCDVars();
 
-//Setup Serial
+  delay(500);
+#endif
+
+  //Setup Serial
   Serial.begin(115200);
   while (!Serial){}
   comalive();
@@ -999,7 +1083,116 @@ void multiplexLeds() {
 }
 #endif
 
-void commandReceived(char cmd, uint16_t io, uint16_t value){
+#ifdef LCD_VARS
+
+void initLCDVars() {
+  for (size_t i = 0; i < LCD_VAR_COUNT; i++) {
+    lcd.setCursor(lcdVars[i].col, lcdVars[i].row);
+    lcd.print(lcdVars[i].name);
+    // Clear the rest of the line
+    int spacesToClear = LCD_COLUMNS - (lcdVars[i].col + strlen(lcdVars[i].name));
+    if (spacesToClear > 0) {
+      for (int j = 0; j < spacesToClear; j++) {
+        lcd.print(" ");
+      }
+    }
+  }
+}
+
+void setLCDVar(int index, float newValue) {
+  // Set float variable value received from LinuxCNC
+  if (index >= 0 && (size_t)index < LCD_VAR_COUNT && lcdVars[index].type == VAR_FLOAT) {
+    lcdVars[index].value.floatValue = newValue;
+    
+    #ifdef DEBUG
+    Serial.print("Float var ");
+    Serial.print(index);
+    Serial.print(" set to: ");
+    Serial.println(newValue);
+    #endif
+    
+    // Check if value changed - compare newValue with oldValue
+    bool valueChanged = (newValue != lcdVars[index].oldValue.floatOldValue);
+    // Update LCD display if value changed
+    if (valueChanged) {
+      lcd.setCursor(lcdVars[index].col, lcdVars[index].row);
+      lcd.print(lcdVars[index].name);
+      lcd.print(lcdVars[index].value.floatValue, lcdVars[index].decimals);
+      // Clear the rest of the line
+      int spacesToClear = LCD_COLUMNS - (lcdVars[index].col + strlen(lcdVars[index].name) + String(lcdVars[index].value.floatValue, lcdVars[index].decimals).length());
+      if (spacesToClear > 0) {
+        for (int j = 0; j < spacesToClear; j++) {
+          lcd.print(" ");
+        }
+      }
+      lcdVars[index].oldValue.floatOldValue = newValue;
+    }
+  }
+}
+
+void setLCDVar(int index, int32_t newValue) {
+  if (index >= 0 && (size_t)index < LCD_VAR_COUNT && lcdVars[index].type == VAR_INT) {
+    lcdVars[index].value.intValue = newValue;
+
+    #ifdef DEBUG
+    Serial.print("Int var ");
+    Serial.print(index);
+    Serial.print(" set to: ");
+    Serial.println(newValue);
+    #endif
+    
+    // Check if value changed - compare newValue with oldValue
+    bool valueChanged = (newValue != lcdVars[index].oldValue.intOldValue);   
+    // Update LCD display if value changed
+    if (valueChanged) {
+      lcd.setCursor(lcdVars[index].col, lcdVars[index].row);
+      lcd.print(lcdVars[index].name);
+      lcd.print(lcdVars[index].value.intValue);
+      // Clear the rest of the line
+      int spacesToClear = LCD_COLUMNS - (lcdVars[index].col + strlen(lcdVars[index].name) + String(lcdVars[index].value.intValue).length());
+      if (spacesToClear > 0) {
+        for (int j = 0; j < spacesToClear; j++) {
+          lcd.print(" ");
+        }
+      }
+      lcdVars[index].oldValue.intOldValue = newValue;
+    }
+  }
+}
+
+void setLCDVar(int index, bool newValue) {
+  if (index >= 0 && (size_t)index < LCD_VAR_COUNT && lcdVars[index].type == VAR_BOOL) {
+    lcdVars[index].value.boolValue = newValue;
+    
+    #ifdef DEBUG
+    Serial.print("Bool var ");
+    Serial.print(index);
+    Serial.print(" set to: ");
+    Serial.println(newValue);
+    #endif
+    
+    // Check if value changed - compare newValue with oldValue
+    bool valueChanged = (newValue != lcdVars[index].oldValue.boolOldValue);
+    // Update LCD display if value changed
+    if (valueChanged) {
+      lcd.setCursor(lcdVars[index].col, lcdVars[index].row);
+      lcd.print(lcdVars[index].name);
+      lcd.print(lcdVars[index].value.boolValue ? "ON " : "OFF");
+      // Clear the rest of the line
+      int spacesToClear = LCD_COLUMNS - (lcdVars[index].col + strlen(lcdVars[index].name) + (lcdVars[index].value.boolValue ? 3 : 4));
+      if (spacesToClear > 0) {
+        for (int j = 0; j < spacesToClear; j++) {
+          lcd.print(" ");
+        }
+      }
+      lcdVars[index].oldValue.boolOldValue = newValue;
+    }
+  }
+}
+
+#endif  // LCD_VARS
+
+void commandReceived(char cmd, uint16_t io, int32_t value){
   #ifdef OUTPUTS
   if(cmd == 'O'){
     writeOutputs(io,value);
@@ -1041,6 +1234,27 @@ void commandReceived(char cmd, uint16_t io, uint16_t value){
   }
   #endif
 
+  #ifdef LCD_VARS
+  if(cmd == 'F'){ // Set float variable from LinuxCNC
+    // io = index of variable, value = integer part (multiplied by 1000)
+    // Convert back to float by dividing by 1000
+    float floatValue = (float)value / 1000.0;
+    setLCDVar(io, floatValue);
+    lastcom=millis();
+  }
+  if(cmd == 'N'){ // Set integer variable from LinuxCNC
+    // io = index of variable, value = integer value
+    int32_t intValue = (int32_t)value;
+    setLCDVar(io, intValue);
+    lastcom=millis();
+  }
+  if(cmd == 'B'){ // Set boolean variable from LinuxCNC
+    // io = index of variable, value = boolean value (0 or 1)
+    bool boolValue = (value != 0);
+    setLCDVar(io, boolValue);
+    lastcom=millis();
+  }
+  #endif
 
   if(cmd == 'E'){
     lastcom=millis();
@@ -1071,35 +1285,37 @@ void readCommands(){
                    bufferIndex = 0;
                 break;
             case STATE_IO:
-                if(isDigit(current)){
+                if(isdigit(current)){ // Only accept digits for pin/index
                     inputbuffer[bufferIndex++] = current;
                 }else if(current == ':'){
                     inputbuffer[bufferIndex] = 0;
-                    io = atoi(inputbuffer);
+                    io = strtol(inputbuffer, NULL, 10);
                     state = STATE_VALUE;
                     bufferIndex = 0;
 
                 }
                 else{
                     #ifdef DEBUG
-                    Serial.print("Ungültiges zeichen: ");
+                    Serial.print("Invalid character: ");
                     Serial.println(current);
                     #endif
                 }
                 break;
             case STATE_VALUE:
-                if(isDigit(current)){
-                    inputbuffer[bufferIndex++] = current;
+                if(isdigit(current) || current == '-'){ // Accept digits and minus sign
+                    if(bufferIndex < 31) { // Prevent buffer overflow
+                        inputbuffer[bufferIndex++] = current;
+                    }
                 }
                 else if(current == '\n'){
                     inputbuffer[bufferIndex] = 0;
-                    value = atoi(inputbuffer);
+                    value = strtol(inputbuffer, NULL, 10);  // Use strtol() for better int32_t parsing
                     commandReceived(cmd, io, value);
                     state = STATE_CMD;
                 }
                 else{
                   #ifdef DEBUG
-                  Serial.print("Ungültiges zeichen: ");
+                  Serial.print("Invalid character: ");
                   Serial.println(current);
                   #endif
 

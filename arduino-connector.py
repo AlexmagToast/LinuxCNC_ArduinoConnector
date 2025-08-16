@@ -32,6 +32,7 @@ import serial, time, hal
 #	Multiplexed LEDs		= 'M' -read only   -Pin State: 0,1
 #	Quadrature Encoders 	= 'R' -write only  -Pin State: 0(down),1(up),-2147483648 to 2147483647(counter)
 #	Joystick Input		 	= 'R' -write only  -Pin State: -2147483648 to 2147483647(counter)
+#	Float Variables		   	= 'F' -write only  -Pin State: float value (e.g., 123.456)
 
 
 
@@ -115,7 +116,11 @@ JoySticks = 0	#number of installed Joysticks
 JoyStickPins = [0,1] #Pins the Joysticks are connected to. 
 	#in this example X&Y Pins of the Joystick are connected to Pin A0& A1. 
 
-
+# Enable Variables for LCD Display
+# This allows you to send various data types from LinuxCNC to Arduino for display on LCD
+LcdFloatVars = 0	# Number of float variables to support (set to 0 to disable) - should match the number of float variables in Arduino lcdVars array
+LcdIntVars = 0		# Number of integer variables to support (set to 0 to disable)
+LcdBoolVars = 0	# Number of boolean variables to support (set to 0 to disable)
 
 
 # Set how many Digital LED's you have connected. 
@@ -186,6 +191,12 @@ olddOutStates= [0]*Outputs
 oldPwmOutStates=[0]*PwmOutputs
 oldDLEDStates=[0]*DLEDcount
 oldMledStates = [0]*LedVccPins*LedGndPins
+
+# Add tracking for LCD variables to only send when values change
+# Initialize with values that will force first send
+oldFloatVars = [-999.0] * LcdFloatVars  # Initialize based on LcdFloatVars value
+oldIntVars = [-999] * LcdIntVars        # Initialize based on LcdIntVars value  
+oldBoolVars = [False] * LcdBoolVars      # Initialize based on LcdBoolVars value
 
 if LinuxKeyboardInput:
 	import subprocess
@@ -262,6 +273,18 @@ if JoySticks > 0:
 	for port in range(JoySticks*2):
 		c.newpin("counter.{}".format(JoyStickPins[port]), hal.HAL_S32, hal.HAL_OUT)
 
+# setup Variable halpins (write-only for one-way communication from LinuxCNC to Arduino)
+if LcdFloatVars > 0:
+	for port in range(LcdFloatVars):
+		c.newpin("lcd.floatvar.{}".format(port), hal.HAL_FLOAT, hal.HAL_IN)
+
+if LcdIntVars > 0:
+	for port in range(LcdIntVars):
+		c.newpin("lcd.intvar.{}".format(port), hal.HAL_S32, hal.HAL_IN)
+
+if LcdBoolVars > 0:
+	for port in range(LcdBoolVars):
+		c.newpin("lcd.boolvar.{}".format(port), hal.HAL_BIT, hal.HAL_IN)
 
 if QuadEncs > 0:
 	for port in range(QuadEncs):
@@ -351,6 +374,41 @@ def managageOutputs():
 				arduino.write(command.encode())
 				if (Debug):print ("Sending:{}".format(command.encode()))
 				oldMledStates[mled] = State
+				time.sleep(0.01)
+
+	# Manage Variables - Fixed: Convert float to integer*1000 and only send when changed
+	if LcdFloatVars > 0:
+		for port in range(LcdFloatVars):
+			State = c["lcd.floatvar.{}".format(port)]
+			# CRITICAL FIX: Convert float to integer * 1000 for Arduino compatibility
+			if oldFloatVars[port] != State:  # Only send when value changes
+				intValue = round(State * 1000)  # Use round() instead of int() for better precision
+				command = "F{}:{}\n".format(port, intValue)
+				arduino.write(command.encode())
+				if (Debug):print ("Sending Float: F{}:{} (original: {})".format(port, intValue, State))
+				oldFloatVars[port] = State  # Update old value
+				time.sleep(0.01)
+
+	if LcdIntVars > 0:
+		for port in range(LcdIntVars):
+			State = c["lcd.intvar.{}".format(port)]
+			# Only send when value changes
+			if oldIntVars[port] != State:
+				command = "N{}:{}\n".format(port, State)
+				arduino.write(command.encode())
+				if (Debug):print ("Sending Int: N{}:{}".format(port, State))
+				oldIntVars[port] = State  # Update old value
+				time.sleep(0.01)
+
+	if LcdBoolVars > 0:
+		for port in range(LcdBoolVars):
+			State = c["lcd.boolvar.{}".format(port)]
+			# Only send when value changes
+			if oldBoolVars[port] != State:
+				command = "B{}:{}\n".format(port, State)
+				arduino.write(command.encode())
+				if (Debug):print ("Sending Bool: B{}:{}".format(port, State))
+				oldBoolVars[port] = State  # Update old value
 				time.sleep(0.01)
 
 
