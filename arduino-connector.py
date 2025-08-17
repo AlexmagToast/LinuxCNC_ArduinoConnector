@@ -118,9 +118,9 @@ JoyStickPins = [0,1] #Pins the Joysticks are connected to.
 
 # Enable Variables for LCD Display
 # This allows you to send various data types from LinuxCNC to Arduino for display on LCD
-LcdFloatVars = 0	# Number of float variables to support (set to 0 to disable) - should match the number of float variables in Arduino lcdVars array
-LcdIntVars = 0		# Number of integer variables to support (set to 0 to disable)
-LcdBoolVars = 0	# Number of boolean variables to support (set to 0 to disable)
+LcdFloatVars = 4	# Number of float variables to support (set to 0 to disable) - should match the number of float variables in Arduino lcdVars array
+LcdIntVars = 2		# Number of integer variables to support (set to 0 to disable)
+LcdBoolVars = 2	# Number of boolean variables to support (set to 0 to disable)
 
 
 # Set how many Digital LED's you have connected. 
@@ -180,7 +180,7 @@ LedGndPins = 3
 
 
 
-Debug = 0		#only works when this script is run from halrun in Terminal. "halrun","loadusr arduino" now Debug info will be displayed.
+Debug = 1		#ENABLED: Debug mode to check if values are being sent to Arduino
 
 ########  End of Config!  ########
 
@@ -394,9 +394,11 @@ def managageOutputs():
 			State = c["lcd.intvar.{}".format(port)]
 			# Only send when value changes
 			if oldIntVars[port] != State:
-				command = "N{}:{}\n".format(port, State)
+				# FIXED: Integer variables start at index LcdFloatVars (after float vars)
+				arduino_index = LcdFloatVars + port
+				command = "N{}:{}\n".format(arduino_index, State)
 				arduino.write(command.encode())
-				if (Debug):print ("Sending Int: N{}:{}".format(port, State))
+				if (Debug):print ("Sending Int: N{}:{} (Arduino index {})".format(port, State, arduino_index))
 				oldIntVars[port] = State  # Update old value
 				time.sleep(0.01)
 
@@ -405,9 +407,13 @@ def managageOutputs():
 			State = c["lcd.boolvar.{}".format(port)]
 			# Only send when value changes
 			if oldBoolVars[port] != State:
-				command = "B{}:{}\n".format(port, State)
+				# FIXED: Boolean variables start at index LcdFloatVars + LcdIntVars
+				arduino_index = LcdFloatVars + LcdIntVars + port
+				# CRITICAL FIX: Convert boolean to 0/1 integer, not True/False text
+				boolValue = 1 if State else 0
+				command = "B{}:{}\n".format(arduino_index, boolValue)
 				arduino.write(command.encode())
-				if (Debug):print ("Sending Bool: B{}:{}".format(port, State))
+				if (Debug):print ("Sending Bool: B{}:{} (Arduino index {}, raw: {})".format(port, boolValue, arduino_index, State))
 				oldBoolVars[port] = State  # Update old value
 				time.sleep(0.01)
 

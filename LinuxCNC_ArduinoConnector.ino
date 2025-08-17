@@ -1,9 +1,9 @@
-#include <Arduino.h>
-#include <stdlib.h>
-#include <ctype.h>
-#include <LiquidCrystal.h>
-#include <math.h>
-#include <string.h>
+//#include <Arduino.h>
+//#include <stdlib.h>
+//#include <ctype.h>
+//#include <LiquidCrystal.h>
+//#include <math.h>
+//#include <string.h>
 
 /*
   LinuxCNC_ArduinoConnector
@@ -364,8 +364,10 @@ int currentLED = 0;
     
   // Variable definitions - modify as needed
   LCDVar lcdVars[] = {
-    LCD_FLOAT("Speed:  ", 0, 0, 3),      // Speed on row 0, column 0, 1 decimal place
-    LCD_FLOAT("Feed: ", 1, 0, 3)       // Feed on row 1, column 0, 2 decimal places
+    LCD_FLOAT("Float var 1: ", 0, 0, 3),      // on row 0, column 0, 3 decimal place
+    LCD_FLOAT("Float var 2: ", 1, 0, 2),      // on row 1, column 0, 2 decimal places
+    LCD_INT("Int var:     ", 2, 0),       
+    LCD_BOOL("Bool var:    ", 3, 0)
   };
   
   // Macro to calculate the number of variables
@@ -1178,8 +1180,8 @@ void setLCDVar(int index, bool newValue) {
       lcd.setCursor(lcdVars[index].col, lcdVars[index].row);
       lcd.print(lcdVars[index].name);
       lcd.print(lcdVars[index].value.boolValue ? "ON " : "OFF");
-      // Clear the rest of the line
-      int spacesToClear = LCD_COLUMNS - (lcdVars[index].col + strlen(lcdVars[index].name) + (lcdVars[index].value.boolValue ? 3 : 4));
+      // Clear the rest of the line - FIXED: Both "ON " and "OFF" are 3 characters
+      int spacesToClear = LCD_COLUMNS - (lcdVars[index].col + strlen(lcdVars[index].name) + 3);
       if (spacesToClear > 0) {
         for (int j = 0; j < spacesToClear; j++) {
           lcd.print(" ");
@@ -1245,12 +1247,26 @@ void commandReceived(char cmd, uint16_t io, int32_t value){
   if(cmd == 'N'){ // Set integer variable from LinuxCNC
     // io = index of variable, value = integer value
     int32_t intValue = (int32_t)value;
+    #ifdef DEBUG
+      Serial.print("Received INT command N");
+      Serial.print(io);
+      Serial.print(":");
+      Serial.println(intValue);
+    #endif
     setLCDVar(io, intValue);
     lastcom=millis();
   }
   if(cmd == 'B'){ // Set boolean variable from LinuxCNC
     // io = index of variable, value = boolean value (0 or 1)
     bool boolValue = (value != 0);
+    #ifdef DEBUG
+      Serial.print("Received BOOL command B");
+      Serial.print(io);
+      Serial.print(":");
+      Serial.print(value);
+      Serial.print(" -> ");
+      Serial.println(boolValue ? "ON" : "OFF");
+    #endif
     setLCDVar(io, boolValue);
     lastcom=millis();
   }

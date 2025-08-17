@@ -193,37 +193,41 @@ ch the Video explanation on Youtube:
 # LCD Variables Display
 The software now supports displaying variables from LinuxCNC on an LCD display connected to the Arduino. This feature allows you to show real-time machine data such as feed rates, spindle speeds, positions, and status information.
 
-## LCD Hardware Support
+<img src="images/lcd-variables-display.jpg" alt="LCD Display with Variables" width="400" align="center">
+
+*Example of LCD display showing different variable types: Float variables, Integer variables, and Boolean variables with real-time data from LinuxCNC*
+
+### LCD Hardware Support
 - **Display Type**: Standard HD44780 compatible LCD displays (16x2, 20x4, etc.)
 - **Connection**: 6-wire parallel interface (RS, Enable, D4, D5, D6, D7)
 - **Pin Configuration**: Configurable in the Arduino sketch
 
-## Variable Types Supported
+### Variable Types Supported
 1. **Float Variables**: Display decimal values with configurable precision
 2. **Integer Variables**: Display whole numbers
 3. **Boolean Variables**: Display ON/OFF states
 
-## Configuration
+### Configuration
 In the Arduino sketch, you can define:
 - LCD dimensions (columns and rows)
 - Pin assignments for LCD connection
 - Variable definitions with names, positions, and types
 - Number of decimal places for float variables
 
-## LinuxCNC Integration
+### LinuxCNC Integration
 The Python connector creates HAL pins for each LCD variable:
 - `lcd.floatvar.0`, `lcd.floatvar.1`, etc. for float variables
 - `lcd.intvar.0`, `lcd.intvar.1`, etc. for integer variables  
 - `lcd.boolvar.0`, `lcd.boolvar.1`, etc. for boolean variables
 
-## Example Usage
+### Example Usage
 Connect these pins to your LinuxCNC HAL components to display:
 - Current feed rate and spindle speed
 - Machine coordinates (X, Y, Z)
 - Tool information and offsets
 - Machine status and error messages
 
-## Setup Requirements
+### Setup Requirements
 - Install LiquidCrystal library in Arduino IDE
 - Configure LCD pins in the Arduino sketch
 - Set the number of variables in both Arduino and Python files
